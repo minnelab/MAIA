@@ -1,0 +1,133 @@
+---
+- name: Restore PV for a namespace
+  hosts: all
+  become: yes
+  vars:
+    log_dir: "./logs"
+  tasks:
+    - name: Ensure cifs-utils is installed
+      package:
+        name: cifs-utils
+        state: present
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+
+    - name: Mount CIFS share
+      ansible.posix.mount:
+        path: /mnt/cifs                # Mount point
+        src: "//{{ cifs_server }}/{{ cifs_share }}"  # CIFS share
+        fstype: cifs
+        opts: "username={{ cifs_user }},password={{ cifs_pass }},iocharset=utf8,rw,file_mode=0777,dir_mode=0777"
+        state: mounted
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: Select the latest backup
+      shell: |
+        NAMESPACE={{ namespace }}
+        ls -t /mnt/cifs/maia-backups/${NAMESPACE}*.tar.gz | head -n 1
+      args:
+        executable: /bin/bash
+      register: latest_backup
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+
+    - name: Copy the backup to the NFS share (remote src)
+      copy:
+        dest: "/nfs/{{ namespace }}.tar.gz"
+        src: "{{ latest_backup.stdout }}"
+        mode: '0644'
+        remote_src: true
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+
+    - name: Unmount the CIFS share
+      ansible.posix.mount:
+        path: /mnt/cifs
+        state: unmounted
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: Decompress the namespace backup
+      shell: |
+        NAMESPACE={{ namespace }}
+        tar -xvf "/nfs/${NAMESPACE}.tar.gz" -C /nfs/
+      args:
+        executable: /bin/bash
+      register: namespace_decompression
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+
+    - name: Decompress the local-path-provisioner backup
+      shell: |
+        NAMESPACE={{ namespace }}
+        for backup in /nfs/nfs/${NAMESPACE}/*.tar.gz; do
+          [ -f "$backup" ] || continue
+          echo "Restoring $backup"
+          tar -xvf "$backup" -C /nfs/nfs/${NAMESPACE}/
+          rm -rf "$backup"
+        done
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: Decompress the NFS backup
+      shell: |
+        NAMESPACE={{ namespace }}
+        for backup in /nfs/nfs/${NAMESPACE}/nfs/*.tar.gz; do
+          [ -f "$backup" ] || continue
+          echo "Restoring $backup"
+          tar -xvf "$backup" -C /nfs/nfs/${NAMESPACE}/nfs/
+          rm -rf "$backup"
+        done
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: Move the NFS Backup to the correct location
+      shell: |
+        NAMESPACE={{ namespace }}
+        mv /nfs/nfs/${NAMESPACE}/nfs/nfs/* /nfs/
+        rm -rf /nfs/${NAMESPACE}/nfs/
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: List all the restored NFS PVs
+      shell: |
+        NAMESPACE={{ namespace }}
+        for d in /nfs/${NAMESPACE}-*/; do
+          [ -d "$d" ] || continue
+          echo "$(basename "$d")"
+        done
+      args:
+        executable: /bin/bash
+      register: nfs_report
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: Write restored NFS PVs to local file on localhost (no privilege escalation)
+      delegate_to: localhost
+      become: false
+      copy:
+        content: "{{ nfs_report.stdout }}"
+        dest: "{{ log_dir }}/{{ namespace }}/nfs_restore_status_{{ namespace }}.txt"
+        mode: '0644'
+    
+    - name: List all the restored local-path-provisioner PVs
+      shell: |
+        NAMESPACE={{ namespace }}
+        for d in /nfs/nfs/${NAMESPACE}/opt/local-path-provisioner/*; do
+          [ -d "$d" ] || continue
+          echo "$(basename "$d")"
+        done
+      args:
+        executable: /bin/bash
+      register: local_path_provisioner_report
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+    
+    - name: Write restored local-path-provisioner PVs to local file on localhost (no privilege escalation)
+      delegate_to: localhost
+      become: false
+      copy:
+        content: "{{ local_path_provisioner_report.stdout }}"
+        dest: "{{ log_dir }}/{{ namespace }}/local_path_provisioner_restore_status_{{ namespace }}.txt"
+        mode: '0644'
