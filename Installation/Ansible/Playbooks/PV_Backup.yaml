@@ -28,7 +28,7 @@
     - name: Build exclude_dirs_string for tar
       set_fact:
         exclude_dirs_string: >-
-          {{ exclude_dirs | map('regex_replace', '^(.*)$', '--exclude=\\1') | join(' ') }}
+          {{ exclude_dirs | map('regex_replace', '^(.*)$', '--exclude=\\\1') | join(' ') }}
 
     - name: Create a backup if the size of the PV is smaller than the threshold
       shell: |
