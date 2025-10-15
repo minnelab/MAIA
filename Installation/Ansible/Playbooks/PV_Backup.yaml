@@ -5,7 +5,7 @@
   vars:
     compress: false
     log_dir: "./logs"
-    exclude_dirs: [".conda", ".config", ".cache", ".local"]
+    exclude_dirs: [".conda", ".cache", ".local"]
   tasks:
     - name: Get current used storage for each namespaced local hostPath PV
       shell: |
