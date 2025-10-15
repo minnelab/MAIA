@@ -102,7 +102,13 @@
       register: nfs_report
       delegate_to: "{{ groups['all'][0] }}"
       run_once: true
-    
+    - name: Ensure backup log directory exists
+      delegate_to: localhost
+      become: false
+      file:
+        path: "{{ log_dir }}/{{ namespace }}"
+        state: directory
+        mode: '0755'
     - name: Write restored NFS PVs to local file on localhost (no privilege escalation)
       delegate_to: localhost
       become: false
