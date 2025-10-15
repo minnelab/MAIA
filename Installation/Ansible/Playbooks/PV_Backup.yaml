@@ -190,7 +190,7 @@
     
     - name: Ensure the backup directory exists
       file:
-        path: "/mnt/cifs/maia-backups/{{ namespace }}"
+        path: "/mnt/cifs/maia-backups"
         state: directory
         mode: '0755'
         owner: root
