@@ -38,7 +38,7 @@
             pv_ns="${BASH_REMATCH[2]}"
             if [[ "$pv_ns" == "$NAMESPACE" ]]; then
               size=$(du -sh "$d" | awk '{print $1}')
-              OUTPUT+="--------------------------------\n"
+              OUTPUT+="\n--------------------------------\n"
               OUTPUT+="Size of $dir is $size\n"
               if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
                 OUTPUT+="Creating backup for PV $dir\n"
@@ -110,7 +110,7 @@
             # Match pattern: <NAMESPACE>-
             if [[ "$dir" == ${NAMESPACE}-* ]]; then
                 size=$(du -sh "$d" | awk '{print $1}')
-                OUTPUT+="--------------------------------\n"
+                OUTPUT+="\n--------------------------------\n"
                 OUTPUT+="Size of $dir is $size\n"
                 if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
                   if [ -f "/nfs/${NAMESPACE}/nfs/${dir}.tar.gz" ] || [ -f "/nfs/${NAMESPACE}.tar.gz" ]; then
