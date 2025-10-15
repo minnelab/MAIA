@@ -5,7 +5,7 @@
   vars:
     compress: false
     log_dir: "./logs"
-    exclude_dirs: [".conda", ".cache", ".local"]
+    exclude_dirs: [".conda/*", ".cache/*", ".local/*"]
   tasks:
     - name: Get current used storage for each namespaced local hostPath PV
       shell: |
@@ -28,7 +28,7 @@
     - name: Build exclude_dirs_string for tar
       set_fact:
         exclude_dirs_string: >-
-          {{ exclude_dirs | map('regex_replace', '^(.*)$', '--exclude=\\\1') | join(' ') }}
+          {{ exclude_dirs | map('regex_replace', '^(.*)$', '--exclude=\1') | join(' ') }}
 
     - name: Create a backup if the size of the PV is smaller than the threshold
       shell: |
@@ -43,9 +43,9 @@
           if [[ "$dir" =~ ^([^_]+)_([^_]+)_(.+)$ ]]; then
             pv_ns="${BASH_REMATCH[2]}"
             if [[ "$pv_ns" == "$NAMESPACE" ]]; then
-              size=$(du -sh "$d" $exclude_dirs_string | awk '{print $1}')
+              size=$(du -sh $exclude_dirs_string "$d"  | awk '{print $1}')
               OUTPUT+="\n--------------------------------\n"
-              OUTPUT+="du -sh "$d" $exclude_dirs_string\n"
+              OUTPUT+="du -sh $exclude_dirs_string "$d"\n"
               OUTPUT+="Size of $dir is $size\n"
               if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
                 OUTPUT+="Creating backup for PV $dir\n"
@@ -54,7 +54,7 @@
                 else
                   OUTPUT+="Creating backup for PV $dir\n"
                   mkdir -p "/nfs/${pv_ns}"
-                  tar -czvf "/nfs/${pv_ns}/${dir}.tar.gz" "$d" $exclude_dirs_string
+                  tar -czvf "/nfs/${pv_ns}/${dir}.tar.gz" $exclude_dirs_string "$d" 
                   OUTPUT+="Backup for PV $dir created successfully\n"
                 fi
               else
@@ -63,7 +63,7 @@
                   if [ "$(numfmt --from=iec $subsize)" -gt "$(numfmt --from=iec $THRESHOLD)" ]; then
                     OUTPUT+="$subsize\t$subpath\n"
                   fi
-                done < <(du -h -d 1 "$d")
+                done < <(du -h -d 1 $exclude_dirs_string "$d")
               fi
             fi
           fi
@@ -117,7 +117,7 @@
             dir=$(basename "$d")
             # Match pattern: <NAMESPACE>-
             if [[ "$dir" == ${NAMESPACE}-* ]]; then
-                size=$(du -sh "$d" $exclude_dirs_string | awk '{print $1}')
+                size=$(du -sh $exclude_dirs_string "$d" | awk '{print $1}')
                 OUTPUT+="\n--------------------------------\n"
                 OUTPUT+="Size of $dir is $size\n"
                 if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
@@ -126,7 +126,7 @@
                   else
                     OUTPUT+="Backup for PV $dir does not exist\n"
                     mkdir -p "/nfs/${NAMESPACE}/nfs"
-                    tar -czvf "/nfs/${NAMESPACE}/nfs/${dir}.tar.gz" "$d" $exclude_dirs_string
+                    tar -czvf "/nfs/${NAMESPACE}/nfs/${dir}.tar.gz" $exclude_dirs_string "$d"
                     OUTPUT+="Backup for PV $dir created successfully\n"
                   fi
                 else
@@ -171,3 +171,19 @@
         executable: /bin/bash
       register: nfs_backup_compression
     
+    - name: Ensure cifs-utils is installed
+      package:
+        name: cifs-utils
+        state: present
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
+
+    - name: Mount CIFS share
+      ansible.posix.mount:
+        path: /mnt/cifs                # Mount point
+        src: "//{{ cifs_server }}/{{ cifs_share }}"  # CIFS share
+        fstype: cifs
+        opts: "username={{ cifs_user }},password={{ cifs_pass }},iocharset=utf8,rw,file_mode=0777,dir_mode=0777"
+        state: mounted
+      delegate_to: "{{ groups['all'][0] }}"
+      run_once: true
