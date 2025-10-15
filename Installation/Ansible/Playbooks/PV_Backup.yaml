@@ -5,6 +5,8 @@
   vars:
     compress: false
     log_dir: "./logs"
+    exclude_dirs: [".conda", ".config", ".cache", ".local"]
+    exclude_dirs_string: "--exclude=$(echo {{ exclude_dirs | join('|') }})"
   tasks:
     - name: Get current used storage for each namespaced local hostPath PV
       shell: |
@@ -37,7 +39,7 @@
           if [[ "$dir" =~ ^([^_]+)_([^_]+)_(.+)$ ]]; then
             pv_ns="${BASH_REMATCH[2]}"
             if [[ "$pv_ns" == "$NAMESPACE" ]]; then
-              size=$(du -sh "$d" | awk '{print $1}')
+              size=$(du -sh "$d" {{ exclude_dirs_string }} | awk '{print $1}')
               OUTPUT+="\n--------------------------------\n"
               OUTPUT+="Size of $dir is $size\n"
               if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
@@ -47,7 +49,7 @@
                 else
                   OUTPUT+="Creating backup for PV $dir\n"
                   mkdir -p "/nfs/${pv_ns}"
-                  tar -czvf "/nfs/${pv_ns}/${dir}.tar.gz" "$d"
+                  tar -czvf "/nfs/${pv_ns}/${dir}.tar.gz" "$d" {{ exclude_dirs_string }}
                   OUTPUT+="Backup for PV $dir created successfully\n"
                 fi
               else
@@ -109,7 +111,7 @@
             dir=$(basename "$d")
             # Match pattern: <NAMESPACE>-
             if [[ "$dir" == ${NAMESPACE}-* ]]; then
-                size=$(du -sh "$d" | awk '{print $1}')
+                size=$(du -sh "$d" {{ exclude_dirs_string }} | awk '{print $1}')
                 OUTPUT+="\n--------------------------------\n"
                 OUTPUT+="Size of $dir is $size\n"
                 if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
@@ -118,7 +120,7 @@
                   else
                     OUTPUT+="Backup for PV $dir does not exist\n"
                     mkdir -p "/nfs/${NAMESPACE}/nfs"
-                    tar -czvf "/nfs/${NAMESPACE}/nfs/${dir}.tar.gz" "$d"
+                    tar -czvf "/nfs/${NAMESPACE}/nfs/${dir}.tar.gz" "$d" {{ exclude_dirs_string }}
                     OUTPUT+="Backup for PV $dir created successfully\n"
                   fi
                 else
