@@ -2,36 +2,70 @@
   hosts: all
   tasks:
     - name: Check if NVIDIA GPU is available
-      shell: nvidia-smi | grep "Driver Version"
+      shell: nvidia-smi
       register: result
       changed_when: false
       failed_when: false
     - name: Print NVIDIA GPU availability
       debug:
-        msg: "{{ result.stdout }}"
+        msg: |
+          {{ result.stdout }}
     - name: Check if /opt/local-path-provisioner is mounted
       shell: |
-        lsblk | grep local-path-provisioner
+        lsblk | grep /opt/local-path-provisioner
       register: result
       changed_when: false
       failed_when: false
     - name: Print local path provisioner mount status
       debug:
-        msg: "{{ result.stdout }}"
+        msg: >-
+          {% if result.stdout|length > 0 %}
+          {{ result.stdout }}
+          {% else %}
+          WARNING: /opt/local-path-provisioner is not mounted or not found!
+          {% endif %}
 
     - name: Check if /nfs is mounted
       shell: |
-        lsblk | grep nfs
+        lsblk | grep /nfs
       register: result
       changed_when: false
       failed_when: false
     - name: Print NFS mount status
       debug:
-        msg: "{{ result.stdout }}"
+        msg: |
+          {% if result.stdout|length > 0 %}
+          {{ result.stdout }}
+          {% else %}
+          WARNING: /nfs is not mounted or not found!
+          {% endif %}
 
     - name: Run cifs init script
       shell: /var/lib/kubelet/volumeplugins/fstab~cifs/cifs init
       register: cifs_init_output
     - name: Print cifs init script output
       debug:
-        msg: "{{ cifs_init_output.stdout }}"
+        msg: |
+          {{ cifs_init_output.stdout }}
+    - name: Check if rancher-system-agent.service is running
+      service:
+        name: rancher-system-agent
+        state: started
+        enabled: yes
+      register: rancher_system_agent_output
+    - name: Print rancher-system-agent.service output
+      debug:
+        msg: |
+          {{ rancher_system_agent_output.status.ActiveState }}
+          {{ rancher_system_agent_output.status.LoadState }}
+    - name: Check if rke2-server.service is running
+      service:
+        name: rke2-server
+        state: started
+        enabled: yes
+      register: rke2_server_output
+    - name: Print rke2-server.service output
+      debug:
+        msg: |
+          {{ rke2_server_output.status.ActiveState }}
+          {{ rke2_server_output.status.LoadState }}
