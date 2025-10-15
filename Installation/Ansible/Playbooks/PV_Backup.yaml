@@ -25,13 +25,17 @@
         executable: /bin/bash
       register: pv_report
 
+    - name: Build exclude_dirs_string for tar
+      set_fact:
+        exclude_dirs_string: >-
+          {{ exclude_dirs | map('regex_replace', '^(.*)$', '--exclude=\\1') | join(' ') }}
 
     - name: Create a backup if the size of the PV is smaller than the threshold
       shell: |
         THRESHOLD={{ threshold }}
         NAMESPACE={{ namespace }}
         OUTPUT=""
-        exclude_dirs_string="--exclude=$(echo {{ exclude_dirs | join('|') }})"
+        exclude_dirs_string="{{ exclude_dirs_string }}"
         for d in /opt/local-path-provisioner/*; do
           [ -d "$d" ] || continue
           dir=$(basename "$d")
@@ -107,7 +111,7 @@
           THRESHOLD={{ nfs_threshold }}
           NAMESPACE={{ namespace }}
           OUTPUT=""
-          exclude_dirs_string="--exclude=$(echo {{ exclude_dirs | join('|') }})"
+          exclude_dirs_string="{{ exclude_dirs_string }}"
           for d in /nfs/${NAMESPACE}-*; do
             [ -d "$d" ] || continue
             dir=$(basename "$d")
