@@ -198,11 +198,12 @@
       delegate_to: "{{ groups['all'][0] }}"
       run_once: true
 
-    - name: Copy the backup to the CIFS share
+    - name: Copy the backup to the CIFS share (remote src)
       copy:
         src: "/nfs/{{ namespace }}.tar.gz"
         dest: "/mnt/cifs/maia-backups/{{ namespace }}_{{ lookup('pipe','date +%Y%m%d%H%M%S') }}.tar.gz"
         mode: '0644'
+        remote_src: true
       delegate_to: "{{ groups['all'][0] }}"
       run_once: true
 
