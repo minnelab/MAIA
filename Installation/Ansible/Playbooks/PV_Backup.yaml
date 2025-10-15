@@ -4,6 +4,7 @@
   become: yes
   vars:
     compress: false
+    log_dir: "./logs"
   tasks:
     - name: Get current used storage for each namespaced local hostPath PV
       shell: |
@@ -69,7 +70,7 @@
       delegate_to: localhost
       become: false
       file:
-        path: "./logs/{{ namespace }}"
+        path: "{{ log_dir }}/{{ namespace }}"
         state: directory
         mode: '0755'
     - name: Write PV backup creation status to local file on localhost (no privilege escalation)
@@ -79,7 +80,7 @@
         content: "{{ pv_backup_output.stdout }}"
         # Ensure the destination directory exists before writing the file
     
-        dest: "./logs/{{ namespace }}/local_hostpath_backup_status_{{ inventory_hostname }}_{{ namespace }}.txt"
+        dest: "{{ log_dir }}/{{ namespace }}/local_hostpath_backup_status_{{ inventory_hostname }}_{{ namespace }}.txt"
         mode: '0644'
     
     - name: Get current used storage for each namespaced NFS PV (run only on first host)
@@ -140,7 +141,7 @@
       become: false
       copy:
         content: "{{ nfs_backup_output.stdout }}"
-        dest: "./logs/{{ namespace }}/nfs_backup_status_{{ namespace }}.txt"
+        dest: "{{ log_dir }}/{{ namespace }}/nfs_backup_status_{{ namespace }}.txt"
         mode: '0644'
     
     - name: Compress the Namespace Backup
