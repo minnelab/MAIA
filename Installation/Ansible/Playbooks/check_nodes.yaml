@@ -1,0 +1,37 @@
+- name: Check nodes
+  hosts: all
+  tasks:
+    - name: Check if NVIDIA GPU is available
+      shell: nvidia-smi | grep "Driver Version"
+      register: result
+      changed_when: false
+      failed_when: false
+    - name: Print NVIDIA GPU availability
+      debug:
+        msg: "{{ result.stdout }}"
+    - name: Check if /opt/local-path-provisioner is mounted
+      shell: |
+        lsblk | grep local-path-provisioner
+      register: result
+      changed_when: false
+      failed_when: false
+    - name: Print local path provisioner mount status
+      debug:
+        msg: "{{ result.stdout }}"
+
+    - name: Check if /nfs is mounted
+      shell: |
+        lsblk | grep nfs
+      register: result
+      changed_when: false
+      failed_when: false
+    - name: Print NFS mount status
+      debug:
+        msg: "{{ result.stdout }}"
+
+    - name: Run cifs init script
+      shell: /var/lib/kubelet/volumeplugins/fstab~cifs/cifs init
+      register: cifs_init_output
+    - name: Print cifs init script output
+      debug:
+        msg: "{{ cifs_init_output.stdout }}"
