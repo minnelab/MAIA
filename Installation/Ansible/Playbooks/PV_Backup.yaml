@@ -41,6 +41,7 @@
             if [[ "$pv_ns" == "$NAMESPACE" ]]; then
               size=$(du -sh "$d" {{ exclude_dirs_string }} | awk '{print $1}')
               OUTPUT+="\n--------------------------------\n"
+              OUTPUT+="du -sh "$d" {{ exclude_dirs_string }}\n"
               OUTPUT+="Size of $dir is $size\n"
               if [ $(numfmt --from=iec $size) -lt $(numfmt --from=iec $THRESHOLD) ]; then
                 OUTPUT+="Creating backup for PV $dir\n"
