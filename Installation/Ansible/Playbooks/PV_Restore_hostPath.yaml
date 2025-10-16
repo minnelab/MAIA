@@ -6,8 +6,10 @@
     - name: Move the PV backup to the correct location
       shell: |
         NAMESPACE={{ namespace }}
-        PV_ID={{ pv_id }}
-        mv /nfs/nfs/${NAMESPACE}/opt/local-path-provisioner/${PV_ID} /opt/local-path-provisioner/
+        IFS=',' read -ra PV_IDS <<< "{{ pv_ids }}"
+        for PV_ID in "${PV_IDS[@]}"; do
+          mv /nfs/nfs/${NAMESPACE}/opt/local-path-provisioner/${PV_ID} /opt/local-path-provisioner/
+        done
       args:
         executable: /bin/bash
       register: pv_backup_move
