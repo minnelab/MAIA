@@ -1,0 +1,13 @@
+---
+- name: Restore PV for a namespace (hostPath)
+  hosts: "{{ host_id }}"
+  become: yes
+  tasks:
+    - name: Move the PV backup to the correct location
+      shell: |
+        NAMESPACE={{ namespace }}
+        PV_ID={{ pv_id }}
+        mv /nfs/nfs/${NAMESPACE}/opt/local-path-provisioner/${PV_ID} /opt/local-path-provisioner/
+      args:
+        executable: /bin/bash
+      register: pv_backup_move
