@@ -6,28 +6,26 @@ FROM ${BASE_IMAGE}
 ARG DEBIAN_FRONTEND=noninteractive
 
 USER root
-RUN curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh
-RUN bash /tmp/nodesource_setup.sh
-RUN apt install nodejs
-
-
-RUN mkdir -p /opt/conda
-RUN chmod -R 777 /opt/conda/
+RUN chown -R maia-user:maia-user /home/maia-user/.cache && \
+    curl -sL https://deb.nodesource.com/setup_20.x -o /tmp/nodesource_setup.sh && \
+    bash /tmp/nodesource_setup.sh && \
+    apt install nodejs -y && \
+    mkdir -p /opt/conda && \
+    chmod -R 777 /opt/conda/
 USER 1000
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /opt/conda/miniconda.sh
-RUN bash /opt/conda/miniconda.sh -b -u -p /opt/conda
-RUN rm -rf /opt/conda/miniconda.sh
-
-RUN . /opt/conda/etc/profile.d/conda.sh
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /opt/conda/miniconda.sh && \
+    bash /opt/conda/miniconda.sh -b -u -p /opt/conda && \
+    rm -rf /opt/conda/miniconda.sh && \
+    . /opt/conda/etc/profile.d/conda.sh
 
 USER root
 #RUN pip install jupyterhub==4.0.2  notebook==6.* jupyterlab==4.1.5
-RUN pip install jupyterhub  notebook jupyterlab
-RUN pip install jupyterlab-git jupyter_scheduler
-RUN pip install jupyter_contrib_nbextensions  && pip install nbgitpuller 
+RUN pip install jupyterhub  notebook jupyterlab --break-system-packages && \
+    pip install jupyterlab-git jupyter_scheduler --break-system-packages && \
+   pip install jupyter_contrib_nbextensions --break-system-packages  && pip install nbgitpuller --break-system-packages && \
+   pip install python-dotenv jupyter-server-proxy --break-system-packages && \
+   pip install light-the-torch --break-system-packages
 #&& jupyter contrib nbextension install --user
-RUN pip install python-dotenv jupyter-server-proxy
-RUN pip install light-the-torch
 ENV PATH="$PATH:/root/.local/bin"
 
 USER 1000

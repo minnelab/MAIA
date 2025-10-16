@@ -52,12 +52,7 @@ def main():
     user = "maia-user"
     
     if "ALLOW_PASSWORD_AUTHENTICATION" in os.environ:
-        subprocess.run(["sed", "-i", "s/^PasswordAuthentication no/PasswordAuthentication yes/", "/opt/ssh/sshd_config"])
-    if "PASSWORD" in os.environ:
-        password = os.environ["PASSWORD"]
-    else:
-        password = "maia-user"
-    subprocess.run(["sudo","bash", "-c", "echo '{}:{}' | chpasswd".format(user, password)])
+        subprocess.run(["sed", "-i", "s/^PasswordAuthentication          no/PasswordAuthentication          yes/", "/opt/ssh/sshd_config"])
     
     for AUTHORIZED_KEYS in args["authorized_keys"]:
 
