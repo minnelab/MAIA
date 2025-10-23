@@ -13,6 +13,7 @@ import argocd_client
 import yaml
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+from loguru import logger
 from omegaconf import OmegaConf
 from pyhelm3 import Client
 
@@ -612,9 +613,9 @@ async def get_maia_toolkit_apps(group_id, token, argo_cd_host):
 
         try:
             api_response = api_instance.get_mixin6(name)
-            pprint(api_response)
+            logger.debug(f"Project info: {api_response}")
         except ApiException as e:
-            print("Exception when calling ProjectServiceApi->get_mixin6: %s\n" % e)
+            logger.error(f"Exception when calling ProjectServiceApi->get_mixin6: {e}")
 
         names = [
             f'{group_id.lower().replace("_", "-")}-namespace',
@@ -625,9 +626,9 @@ async def get_maia_toolkit_apps(group_id, token, argo_cd_host):
         for name in names:
             try:
                 api_response = api_instance_apps.get_mixin9(name, project=project)
-                pprint(api_response)
+                logger.debug(f"Application info: {api_response}")
             except ApiException as e:
-                print("Exception when calling ApplicationServiceApi->get_mixin9: %s\n" % e)
+                logger.error(f"Exception when calling ApplicationServiceApi->get_mixin9: {e}")
 
 
 async def install_maia_project(
@@ -701,12 +702,12 @@ async def install_maia_project(
                 stderr=subprocess.PIPE,
                 check=True,
             )
-            print("✅ Helm registry login successful.")
-            print(result.stdout.decode())
+            logger.info("✅ Helm registry login successful.")
+            logger.debug(result.stdout.decode())
         except subprocess.CalledProcessError as e:
-            print("❌ Helm registry login failed.")
-            print("STDOUT:", e.stdout.decode())
-            print("STDERR:", e.stderr.decode())
+            logger.error("❌ Helm registry login failed.")
+            logger.error(f"STDOUT: {e.stdout.decode()}")
+            logger.error(f"STDERR: {e.stderr.decode()}")
             await asyncio.sleep(1)
             return "Deployment failed: Helm registry login failed."
         subprocess.run(["helm", "pull", project_chart, "-d", "/tmp", "--version", project_version], check=True)
@@ -737,7 +738,10 @@ async def install_maia_project(
     revision = await client.install_or_upgrade_release(
         group_id.lower().replace("_", "-"), chart, values, namespace=argo_cd_namespace, wait=True
     )
-    print(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
+    logger.info(
+        f"Release: {revision.release.name}, Namespace: {revision.release.namespace}, "
+        f"Revision: {revision.revision}, Status: {revision.status}"
+    )
 
     return ""
 
