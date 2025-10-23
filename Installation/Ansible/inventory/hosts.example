@@ -1,0 +1,37 @@
+# Example inventory file for MAIA-Core installation
+# Copy this file to 'hosts' and customize it for your setup
+#
+# For MicroK8s-based installation, you need to define at least:
+# - One k8s_master node (the Kubernetes control plane)
+# - Optional k8s_worker nodes (additional cluster nodes)
+# - Optional nfs_server and nfs_clients for shared storage
+
+# Simple single-node setup
+# Uncomment the following if you want a single-node cluster
+# maia-server-0
+
+# Multi-node Kubernetes cluster setup
+# Define one master node for the Kubernetes control plane
+[k8s_master]
+maia-server-0
+
+# Define worker nodes that will join the cluster
+[k8s_worker]
+maia-server-1
+maia-server-2
+maia-server-3
+
+# Optional: NFS storage configuration
+# Define one node as the NFS server
+[nfs_server]
+maia-server-0
+
+# Define nodes that will mount the NFS share
+[nfs_clients]
+maia-server-1
+maia-server-2
+maia-server-3
+
+# Note: Replace maia-server-0, maia-server-1, etc. with your actual
+# hostnames or IP addresses. For convenience, you can add these hosts
+# to your ~/.ssh/config file as aliases.

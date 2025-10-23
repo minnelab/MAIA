@@ -2,6 +2,10 @@
 
 To install MAIA, we provide a set of Ansible playbooks that automate the installation process. The playbooks are designed to be run on a fresh Ubuntu installation (we have currently tested it for Ubuntu 20.04, Ubuntu 22.04 and Ubuntu 24.04).
 
+## 🚀 New to MAIA?
+
+If you're setting up MAIA for the first time, check out our [**Quick Start Guide**](QUICKSTART.md) for a streamlined installation experience with step-by-step instructions.
+
 ## Quick Start - Complete Installation
 
 For a streamlined installation experience, use our comprehensive installation script that automates all steps from Kubernetes installation through MAIA-Core deployment:

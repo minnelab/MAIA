@@ -1,0 +1,22 @@
+# Example host-specific variables for maia-server-0
+# Copy this file to 'maia-server-0.yaml' and customize for your setup
+
+# Define the disk devices to be used for LVM storage
+# List all block devices that should be included in the MAIA_Storage volume group
+device_list:
+  - /dev/sdb
+  - /dev/sdc
+
+# Size of the local storage logical volume (maia_0_local)
+# Can be specified in GB (g), TB (t), or as a percentage of available space
+# Examples: "300g", "1.5t", "100%FREE"
+local_storage_size: 300g
+
+# OPTIONAL: Size of the NFS storage logical volume (maia_0)
+# Only add this if this host will serve as the NFS server
+# This will create a separate logical volume for NFS exports
+nfs_storage_size: 1.8t
+
+# Note: Make sure the specified devices exist on the host and are not
+# already in use. You can check available devices with:
+# lsblk -o NAME,SIZE,TYPE,MOUNTPOINT
