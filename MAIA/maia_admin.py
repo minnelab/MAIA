@@ -6,7 +6,6 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from pprint import pprint
 from secrets import token_urlsafe
 
 import argocd_client
