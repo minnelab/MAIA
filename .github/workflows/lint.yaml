@@ -7,17 +7,14 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9"]
 
     steps:
       - uses: actions/checkout@v3
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.9"
       
       - name: Install dependencies
         run: |
@@ -26,7 +23,7 @@ jobs:
       
       - name: Check code formatting with black
         run: |
-          black --check --line-length 130 .
+          black --check .
       
       - name: Lint with ruff
         run: |
