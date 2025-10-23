@@ -429,15 +429,29 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     if mlflow_configs:
         maia_namespace_values["mlflow"] = {
             "enabled": True,
-            #"user": base64.b64decode(mlflow_configs["mlflow_user"]).decode("ascii"),
+            # "user": base64.b64decode(mlflow_configs["mlflow_user"]).decode("ascii"),
             "user": mlflow_configs["mlflow_user"],
-            "password": mlflow_configs["mlflow_password"]
-            #"password": base64.b64decode(mlflow_configs["mlflow_password"]).decode("ascii"),
+            "password": mlflow_configs["mlflow_password"],
+            # "password": base64.b64decode(mlflow_configs["mlflow_password"]).decode("ascii"),
         }
 
     enable_cifs = namespace_config.get("extra_configs", {}).get("enable_cifs", False)
     if enable_cifs:
-        maia_namespace_values["cifs"] = {"enabled": True, "encryption": {"publicKey": ""}}  # base64 encoded}
+        # Read and decode CIFS encryption key from environment variable
+        cifs_encryption_key_b64 = os.environ.get("CIFS_ENCRYPTION_KEY", "")
+        public_key = ""
+
+        if cifs_encryption_key_b64:
+            try:
+                public_key = base64.b64decode(cifs_encryption_key_b64).decode("utf-8")
+            except Exception as e:
+                print(f"⚠️  Warning: Failed to decode CIFS_ENCRYPTION_KEY: {e}")
+                print("    Using empty public key as fallback.")
+        else:
+            print("⚠️  Warning: CIFS_ENCRYPTION_KEY environment variable is not set.")
+            print("    Using empty public key as fallback.")
+
+        maia_namespace_values["cifs"] = {"enabled": True, "encryption": {"publicKey": public_key}}
     namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
     Path(config_folder).joinpath(namespace_config["group_ID"], "maia_namespace_values").mkdir(parents=True, exist_ok=True)
     with open(
@@ -1253,7 +1267,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
 
     if "discord_url" in maia_config_dict:
         maia_dashboard_values["dashboard"]["discord_url"] = maia_config_dict["discord_url"]
-    #if "discord_signup_url" in maia_config_dict:
+    # if "discord_signup_url" in maia_config_dict:
     #    maia_dashboard_values["dashboard"]["discord_signup_url"] = maia_config_dict["discord_signup_url"]
     if "discord_support_url" in maia_config_dict:
         maia_dashboard_values["dashboard"]["discord_support_url"] = maia_config_dict["discord_support_url"]
