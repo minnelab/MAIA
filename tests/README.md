@@ -54,20 +54,22 @@ pytest tests/ -k "password"
 
 ## Test Coverage
 
-The test suite covers:
+The test suite includes **110+ unit tests** covering:
 
 ### MAIA/ Module Tests
-- **maia_fn.py**: Password generation, username conversion, Docker registry secrets, ConfigMap creation, SSH port management
+- **maia_fn.py**: Password generation, username conversion, Docker registry secrets, ConfigMap creation, SSH port management, deployment functions (OAuth2 proxy, MySQL, MLflow, Orthanc), GPU node listing
 - **keycloak_utils.py**: User and group management in Keycloak, authentication and authorization
 - **kubernetes_utils.py**: Kubernetes operations, namespace management, pod labeling, resource filtering
 - **dashboard_utils.py**: GPU booking and verification, encryption/decryption, email sending
 - **helm_values.py**: Helm values generation for various configurations
 - **maia_admin.py**: Admin toolkit configuration generation (MinIO, MySQL, MLflow)
-- **maia_core.py**: Core toolkit configuration (Prometheus, Loki, Tempo, Traefik, MetalLB, cert-manager)
+- **maia_core.py**: Core toolkit configuration (Prometheus, Loki, Tempo, Traefik, MetalLB, cert-manager, ingress-nginx)
 
 ### MAIA_scripts/ Tests
 - **MAIA_deploy_helm_chart.py**: String to boolean conversion utility
 - **MAIA_send_welcome_user_mail.py**: User welcome email functionality
+- **MAIA_send_all_user_email.py**: Batch email sending to all users, Settings class
+- **Common script functions**: Argument parsers, version information, basic function structure verification
 
 ## Test Fixtures
 
