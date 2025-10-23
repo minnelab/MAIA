@@ -28,3 +28,7 @@ ruff
 pytype>=2020.6.1; platform_system != "Windows"
 types-setuptools
 mypy>=1.5.0, <1.12.0
+pytest>=8.0
+pytest-cov
+pytest-mock
+beautifulsoup4
