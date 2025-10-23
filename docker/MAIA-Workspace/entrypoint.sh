@@ -7,7 +7,13 @@
 trap "echo TRAPed signal" HUP INT QUIT TERM
 
 sudo chown maia-user:maia-user /home/maia-user || sudo chown maia-user:maia-user /home/maia-user/* || { echo "Failed to change maia-user directory permissions. There may be permission issues."; }
-# Change operating system password to environment variable
+
+# Update user credentials from $HOME/.env if present
+if [ -f /etc/update_user_credentials.sh ]; then
+  bash /etc/update_user_credentials.sh
+fi
+
+# Change operating system password to environment variable (fallback if not set by update script)
 if [ ! -d /home/maia-user/Tutorials ]; then
   sudo cp -r /etc/Tutorials /home/maia-user
   sudo chmod -R 777 /home/maia-user/Tutorials
@@ -31,7 +37,10 @@ else
   echo "JUPYTERHUB_POD_NAME=${JUPYTERHUB_POD_NAME}" >> /home/maia-user/.env
 fi
 
-echo "maia-user:$PASSWD" | sudo chpasswd
+# Set password from PASSWD env var if present (fallback if not set by credentials update script)
+if [ -n "$PASSWD" ]; then
+  echo "maia-user:$PASSWD" | sudo chpasswd
+fi
 
 if [ ! -f /home/maia-user/.bash_profile ]; then
   cp /etc/.bash_profile /home/maia-user/
