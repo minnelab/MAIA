@@ -1,0 +1,237 @@
+---
+# Complete MAIA-Core Installation Playbook
+# This playbook orchestrates the entire MAIA-Core installation process
+# starting from Kubernetes installation through to MAIA Core deployment
+
+- name: MAIA-Core Complete Installation
+  hosts: localhost
+  gather_facts: yes
+  
+  vars:
+    # Installation configuration
+    installation_phase: "all"  # Options: all, k8s-only, prepare-only, core-only
+    
+    # Kubernetes configuration
+    microk8s_version: "1.31/stable"
+    
+    # User configuration
+    ansible_user: "maia-admin"  # Override with -e ansible_user=<username>
+    
+    # NVIDIA driver configuration
+    nvidia_driver_package: "nvidia-driver-570"  # Override with -e nvidia_driver_package=<package>
+    
+    # MAIA Core configuration
+    cluster_config: "/path/to/cluster_config.yaml"  # Override with -e cluster_config=<path>
+    config_folder: "/path/to/configs_folder"  # Override with -e config_folder=<path>
+    ARGOCD_KUBECONFIG: "/path/to/argocd_kubeconfig.yaml"  # Override with -e ARGOCD_KUBECONFIG=<path>
+    DEPLOY_KUBECONFIG: "/path/to/deploy_kubeconfig.yaml"  # Override with -e DEPLOY_KUBECONFIG=<path>
+    MAIA_PRIVATE_REGISTRY: "registry.maia-cloud.com"  # Override with -e MAIA_PRIVATE_REGISTRY=<url>
+
+  tasks:
+    - name: Display installation configuration
+      debug:
+        msg: |
+          =======================================================
+          MAIA-Core Installation Configuration
+          =======================================================
+          Installation Phase: {{ installation_phase }}
+          Ansible User: {{ ansible_user }}
+          MicroK8s Version: {{ microk8s_version }}
+          NVIDIA Driver: {{ nvidia_driver_package }}
+          =======================================================
+          Cluster Config: {{ cluster_config }}
+          Config Folder: {{ config_folder }}
+          ArgoCD Kubeconfig: {{ ARGOCD_KUBECONFIG }}
+          Deploy Kubeconfig: {{ DEPLOY_KUBECONFIG }}
+          Private Registry: {{ MAIA_PRIVATE_REGISTRY }}
+          =======================================================
+
+    - name: Validate required files exist
+      stat:
+        path: "{{ item }}"
+      register: file_check
+      failed_when: not file_check.stat.exists
+      loop:
+        - "{{ cluster_config }}"
+        - "{{ config_folder }}/maia_config.yaml"
+        - "{{ config_folder }}/maia_private.json"
+        - "{{ ARGOCD_KUBECONFIG }}"
+        - "{{ DEPLOY_KUBECONFIG }}"
+      when: installation_phase == "core-only" or installation_phase == "all"
+
+    - name: Check SSH connectivity to all hosts
+      command: ansible all -i ../inventory/hosts -m ping
+      register: connectivity_check
+      changed_when: false
+      when: installation_phase == "all" or installation_phase == "prepare-only" or installation_phase == "k8s-only"
+
+    - name: Display connectivity results
+      debug:
+        msg: "{{ connectivity_check.stdout_lines }}"
+      when: connectivity_check is defined
+
+# Phase 1: Kubernetes Installation
+- import_playbook: install_microk8s.yaml
+  when: hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "k8s-only"
+  vars:
+    microk8s_version: "{{ hostvars['localhost']['microk8s_version'] }}"
+    ansible_user: "{{ hostvars['localhost']['ansible_user'] }}"
+
+# Phase 2: Host Preparation
+- name: Phase 2 - Prepare Hosts
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Display Phase 2 information
+      debug:
+        msg: |
+          =======================================================
+          Phase 2: Preparing Hosts
+          =======================================================
+          - Installing NVIDIA drivers
+          - Creating LVM storage
+          - Mounting LVM volumes
+          - Configuring NFS storage (if applicable)
+          - Configuring firewall rules
+          - Configuring CIFS (if applicable)
+          =======================================================
+      when: installation_phase == "all" or installation_phase == "prepare-only"
+
+- name: Install NVIDIA Drivers
+  import_playbook: install_nvidia_drivers.yaml
+  when: hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "prepare-only"
+  vars:
+    nvidia_driver_package: "{{ hostvars['localhost']['nvidia_driver_package'] }}"
+    ansible_user: "{{ hostvars['localhost']['ansible_user'] }}"
+
+- name: Create LVM Storage
+  import_playbook: create_LVM.yaml
+  when: hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "prepare-only"
+  vars:
+    ansible_user: "{{ hostvars['localhost']['ansible_user'] }}"
+
+- name: Mount LVM Volumes
+  import_playbook: mount_LVM.yaml
+  when: hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "prepare-only"
+  vars:
+    ansible_user: "{{ hostvars['localhost']['ansible_user'] }}"
+
+- name: Configure NFS Storage
+  import_playbook: nfs_storage.yaml
+  when: 
+    - hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "prepare-only"
+    - groups['nfs_server'] is defined and groups['nfs_server'] | length > 0
+  vars:
+    ansible_user: "{{ hostvars['localhost']['ansible_user'] }}"
+
+- name: Configure Firewall Rules
+  import_playbook: create_ufw_roles.yaml
+  when: hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "prepare-only"
+  vars:
+    ansible_user: "{{ hostvars['localhost']['ansible_user'] }}"
+
+# Phase 3: Post-Kubernetes Configuration
+- name: Phase 3 - Post-Kubernetes Configuration
+  hosts: k8s_master
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Display Phase 3 information
+      debug:
+        msg: |
+          =======================================================
+          Phase 3: Post-Kubernetes Configuration
+          =======================================================
+          - Configuring local storage provisioner
+          - Verifying Kubernetes cluster status
+          =======================================================
+      when: hostvars['localhost']['installation_phase'] == "all"
+
+    - name: Wait for Kubernetes to be fully ready
+      command: microk8s kubectl get nodes
+      register: nodes_status
+      retries: 10
+      delay: 15
+      until: nodes_status.rc == 0
+      changed_when: false
+      when: hostvars['localhost']['installation_phase'] == "all"
+
+    - name: Display cluster nodes
+      debug:
+        msg: "{{ nodes_status.stdout_lines }}"
+      when: 
+        - hostvars['localhost']['installation_phase'] == "all"
+        - nodes_status is defined
+
+    - name: Apply Local Path Provisioner
+      command: microk8s kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
+      register: storage_result
+      changed_when: "'created' in storage_result.stdout or 'configured' in storage_result.stdout"
+      when: hostvars['localhost']['installation_phase'] == "all"
+
+    - name: Display storage provisioner status
+      debug:
+        msg: "{{ storage_result.stdout_lines }}"
+      when: 
+        - hostvars['localhost']['installation_phase'] == "all"
+        - storage_result is defined
+
+    - name: Wait for local-path-provisioner to be ready
+      command: microk8s kubectl wait --for=condition=ready pod -l app=local-path-provisioner -n local-path-storage --timeout=300s
+      register: provisioner_ready
+      changed_when: false
+      when: hostvars['localhost']['installation_phase'] == "all"
+
+# Phase 4: MAIA Core Installation
+- name: Phase 4 - MAIA Core Installation
+  import_playbook: install_maia_core.yaml
+  when: hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "core-only"
+  vars:
+    cluster_config: "{{ hostvars['localhost']['cluster_config'] }}"
+    config_folder: "{{ hostvars['localhost']['config_folder'] }}"
+    ARGOCD_KUBECONFIG: "{{ hostvars['localhost']['ARGOCD_KUBECONFIG'] }}"
+    DEPLOY_KUBECONFIG: "{{ hostvars['localhost']['DEPLOY_KUBECONFIG'] }}"
+    MAIA_PRIVATE_REGISTRY: "{{ hostvars['localhost']['MAIA_PRIVATE_REGISTRY'] }}"
+
+# Final Phase: Installation Summary
+- name: Installation Complete - Summary
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Display installation summary
+      debug:
+        msg: |
+          =======================================================
+          MAIA-Core Installation Complete!
+          =======================================================
+          
+          Installation phase '{{ installation_phase }}' has been completed successfully.
+          
+          Next Steps:
+          
+          1. Verify Kubernetes cluster status:
+             kubectl get nodes
+             kubectl get pods --all-namespaces
+          
+          2. Access ArgoCD to manage applications:
+             - Check the cluster configuration for ArgoCD URL
+             - Login with the credentials from your configuration
+          
+          3. Configure MAIA Dashboard:
+             - Add the new cluster information to the MAIA Dashboard ConfigMap
+             - Update the cluster_name, api, and other required fields
+          
+          4. Verify MAIA Core components:
+             kubectl get pods -n observability
+             kubectl get pods -n cert-manager
+             kubectl get pods -n metallb-system
+             kubectl get pods -n gpu-operator
+          
+          5. Review the Installation README for post-deployment steps:
+             cat Installation/README.md
+          
+          =======================================================
+          For troubleshooting and additional information, refer to:
+          - Installation/README.md
+          - MAIA documentation at https://maia-toolkit.readthedocs.io
+          =======================================================

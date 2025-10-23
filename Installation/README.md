@@ -1,17 +1,69 @@
 # Installation
 
-To install MAIA, we provide a set of Ansible playbooks that automate the installation process. The playbooks are designed to be run on a fresh Ubuntu  installation (we have currently tested it for Ubuntu 20.04, Ubuntu 22.04 and Ubuntu 24.04).
+To install MAIA, we provide a set of Ansible playbooks that automate the installation process. The playbooks are designed to be run on a fresh Ubuntu installation (we have currently tested it for Ubuntu 20.04, Ubuntu 22.04 and Ubuntu 24.04).
+
+## Quick Start - Complete Installation
+
+For a streamlined installation experience, use our comprehensive installation script that automates all steps from Kubernetes installation through MAIA-Core deployment:
+
+```bash
+ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_complete.yaml \
+  -e ansible_user=maia-admin \
+  -e microk8s_version=1.31/stable \
+  -e nvidia_driver_package=nvidia-driver-570 \
+  -e cluster_config=/path/to/maia-cluster.yaml \
+  -e config_folder=/path/to/config \
+  -e ARGOCD_KUBECONFIG=/path/to/argocd-kubeconfig.yaml \
+  -e DEPLOY_KUBECONFIG=/path/to/deploy-kubeconfig.yaml \
+  -e MAIA_PRIVATE_REGISTRY=registry.maia-cloud.com
+```
+
+This script will:
+1. Install Kubernetes via MicroK8s on all nodes
+2. Install NVIDIA drivers (if GPU nodes are present)
+3. Configure LVM storage
+4. Set up NFS storage (if configured)
+5. Configure firewall rules
+6. Install MAIA-Core components via ArgoCD
+
+For step-by-step installation or customization, continue with the detailed instructions below.
 
 ## Prerequisites
 - OpenSSH server should be installed on all nodes.
-- Ansible should be installed locally on the machine from which you will run the playbooks.
+- Ansible should be installed locally on the machine from which you will run the playbooks (minimum version 2.9+).
 - The hosts should have access to the internet to download necessary packages and dependencies.
+- For GPU support: NVIDIA-capable GPUs installed on worker nodes.
+- Sufficient disk space for local storage (recommended: at least 100GB per node).
 
 ## Inventory
 
 The inventory folder is used to define the hosts and their roles in the MAIA installation. The inventory file is structured in a way that allows you to specify different groups of hosts, such as `nfs_server`, `nfs_clients`, `k8s_master`, `k8s_worker`, and `k8s_storage`. Each group can have multiple hosts, and you can define variables specific to each host or group.
 
 See an example inventory file in `Ansible/inventory`.
+
+### Inventory Structure for MicroK8s
+
+For a MicroK8s-based installation, your inventory file should define at least one master node and optionally worker nodes:
+
+```ini
+[k8s_master]
+maia-server-0
+
+[k8s_worker]
+maia-server-1
+maia-server-2
+maia-server-3
+
+[nfs_server]
+maia-server-0
+
+[nfs_clients]
+maia-server-1
+maia-server-2
+maia-server-3
+```
+
+The `k8s_master` group should contain exactly one node that will serve as the Kubernetes control plane. The `k8s_worker` group contains additional nodes that will join the cluster as worker nodes.
 
 ## Prepare Hosts
 
@@ -35,16 +87,51 @@ ssh maia-server-2
 ssh maia-server-3   
 ```
 
-### NVIDIA Driver Installation
+## Step-by-Step Installation
 
-To install the NVIDIA driver on the hosts, you can use the [Ansible/Playbooks/install_nvidia_drivers.yaml](Ansible/Playbooks/install_nvidia_drivers.yaml) playbook. This playbook will install the NVIDIA driver on all hosts defined in the `nvidia_hosts` group in the inventory file. You can run the playbook with the following command:
+### Step 1: Install Kubernetes with MicroK8s
+
+**IMPORTANT ASSUMPTION:** MAIA-Core is designed to run on Kubernetes installed through MicroK8s. We provide an Ansible playbook to automate the MicroK8s installation and configuration.
+
+To install MicroK8s on all nodes, use the [Ansible/Playbooks/install_microk8s.yaml](Ansible/Playbooks/install_microk8s.yaml) playbook:
+
+```bash
+ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_microk8s.yaml -e ansible_user=maia-admin -e microk8s_version=1.31/stable
+```
+
+Where:
+- `ansible_user` is the user with sudo privileges on the hosts
+- `microk8s_version` specifies the MicroK8s release channel (default: `1.31/stable`)
+
+This playbook will:
+- Install MicroK8s on all nodes via snap
+- Configure the master node specified in the `k8s_master` group
+- Join worker nodes to the cluster (if `k8s_worker` group is defined)
+- Enable essential addons: dns, storage, rbac, metallb
+- Configure kubectl access for the specified user
+- Generate kubeconfig files for cluster management
+
+After installation, verify the cluster status:
+```bash
+ssh maia-server-0  # or your master node
+microk8s kubectl get nodes
+```
+
+### Step 2: NVIDIA Driver Installation
+
+To install the NVIDIA driver on GPU-enabled hosts, you can use the [Ansible/Playbooks/install_nvidia_drivers.yaml](Ansible/Playbooks/install_nvidia_drivers.yaml) playbook. This playbook will install the NVIDIA driver on all hosts defined in the inventory file. You can run the playbook with the following command:
 
 ```bash
 ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_nvidia_drivers.yaml -e ansible_user=maia-admin -e nvidia_driver_package=nvidia-driver-570
 ```
-Where `nvidia_driver_package` can be set to the desired NVIDIA driver package version. The default is `nvidia-driver-570`, and  `ansible_user` is the user with sudo privileges on the hosts.
 
-### Create LVMs for Local Storage
+Where:
+- `nvidia_driver_package` can be set to the desired NVIDIA driver package version (default: `nvidia-driver-570`)
+- `ansible_user` is the user with sudo privileges on the hosts
+
+**Note:** This step is optional and only required if your cluster includes GPU nodes.
+
+### Step 3: Create LVMs for Local Storage
 To create LVMs for local storage on the hosts, you can use the [Ansible/Playbooks/create_LVM.yaml](Ansible/Playbooks/create_LVM.yaml) playbook.
 For each host, a LVM group named `MAIA_Storage` will be created, and the specified disk devices will be used to create logical volumes (`maia_0_local`) for local storage. Optionally, you can also select one of the hosts to create an NFS storage volume (`maia_0`) that can be used for shared storage across the cluster.
 For each host, you need to specify the disk devices to be used for LVM in the `inventory/host_vars` folder. For example, you can create a file named `maia-server-0.yml` in the `inventory/host_vars` folder with the following content:
@@ -84,7 +171,7 @@ You can run the playbook with the following command:
 ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/nfs_storage.yaml -e ansible_user=maia-admin
 ```
 
-### Firewall Configuration
+### Step 4: Firewall Configuration
 One last step before deploying the Kubernetes cluster is to configure the firewall on the hosts. You need to allow full connectivity between the hosts.
 You can use the [Ansible/Playbooks/create_ufw_roles.yaml](Ansible/Playbooks/create_ufw_roles.yaml) playbook to configure the firewall on the hosts. This playbook will allow all traffic between the hosts. You can run the playbook with the following command:
 
@@ -92,7 +179,7 @@ You can use the [Ansible/Playbooks/create_ufw_roles.yaml](Ansible/Playbooks/crea
 ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/create_ufw_roles.yaml -e ansible_user=maia-admin
 ```
 
-### CIFS Configuration
+### Step 5: CIFS Configuration (Optional)
 If you want to use CIFS for shared storage, you can use the [Ansible/Playbooks/enable_CIFS.yaml](Ansible/Playbooks/enable_CIFS.yaml) playbook. This playbook will install the necessary packages and configure the CIFS server on the host. You can run the playbook with the following command:
 
 ```bash
@@ -100,6 +187,21 @@ ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/enable_CIFS.yaml -e 
 ``` 
 Where `private_key_path` is the path to the private key file used for credential encryption of CIFS accounts.
 
+### Step 6: Configure Local Storage Provisioner
+
+After the Kubernetes cluster is deployed via MicroK8s, configure the local storage provisioner. MicroK8s comes with basic storage, but for production use, we recommend deploying the Rancher Local Path Provisioner:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
+```
+
+This creates a StorageClass that uses the local storage from the LVM volumes created earlier at `/opt/local-path-provisioner`.
+
+Verify the storage provisioner is running:
+```bash
+kubectl get pods -n local-path-storage
+kubectl get storageclass
+```
 
 ## Post-Deployment Rancher Cluster
 
@@ -116,15 +218,7 @@ additional_clusters:
       token: "<RANCHER_CLUSTER_API_TOKEN>"
 ```
 
-## Local Storage Configuration
-After the Rancher cluster is deployed, you need to configure the local storage for the Kubernetes cluster. This can be done by creating a StorageClass that uses the local storage from the LVM volumes created earlier (´/opt/local-path-provisioner´).
-To do so, we make use of the Rancher Local Path Provisioner, which is a built-in feature in Rancher that allows you to use local storage from the nodes in the cluster_
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
-```
-
-## MAIA Core Installation
+## Step 7: MAIA Core Installation
 We are now ready to install the first layer of MAIA, named `MAIA Core`. This layer provides the basic functionality of MAIA to manage the cluster and deploy applications. The installation is done via an Ansible playbook that uses the `maia-core-project` Helm Chart.
 MAIA Core interacts with ArgoCD to prepare and deploy the following components:
 - [Cert-Manager](https://cert-manager.io/), for managing TLS certificates.
@@ -275,3 +369,152 @@ kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.labels.nvidia\.com/gpu\.count}{"\n"}{end}'
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.labels.nvidia\.com/gpu\.memory}{"\n"}{end}' | awk '{print $1 "\t" $2/1024 " GiB"}'
 ```
+
+## Complete Installation Script
+
+For convenience, we provide a comprehensive installation script that automates all the steps described above. The [install_maia_core_complete.yaml](Ansible/Playbooks/install_maia_core_complete.yaml) playbook orchestrates the entire installation process.
+
+### Usage
+
+The complete installation script supports different installation phases:
+
+#### Full Installation (Recommended for New Deployments)
+```bash
+ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_complete.yaml \
+  -e installation_phase=all \
+  -e ansible_user=maia-admin \
+  -e microk8s_version=1.31/stable \
+  -e nvidia_driver_package=nvidia-driver-570 \
+  -e cluster_config=/path/to/maia-cluster.yaml \
+  -e config_folder=/path/to/config \
+  -e ARGOCD_KUBECONFIG=/path/to/argocd-kubeconfig.yaml \
+  -e DEPLOY_KUBECONFIG=/path/to/deploy-kubeconfig.yaml \
+  -e MAIA_PRIVATE_REGISTRY=registry.maia-cloud.com
+```
+
+#### Kubernetes Only Installation
+```bash
+ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_complete.yaml \
+  -e installation_phase=k8s-only \
+  -e ansible_user=maia-admin \
+  -e microk8s_version=1.31/stable
+```
+
+#### Host Preparation Only
+```bash
+ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_complete.yaml \
+  -e installation_phase=prepare-only \
+  -e ansible_user=maia-admin \
+  -e nvidia_driver_package=nvidia-driver-570
+```
+
+#### MAIA Core Only Installation
+```bash
+ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_complete.yaml \
+  -e installation_phase=core-only \
+  -e cluster_config=/path/to/maia-cluster.yaml \
+  -e config_folder=/path/to/config \
+  -e ARGOCD_KUBECONFIG=/path/to/argocd-kubeconfig.yaml \
+  -e DEPLOY_KUBECONFIG=/path/to/deploy-kubeconfig.yaml \
+  -e MAIA_PRIVATE_REGISTRY=registry.maia-cloud.com
+```
+
+### Installation Phases
+
+The complete installation script is organized into four phases:
+
+1. **Phase 1: Kubernetes Installation**
+   - Installs MicroK8s on all nodes
+   - Configures master and worker nodes
+   - Enables essential addons (dns, storage, rbac, metallb)
+
+2. **Phase 2: Host Preparation**
+   - Installs NVIDIA drivers (if GPU nodes are present)
+   - Creates and configures LVM storage
+   - Sets up NFS storage (if configured)
+   - Configures firewall rules for cluster communication
+
+3. **Phase 3: Post-Kubernetes Configuration**
+   - Deploys local storage provisioner
+   - Verifies cluster readiness
+   - Configures storage classes
+
+4. **Phase 4: MAIA Core Installation**
+   - Creates required namespaces
+   - Deploys MAIA Core components via ArgoCD
+   - Configures Cert-Manager, MetalLB, and other core services
+
+### Configuration Parameters
+
+| Parameter | Description | Required | Default |
+|-----------|-------------|----------|---------|
+| `installation_phase` | Installation phase to execute | No | `all` |
+| `ansible_user` | User with sudo privileges on hosts | Yes | `maia-admin` |
+| `microk8s_version` | MicroK8s release channel | No | `1.31/stable` |
+| `nvidia_driver_package` | NVIDIA driver package version | No | `nvidia-driver-570` |
+| `cluster_config` | Path to cluster configuration file | Yes (for core) | - |
+| `config_folder` | Path to configuration folder | Yes (for core) | - |
+| `ARGOCD_KUBECONFIG` | Path to ArgoCD kubeconfig | Yes (for core) | - |
+| `DEPLOY_KUBECONFIG` | Path to deployment kubeconfig | Yes (for core) | - |
+| `MAIA_PRIVATE_REGISTRY` | Private registry URL | Yes (for core) | `registry.maia-cloud.com` |
+
+## Troubleshooting
+
+### Common Issues
+
+#### MicroK8s Installation Issues
+- **Issue**: MicroK8s fails to start
+  - **Solution**: Check system resources (CPU, memory, disk space). Ensure snap is properly installed and running.
+  - **Command**: `sudo systemctl status snapd`
+
+- **Issue**: Worker nodes fail to join the cluster
+  - **Solution**: Verify network connectivity between nodes. Check firewall rules allow communication on MicroK8s ports.
+  - **Command**: `sudo ufw status`
+
+#### Storage Issues
+- **Issue**: Local path provisioner pods are not running
+  - **Solution**: Verify the local-path-storage namespace exists and check pod logs.
+  - **Command**: `kubectl get pods -n local-path-storage` and `kubectl logs <pod-name> -n local-path-storage`
+
+#### GPU Issues
+- **Issue**: NVIDIA GPU Operator fails to deploy
+  - **Solution**: Verify NVIDIA drivers are properly installed on GPU nodes.
+  - **Command**: `nvidia-smi` on each GPU node
+
+### Verification Commands
+
+After installation, verify the deployment with these commands:
+
+```bash
+# Check cluster nodes
+kubectl get nodes
+
+# Check all pods across namespaces
+kubectl get pods --all-namespaces
+
+# Check MAIA Core components
+kubectl get pods -n observability
+kubectl get pods -n cert-manager
+kubectl get pods -n metallb-system
+kubectl get pods -n gpu-operator
+kubectl get pods -n maia-core-toolkit
+
+# Check storage classes
+kubectl get storageclass
+
+# Check cluster resources
+kubectl top nodes
+kubectl top pods --all-namespaces
+```
+
+## Support and Documentation
+
+For additional help and documentation:
+- **MAIA Documentation**: https://maia-toolkit.readthedocs.io
+- **MicroK8s Documentation**: https://microk8s.io/docs
+- **Kubernetes Documentation**: https://kubernetes.io/docs
+- **Ansible Documentation**: https://docs.ansible.com
+
+## Contributing
+
+If you encounter issues or have suggestions for improving the installation process, please open an issue on the [MAIA GitHub repository](https://github.com/kthcloud/MAIA).

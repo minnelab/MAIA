@@ -1,0 +1,164 @@
+---
+- name: Install MicroK8s on Ubuntu hosts
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    microk8s_version: "1.31/stable"  # Can be overridden with -e microk8s_version=<version>
+    microk8s_addons:
+      - dns
+      - storage
+      - rbac
+      - metallb
+
+  tasks:
+    - name: Check if running on Ubuntu
+      assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+        fail_msg: "This playbook only supports Ubuntu distributions"
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - snapd
+          - curl
+        state: present
+
+    - name: Ensure snap is running
+      systemd:
+        name: snapd
+        state: started
+        enabled: yes
+
+    - name: Check if MicroK8s is already installed
+      command: snap list microk8s
+      register: microk8s_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install MicroK8s via snap
+      snap:
+        name: microk8s
+        classic: yes
+        channel: "{{ microk8s_version }}"
+      when: microk8s_check.rc != 0
+
+    - name: Wait for MicroK8s to be ready
+      command: microk8s status --wait-ready
+      register: microk8s_status
+      retries: 10
+      delay: 10
+      until: microk8s_status.rc == 0
+      changed_when: false
+
+    - name: Add user to microk8s group
+      user:
+        name: "{{ ansible_user }}"
+        groups: microk8s
+        append: yes
+
+    - name: Create .kube directory for user
+      file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Set proper ownership of MicroK8s config
+      file:
+        path: /var/snap/microk8s/current/credentials
+        owner: "{{ ansible_user }}"
+        group: microk8s
+        mode: '0660'
+        recurse: no
+
+    - name: Enable MicroK8s addons
+      command: "microk8s enable {{ item }}"
+      loop: "{{ microk8s_addons }}"
+      register: addon_result
+      changed_when: "'is already enabled' not in addon_result.stdout"
+      failed_when: addon_result.rc != 0 and 'is already enabled' not in addon_result.stdout
+
+    - name: Generate kubeconfig for user
+      shell: microk8s config > /home/{{ ansible_user }}/.kube/config
+      args:
+        creates: /home/{{ ansible_user }}/.kube/config
+
+    - name: Set correct ownership of kubeconfig
+      file:
+        path: "/home/{{ ansible_user }}/.kube/config"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    - name: Create kubectl alias
+      lineinfile:
+        path: "/home/{{ ansible_user }}/.bashrc"
+        line: "alias kubectl='microk8s kubectl'"
+        create: yes
+        state: present
+
+    - name: Display MicroK8s status
+      command: microk8s status
+      register: final_status
+      changed_when: false
+
+    - name: Show MicroK8s status
+      debug:
+        msg: "{{ final_status.stdout_lines }}"
+
+- name: Configure MicroK8s cluster (master node)
+  hosts: k8s_master
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Check if this is a multi-node setup
+      set_fact:
+        is_multi_node: "{{ groups['k8s_worker'] is defined and groups['k8s_worker'] | length > 0 }}"
+
+    - name: Generate join token for worker nodes
+      command: microk8s add-node
+      register: join_command
+      when: is_multi_node
+      changed_when: false
+
+    - name: Extract join command
+      set_fact:
+        worker_join_command: "{{ join_command.stdout_lines | select('match', '.*microk8s join.*') | first }}"
+      when: is_multi_node
+
+    - name: Display join command for worker nodes
+      debug:
+        msg: "Worker nodes should run: {{ worker_join_command }}"
+      when: is_multi_node
+
+- name: Join worker nodes to cluster
+  hosts: k8s_worker
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Check if node is already part of cluster
+      command: microk8s status
+      register: node_status
+      failed_when: false
+      changed_when: false
+
+    - name: Join worker node to cluster
+      command: "{{ hostvars[groups['k8s_master'][0]]['worker_join_command'] }}"
+      when: 
+        - hostvars[groups['k8s_master'][0]]['worker_join_command'] is defined
+        - "'This MicroK8s deployment is acting as a node in a cluster' not in node_status.stdout"
+      register: join_result
+
+    - name: Display join result
+      debug:
+        msg: "{{ join_result.stdout_lines }}"
+      when: join_result.changed
