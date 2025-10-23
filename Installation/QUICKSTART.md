@@ -100,7 +100,7 @@ For MAIA Core installation, you need three configuration files in a folder:
    nfs_server: "192.168.1.10"  # IP of your NFS server
    nfs_path: "/nfs"
    keycloak:
-     client_secret: "your-keycloak-secret"
+     client_secret: "your-keycloak-secret"  # Generate a secure random secret
    ```
 
 2. **MAIA configuration** (`maia_config.yaml`):
@@ -135,10 +135,10 @@ ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_co
   -e ansible_user=maia-admin \
   -e microk8s_version=1.31/stable \
   -e nvidia_driver_package=nvidia-driver-570 \
-  -e cluster_config=/path/to/config/maia-cluster.yaml \
-  -e config_folder=/path/to/config \
-  -e ARGOCD_KUBECONFIG=/path/to/argocd-kubeconfig.yaml \
-  -e DEPLOY_KUBECONFIG=/path/to/deploy-kubeconfig.yaml \
+  -e cluster_config=~/maia-config/maia-cluster.yaml \
+  -e config_folder=~/maia-config \
+  -e ARGOCD_KUBECONFIG=~/maia-config/argocd-kubeconfig.yaml \
+  -e DEPLOY_KUBECONFIG=~/maia-config/deploy-kubeconfig.yaml \
   -e MAIA_PRIVATE_REGISTRY=registry.maia-cloud.com
 ```
 
@@ -167,10 +167,10 @@ ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_co
 ```bash
 ansible-playbook -i Ansible/inventory -kK Ansible/Playbooks/install_maia_core_complete.yaml \
   -e installation_phase=core-only \
-  -e cluster_config=/path/to/config/maia-cluster.yaml \
-  -e config_folder=/path/to/config \
-  -e ARGOCD_KUBECONFIG=/path/to/argocd-kubeconfig.yaml \
-  -e DEPLOY_KUBECONFIG=/path/to/deploy-kubeconfig.yaml \
+  -e cluster_config=~/maia-config/maia-cluster.yaml \
+  -e config_folder=~/maia-config \
+  -e ARGOCD_KUBECONFIG=~/maia-config/argocd-kubeconfig.yaml \
+  -e DEPLOY_KUBECONFIG=~/maia-config/deploy-kubeconfig.yaml \
   -e MAIA_PRIVATE_REGISTRY=registry.maia-cloud.com
 ```
 
@@ -181,8 +181,8 @@ After installation completes:
 1. **Check cluster status**:
    ```bash
    ssh your-master-node
-   microk8s kubectl get nodes
-   microk8s kubectl get pods --all-namespaces
+   kubectl get nodes        # Using the alias configured during installation
+   kubectl get pods --all-namespaces
    ```
 
 2. **Verify MAIA Core components**:
