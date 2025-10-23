@@ -6,20 +6,20 @@
 - name: MAIA-Core Complete Installation
   hosts: localhost
   gather_facts: yes
-  
+
   vars:
     # Installation configuration
     installation_phase: "all"  # Options: all, k8s-only, prepare-only, core-only
-    
+
     # Kubernetes configuration
     microk8s_version: "1.31/stable"
-    
+
     # User configuration
     ansible_user: "maia-admin"  # Override with -e ansible_user=<username>
-    
+
     # NVIDIA driver configuration
     nvidia_driver_package: "nvidia-driver-570"  # Override with -e nvidia_driver_package=<package>
-    
+
     # MAIA Core configuration
     cluster_config: "/path/to/cluster_config.yaml"  # Override with -e cluster_config=<path>
     config_folder: "/path/to/configs_folder"  # Override with -e config_folder=<path>
@@ -118,7 +118,7 @@
 
 - name: Configure NFS Storage
   import_playbook: nfs_storage.yaml
-  when: 
+  when:
     - hostvars['localhost']['installation_phase'] == "all" or hostvars['localhost']['installation_phase'] == "prepare-only"
     - groups['nfs_server'] is defined and groups['nfs_server'] | length > 0
   vars:
@@ -159,7 +159,7 @@
     - name: Display cluster nodes
       debug:
         msg: "{{ nodes_status.stdout_lines }}"
-      when: 
+      when:
         - hostvars['localhost']['installation_phase'] == "all"
         - nodes_status is defined
 
@@ -172,7 +172,7 @@
     - name: Display storage provisioner status
       debug:
         msg: "{{ storage_result.stdout_lines }}"
-      when: 
+      when:
         - hostvars['localhost']['installation_phase'] == "all"
         - storage_result is defined
 
@@ -204,32 +204,32 @@
           =======================================================
           MAIA-Core Installation Complete!
           =======================================================
-          
+
           Installation phase '{{ installation_phase }}' has been completed successfully.
-          
+
           Next Steps:
-          
+
           1. Verify Kubernetes cluster status:
              kubectl get nodes
              kubectl get pods --all-namespaces
-          
+
           2. Access ArgoCD to manage applications:
              - Check the cluster configuration for ArgoCD URL
              - Login with the credentials from your configuration
-          
+
           3. Configure MAIA Dashboard:
              - Add the new cluster information to the MAIA Dashboard ConfigMap
              - Update the cluster_name, api, and other required fields
-          
+
           4. Verify MAIA Core components:
              kubectl get pods -n observability
              kubectl get pods -n cert-manager
              kubectl get pods -n metallb-system
              kubectl get pods -n gpu-operator
-          
+
           5. Review the Installation README for post-deployment steps:
              cat Installation/README.md
-          
+
           =======================================================
           For troubleshooting and additional information, refer to:
           - Installation/README.md

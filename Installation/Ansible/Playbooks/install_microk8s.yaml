@@ -3,7 +3,7 @@
   hosts: all
   become: yes
   gather_facts: yes
-  
+
   vars:
     microk8s_version: "1.31/stable"  # Can be overridden with -e microk8s_version=<version>
     microk8s_addons:
@@ -153,7 +153,7 @@
 
     - name: Join worker node to cluster
       command: "{{ hostvars[groups['k8s_master'][0]]['worker_join_command'] }}"
-      when: 
+      when:
         - hostvars[groups['k8s_master'][0]]['worker_join_command'] is defined
         - "'This MicroK8s deployment is acting as a node in a cluster' not in node_status.stdout"
       register: join_result
