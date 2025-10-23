@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import binascii
 import json
 import os
 import subprocess
@@ -443,8 +444,8 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
 
         if cifs_encryption_key_b64:
             try:
-                public_key = base64.b64decode(cifs_encryption_key_b64).decode("utf-8")
-            except Exception as e:
+                public_key = base64.b64decode(cifs_encryption_key_b64).decode("ascii")
+            except (binascii.Error, UnicodeDecodeError) as e:
                 print(f"⚠️  Warning: Failed to decode CIFS_ENCRYPTION_KEY: {e}")
                 print("    Using empty public key as fallback.")
         else:
