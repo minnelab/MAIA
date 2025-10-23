@@ -12,6 +12,7 @@ from textwrap import dedent
 
 import click
 import yaml
+from loguru import logger
 from minio import Minio
 from omegaconf import OmegaConf
 
@@ -266,8 +267,8 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                 else:
                     jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
         except Exception as e:
-            print(e)
-            print(f"Could not read {minio_env_name} from MinIO bucket {cluster_config['bucket_name']}")
+            logger.error(f"Error reading MinIO environment: {e}")
+            logger.warning(f"Could not read {minio_env_name} from MinIO bucket {cluster_config['bucket_name']}")
     if "url_type" in cluster_config:
         if cluster_config["url_type"] == "subpath":
             jh_template["hub"]["baseUrl"] = f"/{group_subdomain}-hub"

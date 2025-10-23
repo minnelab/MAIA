@@ -14,6 +14,7 @@ import click
 import yaml
 from hydra import compose as hydra_compose
 from hydra import initialize_config_dir
+from loguru import logger
 from omegaconf import OmegaConf
 from pyhelm3 import Client
 
@@ -83,23 +84,20 @@ def get_arg_parser():
 
 async def verify_installed_maia_core_toolkit(project_id, namespace):
 
-    print(os.environ["KUBECONFIG"])
+    logger.info(f"KUBECONFIG: {os.environ['KUBECONFIG']}")
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
     try:
         revision = await client.get_current_revision(project_id, namespace=namespace)
     except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Project not found")
+        logger.error(f"An error occurred: {e}")
+        logger.warning("Project not found")
         return -1
     chart_metadata = await revision.chart_metadata()
-    print(
-        revision.release.name,
-        revision.release.namespace,
-        revision.revision,
-        str(revision.status),
-        chart_metadata.name,
-        chart_metadata.version,
+    logger.info(
+        f"Release: {revision.release.name}, Namespace: {revision.release.namespace}, "
+        f"Revision: {revision.revision}, Status: {revision.status}, "
+        f"Chart: {chart_metadata.name}, Version: {chart_metadata.version}"
     )
     return revision.revision
 
@@ -172,7 +170,7 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
             subprocess.run(
                 ["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"], stdin=password.encode()
             )
-            print(" ".join(["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"]))
+            logger.debug(f"Helm registry login command: helm registry login {original_repo} --username {username} --password-stdin")
             subprocess.run(
                 [
                     "helm",
@@ -184,18 +182,9 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
                     "/tmp",
                 ]
             )
-            print(
-                " ".join(
-                    [
-                        "helm",
-                        "pull",
-                        helm_command["repo"] + "/" + helm_command["chart"],
-                        "--version",
-                        helm_command["version"],
-                        "--destination",
-                        "/tmp",
-                    ]
-                )
+            logger.debug(
+                f"Helm pull command: helm pull {helm_command['repo']}/{helm_command['chart']} "
+                f"--version {helm_command['version']} --destination /tmp"
             )
             cmd = [
                 "helm",
@@ -209,7 +198,7 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
                 "--values",
                 helm_command["values"],
             ]
-            print(" ".join(cmd))
+            logger.debug(f"Helm command: {' '.join(cmd)}")
         else:
             cmd = [
                 "helm",
@@ -227,7 +216,7 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
                 "--values",
                 helm_command["values"],
             ]
-            print(" ".join(cmd))
+            logger.debug(f"Helm command: {' '.join(cmd)}")
 
     values = {
         "defaults": [
@@ -304,7 +293,7 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
         },
     )
     if revision == -1:
-        print("Installing MAIA Core Toolkit")
+        logger.info("Installing MAIA Core Toolkit")
 
         project_chart = maia_config_dict["core_project_chart"]
         project_repo = maia_config_dict["core_project_repo"]
@@ -326,7 +315,7 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
             "--values",
             str(Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml")),
         ]
-        print(" ".join(cmd))
+        logger.debug(f"Helm command: {' '.join(cmd)}")
         asyncio.run(
             install_maia_project(
                 project_id,
@@ -339,7 +328,7 @@ def install_maia_core_toolkit(maia_config_file, cluster_config, config_folder):
             )
         )
     else:
-        print("Upgrading MAIA Core Toolkit")
+        logger.info("Upgrading MAIA Core Toolkit")
 
         project_chart = maia_config_dict["core_project_chart"]
         project_repo = maia_config_dict["core_project_repo"]
