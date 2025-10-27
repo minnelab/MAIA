@@ -16,6 +16,7 @@ import yaml
 from hydra import compose as hydra_compose
 from hydra import initialize_config_dir
 from kubernetes import config
+from loguru import logger
 from omegaconf import OmegaConf
 
 import MAIA
@@ -501,7 +502,7 @@ def build_maia_images(
             "--values",
             helm_command["values"],
         ]
-        print(" ".join(cmd))
+        logger.debug(f"Helm command: {' '.join(cmd)}")
 
     if "MAIA_HELM_REPO_URL" not in os.environ:
         raise ValueError(
@@ -559,7 +560,7 @@ def build_maia_images(
     cfg = hydra_compose("values.yaml")
     OmegaConf.save(cfg, str(Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml")), resolve=True)
 
-    print("Installing MAIA Build Docker")
+    logger.info("Installing MAIA Build Docker")
 
     project_chart = maia_config_dict["docker_build_project_chart"]
     project_repo = maia_config_dict["docker_build_project_repo"]
@@ -580,7 +581,7 @@ def build_maia_images(
         "--values",
         str(Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml")),
     ]
-    print(" ".join(cmd))
+    logger.debug(f"Helm command: {' '.join(cmd)}")
 
     asyncio.run(
         install_maia_project(

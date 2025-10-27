@@ -12,9 +12,10 @@ import requests
 import yaml
 from kubernetes import config
 from kubernetes.client.rest import ApiException
+from loguru import logger
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger(__name__)
+# Disable standard logging to avoid duplication with loguru
+logging.disable(logging.CRITICAL)
 
 
 def get_minio_shareable_link(object_name, bucket_name, settings):
@@ -826,10 +827,9 @@ def create_namespace_from_context(namespace_id):
         body = kubernetes.client.V1Namespace(metadata=kubernetes.client.V1ObjectMeta(name=namespace_id))
         try:
             _ = api_instance.create_namespace(body)
-            # print(api_response)
+            logger.debug(f"Namespace {namespace_id} created successfully")
         except ApiException as e:
-            print("Exception when calling CoreV1Api->create_namespace: \n")
-            print(e)
+            logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
 
 
 def create_namespace(request, settings, namespace_id, cluster_id):
@@ -910,9 +910,9 @@ def create_cifs_secret_from_context(namespace, user_id, username, password, publ
 
         try:
             api_response = api_instance.create_namespaced_secret(namespace, secret)
-            print(api_response)
+            logger.debug(f"CIFS secret created: {api_response}")
         except ApiException as e:
-            print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+            logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
 
 
 def create_cifs_secret(request, cluster_id, settings, namespace, user_id, username, password, public_key):
@@ -1021,9 +1021,9 @@ def create_helm_repo_secret_from_context(repo_name, helm_repo_config, argocd_nam
 
         try:
             api_response = api_instance.create_namespaced_secret(argocd_namespace, secret)
-            print(api_response)
+            logger.debug(f"Helm repo secret created: {api_response}")
         except ApiException as e:
-            print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+            logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
 
 
 def create_docker_registry_secret_from_context(docker_credentials, namespace, secret_name):
@@ -1082,9 +1082,9 @@ def create_docker_registry_secret_from_context(docker_credentials, namespace, se
 
         try:
             api_response = api_instance.create_namespaced_secret(namespace, secret)
-            print(api_response)
+            logger.debug(f"Docker registry secret created: {api_response}")
         except ApiException as e:
-            print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+            logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
 
 
 def retrieve_json_key_for_maia_registry_authentication_from_context(namespace, secret_name, registry_url):
@@ -1124,7 +1124,7 @@ def retrieve_json_key_for_maia_registry_authentication_from_context(namespace, s
             dockerconfig_json = json.loads(dockerconfig)
             return dockerconfig_json["auths"][registry_url]["password"]
         except ApiException as e:
-            print("Exception when calling CoreV1Api->read_namespaced_secret: %s\n" % e)
+            logger.error(f"Exception when calling CoreV1Api->read_namespaced_secret: {e}")
             return {}
 
 
