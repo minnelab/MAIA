@@ -24,7 +24,7 @@ fi
 #    ln -s /mnt/shared /home/maia-user/Shared
 #fi
 touch /home/maia-user/.env
-JUPYTERHUB_POD_NAME=jupyter-$(echo "$JUPYTERHUB_USER" sed -r 's/[-]+/-2d/g' | sed -r 's/[@]+/-40/g' | sed -r 's/[.]+/-2e/g')
+JUPYTERHUB_POD_NAME="jupyter-$(echo "$JUPYTERHUB_USER" | sed -r 's/[-]+/-2d/g' | sed -r 's/[@]+/-40/g' | sed -r 's/[.]+/-2e/g')"
 if grep -Fx "JUPYTERHUB_POD_NAME=${JUPYTERHUB_POD_NAME}" /home/maia-user/.env;
 then
     echo "Environment variable already set"
@@ -62,4 +62,4 @@ fi
   cp /etc/.tmux.conf "$HOME/"
 #fi
 # Only for debugging and development
-#exec "$@"
+exec "$@"

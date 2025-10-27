@@ -23,13 +23,13 @@ update_username() {
     
     if [ "$new_username" != "$current_username" ]; then
         log_info "Updating username from $current_username to $new_username"
-        
+        echo "$new_username ALL=(ALL) NOPASSWD:ALL" | sudo tee -a /etc/sudoers > /dev/null
         # Update username, home directory, and group
         sudo usermod --login "$new_username" --move-home --home "/home/$new_username" "$current_username" 2>/dev/null || true
         sudo groupmod --new-name "$new_username" "$current_username" 2>/dev/null || true
         
         # Update sudoers file
-        sudo sed -i "s/^$current_username ALL/$new_username ALL/g" /etc/sudoers 2>/dev/null || true
+        #sudo sed -i "s/^$current_username ALL/$new_username ALL/g" /etc/sudoers 2>/dev/null || true
         
         log_info "Username updated successfully"
     else
