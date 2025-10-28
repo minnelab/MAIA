@@ -62,4 +62,4 @@ fi
   cp /etc/.tmux.conf "$HOME/"
 #fi
 # Only for debugging and development
-exec "$@"
+# exec "$@"
