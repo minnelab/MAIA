@@ -23,13 +23,21 @@ update_username() {
     
     if [ "$new_username" != "$current_username" ]; then
         log_info "Updating username from $current_username to $new_username"
-        echo "$new_username ALL=(ALL) NOPASSWD:ALL" | sudo tee -a /etc/sudoers > /dev/null
+        
+        # Remove old sudoers file if it exists
+        if [ -f "/etc/sudoers.d/$current_username" ]; then
+            sudo rm -f "/etc/sudoers.d/$current_username"
+        fi
+        # Create new sudoers file for the new user
+        echo "$new_username ALL=(ALL) NOPASSWD:ALL" | sudo tee "/etc/sudoers.d/$new_username" > /dev/null
+        # Validate the new sudoers file
+        sudo visudo -cf "/etc/sudoers.d/$new_username"
+        # Set correct permissions
+        sudo chmod 0440 "/etc/sudoers.d/$new_username"
         # Update username, home directory, and group
         sudo usermod --login "$new_username" --move-home --home "/home/$new_username" "$current_username" 2>/dev/null || true
         sudo groupmod --new-name "$new_username" "$current_username" 2>/dev/null || true
         sudo usermod -d /home/$current_username $new_username
-        # Update sudoers file
-        #sudo sed -i "s/^$current_username ALL/$new_username ALL/g" /etc/sudoers 2>/dev/null || true
         
         log_info "Username updated successfully"
     else
@@ -60,8 +68,9 @@ main() {
         
         # Source the .env file to read variables
         # Use a subshell to avoid polluting the environment
-        MAIA_USERNAME=$(grep -E "^MAIA_USERNAME=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'")
-        MAIA_PASSWORD=$(grep -E "^MAIA_PASSWORD=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+        # Only remove surrounding quotes, not quotes within the value
+        MAIA_USERNAME=$(grep -E "^MAIA_USERNAME=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
+        MAIA_PASSWORD=$(grep -E "^MAIA_PASSWORD=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2- | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/")
         
         # Update username if specified
         if [ -n "$MAIA_USERNAME" ]; then

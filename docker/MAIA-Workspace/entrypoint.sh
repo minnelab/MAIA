@@ -39,7 +39,7 @@ fi
 
 # Set password from PASSWD env var if present (fallback if not set by credentials update script)
 if [ -n "$PASSWD" ]; then
-  echo "maia-user:$PASSWD" | sudo chpasswd
+  echo "$(whoami):$PASSWD" | sudo chpasswd
 fi
 
 if [ ! -f /home/maia-user/.bash_profile ]; then

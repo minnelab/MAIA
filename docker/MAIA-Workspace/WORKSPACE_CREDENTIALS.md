@@ -33,10 +33,16 @@ MAIA_PASSWORD=MySecureP@ssw0rd123
 
 ### Important Notes
 
-1. **Security**: The `.env` file should be kept secure and not shared publicly. Ensure appropriate file permissions are set:
-   ```bash
-   chmod 600 ~/.env
-   ```
+1. **Security - Password Storage**: 
+   - **WARNING**: Storing passwords in plaintext in the `.env` file poses a security risk. The password is stored unencrypted on disk.
+   - **Best Practice**: Use strong, unique passwords and ensure the `.env` file has restrictive permissions (mode 600).
+   - **Recommended**: Set file permissions immediately after creating the `.env` file:
+     ```bash
+     chmod 600 ~/.env
+     ```
+   - **Alternative**: Consider using SSH key-based authentication instead of password authentication when possible.
+   - **Important**: Never commit the `.env` file to version control or share it publicly.
+   - The `.env` file should be treated as a secret and handled with the same care as SSH private keys.
 
 2. **Username Requirements**: The username should follow standard Linux username conventions:
    - Start with a letter
@@ -62,10 +68,39 @@ MAIA_PASSWORD=SecurePassword123!
 
 ## Security Considerations
 
+### Password Storage Risk
+
+**⚠️ IMPORTANT**: This feature stores passwords in plaintext in the `$HOME/.env` file, which poses inherent security risks:
+
+1. **Plaintext Storage**: Passwords are stored unencrypted on the filesystem
+2. **File System Access**: Anyone with access to your home directory can read the password
+3. **Backup Exposure**: The password may be included in filesystem backups
+4. **Process Visibility**: The password may be briefly visible in process listings during startup
+
+### Recommended Security Practices
+
+To mitigate these risks:
+
 - **Never commit `.env` files to version control**: Ensure `.env` is listed in your `.gitignore` file
-- **Use strong passwords**: Follow best practices for password creation
-- **Limit file access**: Set restrictive permissions on the `.env` file (`chmod 600`)
+- **Use strong, unique passwords**: Don't reuse passwords from other systems
+- **Set restrictive file permissions**: Always use `chmod 600 ~/.env` to limit access to the file owner only
+- **Consider alternatives**: 
+  - Use SSH key-based authentication instead of passwords when possible
+  - Use environment variables set by the orchestration system (e.g., Kubernetes secrets)
+  - Use a secrets management system if available in your environment
+- **Regular rotation**: Change passwords periodically
+- **Monitor access**: Be aware of who has access to your workspace and home directory
 - **No sensitive information in logs**: The startup script is designed to never log passwords or other sensitive credentials
+- **Secure workspace**: Ensure your workspace itself is properly secured and access-controlled
+
+### Alternative Approaches
+
+For enhanced security, consider these alternatives:
+
+1. **SSH Key Authentication**: Configure SSH keys instead of using password authentication
+2. **Kubernetes Secrets**: Use Kubernetes secrets to inject credentials as environment variables
+3. **Temporary Passwords**: Use one-time or temporary passwords that expire after first use
+4. **External Authentication**: Integrate with external authentication providers (LDAP, OAuth, etc.)
 
 ## Troubleshooting
 
@@ -101,4 +136,4 @@ The credential update is handled by the `/etc/update_user_credentials.sh` script
 
 ## Support
 
-For issues or questions related to workspace credential configuration, please refer to the [MAIA documentation](https://maia-toolkit.readthedocs.io/) or open an issue on the [MAIA GitHub repository](https://github.com/kthcloud/MAIA).
+For issues or questions related to workspace credential configuration, please refer to the [MAIA documentation](https://maia-toolkit.readthedocs.io/) or open an issue on the [MAIA GitHub repository](https://github.com/minnelab/MAIA).
