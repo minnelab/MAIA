@@ -7,7 +7,8 @@
 trap "echo TRAPed signal" HUP INT QUIT TERM
 
 sudo chown maia-user:maia-user /home/maia-user || sudo chown maia-user:maia-user /home/maia-user/* || { echo "Failed to change maia-user directory permissions. There may be permission issues."; }
-# Change operating system password to environment variable
+
+# Change operating system password to environment variable (fallback if not set by update script)
 if [ ! -d /home/maia-user/Tutorials ]; then
   sudo cp -r /etc/Tutorials /home/maia-user
   sudo chmod -R 777 /home/maia-user/Tutorials
@@ -23,7 +24,7 @@ fi
 #    ln -s /mnt/shared /home/maia-user/Shared
 #fi
 touch /home/maia-user/.env
-JUPYTERHUB_POD_NAME=jupyter-$(echo "$JUPYTERHUB_USER" sed -r 's/[-]+/-2d/g' | sed -r 's/[@]+/-40/g' | sed -r 's/[.]+/-2e/g')
+JUPYTERHUB_POD_NAME="jupyter-$(echo "$JUPYTERHUB_USER" | sed -r 's/[-]+/-2d/g' | sed -r 's/[@]+/-40/g' | sed -r 's/[.]+/-2e/g')"
 if grep -Fx "JUPYTERHUB_POD_NAME=${JUPYTERHUB_POD_NAME}" /home/maia-user/.env;
 then
     echo "Environment variable already set"
@@ -31,7 +32,15 @@ else
   echo "JUPYTERHUB_POD_NAME=${JUPYTERHUB_POD_NAME}" >> /home/maia-user/.env
 fi
 
-echo "maia-user:$PASSWD" | sudo chpasswd
+# Update user credentials from $HOME/.env if present
+if [ -f /etc/update_user_credentials.sh ]; then
+  bash /etc/update_user_credentials.sh
+fi
+
+# Set password from PASSWD env var if present (fallback if not set by credentials update script)
+if [ -n "$PASSWD" ]; then
+  echo "$(whoami):$PASSWD" | sudo chpasswd
+fi
 
 if [ ! -f /home/maia-user/.bash_profile ]; then
   cp /etc/.bash_profile /home/maia-user/
@@ -53,4 +62,4 @@ fi
   cp /etc/.tmux.conf "$HOME/"
 #fi
 # Only for debugging and development
-#exec "$@"
+# exec "$@"
