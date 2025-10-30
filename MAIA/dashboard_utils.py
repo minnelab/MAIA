@@ -937,7 +937,8 @@ async def get_list_of_deployed_projects():
     kubernetes.client.exceptions.ApiException
         If there is an error communicating with the Kubernetes API.
     """
-
+    if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
+        return [os.environ["PROJECT_NAME"]]
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
     releases = await client.list_releases(namespace="argocd")
@@ -973,11 +974,14 @@ def get_project_argo_status_and_user_table(request, settings, maia_user_model, m
     argocd_cluster_id = settings.ARGOCD_CLUSTER
 
     id_token = request.session.get("oidc_id_token")
-    kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
-    config.load_kube_config_from_dict(kubeconfig_dict)
-    with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
-        yaml.dump(kubeconfig_dict, f)
-        os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-argo"))
+    if argocd_cluster_id is None or argocd_cluster_id == "N/A":
+        ...
+    else:
+        kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
+        config.load_kube_config_from_dict(kubeconfig_dict)
+        with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
+            yaml.dump(kubeconfig_dict, f)
+            os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-argo"))
 
     to_register_in_groups, to_register_in_keycloak, maia_groups_dict, users_to_remove_from_group = get_user_table(
         settings=settings, maia_user_model=maia_user_model, maia_project_model=maia_project_model
