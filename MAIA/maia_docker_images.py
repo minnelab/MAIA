@@ -59,19 +59,19 @@ def deploy_maia_kaniko(
 
     if "MAIA_HELM_REPO_URL" not in os.environ:
         raise ValueError(
-            "MAIA_HELM_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Helm repository. Example: https://kthcloud.github.io/MAIA/"  # noqa: B950
+            "MAIA_HELM_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Helm repository. Example: https://minnelab.github.io/MAIA/"  # noqa: B950
         )
 
     kaniko_values = {
         "chart_name": "mkg-kaniko",
         "repo_url": os.environ["MAIA_HELM_REPO_URL"],
-        "chart_version": "1.0.3",
+        "chart_version": "1.0.4",
         "namespace": "mkg-kaniko",
     }
 
     if "MAIA_GIT_REPO_URL" not in os.environ:
         raise ValueError(
-            "MAIA_GIT_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Git repository with the Docker Image to build. Example: git://github.com/kthcloud/MAIA.git"  # noqa: B950
+            "MAIA_GIT_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Git repository with the Docker Image to build. Example: git://github.com/minnelab/MAIA.git"  # noqa: B950
         )
 
     if "GIT_USERNAME" not in os.environ:
@@ -94,7 +94,7 @@ def deploy_maia_kaniko(
             "docker_registry_secret": registry_secret_name,
             "namespace": "mkg-kaniko",
             "dockerRegistryServer": (
-                "https://" + registry_server if "registry_server" not in cluster_config_dict else registry_server
+                "https://" + registry_server if "registry_server" not in os.environ else registry_server
             ),
             "dockerRegistryUsername": registry_username,
             "dockerRegistryPassword": registry_password,

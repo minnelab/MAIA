@@ -7,7 +7,7 @@ from kubernetes import client, config
 from omegaconf import OmegaConf
 
 
-def create_prometheus_values(config_folder, project_id, cluster_config_dict, maia_config_dict):
+def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     """
     Generates Prometheus values configuration for a Kubernetes cluster and writes it to a YAML file.
 
@@ -19,16 +19,16 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict, mai
         The project identifier.
     cluster_config_dict : dict
         Dictionary containing cluster configuration details.
-    maia_config_dict : dict
-        Dictionary containing MAIA configuration details.
 
     Returns
     -------
     dict
         A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
     """
-
-    config.load_kube_config(config_file=os.environ.get("DEPLOY_KUBECONFIG", None))
+    kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
+    if kubeconfig is None:
+        kubeconfig = os.environ.get("KUBECONFIG", None)
+    config.load_kube_config(config_file=kubeconfig)
 
     # Create a CoreV1Api instance
     v1 = client.CoreV1Api()
@@ -50,7 +50,7 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict, mai
         "chart_name": "kube-prometheus-stack",
     }  # TODO: Change this to updated values
 
-    admin_group_id = maia_config_dict["admin_group_ID"]
+    admin_group_id = os.environ["admin_group_ID"]
     domain = cluster_config_dict["domain"]
     prometheus_values.update(
         {
@@ -63,7 +63,7 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict, mai
                         "api_url": f"https://iam.{domain}/realms/maia/protocol/openid-connect/userinfo",
                         "auth_url": f"https://iam.{domain}/realms/maia/protocol/openid-connect/auth",
                         "client_id": "maia",
-                        "client_secret": cluster_config_dict["keycloak"]["client_secret"],
+                        "client_secret": os.environ["keycloak_client_secret"],
                         "enabled": True,
                         "name": "OAuth",
                         "empty_scopes": False,
@@ -270,14 +270,14 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
 
     core_toolkit_values = {
         "namespace": "maia-core-toolkit",
-        "chart_version": "0.1.7",
+        "chart_version": "0.1.8",
         "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", None),
         "chart_name": "maia-core-toolkit",
-    }  # TODO: Change this to updated values
+    }
 
     core_toolkit_values.update(
         {
-            "metric_server": {"enabled": True},  # Replace with https://artifacthub.io/packages/helm/metrics-server/metrics-server
+              # Replace with https://artifacthub.io/packages/helm/metrics-server/metrics-server
             "dashboard": {"enabled": True},
             "default_ingress_class": cluster_config_dict["ingress_class"],
             "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
@@ -347,7 +347,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     traefik_values.update(
         {
             "certificatesResolvers": {
-                "maiaresolver": {
+                cluster_config_dict["traefik_resolver"]: {
                     "acme": {
                         "email": cluster_config_dict["ingress_resolver_email"],
                         # "httpchallenge": "true",
@@ -760,7 +760,45 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
     }
 
 
-def create_gpu_booking_values(config_folder, project_id, cluster_config_dict, maia_config_dict):
+def create_metrics_server_values(config_folder, project_id):
+    """
+    Creates and writes Metrics server values to a YAML file.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The unique identifier for the project.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
+    """
+
+    metrics_server_values = {
+        "namespace": "metrics-server",
+        "repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
+        "chart_name": "metrics-server",
+        "chart_version": "3.13.0",
+    }
+
+    Path(config_folder).joinpath(project_id, "metrics_server_values").mkdir(parents=True, exist_ok=True)
+
+    with open(Path(config_folder).joinpath(project_id, "metrics_server_values", "metrics_server_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(metrics_server_values))
+
+    return {
+        "namespace": metrics_server_values["namespace"],
+        "repo": metrics_server_values["repo_url"],
+        "version": metrics_server_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "metrics_server_values", "metrics_server_values.yaml")),
+        "release": f"{project_id}-metrics-server",
+        "chart": metrics_server_values["chart_name"],
+    }
+
+def create_gpu_booking_values(config_folder, project_id):
     """
     Creates and writes GPU booking Helm chart values to a YAML file for a given project and cluster configuration.
 
@@ -774,10 +812,6 @@ def create_gpu_booking_values(config_folder, project_id, cluster_config_dict, ma
         The base directory where the configuration files should be stored.
     project_id : str
         The unique identifier for the project, used to create a subdirectory.
-    cluster_config_dict : dict
-        Dictionary containing cluster-specific configuration, must include the "domain" key.
-    maia_config_dict : dict
-        Dictionary containing MAIA-specific configuration, must include the "dashboard_api_secret" key.
 
     Returns
     -------
@@ -793,7 +827,7 @@ def create_gpu_booking_values(config_folder, project_id, cluster_config_dict, ma
     Raises
     ------
     KeyError
-        If required keys are missing from `cluster_config_dict` or `maia_config_dict`.
+        If required keys are missing from `cluster_config_dict`.
     OSError
         If there is an error creating directories or writing the YAML file.
     """
@@ -804,7 +838,7 @@ def create_gpu_booking_values(config_folder, project_id, cluster_config_dict, ma
         "chart_version": "1.0.0",
     }
 
-    domain = cluster_config_dict["domain"]
+    maia_dashboard_domain = os.environ["MAIA_DASHBOARD_DOMAIN"]
     gpu_booking_values.update(
         {
             "image": {
@@ -817,9 +851,10 @@ def create_gpu_booking_values(config_folder, project_id, cluster_config_dict, ma
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },
-            "apiUrl": f"https://{domain}/maia-api/gpu-schedulability",
-            "gpuStatsUrl": f"https://{domain}/maia/resources/gpu_status_summary/",
-            "apiToken": maia_config_dict["dashboard_api_secret"],
+            
+            "apiUrl": f"https://{maia_dashboard_domain}/maia-api/gpu-schedulability",
+            "gpuStatsUrl": f"https://{maia_dashboard_domain}/maia/resources/gpu_status_summary/",
+            "apiToken": os.environ["dashboard_api_secret"],
         }
     )
 

@@ -288,7 +288,7 @@ def deploy_oauth2_proxy(cluster_config, user_config, config_folder=None):
             - "values": The path to the generated values YAML file.
     """
     config_file = {
-        "oidc_issuer_url": cluster_config["keycloak"]["issuer_url"],
+        "oidc_issuer_url": os.environ["keycloak_issuer_url"],
         "provider": "oidc",
         "upstreams": ["static://202"],
         "http_address": "0.0.0.0:4180",
@@ -320,8 +320,8 @@ def deploy_oauth2_proxy(cluster_config, user_config, config_folder=None):
 
     oauth2_proxy_config = {
         "config": {
-            "clientID": cluster_config["keycloak"]["client_id"],
-            "clientSecret": cluster_config["keycloak"]["client_secret"],
+            "clientID": os.environ["keycloak_client_id"],
+            "clientSecret": os.environ["keycloak_client_secret"],
             "cookieSecret": token_urlsafe(16),
             "configFile": toml.dumps(config_file),
         },
@@ -449,7 +449,7 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
     }
 
 
-def deploy_mlflow(cluster_config, user_config, config_folder, maia_config_dict, mysql_config=None, minio_config=None):
+def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None, minio_config=None):
     """
     Deploy an MLflow instance on a Kubernetes cluster using Helm.
 
@@ -552,7 +552,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, maia_config_dict, 
     }
 
 
-def deploy_orthanc(cluster_config, user_config, maia_config_dict, config_folder):
+def deploy_orthanc(cluster_config, user_config, config_folder):
     """
     Deploys Orthanc using the provided configuration.
     Parameters
@@ -561,8 +561,6 @@ def deploy_orthanc(cluster_config, user_config, maia_config_dict, config_folder)
         Dictionary containing the cluster configuration.
     user_config : dict
         Dictionary containing the user configuration.
-    maia_config_dict : dict
-        Dictionary containing the MAIA configuration.
     config_folder : str or Path
         Path to the configuration folder.
     Returns
@@ -578,8 +576,8 @@ def deploy_orthanc(cluster_config, user_config, maia_config_dict, config_folder)
     random_path = generate_random_password(16)
     orthanc_config = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
-        "imagePullSecret": cluster_config["imagePullSecrets"],
-        "image": {"repository": maia_config_dict["maia_orthanc_image"], "tag": maia_config_dict["maia_orthanc_version"]},
+        "imagePullSecret": os.environ["imagePullSecrets"],
+        "image": {"repository": os.environ["maia_orthanc_image"], "tag": os.environ["maia_orthanc_version"]},
         "cpu": "1000m",
         "memory": "1Gi",
         "gpu": False,
@@ -608,8 +606,11 @@ def deploy_orthanc(cluster_config, user_config, maia_config_dict, config_folder)
 
     namespace = user_config["group_ID"].lower().replace("_", "-")
     orthanc_custom_config = {
+        "LuaScripts" : ["/mnt/msp_spleen.lua"],
+        "StableAge": 5,
         "DicomModalities": {
-            f"{namespace}-xnat": [f"{namespace}-XNAT", "maia-xnat.xnat", "8104"]
+            #f"{namespace}-xnat": [f"{namespace}-XNAT", "maia-xnat.xnat", "8104"],
+            f"{random_path}": [f"{random_path}", "maia-xnat.xnat", "8104"],
             # [ "DCM4CHEE", "dcm4chee-service.services", 11115 ]
         },
         "DicomWeb": {
