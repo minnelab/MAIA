@@ -260,16 +260,17 @@ The dashboard supports both MySQL and SQLite databases. Choose one based on your
 
 ## MinIO Object Storage
 
-MinIO is used for storing custom PIP/Conda environments when registering projects.
+MinIO is optionally used for storing custom PIP/Conda environments when registering projects. If not configured, project registration will work without custom environment support.
 
 ### MINIO_URL
 - **Type**: String (URL)
-- **Default**: Empty string (required)
-- **Required**: Yes
+- **Default**: Empty string
+- **Required**: No (optional for custom PIP/Conda environment support)
 - **Usage**: MinIO server URL for internal connections
 - **Details**: 
   - Example: `minio.example.com:9000` or `http://minio-service:9000`
-  - Used for uploading and managing objects
+  - Used for uploading and managing custom environment packages
+  - If not configured, custom environment upload features will be disabled
 - **Location**: `dashboard/core/settings.py`
 
 ### MINIO_PUBLIC_URL
@@ -284,14 +285,14 @@ MinIO is used for storing custom PIP/Conda environments when registering project
 ### MINIO_ACCESS_KEY
 - **Type**: String
 - **Default**: `N/A`
-- **Required**: Yes (for MinIO operations)
+- **Required**: No (required only if MinIO is used)
 - **Usage**: MinIO access key (username)
 - **Location**: `dashboard/core/settings.py`
 
 ### MINIO_SECRET_KEY
 - **Type**: String
 - **Default**: `N/A`
-- **Required**: Yes (for MinIO operations)
+- **Required**: No (required only if MinIO is used)
 - **Usage**: MinIO secret key (password)
 - **Location**: `dashboard/core/settings.py`
 
@@ -311,10 +312,10 @@ MinIO is used for storing custom PIP/Conda environments when registering project
 
 ### BUCKET_NAME
 - **Type**: String
-- **Default**: Empty string (required)
-- **Required**: Yes
+- **Default**: Empty string
+- **Required**: No (required only if MinIO is used)
 - **Usage**: MinIO bucket name for storing environments
-- **Details**: The bucket must exist or be auto-created
+- **Details**: The bucket must exist or be auto-created if MinIO is configured
 - **Location**: `dashboard/core/settings.py`
 
 ### MINIO_CONSOLE_URL
@@ -462,16 +463,6 @@ These variables are used by the MAIA package for sending email notifications.
 - **Details**: Contains MAIA-specific deployment settings
 - **Location**: `dashboard/apps/user_management/views.py` (commented out)
 
-### KUBECONFIG
-- **Type**: String (file path)
-- **Default**: Not set
-- **Required**: Yes (for Kubernetes operations)
-- **Usage**: Path to Kubernetes configuration file
-- **Details**: 
-  - Used by MAIA package functions to connect to Kubernetes clusters
-  - Standard kubeconfig format
-- **Location**: Used throughout `MAIA/` package functions
-
 ### KUBECONFIG_LOCAL
 - **Type**: String (file path)
 - **Default**: Same as `KUBECONFIG` (auto-set if not provided)
@@ -479,6 +470,7 @@ These variables are used by the MAIA package for sending email notifications.
 - **Details**: 
   - Auto-created from KUBECONFIG if not set
   - Used to avoid conflicts with concurrent operations
+  - **Note**: KUBECONFIG itself is handled internally by the dashboard based on cluster selection and does not need to be configured externally
 - **Location**: `MAIA/maia_admin.py`, `MAIA/maia_fn.py`, `MAIA/kubernetes_utils.py`
 
 ### DEPLOY_KUBECONFIG
@@ -746,8 +738,6 @@ These configurations are loaded dynamically in `dashboard/core/settings.py` and 
 - `DEBUG`
 - `SECRET_KEY` (change from default!)
 - `SERVER`
-- `MINIO_URL`
-- `BUCKET_NAME`
 - `OIDC_RP_CLIENT_ID`
 - `OIDC_RP_CLIENT_SECRET`
 - `OIDC_ISSUER_URL`
@@ -758,10 +748,10 @@ These configurations are loaded dynamically in `dashboard/core/settings.py` and 
 ### Full Production Configuration
 All minimal variables plus:
 - MySQL database settings (`DB_ENGINE`, `DB_NAME`, `DB_USERNAME`, `DB_PASS`, `DB_HOST`, `DB_PORT`)
-- MinIO credentials (`MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`)
 - ArgoCD settings (`ARGOCD_SERVER`, `ARGOCD_CLUSTER`)
-- Cluster configuration (`CLUSTER_CONFIG_PATH`, `KUBECONFIG`)
+- Cluster configuration (`CLUSTER_CONFIG_PATH`)
 - MAIA registry (`MAIA_PRIVATE_REGISTRY`)
+- MinIO for custom environments (`MINIO_URL`, `BUCKET_NAME`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`) - optional
 - Email settings (if notifications enabled)
 - Discord webhooks (if notifications enabled)
 
