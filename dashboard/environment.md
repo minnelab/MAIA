@@ -14,6 +14,7 @@ This guide provides comprehensive documentation for all environment variables us
 9. [MAIA Package Integration Variables](#maia-package-integration-variables)
 10. [Docker Registry & Images](#docker-registry--images)
 11. [Advanced Configuration](#advanced-configuration)
+12. [Docker Compose Backend Mode](#docker-compose-backend-mode)
 
 ---
 
@@ -490,6 +491,44 @@ These variables are used by the MAIA package for sending email notifications.
   - Used in resource management views
 - **Location**: `dashboard/apps/resources/views.py`
 
+### Internal Kubernetes Configuration Variables
+
+The following variables are **automatically set by the dashboard** and do not need to be configured by users. They are documented here for informational purposes.
+
+#### KUBECONFIG
+- **Type**: String (file path)
+- **Set by**: Dashboard (internally managed)
+- **Usage**: Path to Kubernetes configuration file for the selected cluster
+- **Details**: 
+  - **Users do not need to set this variable**
+  - Automatically set by the dashboard based on cluster selection in user/project deployment views
+  - Created as a temporary file at `/tmp/kubeconfig-project` with cluster credentials
+  - Used by MAIA package functions to connect to the selected Kubernetes cluster
+  - Standard kubeconfig format loaded from cluster configuration YAML files
+- **Location**: Set in `dashboard/apps/user_management/views.py`, used throughout `MAIA/` package functions
+
+#### KUBECONFIG_LOCAL
+- **Type**: String (file path)
+- **Set by**: Dashboard (internally managed)
+- **Usage**: Local copy of kubeconfig for concurrent operations
+- **Details**: 
+  - **Users do not need to set this variable**
+  - Automatically set by the dashboard to `/tmp/kubeconfig-project-local`
+  - Created from KUBECONFIG if not already set
+  - Used to avoid conflicts with concurrent Kubernetes operations
+  - Allows multiple operations to run simultaneously without interfering with each other
+- **Location**: Set in `dashboard/apps/user_management/views.py`, used in `MAIA/maia_admin.py`, `MAIA/maia_fn.py`, `MAIA/kubernetes_utils.py`
+
+#### DEPLOY_KUBECONFIG
+- **Type**: String (file path)
+- **Set by**: MAIA package (internally managed)
+- **Usage**: Kubernetes config specifically for deployment operations
+- **Details**: 
+  - **Users do not need to set this variable**
+  - Falls back to `KUBECONFIG` if not set
+  - Used in `MAIA/maia_core.py` for specific deployment tasks
+- **Location**: `MAIA/maia_core.py`
+
 ---
 
 ## MAIA Package Integration Variables
@@ -680,6 +719,110 @@ These are used in MAIA admin toolkit and dashboard deployment:
   - Used for Harbor or GCR registry authentication
   - Auto-set by user management views
 - **Location**: `dashboard/apps/user_management/views.py`, `MAIA/maia_admin.py`
+
+---
+
+## Docker Compose Backend Mode
+
+When running the MAIA Dashboard with Docker Compose, a simplified configuration is used. This mode is enabled by setting `BACKEND=compose` and disables certain features like project deployment through ArgoCD.
+
+### Purpose
+Docker Compose mode is designed for:
+- Local development and testing
+- Single-project deployments
+- Simplified setups without Kubernetes cluster management
+- Demonstration and evaluation environments
+
+### Required Variables for Compose Mode
+
+#### Core Configuration
+- `DEBUG` - Set to `True` for development
+- `SECRET_KEY` - Django secret key (change from default!)
+- `SERVER` - Server hostname or domain
+- `BACKEND` - Must be set to `compose`
+- `PROJECT_NAME` - Name of the single project/namespace to display
+
+#### Authentication
+- `OIDC_RP_CLIENT_ID` - OpenID Connect client ID
+- `OIDC_RP_CLIENT_SECRET` - OpenID Connect client secret
+- `OIDC_ISSUER_URL` - OIDC issuer URL
+- `OIDC_OP_AUTHORIZATION_ENDPOINT` - OIDC authorization endpoint
+- `OIDC_OP_TOKEN_ENDPOINT` - OIDC token endpoint
+- `OIDC_OP_USER_ENDPOINT` - OIDC user info endpoint
+
+#### Database (Choose One)
+**Option 1: SQLite (Simpler)**
+- `LOCAL_DB_PATH` - Path to store SQLite database file (optional, defaults to BASE_DIR)
+
+**Option 2: MySQL (Production)**
+- `DB_ENGINE` - Set to `mysql`
+- `DB_NAME` - MySQL database name
+- `DB_USERNAME` - MySQL username
+- `DB_PASS` - MySQL password
+- `DB_HOST` - MySQL host
+- `DB_PORT` - MySQL port (default: 3306)
+
+### Optional Variables for Compose Mode
+
+#### MinIO (for custom environments)
+- `MINIO_URL` - MinIO server URL (if using custom PIP/Conda environments)
+- `BUCKET_NAME` - MinIO bucket name
+- `MINIO_ACCESS_KEY` - MinIO access key
+- `MINIO_SECRET_KEY` - MinIO secret key
+
+#### Notifications
+- `DISCORD_URL` - Discord webhook for notifications
+- `DISCORD_SUPPORT_URL` - Discord support channel link
+
+#### AI Features
+- `OPENWEBAI_API_KEY` - OpenAI API key for chatbot
+- `OPENWEBAI_URL` - OpenAI API endpoint
+
+### Features Disabled in Compose Mode
+
+When `BACKEND=compose`:
+- **Project deployment** - Users cannot deploy new projects via the dashboard
+- **Namespace management** - Limited to the single namespace specified in `PROJECT_NAME`
+- **ArgoCD integration** - GitOps deployment is not available
+- **Multi-cluster support** - Only the local compose environment is visible
+
+### Example Compose Mode Configuration
+
+```env
+# Compose Backend Mode
+BACKEND=compose
+PROJECT_NAME=my-project
+
+# Core Settings
+DEBUG=True
+SECRET_KEY=change-this-secret-key-in-production
+SERVER=localhost
+
+# Authentication
+OIDC_RP_CLIENT_ID=dashboard-client
+OIDC_RP_CLIENT_SECRET=your-secret-here
+OIDC_ISSUER_URL=https://keycloak.example.com/realms/maia
+OIDC_OP_AUTHORIZATION_ENDPOINT=https://keycloak.example.com/realms/maia/protocol/openid-connect/auth
+OIDC_OP_TOKEN_ENDPOINT=https://keycloak.example.com/realms/maia/protocol/openid-connect/token
+OIDC_OP_USER_ENDPOINT=https://keycloak.example.com/realms/maia/protocol/openid-connect/userinfo
+
+# Database (SQLite)
+LOCAL_DB_PATH=/data/db
+
+# Optional: MinIO for custom environments
+MINIO_URL=minio:9000
+BUCKET_NAME=maia-environments
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_SECURE=False
+```
+
+### Variables NOT Required in Compose Mode
+- `CLUSTER_CONFIG_PATH` - Not used in compose mode
+- `ARGOCD_SERVER` - ArgoCD not used in compose mode
+- `ARGOCD_CLUSTER` - ArgoCD not used in compose mode
+- `MAIA_PRIVATE_REGISTRY` - Not needed for compose deployments
+- All KUBECONFIG variables - Managed differently in compose mode
 
 ---
 
