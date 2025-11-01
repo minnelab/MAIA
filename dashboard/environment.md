@@ -463,23 +463,6 @@ These variables are used by the MAIA package for sending email notifications.
 - **Details**: Contains MAIA-specific deployment settings
 - **Location**: `dashboard/apps/user_management/views.py` (commented out)
 
-### KUBECONFIG_LOCAL
-- **Type**: String (file path)
-- **Default**: Same as `KUBECONFIG` (auto-set if not provided)
-- **Usage**: Local copy of kubeconfig for operations
-- **Details**: 
-  - Auto-created from KUBECONFIG if not set
-  - Used to avoid conflicts with concurrent operations
-  - **Note**: KUBECONFIG itself is handled internally by the dashboard based on cluster selection and does not need to be configured externally
-- **Location**: `MAIA/maia_admin.py`, `MAIA/maia_fn.py`, `MAIA/kubernetes_utils.py`
-
-### DEPLOY_KUBECONFIG
-- **Type**: String (file path)
-- **Default**: Falls back to `KUBECONFIG`
-- **Usage**: Kubernetes config specifically for deployment operations
-- **Details**: Used in `MAIA/maia_core.py` for deployment tasks
-- **Location**: `MAIA/maia_core.py`
-
 ### GLOBAL_NAMESPACES
 - **Type**: String (comma-separated)
 - **Default**: Empty list
