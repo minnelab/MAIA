@@ -15,6 +15,7 @@ click
 nltk
 hydra-core
 python-dotenv
+loguru
 flake8>=3.8.1
 flake8-bugbear<=24.2.6  # https://github.com/Project-MONAI/MONAI/issues/7690
 flake8-comprehensions

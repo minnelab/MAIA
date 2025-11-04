@@ -7,6 +7,7 @@ from pathlib import Path
 
 # load env variables
 from dotenv import load_dotenv
+from loguru import logger
 
 from MAIA.dashboard_utils import send_maia_message_email
 from MAIA.keycloak_utils import get_maia_users_from_keycloak
@@ -65,10 +66,10 @@ def send_all_users_reminder_email(settings_dict, email_list=None):
     success = send_maia_message_email(receiver_emails=user_emails, subject="MAIA Platform Updates", message_body=email_content)
 
     if success:
-        print("Email sent successfully")
+        logger.info("Email sent successfully")
         return len(user_emails), []
     else:
-        print("Email failed to send")
+        logger.error("Email failed to send")
         return 0, user_emails
 
 
@@ -80,6 +81,6 @@ if __name__ == "__main__":
 
     email_list = ["xxx@live.com"]
     num_sent, failed = send_all_users_reminder_email(settings_dict, email_list)
-    print(f"Successfully sent {num_sent} emails")
+    logger.info(f"Successfully sent {num_sent} emails")
     if failed:
-        print(f"Failed to send emails to: {', '.join(failed)}")
+        logger.warning(f"Failed to send emails to: {', '.join(failed)}")
