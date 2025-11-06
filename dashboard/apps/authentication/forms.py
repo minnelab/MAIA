@@ -141,6 +141,27 @@ class RegisterProjectForm(forms.ModelForm):
                                                        choices=cpu_limit,
                                                        )
 
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "placeholder": "Brief description of your project",
+                "class": "form-control",
+                "rows": 3
+            }
+        )
+    )
+
+    supervisor = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Name of your supervisor (optional for student projects)",
+                "class": "form-control"
+            }
+        )
+    )
+
     class Meta:
         model = MAIAProject
-        fields = ('id','namespace','gpu', 'conda', 'date', 'email', 'memory_limit', 'cpu_limit')
+        fields = ('id','namespace','gpu', 'conda', 'date', 'email', 'memory_limit', 'cpu_limit', 'description', 'supervisor')
