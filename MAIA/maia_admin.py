@@ -1321,7 +1321,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     #BACKEND
     #MAIA_PRIVATE_REGISTRY registry.maia-cloud.com/maia-private needed when deploying PRO projects
     #ARGOCD_DISABLED
-
+    domain = cluster_config_dict["domain"]
     maia_dashboard_values["env"].extend([
         {"name": "MINIO_URL", "value": "minio:80"},
         {"name": "MINIO_PUBLIC_URL", "value": "minio:80"},
@@ -1336,7 +1336,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         {"name": "SERVER", "value": "maia." + cluster_config_dict["domain"]},
         {"name": "GLOBAL_NAMESPACES", "value": "xnat,kubeflow,istio-system"},
         {"name": "POD_TERMINATOR_ADDRESS", "value": "http://pod-terminator.gpu-booking:8080"},
-        {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{cluster_config_dict["domain"]}/browser/maia-envs"},
+        {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{domain}/browser/maia-envs"},
         {"name": "MAIA_SEGMENTATION_PORTAL_NAMESPACE_ID", "value": "maia-segmentation"},
         {"name": "OIDC_RP_CLIENT_ID", "value": "maia"},
         {"name": "OIDC_RP_CLIENT_SECRET", "value": os.environ["keycloak_client_secret"]},
