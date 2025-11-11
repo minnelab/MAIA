@@ -1,5 +1,4 @@
 ruamel_yaml
-git+https://github.com/globocom/argocd-client.git
 python-keycloak
 kubernetes
 minio
@@ -28,3 +27,6 @@ ruff
 pytype>=2020.6.1; platform_system != "Windows"
 types-setuptools
 mypy>=1.5.0, <1.12.0
+python-on-whales
+rich
+loguru
