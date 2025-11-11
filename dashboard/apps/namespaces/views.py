@@ -120,8 +120,9 @@ def namespace_view(request,namespace_id):
             if cluster_id is not None:
                 cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(cluster_id+".yaml").read_text())
             else:
-                register_cluster_for_project_in_db(MAIAProject, settings, namespace_id, deployed_clusters[0])
-                cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(deployed_clusters[0]+".yaml").read_text())
+                if len(deployed_clusters) > 0:
+                    register_cluster_for_project_in_db(MAIAProject, settings, namespace_id, deployed_clusters[0])
+                    cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(deployed_clusters[0]+".yaml").read_text())
 
         context = { "maia_workspace_ingress": maia_workspace_apps,"namespace":namespace_id,
                     #"pods":pods, "nodes": nodes,
