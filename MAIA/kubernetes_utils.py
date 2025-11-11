@@ -652,7 +652,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                             "url": "https://" + rule["host"] + path["path"] + "/dicom-web/",
                                         }
                                     )
-                            if "app.kubernetes.io/name" in ingress["metadata"]["labels"] and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard":
+                            if "labels" in ingress["metadata"] and "app.kubernetes.io/name" in ingress["metadata"]["labels"] and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard":
                                 nvflare_dashboards.append({
                                     "name": ingress["metadata"]["name"][:-len("-maia-nvflare-dashboard")],
                                     "url": "https://" + rule["host"] + path["path"],
@@ -992,7 +992,23 @@ def create_helm_repo_secret_from_context(repo_name, helm_repo_config, argocd_nam
     type = helm_repo_config["type"]
     name = helm_repo_config["name"]
     enable_oci = helm_repo_config["enableOCI"]
-
+    
+    kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
+    if kubeconfig is None:
+        kubeconfig = os.environ.get("KUBECONFIG", None)
+    config.load_kube_config(config_file=kubeconfig)
+    # If secret already exists, delete it before creating a new one
+    with kubernetes.client.ApiClient() as api_client:
+        api_instance = kubernetes.client.CoreV1Api(api_client)
+        try:
+            api_instance.delete_namespaced_secret(
+                name=f"repo-{repo_name}", namespace=argocd_namespace
+            )
+        except kubernetes.client.exceptions.ApiException as e:
+            # If the error is 404 (Not Found), we can ignore it;
+            # otherwise, raise the exception
+            if e.status != 404:
+                raise
     with kubernetes.client.ApiClient() as api_client:
         api_instance = kubernetes.client.CoreV1Api(api_client)
         secret = kubernetes.client.V1Secret()

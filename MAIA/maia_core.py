@@ -3,9 +3,39 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import requests
+import json
 from kubernetes import client, config
 from omegaconf import OmegaConf
+import loguru
 
+logger = loguru.logger
+
+def sync_argocd_app(project_name, app_name, chart_version, argo_cd_host, password):
+    response = requests.post(f"{argo_cd_host}/api/v1/session", json={"username":"admin","password":password}, verify=False)
+    if response.status_code == 200:
+        token = response.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}  # <- session cookie
+    else:
+        print(f"Failed to get token: {response.status_code}")
+        print(response.text)
+        return
+    # 2. Trigger sync
+    url = f"{argo_cd_host}/api/v1/applications/{project_name}-{app_name}/sync"
+    payload = {
+        "revision": chart_version,
+        "prune": False,
+        "dryRun": False,
+        "strategy": {"apply": {"force": False}}
+    }
+    response = requests.post(url, headers=headers, json=payload, verify=False)
+
+    if response.status_code == 200:
+        logger.info("✅ Sync triggered successfully!")
+        #print(json.dumps(response.json(), indent=2))
+    else:
+        logger.error(f"❌ Failed to sync app: {response.status_code}")
+        logger.error(response.text)
 
 def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     """
@@ -249,8 +279,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         A dictionary containing the namespace, repository URL, chart version, path to the
         values YAML file, release name, and chart name.
     """
-
-    config.load_kube_config()
+    kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
+    if kubeconfig is None:
+        kubeconfig = os.environ.get("KUBECONFIG", None)
+    config.load_kube_config(config_file=kubeconfig)
 
     # Create a CoreV1Api instance
     v1 = client.CoreV1Api()
@@ -274,16 +306,29 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", None),
         "chart_name": "maia-core-toolkit",
     }
+    if "metallb_ip_pool" in cluster_config_dict:
+        metallb_ip_pool = cluster_config_dict["metallb_ip_pool"]
+    else:
+        metallb_ip_pool = "-".join(internal_ips)
 
-    core_toolkit_values.update(
-        {
-              # Replace with https://artifacthub.io/packages/helm/metrics-server/metrics-server
-            "dashboard": {"enabled": True},
-            "default_ingress_class": cluster_config_dict["ingress_class"],
-            "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
-            "metallb": {"enabled": True, "addresses": "-".join(internal_ips)},
-        }
-    )
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        core_toolkit_values.update(
+            {
+                "dashboard": {"enabled": True, "dashboard_domain": "dashboard." + cluster_config_dict["domain"]},
+                "default_ingress_class": cluster_config_dict["ingress_class"],
+                "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"], "certResolver": cluster_config_dict["traefik_resolver"]},
+                "metallb": {"enabled": True, "addresses": metallb_ip_pool},
+            }
+        )
+    else:
+        core_toolkit_values.update(
+            {
+                "dashboard": {"enabled": False},
+                "default_ingress_class": cluster_config_dict["ingress_class"],
+                "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
+                "metallb": {"enabled": True, "addresses": metallb_ip_pool},
+            }
+        )
 
     Path(config_folder).joinpath(project_id, "core_toolkit_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:

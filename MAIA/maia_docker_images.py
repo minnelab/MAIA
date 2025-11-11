@@ -110,6 +110,8 @@ def deploy_maia_kaniko(
                 "--destination={}/{}:{}".format(registry_url, image_name, image_tag),
                 "--cache=true",
                 "--cache-dir=/cache",
+                "--insecure",
+                "--skip-tls-verify"
             ],
         }
     )
