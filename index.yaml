@@ -3,7 +3,7 @@ entries:
   gpu-booking:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2025-10-07T07:01:05.536101259Z"
+    created: "2025-11-11T08:48:52.338837519Z"
     description: A Helm chart for Kubernetes
     digest: 2e582152506122fbeba4400720fd58afd01b1bb05642cad961119df36810fb1e
     name: gpu-booking
@@ -14,7 +14,7 @@ entries:
   maia-admin-toolkit:
   - apiVersion: v2
     appVersion: 1.2.6
-    created: "2025-10-07T07:01:05.537048148Z"
+    created: "2025-11-11T08:48:52.339666535Z"
     description: A Helm chart for deploying the MAIA Admin Toolkit
     digest: c192d7c5145db804c20876e3dfe307c44bf039eb726dcd056b380e9a40f92f82
     name: maia-admin-toolkit
@@ -24,7 +24,7 @@ entries:
     version: 1.2.6
   - apiVersion: v2
     appVersion: 1.2.5
-    created: "2025-10-07T07:01:05.536564462Z"
+    created: "2025-11-11T08:48:52.339261136Z"
     description: A Helm chart for deploying the MAIA Admin Toolkit
     digest: 380e06a5fa026c2b000ab11a144448235fcb0f61679892160e1a4826e4bc88fb
     name: maia-admin-toolkit
@@ -32,10 +32,21 @@ entries:
     urls:
     - helm_charts/maia-admin-toolkit-1.2.5.tgz
     version: 1.2.5
+  maia-dashboard:
+  - apiVersion: v2
+    appVersion: 0.1.6
+    created: "2025-11-11T08:48:52.340423237Z"
+    description: A Helm chart for deploying the MAIA Dashboard
+    digest: ea6e409792600ca514618161a9697115461e36b25edad309226cd1b3bb3cd240
+    name: maia-dashboard
+    type: application
+    urls:
+    - helm_charts/maia-dashboard-0.1.6.tgz
+    version: 0.1.6
   maia-filebrowser:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2025-10-07T07:01:05.537656691Z"
+    created: "2025-11-11T08:48:52.340998385Z"
     description: A Helm chart for Kubernetes
     digest: 732dd2e30494b9dce88d75529cebe9b3874b1f4532f3a1e1e6f8eb7f0a6ae5c1
     name: maia-filebrowser
@@ -46,7 +57,7 @@ entries:
   maia-namespace:
   - apiVersion: v2
     appVersion: 1.7.1
-    created: "2025-10-07T07:01:05.538515626Z"
+    created: "2025-11-11T08:48:52.341702102Z"
     description: A Helm chart to create and configure a MAIA Namespace
     digest: 38037be067d67d909ad1589e29b309495bb25b3328b3b95fdec48c240ad13c9f
     name: maia-namespace
@@ -56,7 +67,7 @@ entries:
     version: 1.7.1
   - apiVersion: v2
     appVersion: 1.7.0
-    created: "2025-10-07T07:01:05.538078831Z"
+    created: "2025-11-11T08:48:52.341356578Z"
     description: A Helm chart to create and configure a MAIA Namespace
     digest: 4865514c68894d4031f321432ad0194571e633ff16cb0824897cca9e1d5fed60
     name: maia-namespace
@@ -67,7 +78,7 @@ entries:
   maia-project:
   - apiVersion: v2
     appVersion: 1.7.1
-    created: "2025-10-07T07:01:05.53926228Z"
+    created: "2025-11-11T08:48:52.342240321Z"
     description: A Helm chart for Deploying a MAIA Workspace
     digest: 93883e05e0ae0240cf663950f79201d0d0db8d56f519f4e1f3d7272345f7d879
     name: maia-project
@@ -77,7 +88,7 @@ entries:
     version: 1.7.1
   - apiVersion: v2
     appVersion: 1.7.0
-    created: "2025-10-07T07:01:05.5389411Z"
+    created: "2025-11-11T08:48:52.341975804Z"
     description: A Helm chart for Deploying a MAIA Workspace
     digest: 038948354520b06baf272dc0ae4e14ca28f6233427996da40726693860bf47f8
     name: maia-project
@@ -85,4 +96,4 @@ entries:
     urls:
     - helm_charts/maia-project-1.7.0.tgz
     version: 1.7.0
-generated: "2025-10-07T07:01:05.535518697Z"
+generated: "2025-11-11T08:48:52.338285403Z"
