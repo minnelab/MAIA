@@ -2,7 +2,7 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2507.19489-b31b1b.svg)](https://arxiv.org/abs/2507.19489)
 
-[![Build](https://github.com/kthcloud/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/kthcloud/MAIA/actions/workflows/build.yaml)
+[![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
 
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
 ![Version](https://img.shields.io/badge/MAIA-v1.9-blue)
@@ -10,23 +10,23 @@
 ![Python](https://img.shields.io/badge/python-3.8+-orange)
 
 
-![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/kthcloud/MAIA?logo=github)
-![GitHub contributors](https://img.shields.io/github/contributors/kthcloud/MAIA?logo=github)
-![GitHub top language](https://img.shields.io/github/languages/top/kthcloud/MAIA?logo=github)
-![GitHub language count](https://img.shields.io/github/languages/count/kthcloud/MAIA?logo=github)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/kthcloud/MAIA/publish_release.yaml?logo=github)
-![GitHub all releases](https://img.shields.io/github/downloads/kthcloud/MAIA/total?logo=github)
+![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/minnelab/MAIA?logo=github)
+![GitHub contributors](https://img.shields.io/github/contributors/minnelab/MAIA?logo=github)
+![GitHub top language](https://img.shields.io/github/languages/top/minnelab/MAIA?logo=github)
+![GitHub language count](https://img.shields.io/github/languages/count/minnelab/MAIA?logo=github)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/minnelab/MAIA/publish_release.yaml?logo=github)
+![GitHub all releases](https://img.shields.io/github/downloads/minnelab/MAIA/total?logo=github)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/maia-toolkit?logo=pypi)
-![GitHub](https://img.shields.io/github/license/kthcloud/MAIA?logo=github)
+![GitHub](https://img.shields.io/github/license/minnelab/MAIA?logo=github)
 ![PyPI - License](https://img.shields.io/pypi/l/maia-toolkit?logo=pypi)
 
 
-![GitHub repo size](https://img.shields.io/github/repo-size/kthcloud/MAIA?logo=github)
-![GitHub release (with filter)](https://img.shields.io/github/v/release/kthcloud/MAIA?logo=github)
+![GitHub repo size](https://img.shields.io/github/repo-size/minnelab/MAIA?logo=github)
+![GitHub release (with filter)](https://img.shields.io/github/v/release/minnelab/MAIA?logo=github)
 ![PyPI](https://img.shields.io/pypi/v/maia-toolkit?logo=pypi)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/MAIA.png" width="80%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/MAIA.png" width="80%" alt='MAIA'>
 </p>
 
 MAIA Toolkit is the main tool for deploying and managing MAIA, a platform for collaborative research in medical AI. 
@@ -69,7 +69,7 @@ MAIA is composed of three different layers, each serving a specific purpose:
 ### MAIA Core:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/dashboard/image/README/MAIA_Core.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/dashboard/image/README/MAIA_Core.png" width="70%" alt='MAIA'>
 </p>
 
 The `MAIA Core` layer includes the core components that provide the basic functionality of the platform.
@@ -92,7 +92,7 @@ The core components of MAIA include:
 
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/dashboard/image/README/MAIA-Admin.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/dashboard/image/README/MAIA-Admin.png" width="70%" alt='MAIA'>
 </p>
 
 
@@ -112,7 +112,7 @@ The `MAIA Namespaces` layer is designed to be project-specific, allowing users t
 This layers is designed to provide the external interfaces for the users to interact with the platform, making the MAIA platform remotely accessible to the users.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/dashboard/image/README/MAIA_Workspace.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/dashboard/image/README/MAIA_Workspace.png" width="70%" alt='MAIA'>
 </p>
 
 
@@ -144,7 +144,7 @@ Additionally, the MAIA platform provides access to a range of cloud services and
 - **MONAI Deploy [Experimental]**: An open-source platform for deploying deep learning models for medical imaging in clinical production settings.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/Workspace.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/Workspace.png" width="70%" alt='MAIA'>
 </p>
 
 
