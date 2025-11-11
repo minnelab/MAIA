@@ -14,7 +14,9 @@ import click
 import yaml
 from minio import Minio
 from omegaconf import OmegaConf
+from types import SimpleNamespace
 
+from MAIA.kubernetes_utils import get_minio_shareable_link
 import MAIA
 
 version = MAIA.__version__
@@ -45,10 +47,6 @@ def get_arg_parser():
         "--form", type=str, required=True, help="YAML configuration file used to extract the namespace configuration."
     )
     pars.add_argument(
-        "--maia-config-file", type=str, required=True, help="YAML configuration file used to extract the MAIA configuration."
-    )
-
-    pars.add_argument(
         "--cluster-config-file",
         type=str,
         required=True,
@@ -62,20 +60,13 @@ def get_arg_parser():
 
 @click.command()
 @click.option("--form", type=str)
-@click.option("--maia-config-file", type=str)
 @click.option("--cluster-config-file", type=str)
 @click.option("--no-minimal", is_flag=True, default=False)
-def create_jupyterhub_config(form, maia_config_file, cluster_config_file, no_minimal):
-    create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, minimal=not no_minimal)
+def create_jupyterhub_config(form, cluster_config_file, no_minimal):
+    create_jupyterhub_config_api(form, cluster_config_file, minimal=not no_minimal)
 
 
-def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, config_folder=None, minimal=True):
-
-    if isinstance(maia_config_file, dict):
-        maia_form = maia_config_file
-    else:
-        with open(maia_config_file, "r") as f:
-            maia_form = yaml.safe_load(f)
+def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, minimal=True):
 
     if isinstance(cluster_config_file, dict):
         cluster_config = cluster_config_file
@@ -116,8 +107,15 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
         base_url = cluster_config["base_url"]
 
     keycloak = None
-    if "keycloak" in cluster_config:
-        keycloak = cluster_config["keycloak"]
+    
+    if "keycloak_client_id" in os.environ and "keycloak_client_secret" in os.environ and "keycloak_authorize_url" in os.environ and "keycloak_token_url" in os.environ and "keycloak_userdata_url" in os.environ:
+        keycloak = {
+            "client_id": os.environ["keycloak_client_id"],
+            "client_secret": os.environ["keycloak_client_secret"],
+            "authorize_url": os.environ["keycloak_authorize_url"],
+            "token_url": os.environ["keycloak_token_url"],
+            "userdata_url": os.environ["keycloak_userdata_url"],
+        }
 
     namespace = user_form["group_ID"].lower().replace("_", "-")
     group_subdomain = user_form["group_subdomain"]
@@ -246,25 +244,36 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
     if cluster_config["url_type"] == "subpath":
         jh_template["singleuser"]["extraEnv"]["MLFLOW_TRACKING_URI"] = f"https://{hub_address}/{namespace}-mlflow"
 
-    if "minio_env_name" in user_form or "minio_url" in cluster_config:
+    if "minio_env_name" in user_form or "MINIO_URL" in os.environ:
         if "minio_env_name" not in user_form:
             minio_env_name = team_id + "_env"
         else:
             minio_env_name = user_form["minio_env_name"]
         client = Minio(
-            cluster_config["minio_url"],
-            access_key=cluster_config["minio_access_key"],
-            secret_key=cluster_config["minio_secret_key"],
-            secure=cluster_config["minio_secure"],
+            os.environ["MINIO_URL"],
+            access_key=os.environ["MINIO_ACCESS_KEY"],
+            secret_key=os.environ["MINIO_SECRET_KEY"],
+            secure=os.environ["MINIO_SECURE"],
         )
         try:
-            client.fget_object(cluster_config["bucket_name"], minio_env_name, minio_env_name)
-            with open(minio_env_name, "r") as f:
-                file_string = f.read()
-                if file_string.startswith("name:"):
-                    jh_template["singleuser"]["extraEnv"]["CONDA_ENV"] = str(file_string)
-                else:
-                    jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
+            if minio_env_name.endswith(".zip"):
+                settings_dict = {
+                    "MINIO_PUBLIC_URL": os.environ["MINIO_URL"],
+                    "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
+                    "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
+                    "MINIO_PUBLIC_SECURE": os.environ["MINIO_SECURE"],
+                    "BUCKET_NAME": os.environ["BUCKET_NAME"],
+                }
+                settings = SimpleNamespace(**settings_dict)
+                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(minio_env_name, os.environ["BUCKET_NAME"], settings)
+            else:
+                client.fget_object(os.environ["BUCKET_NAME"], minio_env_name, minio_env_name)
+                with open(minio_env_name, "r") as f:
+                    file_string = f.read()
+                    if file_string.startswith("name:"):
+                        jh_template["singleuser"]["extraEnv"]["CONDA_ENV"] = str(file_string)
+                    else:
+                        jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
         except Exception as e:
             print(e)
             print(f"Could not read {minio_env_name} from MinIO bucket {cluster_config['bucket_name']}")
@@ -356,17 +365,17 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     jh_template["singleuser"]["image"] = {"name": "jupyter/datascience-notebook", "tag": "latest"}
 
-    if "imagePullSecrets" in cluster_config:
-        jh_template["singleuser"]["image"]["pullSecrets"] = [cluster_config["imagePullSecrets"]]
+    if "imagePullSecrets" in os.environ:
+        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets"]]
     if not minimal:
         registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
         jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
-    maia_workspace_version = maia_form["maia_workspace_version"]
-    maia_workspace_image = maia_form["maia_workspace_image"]
+    maia_workspace_version = os.environ["maia_workspace_version"]
+    maia_workspace_image = os.environ["maia_workspace_image"]
     if not minimal:
-        maia_workspace_image = maia_form["maia_workspace_pro_image"]
-        maia_workspace_version = maia_form["maia_workspace_pro_version"]
+        maia_workspace_image = os.environ["maia_workspace_pro_image"]
+        maia_workspace_version = os.environ["maia_workspace_pro_version"]
 
     jh_template["singleuser"]["profileList"] = [
         {
@@ -407,7 +416,7 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
     ]
 
     deploy_monai_toolkit = not minimal
-    if "maia_monai_toolkit_image" in maia_form and deploy_monai_toolkit:
+    if "maia_monai_toolkit_image" in os.environ and deploy_monai_toolkit:
         jh_template["singleuser"]["profileList"].append(
             {
                 "display_name": "MONAI Toolkit 3.0",
@@ -416,7 +425,7 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                     "Tutorial Notebooks for MONAI Core, MONAI Label and NVFlare for Federated Learning"
                 ),
                 "kubespawner_override": {
-                    "image": maia_form["maia_monai_toolkit_image"],
+                    "image": os.environ["maia_monai_toolkit_image"],
                     "start_timeout": 3600,
                     "http_timeout": 3600,
                     "extra_resource_limits": {},
