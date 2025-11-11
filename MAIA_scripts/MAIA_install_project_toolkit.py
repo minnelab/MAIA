@@ -41,8 +41,7 @@ DESC = dedent(
     """
     Script to deploy a MAIA Project Toolkit to a Kubernetes cluster. The target cluster is specified by setting
     the corresponding ``--cluster-config``, while the project-related configuration is specified with
-    ``--project-config-file`` and ``--maia-config-file``. The necessary MAIA Configuration files
-    should be found in ``--config-folder``.
+    ``--project-config-file``. The necessary MAIA Configuration files should be found in ``--config-folder``.
     """  # noqa: E501
 )
 EPILOG = dedent(
@@ -50,7 +49,7 @@ EPILOG = dedent(
     Example call:
     ::
         {filename} --project-config-file /PATH/TO/form.yaml --cluster-config /PATH/TO/cluster.yaml
-        --config-folder /PATH/TO/config_folder --maia-config-file /PATH/TO/maia_config.yaml
+        --config-folder /PATH/TO/config_folder
     """.format(  # noqa: E501
         filename=Path(__file__).stem
     )
@@ -67,9 +66,6 @@ def get_arg_parser():
         help="YAML configuration file used to extract the project configuration.",
     )
 
-    pars.add_argument(
-        "--maia-config-file", type=str, required=True, help="YAML configuration file used to extract MAIA configuration."
-    )
 
     pars.add_argument(
         "--cluster-config", type=str, required=True, help="YAML configuration file used to extract the cluster configuration."
@@ -124,27 +120,24 @@ async def verify_installed_maia_toolkit(project_id, namespace, get_chart_metadat
 
 @click.command()
 @click.option("--project-config-file", type=str)
-@click.option("--maia-config-file", type=str)
 @click.option("--cluster-config", type=str)
 @click.option("--no-minimal", is_flag=True)
 @click.option("--config-folder", type=str)
 @click.option("--no-argocd", is_flag=True)
-def main(project_config_file, maia_config_file, cluster_config, config_folder, no_minimal=False, no_argocd=False):
-    deploy_maia_toolkit(project_config_file, maia_config_file, cluster_config, config_folder, no_minimal, no_argocd)
+def main(project_config_file, cluster_config, config_folder, no_minimal=False, no_argocd=False):
+    deploy_maia_toolkit(project_config_file, cluster_config, config_folder, no_minimal, no_argocd)
 
 
-def deploy_maia_toolkit(project_config_file, maia_config_file, cluster_config, config_folder, no_minimal=False, no_argocd=False):
+def deploy_maia_toolkit(project_config_file, cluster_config, config_folder, no_minimal=False, no_argocd=False):
     project_form_dict = yaml.safe_load(Path(project_config_file).read_text())
 
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
-    maia_config_dict = yaml.safe_load(Path(maia_config_file).read_text())
 
-    deploy_maia_toolkit_api(project_form_dict, maia_config_dict, cluster_config_dict, config_folder, not no_minimal, no_argocd)
+    deploy_maia_toolkit_api(project_form_dict, cluster_config_dict, config_folder, not no_minimal, no_argocd)
 
 
 def deploy_maia_toolkit_api(
     project_form_dict,
-    maia_config_dict,
     cluster_config_dict,
     config_folder,
     minimal=True,
@@ -200,7 +193,7 @@ def deploy_maia_toolkit_api(
             )
 
     helm_commands.append(
-        create_jupyterhub_config_api(project_form_dict, maia_config_dict, cluster_config_dict, config_folder, minimal=minimal)
+        create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal)
     )
 
     helm_commands.append(
@@ -215,13 +208,12 @@ def deploy_maia_toolkit_api(
                 cluster_config_dict,
                 project_form_dict,
                 config_folder,
-                maia_config_dict,
                 mysql_config=mysql_configs,
                 minio_config=minio_configs,
             )
         )
 
-        helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, maia_config_dict, config_folder))
+        helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, config_folder))
 
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
@@ -316,11 +308,11 @@ def deploy_maia_toolkit_api(
             {"jupyterhub_chart_info": "jupyterhub_chart_info"},
             {"maia_filebrowser_values": "maia_filebrowser_values"},
         ],
-        "argo_namespace": maia_config_dict["argocd_namespace"],
+        "argo_namespace": os.environ["argocd_namespace"],
         "group_ID": f"MAIA:{group_id}",
         "destination_server": f"{destination_cluster_address}",
         "sourceRepos": [
-            "https://kthcloud.github.io/MAIA/",
+            "https://minnelab.github.io/MAIA/",
             "https://hub.jupyter.org/helm-chart/",
             "https://oauth2-proxy.github.io/manifests",
         ],
@@ -353,19 +345,19 @@ def deploy_maia_toolkit_api(
                 return yaml.safe_load(f)
         else:
             return
-    revision = asyncio.run(verify_installed_maia_toolkit(project_id, maia_config_dict["argocd_namespace"]))
+    revision = asyncio.run(verify_installed_maia_toolkit(project_id, os.environ["argocd_namespace"]))
 
     if revision == -1 or redeploy_enabled:
         print("Installing MAIA Workspace")
 
-        project_chart = maia_config_dict["maia_project_chart"]
-        project_repo = maia_config_dict["maia_project_repo"]
-        project_version = maia_config_dict["maia_project_version"]
+        project_chart = os.environ["maia_project_chart"]
+        project_repo = os.environ["maia_project_repo"]
+        project_version = os.environ["maia_project_version"]
         json_key_path = None
         if not minimal:
-            project_chart = maia_config_dict["maia_pro_project_chart"]
-            project_repo = maia_config_dict["maia_pro_project_repo"]
-            project_version = maia_config_dict["maia_pro_project_version"]
+            project_chart = os.environ["maia_pro_project_chart"]
+            project_repo = os.environ["maia_pro_project_repo"]
+            project_version = os.environ["maia_pro_project_version"]
             json_key_path = os.environ.get("JSON_KEY_PATH", None)
         print(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
         print(f"Using JSON key path: {json_key_path}")
@@ -373,7 +365,7 @@ def deploy_maia_toolkit_api(
             install_maia_project(
                 group_id,
                 Path(config_folder).joinpath(group_id, f"{group_id}_values.yaml"),
-                maia_config_dict["argocd_namespace"],
+                os.environ["argocd_namespace"],
                 project_chart,
                 project_repo=project_repo,
                 project_version=project_version,
@@ -382,10 +374,10 @@ def deploy_maia_toolkit_api(
         )
         return msg
     else:
-        argocd_host = maia_config_dict["argocd_host"]
-        token = maia_config_dict["argocd_token"]
+        argocd_host = os.environ["argocd_host"]
+        password = os.environ["ARGOCD_PASSWORD"]
         print("MAIA Workspace already installed")
-        asyncio.run(get_maia_toolkit_apps(group_id, token, argocd_host))
+        get_maia_toolkit_apps(group_id, password, argocd_host)
 
 
 # The `if __name__ == "__main__":` block in Python is used to check whether the current script is
