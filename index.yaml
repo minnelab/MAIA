@@ -3,7 +3,7 @@ entries:
   gpu-booking:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2025-11-15T08:30:06.973224638Z"
+    created: "2025-11-15T08:56:36.764387201Z"
     description: A Helm chart for Kubernetes
     digest: 2e582152506122fbeba4400720fd58afd01b1bb05642cad961119df36810fb1e
     name: gpu-booking
@@ -14,7 +14,7 @@ entries:
   maia-admin-toolkit:
   - apiVersion: v2
     appVersion: 1.2.6
-    created: "2025-11-15T08:30:06.974079817Z"
+    created: "2025-11-15T08:56:36.765344559Z"
     description: A Helm chart for deploying the MAIA Admin Toolkit
     digest: c192d7c5145db804c20876e3dfe307c44bf039eb726dcd056b380e9a40f92f82
     name: maia-admin-toolkit
@@ -24,7 +24,7 @@ entries:
     version: 1.2.6
   - apiVersion: v2
     appVersion: 1.2.5
-    created: "2025-11-15T08:30:06.97365625Z"
+    created: "2025-11-15T08:56:36.764868027Z"
     description: A Helm chart for deploying the MAIA Admin Toolkit
     digest: 380e06a5fa026c2b000ab11a144448235fcb0f61679892160e1a4826e4bc88fb
     name: maia-admin-toolkit
@@ -35,7 +35,7 @@ entries:
   maia-dashboard:
   - apiVersion: v2
     appVersion: 0.1.7
-    created: "2025-11-15T08:30:06.975597946Z"
+    created: "2025-11-15T08:56:36.767065323Z"
     description: A Helm chart for deploying the MAIA Dashboard
     digest: 51bcfeb6fe432f4161fa8dc36ad4c62927b74d8026f19d9a1f20c6221cd287ec
     name: maia-dashboard
@@ -45,7 +45,7 @@ entries:
     version: 0.1.7
   - apiVersion: v2
     appVersion: 0.1.6
-    created: "2025-11-15T08:30:06.974900059Z"
+    created: "2025-11-15T08:56:36.766229595Z"
     description: A Helm chart for deploying the MAIA Dashboard
     digest: ea6e409792600ca514618161a9697115461e36b25edad309226cd1b3bb3cd240
     name: maia-dashboard
@@ -56,7 +56,7 @@ entries:
   maia-docker-build-project:
   - apiVersion: v2
     appVersion: 1.2.0
-    created: "2025-11-15T08:30:06.97609621Z"
+    created: "2025-11-15T08:56:36.768579493Z"
     description: A Helm chart for building Docker images using Kaniko
     digest: cdc4092aea83fa1cc116a9f871155a2cce7d4f131c5a0797742c117615a09f24
     name: maia-docker-build-project
@@ -67,7 +67,7 @@ entries:
   maia-filebrowser:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2025-11-15T08:30:06.976639204Z"
+    created: "2025-11-15T08:56:36.769415643Z"
     description: A Helm chart for Kubernetes
     digest: 732dd2e30494b9dce88d75529cebe9b3874b1f4532f3a1e1e6f8eb7f0a6ae5c1
     name: maia-filebrowser
@@ -77,8 +77,18 @@ entries:
     version: 1.0.0
   maia-namespace:
   - apiVersion: v2
+    appVersion: 1.7.3
+    created: "2025-11-15T08:56:36.771412821Z"
+    description: A Helm chart to create and configure a MAIA Namespace
+    digest: aef6659a8a28dcfa99291b6d4d24db05d4edda579be0adac9e5a7d3eb17ef8b1
+    name: maia-namespace
+    type: application
+    urls:
+    - helm_charts/maia-namespace-1.7.3.tgz
+    version: 1.7.3
+  - apiVersion: v2
     appVersion: 1.7.2
-    created: "2025-11-15T08:30:06.977821547Z"
+    created: "2025-11-15T08:56:36.770829194Z"
     description: A Helm chart to create and configure a MAIA Namespace
     digest: 0ae9958351fac52a511379bd6bc4b452ca1ebf35e950f44966201adf363084b7
     name: maia-namespace
@@ -88,7 +98,7 @@ entries:
     version: 1.7.2
   - apiVersion: v2
     appVersion: 1.7.1
-    created: "2025-11-15T08:30:06.977330254Z"
+    created: "2025-11-15T08:56:36.770265486Z"
     description: A Helm chart to create and configure a MAIA Namespace
     digest: 38037be067d67d909ad1589e29b309495bb25b3328b3b95fdec48c240ad13c9f
     name: maia-namespace
@@ -98,7 +108,7 @@ entries:
     version: 1.7.1
   - apiVersion: v2
     appVersion: 1.7.0
-    created: "2025-11-15T08:30:06.976986104Z"
+    created: "2025-11-15T08:56:36.769861255Z"
     description: A Helm chart to create and configure a MAIA Namespace
     digest: 4865514c68894d4031f321432ad0194571e633ff16cb0824897cca9e1d5fed60
     name: maia-namespace
@@ -109,7 +119,7 @@ entries:
   maia-project:
   - apiVersion: v2
     appVersion: 1.7.1
-    created: "2025-11-15T08:30:06.978386778Z"
+    created: "2025-11-15T08:56:36.77202764Z"
     description: A Helm chart for Deploying a MAIA Workspace
     digest: a15683b2a076092a8b10cff5d8e6535f7976e64260ad87e30a99cc3813c60f1a
     name: maia-project
@@ -119,7 +129,7 @@ entries:
     version: 1.7.1
   - apiVersion: v2
     appVersion: 1.7.0
-    created: "2025-11-15T08:30:06.978095878Z"
+    created: "2025-11-15T08:56:36.771706705Z"
     description: A Helm chart for Deploying a MAIA Workspace
     digest: 038948354520b06baf272dc0ae4e14ca28f6233427996da40726693860bf47f8
     name: maia-project
@@ -130,7 +140,7 @@ entries:
   mkg:
   - apiVersion: v2
     appVersion: 1.0.4
-    created: "2025-11-15T08:30:06.978822844Z"
+    created: "2025-11-15T08:56:36.772489233Z"
     description: A Helm chart to deploy environments (pods, services, ingresses) and
       run experiments and applications in MAIA cluster
     digest: c37cb1da25660fd480b1fcfcb02262236a1b6c020d4792e6e771f9ffb72d3b2e
@@ -142,7 +152,7 @@ entries:
   mkg-kaniko:
   - apiVersion: v2
     appVersion: 1.0.4
-    created: "2025-11-15T08:30:06.979340833Z"
+    created: "2025-11-15T08:56:36.772989231Z"
     description: A Helm chart to deploy Kaniko Pod in MAIA cluster, used to build
       Docker Images and deploy to the private Docker Registry
     digest: e96efe109cc4c39248677bb6012f6207c7e8111b80a0dfb372ba2993b6351097
@@ -151,4 +161,4 @@ entries:
     urls:
     - helm_charts/mkg-kaniko-1.0.4.tgz
     version: 1.0.4
-generated: "2025-11-15T08:30:06.972683154Z"
+generated: "2025-11-15T08:56:36.76378171Z"

@@ -4,7 +4,7 @@ kind: Ingress
 metadata:
   name: minio-api
   annotations:
-    {{- if .Values.minio.ingress.annotations }}
+  {{- if .Values.minio.ingress.annotations }}
     {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
   {{- end }}
 spec:

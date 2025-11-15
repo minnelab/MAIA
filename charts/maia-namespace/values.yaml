@@ -16,9 +16,9 @@ users:
 
 serviceType: "NodePort"
 
-metallbSharedIp: True
+metallbSharedIp: False
 metallbIpPool: False
-loadBalancerIp: "192.168.0.1"
+loadBalancerIp: False
 
 dockerRegistrySecret:
   enabled: False
@@ -26,7 +26,7 @@ dockerRegistrySecret:
   dockerRegistrySecret: ""
 
 minio:
-  enabled: True
+  enabled: False
   namespace: "minio"
   consoleDomain: "https://maia.se/minio-console"
   storageSize: "1Gi"
@@ -40,7 +40,7 @@ minio:
   consoleSecretKey: ""
 
 mlflow:
-  enabled: True
+  enabled: False
   user: "mlflow"
   password: "mlflow"
 
