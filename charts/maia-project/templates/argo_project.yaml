@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  roles:
+    - name: admin
+      description: Admin privileges 
+      policies:
+        - p, proj:{{ .Release.Name }}:admin, applications, get, {{ .Release.Name }}/*, allow
+      groups:
+        - {{ .Values.group_ID}}
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: Namespace
+    - group: '*'
+      kind: ClusterRoleBinding
+    - group: '*'
+      kind: ClusterRole
+  destinations:
+    - namespace: {{ .Release.Name }}
+      server: {{ .Values.destination_server }}
+  sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}
