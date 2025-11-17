@@ -1,0 +1,61 @@
+{{- if .Values.argocd.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: {{ .Values.argocd.argocd_namespace }}
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  oidc.config: |
+    name: Keycloak
+
+    issuer: {{ .Values.argocd.keycloak_issuer_url }}
+
+    clientID: {{ .Values.argocd.keycloak_client_id }}
+
+    clientSecret: {{ .Values.argocd.keycloak_client_secret }}
+
+    allowedAudiences:
+    - maia
+
+    skipAudienceCheckWhenTokenHasNoAudience: true
+
+
+    requestedScopes: ["openid", "email", "profile", ]
+
+
+    requestedIDTokenClaims:
+      groups:
+        essential: true
+
+  url: https://{{ .Values.argocd.argocd_domain }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: {{ .Values.argocd.argocd_namespace }}
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.csv: |
+    p, role:maia-user, applications, get, maia-user/*, allow
+    p, role:maia-user, projects, get, maia-user, allow
+    p, {{ .Values.admin_group_ID }}, *, *, *, allow
+    g, {{ .Values.admin_group_ID }}, role:admin
+  policy.default: role:maia-user
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: {{ .Values.argocd.argocd_namespace }}
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  server.insecure: "true"
+{{- end }}

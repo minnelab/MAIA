@@ -1,0 +1,20 @@
+{{- if .Values.maia_admin_toolkit_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-admin-toolkit
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.maia_admin_toolkit_values.chart_name }}
+    repoURL: {{ .Values.maia_admin_toolkit_values.repo_url }}
+    targetRevision: {{ .Values.maia_admin_toolkit_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-admin-toolkit
+      valuesObject:
+      {{ .Values.maia_admin_toolkit_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.maia_admin_toolkit_values.namespace }}
+{{- end }}

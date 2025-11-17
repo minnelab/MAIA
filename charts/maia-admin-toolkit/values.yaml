@@ -1,0 +1,38 @@
+argocd: 
+  enabled: true
+  argocd_namespace: "argocd"
+  argocd_domain: ""
+  keycloak_issuer_url: ""
+  keycloak_client_id: ""
+  keycloak_client_secret: ""
+## Additional clusters to be added to ArgoCD
+#  additional_clusters: 
+#    - name: "fake-cluster"
+#      server: "https://kubernetes.default.svc"
+#      token: "fake-token"
+certResolver: ""
+admin_group_ID: "MAIA:admin"
+
+harbor: 
+  enabled: true
+  values: 
+    namespace: ""
+    storageClassName: 
+
+minio:
+  enabled: true
+  namespace: "minio"
+  adminAccessKey: "maia-admin"
+  adminSecretKey: "maia-admin"
+  image: "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z"
+  storageSize: "10Gi"
+  storageClassName: "standard"
+  consoleDomain: "https://minio.{{ domain }}"
+  rootAccessKey: "root"
+  rootSecretKey: "root"
+  openIdClientId: "maia"
+  openIdClientSecret: "maia"
+  openIdConfigUrl: "https://iam.{{ domain }}/realms/maia/.well-known/openid-configuration"
+  ingress:
+    annotations: {}
+    tlsSecretName: "minio-selfsigned"
