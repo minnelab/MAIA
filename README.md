@@ -119,6 +119,10 @@ This layers is designed to provide the external interfaces for the users to inte
 
 The MAIA platform provides a range of applications and tools that you can use to develop your projects, grouped into a *MAIA Workspace*.
 
+#### Workspace Credentials Configuration
+
+The MAIA Workspace supports customizable user credentials. You can set your preferred username and password by creating a `.env` file in your home directory with `MAIA_USERNAME` and `MAIA_PASSWORD` variables. For detailed information, see the [Workspace Credentials Documentation](docker/MAIA-Workspace/WORKSPACE_CREDENTIALS.md).
+
 The MAIA Workspace includes:
 - **Jupyter Notebook**: A web-based interactive development environment for Python, R, and other programming languages.
 - **Remote Desktop**: A remote desktop to access your workspace.
