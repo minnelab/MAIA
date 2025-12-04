@@ -53,7 +53,7 @@ update_password() {
     if [ -n "$new_password" ]; then
         log_info "Updating password for user $username"
         # Update password without logging it
-        echo "$username:$new_password" | sudo chpasswd
+        sudo chpasswd <<< "$username:$new_password"
         log_info "Password updated successfully"
     fi
 }
