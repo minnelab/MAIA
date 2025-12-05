@@ -26,7 +26,7 @@ data:
         reload
         loadbalance
     }
-  {{ .Values.selfsigned.cluster_domain }}:53 {
+    {{ .Values.selfsigned.cluster_domain }}:53 {
     hosts {
         10.0.2.2 iam.{{ .Values.selfsigned.cluster_domain }}
         10.0.2.2 registry.{{ .Values.selfsigned.cluster_domain }}
