@@ -26,11 +26,11 @@ data:
         reload
         loadbalance
     }
-  {{ .Values.cluster_domain }}:53 {
+  {{ .Values.selfsigned.cluster_domain }}:53 {
     hosts {
-        10.0.2.2 iam.{{ .Values.cluster_domain }}
-        10.0.2.2 registry.{{ .Values.cluster_domain }}
-        10.0.2.2 mgmt.{{ .Values.cluster_domain }}
+        10.0.2.2 iam.{{ .Values.selfsigned.cluster_domain }}
+        10.0.2.2 registry.{{ .Values.selfsigned.cluster_domain }}
+        10.0.2.2 mgmt.{{ .Values.selfsigned.cluster_domain }}
         fallthrough
       }
     forward . /etc/resolv.conf
@@ -60,8 +60,8 @@ metadata:
 spec:
   secretName: wildcard-domain-tls
   dnsNames:
-    - "{{ .Values.cluster_domain }}"
-    - "*.{{ .Values.cluster_domain }}"
+    - "{{ .Values.selfsigned.cluster_domain }}"
+    - "*.{{ .Values.selfsigned.cluster_domain }}"
   issuerRef:
     name: kubernetes-ca-issuer
     kind: ClusterIssuer
