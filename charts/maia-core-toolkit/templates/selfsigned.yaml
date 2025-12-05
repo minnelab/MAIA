@@ -35,7 +35,7 @@ data:
       }
     forward . /etc/resolv.conf
     cache 30
-  }
+    }
 kind: ConfigMap
 metadata:
   labels:
