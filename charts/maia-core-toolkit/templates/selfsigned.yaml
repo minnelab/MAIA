@@ -1,0 +1,68 @@
+{{ if .Values.selfsigned.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: kubernetes-ca-issuer
+spec:
+  ca:
+    secretName: kubernetes-ca
+---
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          ttl 30
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+  {{ .Values.cluster_domain }}:53 {
+    hosts {
+        10.0.2.2 iam.{{ .Values.cluster_domain }}
+        10.0.2.2 registry.{{ .Values.cluster_domain }}
+        10.0.2.2 mgmt.{{ .Values.cluster_domain }}
+        fallthrough
+      }
+    forward . /etc/resolv.conf
+    cache 30
+  }
+kind: ConfigMap
+metadata:
+  labels:
+    k0s.k0sproject.io/stack: coredns
+  name: coredns
+  namespace: kube-system
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: traefik
+spec:
+  defaultCertificate:
+    secretName: wildcard-domain-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-domain-tls
+  namespace: traefik
+spec:
+  secretName: wildcard-domain-tls
+  dnsNames:
+    - "{{ .Values.cluster_domain }}"
+    - "*.{{ .Values.cluster_domain }}"
+  issuerRef:
+    name: kubernetes-ca-issuer
+    kind: ClusterIssuer
+{{ end }}
