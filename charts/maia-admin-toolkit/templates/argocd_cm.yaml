@@ -30,8 +30,7 @@ data:
       groups:
         essential: true
     {{- if .Values.argocd.rootCA }}
-    rootCA: |
-      {{ .Values.argocd.rootCA }}
+    rootCA: {{ .Values.argocd.rootCA }}
     {{- end }}
   url: https://{{ .Values.argocd.argocd_domain }}
 ---
