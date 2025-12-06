@@ -30,7 +30,8 @@ data:
       groups:
         essential: true
     rootCA: {{ .Values.argocd.rootCA }}
-  url: https://{{ .Values.argocd.argocd_domain }}
+  
+  url: "https://{{ .Values.argocd.argocd_domain }}"
 ---
 apiVersion: v1
 kind: ConfigMap
