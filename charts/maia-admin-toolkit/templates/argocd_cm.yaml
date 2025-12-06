@@ -29,9 +29,7 @@ data:
     requestedIDTokenClaims:
       groups:
         essential: true
-    {{- if .Values.argocd.rootCA }}
-    rootCA: "{{ .Values.argocd.rootCA }}"
-    {{- end }}
+    rootCA: {{ .Values.argocd.rootCA }}
   url: https://{{ .Values.argocd.argocd_domain }}
 ---
 apiVersion: v1
