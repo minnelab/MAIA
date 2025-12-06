@@ -21,6 +21,8 @@ spec:
         - name: argocd-server
           port: 80
           scheme: h2c
+{{- if .Values.certResolver }}
   tls:
     certResolver: {{ .Values.certResolver }}
+{{- end }}
 {{- end }}
