@@ -2,6 +2,7 @@ argocd:
   enabled: true
   argocd_namespace: "argocd"
   argocd_domain: ""
+  rootCA: ""
   keycloak_issuer_url: ""
   keycloak_client_id: ""
   keycloak_client_secret: ""
