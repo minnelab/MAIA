@@ -1,5 +1,6 @@
 # MAIA Toolkit
 
+[![Article-NPJ Artificial Intelligence](https://img.shields.io/badge/NPJ_Artificial_Intelligence-black)](https://www.nature.com/articles/s44387-025-00042-6)
 [![arXiv](https://img.shields.io/badge/arXiv-2507.19489-b31b1b.svg)](https://arxiv.org/abs/2507.19489)
 
 [![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
