@@ -44,10 +44,10 @@ The toolkit provides a set of scripts and tools to deploy and manage the MAIA pl
 
 ## Citation
 
-If you use the MAIA platform in your work, please cite the following [preprint](https://arxiv.org/abs/2507.19489):
+If you use the MAIA platform in your work, please cite the following [paper](https://www.nature.com/articles/s44387-025-00042-6):
 
 ```
-Bendazzoli, S., Persson, S., Astaraki, M., Pettersson, S., Grozman, V., & Moreno, R. (2025). MAIA: A Collaborative Medical AI Platform for Integrated Healthcare Innovation. arXiv preprint [arXiv:2507.19489](https://arxiv.org/abs/2507.19489).
+Bendazzoli, S., Persson, S., Astaraki, M. et al. MAIA: a collaborative medical AI platform for integrated healthcare innovation. npj Artif. Intell. 1, 45 (2025). https://doi.org/10.1038/s44387-025-00042-6
 ```
 
 ## Installation
