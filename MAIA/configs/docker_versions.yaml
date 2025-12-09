@@ -1,5 +1,5 @@
 maia-kube: 1.0
-maia-dashboard: 2.2
+maia-dashboard: 2.4
 maia-workspace: 1.7
 maia-workspace-notebook: 1.7.1
 maia-workspace-notebook-ssh: 1.7.1
