@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  orthanc:
+    image: maia-orthanc:1.0
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+      - "8000:8000"
+      - "80:80"
+    environment:
+      - MONAI_LABEL_INGRESS_PATH=/monai-label
+      - INGRESS_PATH=/orthanc
+      - ENABLE_MONAI_LABEL=True
+      #- BUNDLE_ZOO_PATH=/mnt/bundles
+      #- MONAI_LABEL_MODEL_PATH=/workspace/MONAILabel/model
+      - ORTHANC_DICOMWEB_ADDRESS=http://localhost:8042/dicom-web
+      #- BUNDLE_MODEL_NAME=nnUNetBundle
