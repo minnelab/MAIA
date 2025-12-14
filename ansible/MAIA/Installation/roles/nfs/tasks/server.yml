@@ -21,11 +21,6 @@
     line: "{{ nfs_export_path }} {{ nfs_export_options }}"
     regexp: "^{{ nfs_export_path | regex_escape() }}"
     state: present
-
-- name: Restart NFS server
-  ansible.builtin.service:
-    name: nfs-kernel-server
-    state: restarted
   notify: restart nfs server
 
 - name: Enable and start NFS server
