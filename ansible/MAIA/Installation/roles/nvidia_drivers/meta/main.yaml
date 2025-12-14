@@ -1,8 +1,8 @@
 #SPDX-License-Identifier: MIT-0
 galaxy_info:
-  author: your name
-  description: your role description
-  company: your company (optional)
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Install NVIDIA drivers on Ubuntu/Debian systems using the apt package manager.
+  company: MAIA Project
 
   # If the issue tracker for your role is not on github, uncomment the
   # next line and provide a value
