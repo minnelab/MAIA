@@ -1,0 +1,109 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include MicroK8s external variables (env.json)
+  include_vars:
+    file: "{{ config_folder }}/env.json"
+
+- name: Create directory for MicroK8s config
+  file:
+    path: "{{ microk8s_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy MicroK8s config file
+  copy:
+    src: "{{ config_folder }}/{{ microk8s_config_file }}"
+    dest: "{{ microk8s_config_dir }}/.microk8s.yaml"
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install snapd
+  apt:
+    name: snapd
+    state: present
+
+- name: Ensure snapd is started
+  service:
+    name: snapd
+    state: started
+
+- name: Install MicroK8s
+  snap:
+    name: microk8s
+    state: present
+    channel: "{{ microk8s_version }}"
+    classic: yes
+
+- name: Add user to microk8s group
+  user:
+    name: "{{ ansible_user }}"
+    groups: microk8s
+    append: yes
+
+- name: Enable MicroK8s addons
+  command: microk8s enable {{ microk8s_addons | join(' ') }}
+
+- name: Start MicroK8s
+  command: microk8s start
+
+- name: Get MicroK8s config
+  command: microk8s config
+  register: microk8s_config_output
+
+- name: Write MicroK8s config to local file
+  become: false
+  local_action:
+    module: copy
+    content: "{{ microk8s_config_output.stdout }}"
+    dest: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Replace server in kubeconfig to use localhost
+  become: false
+  local_action:
+    module: lineinfile
+    path: "{{ DEPLOY_KUBECONFIG }}"
+    regexp: '^(\s*server\s*:\s*)https?://.*:\d+'
+    line: "    server: https://127.0.0.1:{{ microk8s_port_forward_port }}"
+    backrefs: yes
+
+- name: Allow firewall ports for MicroK8s
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+  loop: "{{ microk8s_firewall_ports }}"
+
+- name: Assign Roles to Node
+  command: microk8s.kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/master=master
+  when: "'control-plane' in group_names"
+  
+- name: Assign Roles to Node
+  command: microk8s.kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane=control-plane
+  when: "'control-plane' in group_names"
+
+- name: Copy rootCA certificate to local file
+  fetch:
+    src: "/var/snap/microk8s/current/certs/ca.crt"
+    dest: "{{ config_folder }}/ca.crt"
+    flat: yes
+    mode: '0600'
+
+- name: Kill any process currently listening on port forwarding port (if exists)
+  ansible.builtin.shell: |
+    if lsof -i :{{ microk8s_port_forward_port }} -t >/dev/null 2>&1; then
+      lsof -i :{{ microk8s_port_forward_port }} -t | xargs kill -9
+    fi
+  ignore_errors: true
+  delegate_to: localhost
+  when: microk8s_enable_port_forwarding | bool
+
+- name: Start SSH port forward in background (localhost)
+  ansible.builtin.shell: |
+    nohup ssh -L {{ microk8s_port_forward_port }}:127.0.0.1:16443 {{ inventory_hostname }} -N -o ExitOnForwardFailure=yes &
+  async: 0
+  poll: 0
+  delegate_to: localhost
+  when: microk8s_enable_port_forwarding | bool
+
