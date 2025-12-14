@@ -1,0 +1,128 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+
+- name: Extract cluster_name from cluster config
+  set_fact:
+    cluster_name: "{{ (cluster_config_content.content | b64decode | from_yaml).cluster_name }}"
+
+- name: Extract domain from cluster config
+  set_fact:
+    domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+
+- name: Ensure MAIA Core related namespaces exist
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+    state: present
+  loop: "{{ maia_core_namespaces }}"
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Run MAIA Core Toolkit installer
+  ansible.builtin.command: >
+    MAIA_install_core_toolkit
+    --cluster-config {{ config_folder }}/{{ cluster_name }}.yaml
+    --config-folder {{ config_folder }}
+  environment:
+    keycloak_client_secret: "{{ keycloak_client_secret }}"
+    DEPLOY_KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
+    MAIA_DASHBOARD_DOMAIN: "{{ MAIA_DASHBOARD_DOMAIN }}"
+    dashboard_api_secret: "{{ dashboard_api_secret }}"
+    argocd_namespace: "{{ argocd_namespace }}"
+    admin_group_ID: "{{ admin_group_ID }}"
+    core_project_chart: "{{ core_project_chart }}"
+    core_project_repo: "{{ core_project_repo }}"
+    core_project_version: "{{ core_project_version }}"
+  register: maia_install_output
+
+- name: Show MAIA Core Toolkit installer output
+  ansible.builtin.debug:
+    var: maia_install_output.stdout
+
+- name: Install Prometheus stack for MAIA Core observability
+  ansible.builtin.command: >
+    helm upgrade --install {{ prometheus_release_name }}
+    {{ prometheus_chart_name }}
+    -n observability
+    --values {{ config_folder }}/{{ prometheus_values_path }}
+    --version {{ prometheus_chart_version }}
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+
+- name: Install latest argocd CLI
+  ansible.builtin.shell: |
+    VERSION=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep tag_name | cut -d '"' -f 4)
+    curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
+    chmod +x /usr/local/bin/argocd
+  args:
+    creates: /usr/local/bin/argocd
+  delegate_to: localhost
+  when: auto_sync | default(true) | bool
+
+- name: Login to ArgoCD using CLI
+  ansible.builtin.shell: |
+    argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure
+  environment:
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
+  register: argocd_cli_login
+  changed_when: false
+  delegate_to: localhost
+  retries: "{{ argocd_login_retries }}"
+  delay: "{{ argocd_login_retry_delay }}"
+  until: argocd_cli_login.rc == 0
+  when: auto_sync | bool
+
+- name: Show ArgoCD CLI login output
+  ansible.builtin.debug:
+    var: argocd_cli_login.stdout
+  when: auto_sync | bool
+
+- name: Sync ArgoCD applications
+  ansible.builtin.shell: |
+    argocd app sync {{ item }}
+  register: argocd_sync_result
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  retries: "{{ argocd_sync_retries }}"
+  delay: "{{ argocd_sync_retry_delay }}"
+  loop: "{{ maia_core_argocd_applications }}"
+  when: auto_sync | bool
+- name: Check if 'selfsigned' is present and true in cluster config
+  ansible.builtin.set_fact:
+    use_selfsigned: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).selfsigned | default(false) }}"
+  delegate_to: localhost
+  when: auto_sync | bool
+
+- name: Rollout restart maia-core-traefik deployment if selfsigned is enabled
+  ansible.builtin.shell: |
+    kubectl rollout restart deployment/maia-core-traefik -n traefik
+  when: use_selfsigned | bool and auto_sync | bool
+  changed_when: true
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Rollout restart coredns deployment if selfsigned is enabled
+  ansible.builtin.shell: |
+    kubectl rollout restart deployment/coredns -n kube-system
+  when: use_selfsigned | bool and auto_sync | bool
+  changed_when: true
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"

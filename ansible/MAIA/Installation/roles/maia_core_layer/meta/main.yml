@@ -1,0 +1,106 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Install and configure MAIA Core layer components on Kubernetes. Deploys core infrastructure including observability, ingress, storage, GPU support, and GitOps tooling via ArgoCD applications.
+  company: MAIA Project
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  # Choose a valid license ID from https://spdx.org - some suggested licenses:
+  # - BSD-3-Clause (default)
+  # - MIT
+  # - GPL-2.0-or-later
+  # - GPL-3.0-only
+  # - Apache-2.0
+  # - CC-BY-4.0
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.1
+
+  # If this a Container Enabled role, provide the minimum Ansible Container version.
+  # min_ansible_container_version:
+
+  galaxy_tags: [maia, kubernetes, core, observability, gitops, argocd]
+    # List tags for your role here, one per line. A tag is a keyword that describes
+    # and categorizes the role. Users find roles by searching for tags. Be sure to
+    # remove the '[]' above, if you add tags to this list.
+    #
+    # NOTE: A tag is limited to a single word comprised of alphanumeric characters.
+    #       Maximum 20 tags per role.
+
+dependencies: []
+  # List your role dependencies here, one per line. Be sure to remove the '[]' above,
+  # if you add dependencies to this list.
+
+
+argument_specs:
+  main:
+    options:
+        config_folder:
+          type: str
+          required: true
+          description: "Path to the configuration folder containing env.json and cluster config YAML (required)"
+        maia_core_namespaces:
+          type: list
+          required: false
+          default: [observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]
+          elements: str
+          description: "List of MAIA Core namespaces to create (optional)"
+        auto_sync:
+          type: bool
+          required: false
+          default: true
+          description: "Enable automatic ArgoCD application synchronization (optional)"
+        prometheus_values_path:
+          type: str
+          required: false
+          default: maia-core/prometheus_values/prometheus_values.yaml
+          description: "Path to Prometheus values file relative to config_folder (optional)"
+        prometheus_chart_version:
+          type: str
+          required: false
+          default: 45.5.0
+          description: "Prometheus chart version to install (optional)"
+        prometheus_chart_name:
+          type: str
+          required: false
+          default: prometheus-community/kube-prometheus-stack
+          description: "Prometheus Helm chart name (optional)"
+        prometheus_release_name:
+          type: str
+          required: false
+          default: maia-core-prometheus
+          description: "Prometheus Helm release name (optional)"
+        argocd_port:
+          type: int
+          required: false
+          default: 8080
+          description: "ArgoCD port for CLI login (optional)"
+        argocd_login_retries:
+          type: int
+          required: false
+          default: 3
+          description: "Number of retries for ArgoCD CLI login (optional)"
+        argocd_login_retry_delay:
+          type: int
+          required: false
+          default: 10
+          description: "Delay in seconds between ArgoCD login retries (optional)"
+        argocd_sync_retries:
+          type: int
+          required: false
+          default: 3
+          description: "Number of retries for ArgoCD application sync (optional)"
+        argocd_sync_retry_delay:
+          type: int
+          required: false
+          default: 10
+          description: "Delay in seconds between ArgoCD sync retries (optional)"
+        maia_core_argocd_applications:
+          type: list
+          required: false
+          default: [maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]
+          elements: str
+          description: "List of ArgoCD applications to sync (optional)"
