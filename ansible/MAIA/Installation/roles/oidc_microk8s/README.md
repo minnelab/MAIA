@@ -41,7 +41,6 @@ The following variables are set by default in `defaults/main.yml`:
 
 | Variable | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `cluster_config` | `{{ config_folder }}/{{ cluster_name }}.yaml` | string | Path to cluster configuration file |
 | `oidc_username_claim` | `email` | string | JWT claim to use as username |
 | `oidc_groups_claim` | `groups` | string | JWT claim to use for groups |
 | `oidc_client_id` | `maia` | string | OIDC client ID |

@@ -5,7 +5,6 @@
 # Path to the cluster configuration file containing the domain field
 # Defaults to {{ config_folder }}/{{ cluster_name }}.yaml
 # Note: cluster_name is loaded from env.json in config_folder
-cluster_config: "{{ config_folder }}/{{ cluster_name }}.yaml"
 
 # OIDC username claim (JWT claim to use as username)
 oidc_username_claim: email

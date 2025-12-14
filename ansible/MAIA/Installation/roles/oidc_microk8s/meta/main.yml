@@ -42,11 +42,6 @@ argument_specs:
           type: str
           required: true
           description: "Path to the configuration folder containing the cluster YAML file (required)"
-        cluster_config:
-          type: str
-          required: false
-          default: "{{ config_folder }}/{{ cluster_name }}.yaml"
-          description: "Full path to the cluster configuration YAML file. cluster_name is loaded from env.json (optional)"
         oidc_username_claim:
           type: str
           required: false

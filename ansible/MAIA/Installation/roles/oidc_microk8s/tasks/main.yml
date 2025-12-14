@@ -7,7 +7,7 @@
 
 - name: Read cluster config YAML file
   ansible.builtin.slurp:
-    src: "{{ cluster_config }}"
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
   register: cluster_config_content
   delegate_to: localhost
   run_once: true
