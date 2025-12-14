@@ -1,0 +1,110 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Ensure pip is installed
+  ansible.builtin.package:
+    name: python3-pip
+    state: present
+  become: true
+
+- name: Ensure the 'python3-kubernetes' system package is installed
+  ansible.builtin.package:
+    name: python3-kubernetes
+    state: present
+  become: true
+
+- name: Ensure ArgoCD namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ argocd_namespace }}"
+    state: present
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+
+- name: Update ArgoCD initial admin secret
+  ansible.builtin.command: >
+    kubectl -n "{{ argocd_namespace }}"
+    create secret generic argocd-secret
+    --from-literal=admin.password="{{ argocd_bcrypt_password }}"
+    --from-literal=admin.passwordMtime="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+  register: argocd_secret_create
+  failed_when: argocd_secret_create.rc != 0 and 'already exists' not in (argocd_secret_create.stderr | default(''))
+  changed_when: '"already exists" not in argocd_secret_create.stderr'
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+
+- name: Install ArgoCD manifests
+  kubernetes.core.k8s:
+    state: present
+    namespace: "{{ argocd_namespace }}"
+    src: "{{ argocd_manifest_url }}"
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+
+- name: Display ArgoCD UI URL
+  ansible.builtin.debug:
+    msg: "ArgoCD UI: {{ argocd_ui_url }}"
+
+- name: Ensure automation service account exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: ServiceAccount
+    namespace: "{{ argocd_namespace }}"
+    name: "{{ argocd_service_account }}"
+    state: present
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+
+- name: Ensure RoleBinding for automation service account exists
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    namespace: "{{ argocd_namespace }}"
+    name: "{{ argocd_service_account }}-binding"
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: "{{ argocd_service_account }}-binding"
+        namespace: "{{ argocd_namespace }}"
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ argocd_service_account }}"
+          namespace: "{{ argocd_namespace }}"
+      roleRef:
+        kind: Role
+        name: "{{ argocd_role_name }}"
+        apiGroup: rbac.authorization.k8s.io
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+
+
+- name: Kill any process currently listening on port forwarding port (if exists)
+  ansible.builtin.shell: |
+    if lsof -i :{{ argocd_port_forward_port }} -t >/dev/null 2>&1; then
+      lsof -i :{{ argocd_port_forward_port }} -t | xargs kill -9
+    fi
+  ignore_errors: true
+  delegate_to: localhost
+  when: argocd_enable_port_forwarding | bool
+
+- name: Start SSH port forward to ArgoCD server service in background
+  ansible.builtin.shell: |
+    ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
+    nohup ssh -L {{ argocd_port_forward_port }}:${ARGOCD_SERVER_IP}:443 {{ inventory_hostname }} -N -o ExitOnForwardFailure=yes &
+  async: 0
+  poll: 0
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+  when: argocd_enable_port_forwarding | bool
