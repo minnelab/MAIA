@@ -1,0 +1,35 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for oidc_microk8s
+
+# Path to the cluster configuration file containing the domain field
+# Defaults to {{ config_folder }}/{{ cluster_name }}.yaml
+# Note: cluster_name is loaded from env.json in config_folder
+cluster_config: "{{ config_folder }}/{{ cluster_name }}.yaml"
+
+# OIDC username claim (JWT claim to use as username)
+oidc_username_claim: email
+
+# OIDC groups claim (JWT claim to use for groups)
+oidc_groups_claim: groups
+
+# OIDC client ID
+oidc_client_id: maia
+
+# OIDC realm name (used in issuer URL)
+oidc_realm: maia
+
+# OIDC subdomain prefix (used in issuer URL: https://{{ oidc_subdomain }}.{{ cluster_domain }}/realms/{{ oidc_realm }})
+oidc_subdomain: iam
+
+# Path to CA certificate file for OIDC verification
+oidc_ca_file: /var/snap/microk8s/current/certs/ca.crt
+
+# Path to kube-apiserver arguments file
+microk8s_apiserver_args_file: /var/snap/microk8s/current/args/kube-apiserver
+
+# Number of retries when waiting for MicroK8s to become operational
+oidc_microk8s_retries: 10
+
+# Delay in seconds between retries when waiting for MicroK8s
+oidc_microk8s_retry_delay: 15
