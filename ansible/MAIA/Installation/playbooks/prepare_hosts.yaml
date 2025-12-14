@@ -1,0 +1,11 @@
+- name: Prepare hosts for Kubernetes installation
+  hosts: all
+  become: true
+
+  roles:
+    - role: maia.installation.nvidia_drivers
+    - role: maia.installation.lvm
+    - role: maia.installation.ufw
+    - role: maia.installation.nfs
+    - role: maia.installation.cifs
+      when: cifs_private_key is defined and cifs_private_key != ""
