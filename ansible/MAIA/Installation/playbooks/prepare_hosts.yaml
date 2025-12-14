@@ -4,8 +4,11 @@
 
   roles:
     - role: maia.installation.nvidia_drivers
-    - role: maia.installation.lvm
+      when: nvidia_drivers | default(true) | bool
     - role: maia.installation.ufw
+      when: ufw | default(true) | bool
     - role: maia.installation.nfs
+      when: nfs | default(true) | bool
     - role: maia.installation.cifs
-      when: cifs_private_key is defined and cifs_private_key != ""
+      when: 
+        - cifs | default(true) | bool
