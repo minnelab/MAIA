@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for configure_oidc_authentication
+
+# Path to the configuration folder containing env.json and cluster config YAML
+config_folder: /opt/maia/config
+
+
