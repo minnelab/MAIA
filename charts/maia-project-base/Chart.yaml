@@ -1,6 +1,6 @@
 apiVersion: v2
-name: maia-project
-description: A Helm chart for Deploying a MAIA Workspace
+name: maia-project-base
+description: A Helm chart for Deploying a MAIA Project Base
 
 # A chart can be either an 'application' or a 'library' chart.
 #
