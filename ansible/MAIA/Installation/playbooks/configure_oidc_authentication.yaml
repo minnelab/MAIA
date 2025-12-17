@@ -1,4 +1,0 @@
-- name: Run MAIA Core Installation
-  hosts: localhost
-  roles:
-    - maia.installation.configure_oidc_authentication

@@ -1,9 +1,0 @@
-- name: Install MicroK8s, enable OIDC and CA, and install ArgoCD
-  hosts: control-plane
-  become: false
-
-  roles:
-    - role: maia.installation.microk8s
-    - role: maia.installation.oidc_microk8s
-    - role: maia.installation.ca_microk8s
-    - role: maia.installation.argocd

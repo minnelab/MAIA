@@ -1,5 +1,0 @@
----
-nvidia_driver_package: nvidia-driver-570
-nvidia_driver_reboot: true
-nvidia_driver_reboot_timeout: 600
-
