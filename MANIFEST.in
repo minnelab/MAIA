@@ -1,6 +1,0 @@
-include versioneer.py
-include MAIA/_version.py
-include configs/*.json
-include README.md
-include LICENSE
-include_package_data=True
