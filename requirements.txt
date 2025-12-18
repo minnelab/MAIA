@@ -31,3 +31,4 @@ python-on-whales
 rich
 loguru
 ansible
+dotenv
