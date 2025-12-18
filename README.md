@@ -124,6 +124,7 @@ env:
 
 cluster_config_extra_env:
   selfsigned: true
+  shared_storage_class: microk8s-hostpath
 ```
 
 #### Example `inventory`
@@ -191,7 +192,7 @@ The admin components of MAIA include:
 - **Login App**: A Django app that allows users to log in to the MAIA API using OpenID Connect authentication.
 - **Keycloak**: An open-source identity and access management tool that allows users to manage the users and roles associated with the MAIA API.
 - **Harbor**: A container image registry that allows users to store and distribute container images.
-- [**MAIA Dashboard**](dashboard/README.md): A web-based dashboard that allows users to register projects, request resources, and access the different MAIA services deployed on the Kubernetes cluster.
+- **MAIA Dashboard**: A web-based dashboard that allows users to register projects, request resources, and access the different MAIA services deployed on the Kubernetes cluster.
 
 ### MAIA Namespaces:
 
