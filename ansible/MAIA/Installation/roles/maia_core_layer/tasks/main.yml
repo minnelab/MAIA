@@ -86,9 +86,10 @@
   ansible.builtin.shell: |
     argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
     argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
-    argocd login {{ argocd_server_ip.stdout }}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+    argocd login $ARGOCD_SERVER_IP:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
   environment:
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
+    ARGOCD_SERVER_IP: "{{ argocd_server_ip.stdout }}"
   register: argocd_cli_login
   changed_when: false
   delegate_to: localhost
