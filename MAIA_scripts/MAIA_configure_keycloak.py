@@ -2,6 +2,19 @@
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
 import argparse
+from argparse import RawTextHelpFormatter
+from textwrap import dedent
+from pathlib import Path
+
+EPILOG = dedent(
+    """
+    Example call:
+    ::
+        {filename} --client_secret <client_secret> --server_url <server_url>
+    """.format(  # noqa: E501
+        filename=Path(__file__).stem
+    )
+)
 
 
 def create_admin_user_and_group(server_url: str, client_secret: str):
@@ -61,11 +74,19 @@ def create_admin_user_and_group(server_url: str, client_secret: str):
                 keycloak_admin.group_user_add(uid, gid)
 
 
-def main():
-    parser = argparse.ArgumentParser()
+def get_arg_parser():
+    parser = argparse.ArgumentParser(
+        description="Configure Keycloak",
+        epilog=EPILOG,
+        formatter_class=RawTextHelpFormatter,
+    )
     parser.add_argument("--client_secret", type=str, required=True, help="The client secret to use")
     parser.add_argument("--server_url", type=str, required=True, help="The server URL to configure")
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    args = get_arg_parser().parse_args()
     create_admin_user_and_group(args.server_url, args.client_secret)
 
 

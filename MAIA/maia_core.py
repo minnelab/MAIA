@@ -370,17 +370,6 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     ------
     OSError
         If there is an error creating the directory or writing the file.
-
-    Example
-    -------
-    config_folder = "/path/to/config"
-    project_id = "my_project"
-    cluster_config_dict = {
-        "traefik_resolver": "myresolver",
-        "ingress_resolver_email": "email@example.com",
-        "domain": "example.com",
-        "traefik_dashboard_password": "password"
-    create_traefik_values(config_folder, project_id, cluster_config_dict)
     """
     Path(config_folder).joinpath(project_id, "traefik_values").mkdir(parents=True, exist_ok=True)
 
@@ -594,18 +583,6 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
     dict
         A dictionary containing Rancher deployment details including namespace, repo URL,
         chart version, values file path, release name, and chart name.
-
-    Example
-    -------
-    config_folder = "/path/to/config"
-    project_id = "my_project"
-    cluster_config_dict = {
-        "traefik_resolver": "myresolver",
-        "ingress_resolver_email": "email@example.com",
-        "domain": "example.com",
-        "rancher_password": "password"
-    }
-    create_rancher_values(config_folder, project_id, cluster_config_dict)
     """
 
     rancher_values = {

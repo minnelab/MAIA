@@ -714,17 +714,6 @@ async def install_maia_project(
         If there is an error parsing the values file.
     Exception
         If there is an error during the installation or upgrade process.
-
-    Example
-    -------
-    await install_maia_project(
-        group_id="example_group",
-        values_file="/path/to/values.yaml",
-        argo_cd_namespace="default",
-        project_chart="example_chart",
-        project_repo="https://example.com/charts",
-        project_version="1.0.0"
-    )
     """
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 

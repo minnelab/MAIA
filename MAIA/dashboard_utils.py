@@ -292,13 +292,14 @@ def verify_minio_availability(settings):
     ----------
     settings : object
         An object containing the MinIO configuration settings.
-        - settings.MINIO_URL : str
+
+        MINIO_URL : str
             The URL of the MinIO server.
-        - settings.MINIO_ACCESS_KEY : str
+        MINIO_ACCESS_KEY : str
             The access key for the MinIO server.
-        - settings.MINIO_SECRET_KEY : str
+        MINIO_SECRET_KEY : str
             The secret key for the MinIO server.
-        - settings.BUCKET_NAME : str
+        BUCKET_NAME : str
             The name of the bucket to check for existence.
 
     Returns

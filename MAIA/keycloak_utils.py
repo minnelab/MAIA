@@ -195,18 +195,18 @@ def get_groups_in_keycloak(settings):
     Parameters
     ----------
     settings : object
-        An object containing the Keycloak connection settings.
-        It should have the following attributes:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The name of the Keycloak realm.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing the Keycloak connection settings.
+    It should have the following attributes:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The name of the Keycloak realm.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -305,17 +305,17 @@ def register_group_in_keycloak(group_id, settings):
     group_id : str
         The ID of the group to be registered.
     settings : object
-        An object containing the Keycloak server settings, including:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The name of the Keycloak realm.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing the Keycloak server settings, including:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The name of the Keycloak realm.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -356,17 +356,17 @@ def register_users_in_group_in_keycloak(emails, group_id, settings):
     group_id : str
         The ID of the group to which users should be added.
     settings : object
-        An object containing Keycloak server settings, including:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The realm name in Keycloak.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing Keycloak server settings, including:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The realm name in Keycloak.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -477,17 +477,17 @@ def get_maia_users_from_keycloak(settings):
     Parameters
     ----------
     settings : object
-        An object containing Keycloak connection settings, including:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The realm name in Keycloak.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing Keycloak connection settings, including:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The realm name in Keycloak.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------

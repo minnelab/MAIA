@@ -1063,13 +1063,13 @@ def create_docker_registry_secret_from_context(docker_credentials, namespace, se
     Parameters
     ----------
     docker_credentials : dict
-        A dictionary containing Docker registry credentials with the following keys:
-        - "registry" : str
-            The Docker registry URL (e.g., "https://index.docker.io/v1/").
-        - "username" : str
-            The username for the Docker registry.
-        - "password" : str
-            The password for the Docker registry.
+    A dictionary containing Docker registry credentials with the following keys:
+    - "registry" : str
+        The Docker registry URL (e.g., "https://index.docker.io/v1/").
+    - "username" : str
+        The username for the Docker registry.
+    - "password" : str
+        The password for the Docker registry.
     namespace : str
         The Kubernetes namespace where the secret will be created.
     secret_name : str

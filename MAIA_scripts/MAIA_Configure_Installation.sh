@@ -220,6 +220,16 @@ else
   rancher_password=$(openssl rand -hex 12)
 fi
 
+export SSH_PORT_TYPE=${SSH_PORT_TYPE:-NodePort}
+export PORT_RANGE=${PORT_RANGE:-[30000,31000]}
+
+if [ "$K8S_DISTRIBUTION" = "microk8s" ]; then
+  export STORAGE_CLASS=${STORAGE_CLASS:-microk8s-hostpath}
+  export SHARED_STORAGE_CLASS=${SHARED_STORAGE_CLASS:-nfs-client}
+fi
+export URL_TYPE=${URL_TYPE:-subdomain}
+export BUCKET_NAME=${BUCKET_NAME:-maia-envs}
+
 mkdir -p $CONFIG_FOLDER
 cat <<EOF > $CONFIG_FOLDER/$CLUSTER_NAME.yaml
 domain: "$CLUSTER_DOMAIN"
@@ -231,6 +241,13 @@ traefik_dashboard_password: "$traefik_dashboard_password"
 rancher_password: "$rancher_password"
 rancher_token: "$RANCHER_TOKEN"
 rootCA: $CONFIG_FOLDER/ca.crt
+bucket_name: $BUCKET_NAME
+ssh_port_type: $SSH_PORT_TYPE
+port_range:
+$PORT_RANGE
+shared_storage_class: $SHARED_STORAGE_CLASS
+storage_class: $STORAGE_CLASS
+url_type: $URL_TYPE
 EOF
 
 cat <<EOF > $CONFIG_FOLDER/microk8s-config.yaml
