@@ -46,6 +46,7 @@ setup(
             "MAIA_change_keycloak_client_secret = MAIA_scripts.MAIA_change_keycloak_client_secret:main",
             "MAIA_configure_keycloak = MAIA_scripts.MAIA_configure_keycloak:main",
             "MAIA_build_images = MAIA_scripts.MAIA_build_images:main",
+            "MAIA_Install = MAIA_scripts.MAIA_Install:main",
         ],
     },
     keywords=["helm", "kubernetes", "maia", "resource deployment"],
