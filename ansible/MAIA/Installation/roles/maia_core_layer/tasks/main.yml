@@ -73,21 +73,14 @@
 #  become: true
 #  when: auto_sync | default(true) | bool
 
-- name: Get ArgoCD server IP
-  ansible.builtin.shell: |
-    ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
-  register: argocd_server_ip
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  when: auto_sync | bool
 
     #argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
     #argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
 
 - name: Login to ArgoCD using CLI
   ansible.builtin.shell: |
-    argocd login $ARGOCD_SERVER_IP:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+    export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
+    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
   environment:
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
     ARGOCD_SERVER_IP: "{{ argocd_server_ip.stdout }}"
