@@ -35,6 +35,7 @@ To run this installer, you must provide a **configuration folder** containing:
 ### Example `config.yaml`
 
 ```yaml
+# List of steps to execute in sequence, each of them is a playbook
 steps:
   - prepare_hosts
   - configure_hosts
@@ -44,6 +45,8 @@ steps:
   - configure_oidc_authentication
   - get_kubeconfig_from_rancher_local
   - configure_maia_dashboard
+
+# Playbook-specific configuration options
 
 prepare_hosts:
   nvidia_drivers: true
@@ -77,7 +80,7 @@ get_kubeconfig_from_rancher_local:
 configure_maia_dashboard:
   auto_sync: true
 
-# Environment variables used during cluster configuration
+# Environment variables used during the execution of the script MAIA_Configure_Installation.sh
 env:
   MAIA_PRIVATE_REGISTRY: ""
   CLUSTER_DOMAIN: "dev.maia.se"         # Cluster domain
@@ -91,6 +94,9 @@ cluster_config_extra_env:
   nfs_server: "X.X.X.X"  # NFS server IP
   nfs_path: "/nfs"       # NFS export path
   gpu_list:              # GPU list (name, count, replicas)
+  - count: 1             # GPU count
+    name: NVIDIA-Quadro-RTX-5000
+    replicas: 1         # GPU replicas, used for time-slicing options
   ssh_port_type: NodePort # SSH service type: NodePort or LoadBalancer
   port_range:            # Port range for SSH services
 ```
