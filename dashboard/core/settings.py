@@ -15,7 +15,7 @@ env = environ.Env(
     BUCKET_NAME=(str, ""),
 )
 
-DASHBOARD_VERSION = "2.3"
+DASHBOARD_VERSION = "2.4"
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 CORE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
