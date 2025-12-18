@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# APT packages required:
-# sudo apt-get install apache2-utils jq yq
 CORE_PROJECT_VERSION="0.1.8"
 CORE_PROJECT_CHART="maia-core-project"
 CORE_PROJECT_REPO="https://minnelab.github.io/MAIA/"
@@ -79,11 +77,8 @@ if [ -n "$CLUSTER_NAME" ]; then
       export K8S_DISTRIBUTION=$(echo "${K8S_DISTRIBUTION}" | sed 's/^"\(.*\)"$/\1/')
       echo "Loaded K8S_DISTRIBUTION from $CLUSTER_CONFIG_FILE"
     fi
-    export INGRESS_RESOLVER_EMAIL=$(yq '.ingress_resolver_email // empty' "$CLUSTER_CONFIG_FILE")
-    if [ -n "$INGRESS_RESOLVER_EMAIL" ]; then
-      export INGRESS_RESOLVER_EMAIL=$(echo "${INGRESS_RESOLVER_EMAIL}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE"
-    fi
+    export INGRESS_RESOLVER_EMAIL=$(yq '.ingress_resolver_email // empty' "$CLUSTER_CONFIG_FILE" | sed 's/^"\(.*\)"$/\1/')
+    echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE"
     export RANCHER_TOKEN=$(yq '.rancher_token // empty' "$CLUSTER_CONFIG_FILE")
     if [ -n "$RANCHER_TOKEN" ]; then
       export RANCHER_TOKEN=$(echo "${RANCHER_TOKEN}" | sed 's/^"\(.*\)"$/\1/')
@@ -169,8 +164,8 @@ for var in "${required_vars[@]}"; do
       fi
     fi
     if [ "$var" == "INGRESS_RESOLVER_EMAIL" ]; then
-      # Basic email validation using regex
-      if ! [[ "$input_var" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+      # Basic email validation using regex or ignore if empty
+      if [ -n "$input_var" ] && ! [[ "$input_var" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
         echo "Error: INGRESS_RESOLVER_EMAIL must be a valid email address."
         exit 1
       fi
