@@ -165,35 +165,45 @@ def verify_gpu_booking_policy(existing_bookings, new_booking, global_existing_bo
         An error message if the booking policy is not verified, None otherwise.
     """
 
-    total_days = sum((booking.end_date - booking.start_date).days for booking in existing_bookings)
-
     ending_time = datetime.strptime(new_booking["ending_time"], "%Y-%m-%d %H:%M:%S")
     starting_time = datetime.strptime(new_booking["starting_time"], "%Y-%m-%d %H:%M:%S")
-    
+
     for booking in existing_bookings:
-        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(tz=booking.end_date.tzinfo):
+        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
             return False, "There is an active booking, you cannot book a new one while another is active."
-        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date <= datetime.now(tz=booking.end_date.tzinfo):
+        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date <= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
             # Ensure starting_time is timezone-aware to match booking.end_date
             if booking.end_date.tzinfo is not None and starting_time.tzinfo is None:
                 starting_time_tz = starting_time.replace(tzinfo=booking.end_date.tzinfo)
             else:
                 starting_time_tz = starting_time
             if (starting_time_tz - booking.end_date).days < 14:
-                return False, "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on {}.".format(booking.end_date + timedelta(days=14))
-        if booking.start_date >= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(tz=booking.end_date.tzinfo):
-            return False, "You already have a planned booking [{} - {}], you cannot book a new one.".format(booking.start_date, booking.end_date)
-
+                return (
+                    False,
+                    "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on {}.".format(
+                        booking.end_date + timedelta(days=14)
+                    ),
+                )
+        if booking.start_date >= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
+            return False, "You already have a planned booking [{} - {}], you cannot book a new one.".format(
+                booking.start_date, booking.end_date
+            )
 
     new_booking_days = (ending_time - starting_time).days
 
     if new_booking_days <= 0:
         return False, "The booking must be at least one day long."
-    
+
     if new_booking_days > 14:
         return False, "The booking cannot exceed 14 days."
     # Verify that the sum of existing bookings and the new booking does not exceed 60 days
-    #if total_days + new_booking_days > 60:
+    # if total_days + new_booking_days > 60:
     #    return False, "The total number of days for all bookings cannot exceed 60 days."
 
     overlapping_time_slots, gpu_availability_per_slot, total_replicas = verify_gpu_availability(
@@ -265,12 +275,11 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
     password = os.environ["email_password"]
 
     # Create a secure SSL context
-    #context = ssl.create_default_context()
+    # context = ssl.create_default_context()
 
-    
     with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()           # identify ourselves to SMTP server
-        server.starttls()       # encrypt the session
+        server.ehlo()  # identify ourselves to SMTP server
+        server.starttls()  # encrypt the session
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 
@@ -366,12 +375,11 @@ def send_approved_registration_email(receiver_email, login_url, temp_password):
     password = os.environ["email_password"]
 
     # Create a secure SSL context
-    #context = ssl.create_default_context()
+    # context = ssl.create_default_context()
 
-    
     with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()           # identify ourselves to SMTP server
-        server.starttls()       # encrypt the session
+        server.ehlo()  # identify ourselves to SMTP server
+        server.starttls()  # encrypt the session
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 

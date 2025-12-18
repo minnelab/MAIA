@@ -47,11 +47,18 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
         print("Exception when calling CoreV1Api->read_namespaced_secret: %s\n" % e)
         return None
     try:
-        api.create_namespaced_secret(namespace=namespace, body={"metadata": {"name": secret_name}, "data": {"tls.crt": secret.data["tls.crt"], "tls.key": secret.data["tls.key"]}})
+        api.create_namespaced_secret(
+            namespace=namespace,
+            body={
+                "metadata": {"name": secret_name},
+                "data": {"tls.crt": secret.data["tls.crt"], "tls.key": secret.data["tls.key"]},
+            },
+        )
     except ApiException as e:
         print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
         return None
     return secret
+
 
 def create_config_map_from_data(
     data: str, config_map_name: str, namespace: str, kubeconfig_dict: Dict, data_key: str = "values.yaml"
@@ -129,11 +136,8 @@ def get_ssh_port_dict(port_type, namespace, port_range, maia_metallb_ip=None):
                 if svc.status.load_balancer.ingress is not None:
                     if svc.spec.type == "LoadBalancer" and svc.status.load_balancer.ingress[0].ip == maia_metallb_ip:
                         for port in svc.spec.ports:
-                            if (
-                                (port.name == "ssh"
-                                and svc.metadata.namespace == namespace)
-                                or (port.name == "orthanc-dicom"
-                                and svc.metadata.namespace == namespace)
+                            if (port.name == "ssh" and svc.metadata.namespace == namespace) or (
+                                port.name == "orthanc-dicom" and svc.metadata.namespace == namespace
                             ):
                                 if svc.metadata.name.endswith("-ssh"):
                                     used_port.append({svc.metadata.name[: -len("-ssh")]: int(port.port)})
@@ -449,8 +453,8 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
     mysql_values["chart_name"] = "mkg"
     mysql_values["chart_version"] = "1.0.4"
     mysql_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
-        mysql_values["repo_url"] = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
+    if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+        mysql_values["repo_url"] = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
 
     Path(config_folder).joinpath(user_config["group_ID"], "mysql_values").mkdir(parents=True, exist_ok=True)
 
@@ -497,13 +501,13 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
     config.load_kube_config_from_dict(kubeconfig)
 
     docker_image = os.environ.get("MAIA_PRIVATE_REGISTRY", None) + "/maia-mlflow"
-    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
-        docker_image = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace] + "/maia-mlflow"
-    
+    if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+        docker_image = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace] + "/maia-mlflow"
+
     private_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
-        private_registry = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
-    
+    if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+        private_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
+
     mlflow_config = {
         "namespace": namespace,
         "chart_name": "mlflow-v1",
@@ -600,19 +604,19 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     namespace = user_config["group_ID"].lower().replace("_", "-")
     random_path = generate_random_password(16)
     private_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
-        private_registry = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
-    
+    if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+        private_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
+
     docker_image = os.environ["maia_orthanc_image"]
     docker_version = os.environ["maia_orthanc_version"]
-    if "maia_orthanc_image_"+namespace in os.environ:
-        docker_image = os.environ["maia_orthanc_image_"+namespace]
-    if "maia_orthanc_version_"+namespace in os.environ:
-        docker_version = os.environ["maia_orthanc_version_"+namespace]
-    
+    if "maia_orthanc_image_" + namespace in os.environ:
+        docker_image = os.environ["maia_orthanc_image_" + namespace]
+    if "maia_orthanc_version_" + namespace in os.environ:
+        docker_version = os.environ["maia_orthanc_version_" + namespace]
+
     image_pull_secret = os.environ["imagePullSecrets"]
-    if "imagePullSecrets_"+namespace in os.environ:
-        image_pull_secret = os.environ["imagePullSecrets_"+namespace]
+    if "imagePullSecrets_" + namespace in os.environ:
+        image_pull_secret = os.environ["imagePullSecrets_" + namespace]
     orthanc_config = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "imagePullSecret": image_pull_secret,
@@ -644,10 +648,10 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
 
     namespace = user_config["group_ID"].lower().replace("_", "-")
     orthanc_custom_config = {
-        "LuaScripts" : ["/mnt/msp_models.lua"],
+        "LuaScripts": ["/mnt/msp_models.lua"],
         "StableAge": 5,
         "DicomModalities": {
-            #f"{namespace}-xnat": [f"{namespace}-XNAT", "maia-xnat.xnat", "8104"],
+            # f"{namespace}-xnat": [f"{namespace}-XNAT", "maia-xnat.xnat", "8104"],
             f"{random_path}": [f"{random_path}", "maia-xnat.xnat", "8104"],
             # [ "DCM4CHEE", "dcm4chee-service.services", 11115 ]
         },

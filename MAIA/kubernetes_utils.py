@@ -35,7 +35,8 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
     except Exception as e:
         logger.error(f"Error connecting to MinIO: {e}")
         return None
-    
+
+
 def label_pod_for_deletion(namespace, pod_name):
     """
     Label a Kubernetes pod for deletion by adding a 'terminate-at' annotation.
@@ -337,7 +338,9 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
                                 "expiration": pod["metadata"]["annotations"].get("terminate-at", "N/A"),
                             }
                             if "terminate-at" in pod["metadata"]["annotations"]:
-                                expiry_time = datetime.strptime(pod["metadata"]["annotations"].get("terminate-at"), "%Y-%m-%dT%H:%M:%SZ")
+                                expiry_time = datetime.strptime(
+                                    pod["metadata"]["annotations"].get("terminate-at"), "%Y-%m-%dT%H:%M:%SZ"
+                                )
                                 if datetime.utcnow() > expiry_time:
                                     gpu_allocations[pod_name + ", " + pod["metadata"]["namespace"]]["is_expired"] = True
 
@@ -652,11 +655,17 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                             "url": "https://" + rule["host"] + path["path"] + "/dicom-web/",
                                         }
                                     )
-                            if "labels" in ingress["metadata"] and "app.kubernetes.io/name" in ingress["metadata"]["labels"] and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard":
-                                nvflare_dashboards.append({
-                                    "name": ingress["metadata"]["name"][:-len("-maia-nvflare-dashboard")],
-                                    "url": "https://" + rule["host"] + path["path"],
-                                })
+                            if (
+                                "labels" in ingress["metadata"]
+                                and "app.kubernetes.io/name" in ingress["metadata"]["labels"]
+                                and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard"
+                            ):
+                                nvflare_dashboards.append(
+                                    {
+                                        "name": ingress["metadata"]["name"][: -len("-maia-nvflare-dashboard")],
+                                        "url": "https://" + rule["host"] + path["path"],
+                                    }
+                                )
                             if path["backend"]["service"]["name"] == namespace + "-mlflow-mkg" and path["path"].endswith(
                                 "mlflow"
                             ):
@@ -789,9 +798,9 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
     else:
         for remote_desktop in remote_desktop_dict:
             if remote_desktop_dict[remote_desktop].startswith("KUBEFLOW"):
-                remote_desktop_dict[remote_desktop] = maia_workspace_apps["kubeflow"] + remote_desktop_dict[remote_desktop][
-                    len("KUBEFLOW") :
-                ] 
+                remote_desktop_dict[remote_desktop] = (
+                    maia_workspace_apps["kubeflow"] + remote_desktop_dict[remote_desktop][len("KUBEFLOW") :]
+                )
     if "mlflow" not in maia_workspace_apps:
         maia_workspace_apps["mlflow"] = "N/A"
     if "minio_console" not in maia_workspace_apps:
@@ -998,7 +1007,7 @@ def create_helm_repo_secret_from_context(repo_name, helm_repo_config, argocd_nam
     type = helm_repo_config["type"]
     name = helm_repo_config["name"]
     enable_oci = helm_repo_config["enableOCI"]
-    
+
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
         kubeconfig = os.environ.get("KUBECONFIG", None)
@@ -1007,9 +1016,7 @@ def create_helm_repo_secret_from_context(repo_name, helm_repo_config, argocd_nam
     with kubernetes.client.ApiClient() as api_client:
         api_instance = kubernetes.client.CoreV1Api(api_client)
         try:
-            api_instance.delete_namespaced_secret(
-                name=f"repo-{repo_name}", namespace=argocd_namespace
-            )
+            api_instance.delete_namespaced_secret(name=f"repo-{repo_name}", namespace=argocd_namespace)
         except kubernetes.client.exceptions.ApiException as e:
             # If the error is 404 (Not Found), we can ignore it;
             # otherwise, raise the exception

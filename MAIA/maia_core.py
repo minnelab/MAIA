@@ -4,31 +4,27 @@ import os
 from pathlib import Path
 
 import requests
-import json
 from kubernetes import client, config
 from omegaconf import OmegaConf
 import loguru
 
 logger = loguru.logger
 
+
 def sync_argocd_app(project_name, app_name, chart_version, argo_cd_host, password):
     headers = {"Authorization": f"Bearer {password}"}  # <- session cookie
     # 2. Trigger sync
     url = f"{argo_cd_host}/api/v1/applications/{project_name}-{app_name}/sync"
-    payload = {
-        "revision": chart_version,
-        "prune": False,
-        "dryRun": False,
-        "strategy": {"apply": {"force": False}}
-    }
+    payload = {"revision": chart_version, "prune": False, "dryRun": False, "strategy": {"apply": {"force": False}}}
     response = requests.post(url, headers=headers, json=payload, verify=False)
 
     if response.status_code == 200:
         logger.info("✅ Sync triggered successfully!")
-        #print(json.dumps(response.json(), indent=2))
+        # print(json.dumps(response.json(), indent=2))
     else:
         logger.error(f"❌ Failed to sync app: {response.status_code}")
         logger.error(response.text)
+
 
 def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     """
@@ -398,7 +394,6 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
 
     traefik_values.update(
         {
-            
             "ingressRoute": {
                 "dashboard": {
                     "enabled": True,
@@ -457,23 +452,23 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
             ],
         }
     )
-    
+
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         ...
     else:
-        traefik_values["ingressRoute"]["dashboard"]["tls"]={"certResolver": cluster_config_dict["traefik_resolver"]}
+        traefik_values["ingressRoute"]["dashboard"]["tls"] = {"certResolver": cluster_config_dict["traefik_resolver"]}
         traefik_values["certificatesResolvers"] = {
-                cluster_config_dict["traefik_resolver"]: {
-                    "acme": {
-                        "email": cluster_config_dict["ingress_resolver_email"],
-                        # "httpchallenge": "true",
-                        "httpchallenge": {"entryPoint": "web"},
-                        "caserver": "https://acme-v02.api.letsencrypt.org/directory",
-                        # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
-                        "storage": "/data/acme.json",
-                    }
+            cluster_config_dict["traefik_resolver"]: {
+                "acme": {
+                    "email": cluster_config_dict["ingress_resolver_email"],
+                    # "httpchallenge": "true",
+                    "httpchallenge": {"entryPoint": "web"},
+                    "caserver": "https://acme-v02.api.letsencrypt.org/directory",
+                    # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
+                    "storage": "/data/acme.json",
                 }
             }
+        }
 
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
@@ -709,18 +704,18 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
             ],
         }
     elif cluster_config_dict["k8s_distribution"] == "k0s":
-        gpu_operator_values.update({
-            "operator": {
-                "defaultRuntime": "containerd"
-            },
-            "toolkit": {
-                "env": [
-                    {"name": "CONTAINERD_CONFIG", "value": "/etc/k0s/containerd.d/nvidia.toml"},
-                    {"name": "CONTAINERD_SOCKET", "value": "/run/k0s/containerd.sock"},
-                    {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                ]
+        gpu_operator_values.update(
+            {
+                "operator": {"defaultRuntime": "containerd"},
+                "toolkit": {
+                    "env": [
+                        {"name": "CONTAINERD_CONFIG", "value": "/etc/k0s/containerd.d/nvidia.toml"},
+                        {"name": "CONTAINERD_SOCKET", "value": "/run/k0s/containerd.sock"},
+                        {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
+                    ]
+                },
             }
-        })
+        )
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -874,6 +869,7 @@ def create_metrics_server_values(config_folder, project_id):
         "chart": metrics_server_values["chart_name"],
     }
 
+
 def create_gpu_booking_values(config_folder, project_id):
     """
     Creates and writes GPU booking Helm chart values to a YAML file for a given project and cluster configuration.
@@ -927,7 +923,6 @@ def create_gpu_booking_values(config_folder, project_id):
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },
-            
             "apiUrl": f"https://{maia_dashboard_domain}/maia-api/gpu-schedulability",
             "gpuStatsUrl": f"https://{maia_dashboard_domain}/maia/resources/gpu_status_summary/",
             "apiToken": os.environ["dashboard_api_secret"],

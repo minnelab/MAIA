@@ -97,9 +97,7 @@ def deploy_maia_kaniko(
         {
             "docker_registry_secret": registry_secret_name,
             "namespace": "mkg-kaniko",
-            "dockerRegistryServer": (
-                "https://" + registry_server if "registry_server" not in os.environ else registry_server
-            ),
+            "dockerRegistryServer": ("https://" + registry_server if "registry_server" not in os.environ else registry_server),
             "dockerRegistryUsername": registry_username,
             "dockerRegistryPassword": registry_password,
             "dockerRegistryEmail": registry_email,
@@ -115,7 +113,7 @@ def deploy_maia_kaniko(
                 "--cache=true",
                 "--cache-dir=/cache",
                 "--insecure",
-                "--skip-tls-verify"
+                "--skip-tls-verify",
             ],
         }
     )
