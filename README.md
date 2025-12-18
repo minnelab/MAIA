@@ -50,17 +50,103 @@ If you use the MAIA platform in your work, please cite the following [paper](htt
 Bendazzoli, S., Persson, S., Astaraki, M. et al. MAIA: a collaborative medical AI platform for integrated healthcare innovation. npj Artif. Intell. 1, 45 (2025). https://doi.org/10.1038/s44387-025-00042-6
 ```
 
-## Installation
+## Quickstart: Install MAIA in 10 Minutes
 
-To install the MAIA Toolkit, run:
+MAIA ships with a **one-command installer** that sets up everything you need: Kubernetes, its configuration, the MAIA Core and Admin layers, and the MAIA Dashboard so you can start building projects immediately.
 
-```shell
-pip install maia-toolkit
+The installer is powered by the **`MAIA.Installation` Ansible collection**, which provides roles and playbooks to install and configure the MAIA platform on a Kubernetes cluster.
+
+For more details, please refer to the [MAIA.Installation]() documentation.
+
+To run the installer, you must prepare a **configuration folder** containing:
+
+- **Inventory**: an Ansible inventory file (or folder) defining your hosts and their roles.
+- **Configuration file**: a `config.yaml` file describing the installation steps and options.
+
+### Minimal Installation
+
+Below is a minimal example that installs a full MAIA stack on a fresh **Ubuntu 24.04** server named `maia-node-0`.
+
+#### Example `config.yaml`
+
+```yaml
+steps:
+  - prepare_hosts
+  - configure_hosts
+  - install_microk8s
+  - install_maia_core
+  - install_maia_admin
+  - configure_oidc_authentication
+  - get_kubeconfig_from_rancher_local
+  - configure_maia_dashboard
+
+prepare_hosts:
+  nvidia_drivers: true
+  ufw: true
+  nfs: true
+  cifs: true
+
+configure_hosts:
+  auto_sync: true
+
+install_microk8s:
+  install_microk8s: true
+  enable_oidc_microk8s: true
+  enable_ca_microk8s: true
+  install_argocd: true
+  connect_to_microk8s: false
+  connect_to_argocd: false
+
+install_maia_core:
+  auto_sync: true
+
+install_maia_admin:
+  auto_sync: true
+
+configure_oidc_authentication:
+  configure_rancher: true
+  configure_harbor: true
+  harbor_admin_user: admin
+  harbor_admin_pass: Harbor12345
+
+get_kubeconfig_from_rancher_local:
+  kubeconfig_file: "local-from-rancher.yaml"
+
+configure_maia_dashboard:
+  auto_sync: true
+
+env:
+  MAIA_PRIVATE_REGISTRY: ""
+  CLUSTER_DOMAIN: "maia.example.com"
+  CLUSTER_NAME: "maia-cluster"
+  INGRESS_RESOLVER_EMAIL: ""
+  K8S_DISTRIBUTION: "microk8s"
+
+cluster_config_extra_env:
+  selfsigned: true
 ```
 
-## Deploy for MicroK8s
+#### Example `inventory`
 
-To deploy and configure the MAIA platform on a MicroK8s cluster, follow the instructions in the [MAIA-MicroK8s](Installation/README.md) file.
+```ini
+[control-plane]
+maia-node-0 ansible_user=root ansible_become=true
+
+[nfs_server]
+maia-node-0 ansible_user=root ansible_become=true
+
+[nfs_clients]
+maia-node-1 ansible_user=root ansible_become=true
+maia-node-2 ansible_user=root ansible_become=true
+```
+
+#### Run the installer
+
+```bash
+MAIA_Install --config-folder <CONFIG_FOLDER>
+```
+
+Replace `<CONFIG_FOLDER>` with the path to the folder containing your `config.yaml` and `inventory`.
 
 ## MAIA Architecture
 
