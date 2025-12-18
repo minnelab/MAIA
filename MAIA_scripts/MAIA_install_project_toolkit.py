@@ -145,8 +145,25 @@ def deploy_maia_toolkit_api(
     redeploy_enabled=True,
     return_values_only=False,
 ):
-    project_form_dict["extra_configs"] = {"enable_cifs": True}  # Default value, can be overridden by the form
-    private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+    #Override cluster config with project-specific configuration, if found
+    namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
+    if f"{namespace_id}-cluster-config" in cluster_config_dict:
+        for key, value in cluster_config_dict[f"{namespace_id}-cluster-config"].items():
+            cluster_config_dict[key] = value
+            if key == "env":
+                for env_key, env_value in value.items():
+                    os.environ[env_key+"_"+namespace_id] = env_value
+    
+    if "enable_cifs_"+namespace_id in os.environ:
+        project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_"+namespace_id]
+    else:
+        project_form_dict["extra_configs"]["enable_cifs"] = False
+    
+    if "MAIA_PRIVATE_REGISTRY_"+namespace_id in os.environ:
+        private_maia_registry = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace_id]
+    else:
+        private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+
     group_id = project_form_dict["group_ID"]
     Path(config_folder).joinpath(project_form_dict["group_ID"]).mkdir(parents=True, exist_ok=True)
 
@@ -197,10 +214,10 @@ def deploy_maia_toolkit_api(
     )
 
     helm_commands.append(
-        create_filebrowser_values(project_form_dict, cluster_config_dict, config_folder, mlflow_configs=mlflow_configs)
+        create_filebrowser_values(project_form_dict, cluster_config_dict, config_folder, mlflow_configs=mlflow_configs, mount_cifs=project_form_dict["extra_configs"]["enable_cifs"])
     )
     if not minimal:
-        helm_commands.append(deploy_oauth2_proxy(cluster_config_dict, project_form_dict, config_folder))
+        #helm_commands.append(deploy_oauth2_proxy(cluster_config_dict, project_form_dict, config_folder))
 
         helm_commands.append(deploy_mysql(cluster_config_dict, project_form_dict, config_folder, mysql_configs=mysql_configs))
         helm_commands.append(
@@ -215,9 +232,12 @@ def deploy_maia_toolkit_api(
 
         helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, config_folder))
 
-    json_key_path = os.environ.get("JSON_KEY_PATH", None)
+    if "JSON_KEY_PATH_"+namespace_id in os.environ:
+        json_key_path = os.environ["JSON_KEY_PATH_"+namespace_id]
+    else:
+        json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
-        if not helm_command["repo"].startswith("http") and not return_values_only:
+        if not helm_command["repo"].startswith("http") and not Path(helm_command["repo"]).exists() and not return_values_only:
             original_repo = helm_command["repo"]
             helm_command["repo"] = f"oci://{helm_command['repo']}"
             try:
@@ -306,7 +326,6 @@ def deploy_maia_toolkit_api(
             {"maia_namespace_values": "namespace_values"},
             {"jupyterhub_values": "jupyterhub_values"},
             {"jupyterhub_chart_info": "jupyterhub_chart_info"},
-            {"maia_filebrowser_values": "maia_filebrowser_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "group_ID": f"MAIA:{group_id}",
@@ -317,12 +336,13 @@ def deploy_maia_toolkit_api(
             "https://oauth2-proxy.github.io/manifests",
         ],
     }
+    values["defaults"].append({"maia_filebrowser_values": "maia_filebrowser_values"})
     if private_maia_registry:
         values["sourceRepos"].append(private_maia_registry)
     if not minimal:
         values["defaults"].append({"mlflow_values": "mlflow_values"})
         values["defaults"].append({"mysql_values": "mysql_values"})
-        values["defaults"].append({"oauth2_proxy_values": "oauth2_proxy_values"})
+        #values["defaults"].append({"oauth2_proxy_values": "oauth2_proxy_values"})
         values["defaults"].append({"orthanc_values": "orthanc_values"})
 
     with open(Path(config_folder).joinpath(group_id, "values.yaml"), "w") as f:
@@ -353,12 +373,8 @@ def deploy_maia_toolkit_api(
         project_chart = os.environ["maia_project_chart"]
         project_repo = os.environ["maia_project_repo"]
         project_version = os.environ["maia_project_version"]
-        json_key_path = None
-        if not minimal:
-            project_chart = os.environ["maia_pro_project_chart"]
-            project_repo = os.environ["maia_pro_project_repo"]
-            project_version = os.environ["maia_pro_project_version"]
-            json_key_path = os.environ.get("JSON_KEY_PATH", None)
+        json_key_path = os.environ.get("JSON_KEY_PATH", None)
+
         print(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
         print(f"Using JSON key path: {json_key_path}")
         msg = asyncio.run(
