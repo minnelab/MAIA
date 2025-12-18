@@ -231,6 +231,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
+  timeout: 120
   when: auto_sync | bool
 
 - name: Rollout restart argocd-server deployment in argocd namespace
