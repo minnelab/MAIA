@@ -1434,6 +1434,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         {"name": "OIDC_OP_JWKS_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs"},
         {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
         {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
+        {"name": "client_id", "value": "maia"},
+        {"name": "client_secret", "value": os.environ["keycloak_client_secret"]},
+        {"name": "authorize_url", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth"},
+        {"name": "token_url", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token"},
+        {"name": "userdata_url", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo"},
 
         {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", "1.8.0")},
         {"name": "maia_workspace_image", "value": os.environ.get("maia_workspace_image", "ghcr.io/minnelab/maia-workspace-base-notebook-ssh")},
