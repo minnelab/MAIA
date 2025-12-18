@@ -46,7 +46,11 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
     except ApiException as e:
         print("Exception when calling CoreV1Api->read_namespaced_secret: %s\n" % e)
         return None
-    api.create_namespaced_secret(namespace=namespace, body={"metadata": {"name": secret_name}, "data": {"tls.crt": secret.data["tls.crt"], "tls.key": secret.data["tls.key"]}})
+    try:
+        api.create_namespaced_secret(namespace=namespace, body={"metadata": {"name": secret_name}, "data": {"tls.crt": secret.data["tls.crt"], "tls.key": secret.data["tls.key"]}})
+    except ApiException as e:
+        print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+        return None
     return secret
 
 def create_config_map_from_data(
