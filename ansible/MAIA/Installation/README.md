@@ -49,10 +49,10 @@ steps:
 # Playbook-specific configuration options
 
 prepare_hosts:
-  nvidia_drivers: true
+  nvidia_drivers: false
   ufw: true
-  nfs: true
-  cifs: true
+  nfs: false
+  cifs: false
 
 install_microk8s:
   install_microk8s: true
@@ -83,22 +83,15 @@ configure_maia_dashboard:
 # Environment variables used during the execution of the script MAIA_Configure_Installation.sh
 env:
   MAIA_PRIVATE_REGISTRY: ""
-  CLUSTER_DOMAIN: "dev.maia.se"         # Cluster domain
-  CLUSTER_NAME: "maia-dev"              # Cluster name
-  INGRESS_RESOLVER_EMAIL: "admin@maia.se" # Email for the ingress resolver
+  CLUSTER_DOMAIN: "example.maia.com"        
+  CLUSTER_NAME: "maia-cluster"             
+  INGRESS_RESOLVER_EMAIL: ""
   K8S_DISTRIBUTION: "microk8s"
 
 # Additional cluster configuration options
 cluster_config_extra_env:
-  selfsigned: true       # Use self-signed certificates instead of Let's Encrypt
-  nfs_server: "X.X.X.X"  # NFS server IP
-  nfs_path: "/nfs"       # NFS export path
-  gpu_list:              # GPU list (name, count, replicas)
-  - count: 1             # GPU count
-    name: NVIDIA-Quadro-RTX-5000
-    replicas: 1         # GPU replicas, used for time-slicing options
-  ssh_port_type: NodePort # SSH service type: NodePort or LoadBalancer
-  port_range:            # Port range for SSH services
+  selfsigned: true
+  shared_storage_class: microk8s-hostpath
 ```
 
 ### Run the Installation
