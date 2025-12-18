@@ -29,7 +29,7 @@ from MAIA.maia_admin import (
     get_maia_toolkit_apps,
     install_maia_project,
 )
-from MAIA.maia_fn import deploy_mlflow, deploy_mysql, deploy_oauth2_proxy, deploy_orthanc
+from MAIA.maia_fn import deploy_mlflow, deploy_mysql, deploy_oauth2_proxy, deploy_orthanc, copy_certificate_authority_secret
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
 
 version = MAIA.__version__
@@ -208,6 +208,8 @@ def deploy_maia_toolkit_api(
                     "ssh_port": user["sshPort"],
                 }
             )
+
+    copy_certificate_authority_secret(namespace)
 
     helm_commands.append(
         create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal)

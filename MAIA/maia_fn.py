@@ -35,6 +35,20 @@ def generate_human_memorable_password(length=12):
     return password
 
 
+def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", source_namespace="cert-manager"):
+    if "KUBECONFIG_LOCAL" not in os.environ:
+        os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+    kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
+    config.load_kube_config_from_dict(kubeconfig)
+    api = client.CoreV1Api()
+    try:
+        secret = api.read_namespaced_secret(name=secret_name, namespace=source_namespace)
+    except ApiException as e:
+        print("Exception when calling CoreV1Api->read_namespaced_secret: %s\n" % e)
+        return None
+    api.create_namespaced_secret(namespace=namespace, body={"metadata": {"name": secret_name}, "data": {"tls.crt": secret.data["tls.crt"], "tls.key": secret.data["tls.key"]}})
+    return secret
+
 def create_config_map_from_data(
     data: str, config_map_name: str, namespace: str, kubeconfig_dict: Dict, data_key: str = "values.yaml"
 ):

@@ -178,8 +178,8 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "allowed_groups": [f"MAIA:{team_id}"],
                     "admin_groups": ["MAIA:admin"],
                     "tls_verify": False,
-                    "tls_ca_file": "/usr/local/share/ca-certificates/keycloak-ca.crt",
-                    "http_request_kwargs": {"ca_certs": "/usr/local/share/ca-certificates/keycloak-ca.crt"},
+                    "tls_ca_file": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
+                    "http_request_kwargs": {"ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"},
                 },
                 "JupyterHub": {"admin_access": True, "authenticator_class": "generic-oauth"},
                 "Authenticator": {"admin_users": admins, "allowed_users": user_form["users"]},
@@ -219,10 +219,10 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     }
 
     jh_template["hub"]["extraVolumes"] = [
-        {"name": "keycloak-ca", "secret": {"secretName": "keycloak-ca"}},
+        {"name": "kubernetes-ca", "secret": {"secretName": "kubernetes-ca"}},
     ]
     jh_template["hub"]["extraVolumeMounts"] = [
-        {"name": "keycloak-ca", "mountPath": "/usr/local/share/ca-certificates/keycloak-ca.crt", "subPath": "tls.crt"},
+        {"name": "kubernetes-ca", "mountPath": "/usr/local/share/ca-certificates/kubernetes-ca.crt", "subPath": "tls.crt"},
     ]
     jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}
 
