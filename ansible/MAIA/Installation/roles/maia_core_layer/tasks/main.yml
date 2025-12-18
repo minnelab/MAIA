@@ -53,13 +53,10 @@
     var: maia_install_output.stdout
 
 - name: Install Prometheus stack for MAIA Core observability
-  ansible.builtin.command: >
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && helm repo update && \
-    helm upgrade --install {{ prometheus_release_name }}
-    {{ prometheus_chart_name }}
-    -n observability
-    --values {{ config_folder }}/{{ prometheus_values_path }}
-    --version {{ prometheus_chart_version }}
+  ansible.builtin.shell: |
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+    helm upgrade --install {{ prometheus_release_name }} {{ prometheus_chart_name }} -n observability --values {{ config_folder }}/{{ prometheus_values_path }} --version {{ prometheus_chart_version }}
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   when: auto_sync | bool
