@@ -62,16 +62,16 @@
   when: auto_sync | bool
 
 
-- name: Install latest argocd CLI
-  ansible.builtin.shell: |
-    VERSION=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep tag_name | cut -d '"' -f 4)
-    curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
-    chmod +x /usr/local/bin/argocd
-  args:
-    creates: /usr/local/bin/argocd
-  delegate_to: localhost
-  become: true
-  when: auto_sync | default(true) | bool
+#- name: Install latest argocd CLI
+#  ansible.builtin.shell: |
+#    VERSION=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep tag_name | cut -d '"' -f 4)
+#    curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
+#    chmod +x /usr/local/bin/argocd
+#  args:
+#    creates: /usr/local/bin/argocd
+#  delegate_to: localhost
+#  become: true
+#  when: auto_sync | default(true) | bool
 
 - name: Login to ArgoCD using CLI
   ansible.builtin.shell: |
