@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Configure LVM (Logical Volume Manager) for MAIA storage, creating volume groups and logical volumes for local and NFS storage.
+    short_description: Configure LVM (Logical Volume Manager) for MAIA storage
     options:
         device_list:
           type: list

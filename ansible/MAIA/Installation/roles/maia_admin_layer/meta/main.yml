@@ -13,6 +13,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Install and configure the MAIA Admin layer components on Kubernetes, including identity, registries, dashboards, and supporting services.
+    short_description: Install and configure the MAIA Admin layer components on Kubernetes
     options:
       config_folder:
         type: str

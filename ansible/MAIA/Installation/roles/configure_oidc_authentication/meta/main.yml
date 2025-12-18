@@ -13,6 +13,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Configure OIDC authentication for the MAIA environment by reading cluster configuration and updating external systems (e.g. Rancher).
+    short_description: Configure OIDC authentication for the MAIA environment
     options:
       config_folder:
         type: str

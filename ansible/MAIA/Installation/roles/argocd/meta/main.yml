@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Install and configure ArgoCD (Argo Continuous Delivery) on a Kubernetes cluster. ArgoCD is a declarative GitOps continuous delivery tool that automates application deployment from Git repositories.
+    short_description: Install and configure ArgoCD
     options:
         config_folder:
           type: str

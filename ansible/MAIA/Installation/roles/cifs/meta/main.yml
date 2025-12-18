@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Install and configure CIFS (Common Internet File System) support for Kubernetes. Sets up the CIFS volume plugin that allows Kubernetes to mount CIFS shares as persistent volumes.
+    short_description: Install and configure CIFS (Common Internet File System) support for Kubernetes
     options:
         config_folder:
           type: str

@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Configure UFW (Uncomplicated Firewall) on Ubuntu/Debian systems to allow SSH access and inter-node communication for Kubernetes clusters.
+    short_description: Configure UFW (Uncomplicated Firewall) on Ubuntu/Debian systems
     options:
         ufw_enabled:
           type: bool

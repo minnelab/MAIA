@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Enable OIDC (OpenID Connect) authentication for MicroK8s. Configures the Kubernetes API server to authenticate users using JWT tokens from an OIDC provider (typically Keycloak).
+    short_description: Enable OIDC (OpenID Connect) authentication for MicroK8s
     options:
         config_folder:
           type: str

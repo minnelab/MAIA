@@ -13,6 +13,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Configure the MAIA Dashboard by running the Admin Toolkit installer and synchronizing the dashboard ArgoCD application.
+    short_description: Configure the MAIA Dashboard
     options:
       config_folder:
         type: str

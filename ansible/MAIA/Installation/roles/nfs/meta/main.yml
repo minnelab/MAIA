@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Configure NFS (Network File System) server and client for shared storage in Kubernetes clusters. Automatically configures server or client based on inventory group membership.
+    short_description: Configure NFS (Network File System) server and client for shared storage in Kubernetes clusters
     options:
         nfs_export_path:
           type: str

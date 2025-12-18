@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Install and configure MicroK8s, a lightweight Kubernetes distribution, on Ubuntu systems. Sets up MicroK8s with necessary addons, configures kubeconfig, and sets up firewall rules.
+    short_description: Install and configure MicroK8s
     options:
         config_folder:
           type: str

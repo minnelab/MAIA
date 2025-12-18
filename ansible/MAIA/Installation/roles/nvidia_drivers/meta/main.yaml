@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Install NVIDIA drivers on Ubuntu/Debian systems using the apt package manager.
+    short_description: Install NVIDIA drivers on Ubuntu/Debian systems
     options:
         nvidia_drive_package:
           type: str

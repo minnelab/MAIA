@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Configure Kubernetes CA (Certificate Authority) certificate and key from MicroK8s for use with cert-manager. Creates a TLS secret in the cert-manager namespace containing the MicroK8s CA certificate and private key.
+    short_description: Configure Kubernetes CA (Certificate Authority) certificate and key from MicroK8s for use with cert-manager
     options:
         kubernetes_ca_crt_path:
           type: str

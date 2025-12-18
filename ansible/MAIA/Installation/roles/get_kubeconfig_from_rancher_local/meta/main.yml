@@ -13,6 +13,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Retrieve kubeconfig for the local Rancher-managed cluster and store it in the MAIA configuration folder.
+    short_description: Retrieve kubeconfig for the local Rancher-managed cluster
     options:
       config_folder:
         type: str

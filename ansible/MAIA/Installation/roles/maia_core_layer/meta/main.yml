@@ -37,6 +37,8 @@ dependencies: []
 
 argument_specs:
   main:
+    description: Install and configure MAIA Core layer components on Kubernetes. Deploys core infrastructure including observability, ingress, storage, GPU support, and GitOps tooling via ArgoCD applications.
+    short_description: Install and configure MAIA Core layer components on Kubernetes
     options:
         config_folder:
           type: str
