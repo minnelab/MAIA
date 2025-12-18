@@ -41,9 +41,7 @@ EPILOG = dedent(
 
 
 def get_arg_parser():
-    pars = ArgumentParser(
-        description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter
-    )
+    pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
         "--form",
@@ -58,9 +56,7 @@ def get_arg_parser():
         help="YAML configuration file used to extract the cluster configuration.",
     )
 
-    pars.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + version
-    )
+    pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
 
@@ -73,9 +69,7 @@ def create_jupyterhub_config(form, cluster_config_file, no_minimal):
     create_jupyterhub_config_api(form, cluster_config_file, minimal=not no_minimal)
 
 
-def create_jupyterhub_config_api(
-    form, cluster_config_file, config_folder=None, minimal=True
-):
+def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, minimal=True):
     if isinstance(cluster_config_file, dict):
         cluster_config = cluster_config_file
     else:
@@ -204,9 +198,7 @@ def create_jupyterhub_config_api(
                     "admin_groups": ["MAIA:admin"],
                     "tls_verify": False,
                     "tls_ca_file": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
-                    "http_request_kwargs": {
-                        "ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"
-                    },
+                    "http_request_kwargs": {"ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"},
                 },
                 "JupyterHub": {
                     "admin_access": True,
@@ -261,9 +253,7 @@ def create_jupyterhub_config_api(
             "subPath": "tls.crt",
         },
     ]
-    jh_template["hub"]["extraEnv"] = {
-        "REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"
-    }
+    jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}
 
     if not minimal:
         jh_template["singleuser"]["extraEnv"]["INSTALL_QUPATH"] = "1"
@@ -298,9 +288,7 @@ def create_jupyterhub_config_api(
     }
 
     if cluster_config["url_type"] == "subpath":
-        jh_template["singleuser"]["extraEnv"]["MLFLOW_TRACKING_URI"] = (
-            f"https://{hub_address}/{namespace}-mlflow"
-        )
+        jh_template["singleuser"]["extraEnv"]["MLFLOW_TRACKING_URI"] = f"https://{hub_address}/{namespace}-mlflow"
 
     if "minio_env_name" in user_form or "MINIO_URL" in os.environ:
         if "minio_env_name" not in user_form:
@@ -323,50 +311,30 @@ def create_jupyterhub_config_api(
                     "BUCKET_NAME": os.environ["BUCKET_NAME"],
                 }
                 settings = SimpleNamespace(**settings_dict)
-                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = (
-                    get_minio_shareable_link(
-                        minio_env_name, os.environ["BUCKET_NAME"], settings
-                    )
+                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(
+                    minio_env_name, os.environ["BUCKET_NAME"], settings
                 )
             else:
-                client.fget_object(
-                    os.environ["BUCKET_NAME"], minio_env_name, minio_env_name
-                )
+                client.fget_object(os.environ["BUCKET_NAME"], minio_env_name, minio_env_name)
                 with open(minio_env_name, "r") as f:
                     file_string = f.read()
                     if file_string.startswith("name:"):
-                        jh_template["singleuser"]["extraEnv"]["CONDA_ENV"] = str(
-                            file_string
-                        )
+                        jh_template["singleuser"]["extraEnv"]["CONDA_ENV"] = str(file_string)
                     else:
-                        jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(
-                            file_string
-                        )
+                        jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
         except Exception as e:
             print(e)
-            print(
-                f"Could not read {minio_env_name} from MinIO bucket {os.environ['BUCKET_NAME']}"
-            )
+            print(f"Could not read {minio_env_name} from MinIO bucket {os.environ['BUCKET_NAME']}")
     if "url_type" in cluster_config:
         if cluster_config["url_type"] == "subpath":
             jh_template["hub"]["baseUrl"] = f"/{group_subdomain}-hub"
 
     if keycloak is not None:
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["client_id"] = keycloak[
-            "client_id"
-        ]
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["client_secret"] = (
-            keycloak["client_secret"]
-        )
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["authorize_url"] = (
-            keycloak["authorize_url"]
-        )
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["token_url"] = keycloak[
-            "token_url"
-        ]
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["userdata_url"] = (
-            keycloak["userdata_url"]
-        )
+        jh_template["hub"]["config"]["GenericOAuthenticator"]["client_id"] = keycloak["client_id"]
+        jh_template["hub"]["config"]["GenericOAuthenticator"]["client_secret"] = keycloak["client_secret"]
+        jh_template["hub"]["config"]["GenericOAuthenticator"]["authorize_url"] = keycloak["authorize_url"]
+        jh_template["hub"]["config"]["GenericOAuthenticator"]["token_url"] = keycloak["token_url"]
+        jh_template["hub"]["config"]["GenericOAuthenticator"]["userdata_url"] = keycloak["userdata_url"]
         if "url_type" in cluster_config:
             if cluster_config["url_type"] == "subdomain":
                 jh_template["hub"]["config"]["GenericOAuthenticator"][
@@ -380,18 +348,14 @@ def create_jupyterhub_config_api(
 
     if "JHUB_IMAGE" in os.environ:
         jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE"], "tag": "1.0"}
-        jh_template["hub"]["image"]["pullSecrets"] = [
-            os.environ["JHUB_IMAGE"].replace(".", "-").replace("/", "-")
-        ]
+        jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE"].replace(".", "-").replace("/", "-")]
 
     if "JHUB_IMAGE_" + namespace in os.environ:
         jh_template["hub"]["image"] = {
             "name": os.environ["JHUB_IMAGE_" + namespace],
             "tag": "1.0",
         }
-        jh_template["hub"]["image"]["pullSecrets"] = [
-            os.environ["JHUB_IMAGE_" + namespace].replace(".", "-").replace("/", "-")
-        ]
+        jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE_" + namespace].replace(".", "-").replace("/", "-")]
 
     if gpu_request == 0:
         jh_template["singleuser"]["extraEnv"]["NVIDIA_VISIBLE_DEVICES"] = ""
@@ -399,31 +363,17 @@ def create_jupyterhub_config_api(
     if "ssh_users" in user_form:
         for ssh_port in user_form["ssh_users"]:
             username = ssh_port["username"].replace("@", "__at__")
-            jh_template["singleuser"]["extraEnv"][f"SSH_PORT_{username}"] = str(
-                ssh_port["ssh_port"]
-            )
+            jh_template["singleuser"]["extraEnv"][f"SSH_PORT_{username}"] = str(ssh_port["ssh_port"])
 
     if traefik_resolver is not None:
-        jh_template["ingress"]["annotations"][
-            "traefik.ingress.kubernetes.io/router.tls.certresolver"
-        ] = traefik_resolver
-        jh_template["ingress"]["annotations"][
-            "traefik.ingress.kubernetes.io/router.entrypoints"
-        ] = "websecure"
-        jh_template["ingress"]["annotations"][
-            "traefik.ingress.kubernetes.io/router.tls"
-        ] = "true"
+        jh_template["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = traefik_resolver
+        jh_template["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        jh_template["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
 
     if nginx_cluster_issuer is not None:
-        jh_template["ingress"]["annotations"][
-            "nginx.ingress.kubernetes.io/proxy-body-size"
-        ] = "2g"
-        jh_template["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = (
-            nginx_cluster_issuer
-        )
-        jh_template["ingress"]["tls"][0]["secretName"] = "jupyterhub-{}-tls".format(
-            namespace.lower()
-        )
+        jh_template["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "2g"
+        jh_template["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = nginx_cluster_issuer
+        jh_template["ingress"]["tls"][0]["secretName"] = "jupyterhub-{}-tls".format(namespace.lower())
 
     if hub_storage_class is not None:
         jh_template["hub"]["db"] = {"pvc": {"storageClassName": hub_storage_class}}
@@ -444,15 +394,11 @@ def create_jupyterhub_config_api(
     }
 
     if resources_limits["memory"][1].endswith(" Gi"):
-        resources_limits["memory"][1] = resources_limits["memory"][1].replace(
-            " Gi", "G"
-        )
+        resources_limits["memory"][1] = resources_limits["memory"][1].replace(" Gi", "G")
     elif resources_limits["memory"][1].endswith("Gi"):
         resources_limits["memory"][1] = resources_limits["memory"][1].replace("Gi", "G")
     if resources_limits["memory"][0].endswith(" Gi"):
-        resources_limits["memory"][0] = resources_limits["memory"][0].replace(
-            " Gi", "G"
-        )
+        resources_limits["memory"][0] = resources_limits["memory"][0].replace(" Gi", "G")
     elif resources_limits["memory"][0].endswith("Gi"):
         resources_limits["memory"][0] = resources_limits["memory"][0].replace("Gi", "G")
 
@@ -497,22 +443,16 @@ def create_jupyterhub_config_api(
     }
 
     if "imagePullSecrets" in os.environ:
-        jh_template["singleuser"]["image"]["pullSecrets"] = [
-            os.environ["imagePullSecrets"]
-        ]
+        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets"]]
 
     if "imagePullSecrets_" + namespace in os.environ:
-        jh_template["singleuser"]["image"]["pullSecrets"] = [
-            os.environ["imagePullSecrets_" + namespace]
-        ]
+        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets_" + namespace]]
     if not minimal:
         if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
             registry_url = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
         else:
             registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-        jh_template["singleuser"]["image"]["pullSecrets"].append(
-            registry_url.replace(".", "-").replace("/", "-")
-        )
+        jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
     maia_workspace_version = os.environ["maia_workspace_version"]
     maia_workspace_image = os.environ["maia_workspace_image"]
@@ -526,9 +466,7 @@ def create_jupyterhub_config_api(
         if "maia_workspace_pro_image_" + namespace in os.environ:
             maia_workspace_image = os.environ["maia_workspace_pro_image_" + namespace]
         if "maia_workspace_pro_version_" + namespace in os.environ:
-            maia_workspace_version = os.environ[
-                "maia_workspace_pro_version_" + namespace
-            ]
+            maia_workspace_version = os.environ["maia_workspace_pro_version_" + namespace]
 
     jh_template["singleuser"]["profileList"] = [
         {
@@ -570,8 +508,7 @@ def create_jupyterhub_config_api(
 
     deploy_monai_toolkit = not minimal
     if (
-        "maia_monai_toolkit_image" in os.environ
-        or "maia_monai_toolkit_image_" + namespace in os.environ
+        "maia_monai_toolkit_image" in os.environ or "maia_monai_toolkit_image_" + namespace in os.environ
     ) and deploy_monai_toolkit:
         image = os.environ["maia_monai_toolkit_image"]
         if "maia_monai_toolkit_image_" + namespace in os.environ:
@@ -593,9 +530,9 @@ def create_jupyterhub_config_api(
             }
         )
         if gpu_request > 0:
-            jh_template["singleuser"]["profileList"][-1]["kubespawner_override"][
-                "extra_resource_limits"
-            ] = {"nvidia.com/gpu": gpu_request}
+            jh_template["singleuser"]["profileList"][-1]["kubespawner_override"]["extra_resource_limits"] = {
+                "nvidia.com/gpu": gpu_request
+            }
 
     mount_cifs = form.get("extra_configs", {}).get("enable_cifs", False)
     cifs_mount_path = os.environ.get("CIFS_SERVER", "N/A")
@@ -681,70 +618,44 @@ def create_jupyterhub_config_api(
         for profile in jh_template["singleuser"]["profileList"]:
             if (
                 "environment" in profile["kubespawner_override"]
-                and "NVIDIA_VISIBLE_DEVICES"
-                in profile["kubespawner_override"]["environment"]
-                and profile["kubespawner_override"]["environment"][
-                    "NVIDIA_VISIBLE_DEVICES"
-                ]
-                == ""
+                and "NVIDIA_VISIBLE_DEVICES" in profile["kubespawner_override"]["environment"]
+                and profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] == ""
             ):
                 continue
             else:
-                profile["kubespawner_override"]["extra_resource_limits"] = {
-                    "nvidia.com/gpu": gpu_request
-                }
+                profile["kubespawner_override"]["extra_resource_limits"] = {"nvidia.com/gpu": gpu_request}
     else:
         for profile in jh_template["singleuser"]["profileList"]:
             if "environment" not in profile["kubespawner_override"]:
                 profile["kubespawner_override"]["environment"] = {}
-            profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] = (
-                ""
-            )
+            profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] = ""
             profile["kubespawner_override"]["extra_resource_limits"] = {}
     if mount_cifs:
         for id, _ in enumerate(jh_template["singleuser"]["profileList"]):
-            jh_template["singleuser"]["profileList"][id]["kubespawner_override"][
-                "service_account"
-            ] = "secret-writer"
+            jh_template["singleuser"]["profileList"][id]["kubespawner_override"]["service_account"] = "secret-writer"
 
-    jh_helm_template["resource"]["helm_release"]["jupyterhub"]["values"] = [
-        yaml.dump(jh_template)
-    ]
+    jh_helm_template["resource"]["helm_release"]["jupyterhub"]["values"] = [yaml.dump(jh_template)]
 
     jh_template["prePuller"] = {
         "hook": {"enabled": False},
         "continuous": {"enabled": False},
     }
     chart_info = {}
-    chart_info["chart_name"] = jh_helm_template["resource"]["helm_release"][
-        "jupyterhub"
-    ]["chart"]
-    chart_info["chart_version"] = jh_helm_template["resource"]["helm_release"][
-        "jupyterhub"
-    ]["version"]
-    chart_info["repo_url"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"][
-        "repository"
-    ]
+    chart_info["chart_name"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["chart"]
+    chart_info["chart_version"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["version"]
+    chart_info["repo_url"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["repository"]
 
-    Path(config_folder).joinpath(team_id, "jupyterhub_values").mkdir(
-        parents=True, exist_ok=True
-    )
-    Path(config_folder).joinpath(team_id, "jupyterhub_chart_info").mkdir(
-        parents=True, exist_ok=True
-    )
+    Path(config_folder).joinpath(team_id, "jupyterhub_values").mkdir(parents=True, exist_ok=True)
+    Path(config_folder).joinpath(team_id, "jupyterhub_chart_info").mkdir(parents=True, exist_ok=True)
 
     with open(
-        Path(config_folder).joinpath(
-            team_id, "jupyterhub_values", "jupyterhub_values.yaml"
-        ),
+        Path(config_folder).joinpath(team_id, "jupyterhub_values", "jupyterhub_values.yaml"),
         "w",
     ) as f:
         f.write(OmegaConf.to_yaml(jh_template))
 
     with open(
-        Path(config_folder).joinpath(
-            team_id, "jupyterhub_chart_info", "jupyterhub_chart_info.yaml"
-        ),
+        Path(config_folder).joinpath(team_id, "jupyterhub_chart_info", "jupyterhub_chart_info.yaml"),
         "w",
     ) as f:
         f.write(OmegaConf.to_yaml(chart_info))
@@ -755,11 +666,7 @@ def create_jupyterhub_config_api(
         "release": f"{namespace}-jupyterhub",
         "repo": chart_info["repo_url"],
         "version": chart_info["chart_version"],
-        "values": str(
-            Path(config_folder).joinpath(
-                team_id, "jupyterhub_values", "jupyterhub_values.yaml"
-            )
-        ),
+        "values": str(Path(config_folder).joinpath(team_id, "jupyterhub_values", "jupyterhub_values.yaml")),
     }
 
 

@@ -52,9 +52,7 @@ def send_all_users_reminder_email(settings_dict, email_list=None):
     required_env_vars = ["email_account", "email_password", "email_smtp_server"]
     missing_vars = [var for var in required_env_vars if var not in os.environ]
     if missing_vars:
-        raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(missing_vars)}"
-        )
+        raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
     # Read the email template
     email_template_path = Path(__file__).parent / "reminder_email.html"
@@ -62,9 +60,7 @@ def send_all_users_reminder_email(settings_dict, email_list=None):
         with open(email_template_path, "r") as f:
             email_content = f.read()
     except FileNotFoundError:
-        raise FileNotFoundError(
-            f"Email template not found at {email_template_path}"
-        ) from FileNotFoundError
+        raise FileNotFoundError(f"Email template not found at {email_template_path}") from FileNotFoundError
     # Send the email to all users
     success = send_maia_message_email(
         receiver_emails=user_emails,

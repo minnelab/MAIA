@@ -32,7 +32,6 @@ from MAIA.maia_admin import (
 from MAIA.maia_fn import (
     deploy_mlflow,
     deploy_mysql,
-    deploy_oauth2_proxy,
     deploy_orthanc,
     copy_certificate_authority_secret,
 )
@@ -63,9 +62,7 @@ EPILOG = dedent(
 
 
 def get_arg_parser():
-    pars = ArgumentParser(
-        description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter
-    )
+    pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
         "--project-config-file",
@@ -95,13 +92,9 @@ def get_arg_parser():
         help="Optional flag to only deploy JupyterHub in the MAIA namespace.",
     )
 
-    pars.add_argument(
-        "--no-argocd", action="store_true", help="Do not deploy with ArgoCD."
-    )
+    pars.add_argument("--no-argocd", action="store_true", help="Do not deploy with ArgoCD.")
 
-    pars.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + version
-    )
+    pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
 
@@ -147,9 +140,7 @@ def main(
     no_minimal=False,
     no_argocd=False,
 ):
-    deploy_maia_toolkit(
-        project_config_file, cluster_config, config_folder, no_minimal, no_argocd
-    )
+    deploy_maia_toolkit(project_config_file, cluster_config, config_folder, no_minimal, no_argocd)
 
 
 def deploy_maia_toolkit(
@@ -163,9 +154,7 @@ def deploy_maia_toolkit(
 
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
 
-    deploy_maia_toolkit_api(
-        project_form_dict, cluster_config_dict, config_folder, not no_minimal, no_argocd
-    )
+    deploy_maia_toolkit_api(project_form_dict, cluster_config_dict, config_folder, not no_minimal, no_argocd)
 
 
 def deploy_maia_toolkit_api(
@@ -187,9 +176,7 @@ def deploy_maia_toolkit_api(
                     os.environ[env_key + "_" + namespace_id] = env_value
     project_form_dict["extra_configs"] = {}
     if "enable_cifs_" + namespace_id in os.environ:
-        project_form_dict["extra_configs"]["enable_cifs"] = os.environ[
-            "enable_cifs_" + namespace_id
-        ]
+        project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_" + namespace_id]
     else:
         project_form_dict["extra_configs"]["enable_cifs"] = False
 
@@ -199,26 +186,18 @@ def deploy_maia_toolkit_api(
         private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
 
     group_id = project_form_dict["group_ID"]
-    Path(config_folder).joinpath(project_form_dict["group_ID"]).mkdir(
-        parents=True, exist_ok=True
-    )
+    Path(config_folder).joinpath(project_form_dict["group_ID"]).mkdir(parents=True, exist_ok=True)
 
     namespace = project_form_dict["group_ID"].lower().replace("_", "-")
 
     helm_commands = []
 
-    mlflow_configs = generate_mlflow_configs(
-        namespace=group_id.lower().replace("_", "-")
-    )
+    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"))
 
     if not minimal:
-        minio_configs = generate_minio_configs(
-            namespace=group_id.lower().replace("_", "-")
-        )
+        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"))
 
-        mysql_configs = generate_mysql_configs(
-            namespace=group_id.lower().replace("_", "-")
-        )
+        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"))
 
         project_form_dict["minio_access_key"] = minio_configs["console_access_key"]
         project_form_dict["minio_secret_key"] = minio_configs["console_secret_key"]
@@ -244,31 +223,20 @@ def deploy_maia_toolkit_api(
         )
     )
 
-    with open(
-        Path(config_folder).joinpath(
-            group_id, "maia_namespace_values", "namespace_values.yaml"
-        )
-    ) as f:
+    with open(Path(config_folder).joinpath(group_id, "maia_namespace_values", "namespace_values.yaml")) as f:
         maia_namespace_values = yaml.safe_load(f)
         project_form_dict["ssh_users"] = []
         for user in maia_namespace_values["users"]:
             project_form_dict["ssh_users"].append(
                 {
-                    "username": user["jupyterhub_username"]
-                    .replace("-2d", "-")
-                    .replace("-40", "@")
-                    .replace("-2e", "."),
+                    "username": user["jupyterhub_username"].replace("-2d", "-").replace("-40", "@").replace("-2e", "."),
                     "ssh_port": user["sshPort"],
                 }
             )
 
     copy_certificate_authority_secret(namespace)
 
-    helm_commands.append(
-        create_jupyterhub_config_api(
-            project_form_dict, cluster_config_dict, config_folder, minimal=minimal
-        )
-    )
+    helm_commands.append(create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal))
 
     helm_commands.append(
         create_filebrowser_values(
@@ -300,20 +268,14 @@ def deploy_maia_toolkit_api(
             )
         )
 
-        helm_commands.append(
-            deploy_orthanc(cluster_config_dict, project_form_dict, config_folder)
-        )
+        helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, config_folder))
 
     if "JSON_KEY_PATH_" + namespace_id in os.environ:
         json_key_path = os.environ["JSON_KEY_PATH_" + namespace_id]
     else:
         json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
-        if (
-            not helm_command["repo"].startswith("http")
-            and not Path(helm_command["repo"]).exists()
-            and not return_values_only
-        ):
+        if not helm_command["repo"].startswith("http") and not Path(helm_command["repo"]).exists() and not return_values_only:
             original_repo = helm_command["repo"]
             helm_command["repo"] = f"oci://{helm_command['repo']}"
             try:
@@ -387,11 +349,7 @@ def deploy_maia_toolkit_api(
                 "-n",
                 helm_command["namespace"],
                 helm_command["release"],
-                "/tmp/"
-                + helm_command["chart"]
-                + "-"
-                + helm_command["version"]
-                + ".tgz",
+                "/tmp/" + helm_command["chart"] + "-" + helm_command["version"] + ".tgz",
                 "--values",
                 helm_command["values"],
             ]
@@ -417,9 +375,7 @@ def deploy_maia_toolkit_api(
         if no_argocd and not return_values_only:
             subprocess.Popen(cmd)
 
-    destination_cluster_address = cluster_config_dict[
-        "argocd_destination_cluster_address"
-    ]
+    destination_cluster_address = cluster_config_dict["argocd_destination_cluster_address"]
 
     values = {
         "defaults": [
@@ -450,15 +406,11 @@ def deploy_maia_toolkit_api(
         f.write(OmegaConf.to_yaml(values))
 
     try:
-        initialize_config_dir(
-            config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id
-        )
+        initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     except Exception as e:
         print(f"An error occurred: {e}")
         hydra.core.global_hydra.GlobalHydra.instance().clear()
-        initialize_config_dir(
-            config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id
-        )
+        initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     cfg = hydra_compose("values.yaml")
     OmegaConf.save(
         cfg,
@@ -470,15 +422,11 @@ def deploy_maia_toolkit_api(
 
     if no_argocd:
         if return_values_only:
-            with open(
-                Path(config_folder).joinpath(group_id, f"{group_id}_values.yaml")
-            ) as f:
+            with open(Path(config_folder).joinpath(group_id, f"{group_id}_values.yaml")) as f:
                 return yaml.safe_load(f)
         else:
             return
-    revision = asyncio.run(
-        verify_installed_maia_toolkit(project_id, os.environ["argocd_namespace"])
-    )
+    revision = asyncio.run(verify_installed_maia_toolkit(project_id, os.environ["argocd_namespace"]))
 
     if revision == -1 or redeploy_enabled:
         print("Installing MAIA Workspace")
@@ -488,9 +436,7 @@ def deploy_maia_toolkit_api(
         project_version = os.environ["maia_project_version"]
         json_key_path = os.environ.get("JSON_KEY_PATH", None)
 
-        print(
-            f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}"
-        )
+        print(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
         print(f"Using JSON key path: {json_key_path}")
         msg = asyncio.run(
             install_maia_project(

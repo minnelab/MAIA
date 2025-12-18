@@ -49,9 +49,7 @@ def str2bool(v):
 
 
 def get_arg_parser():
-    pars = ArgumentParser(
-        description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter
-    )
+    pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
         "--config-file",
@@ -67,9 +65,7 @@ def get_arg_parser():
         help="Flag to save the generated Helm values on the specified file and exit.",
     )
 
-    pars.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + version
-    )
+    pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
 
@@ -103,9 +99,7 @@ def main():
         return
 
     chart_name = config_dict["chart_name"]
-    with open(
-        f"./{chart_name}_values.yaml", "w"
-    ) as f:  # TODO: remove this and load values from memory
+    with open(f"./{chart_name}_values.yaml", "w") as f:  # TODO: remove this and load values from memory
         yaml.dump(helm_dict, f)
 
     ssh_process.stdin.write(

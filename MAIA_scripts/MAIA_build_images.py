@@ -47,9 +47,7 @@ EPILOG = dedent(
 
 
 def get_arg_parser():
-    pars = ArgumentParser(
-        description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter
-    )
+    pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
         "--cluster-config",
@@ -92,9 +90,7 @@ def get_arg_parser():
         help="Optional address of the cluster. If not provided, the default is https://kubernetes.default.svc",
     )
 
-    pars.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + version
-    )
+    pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
 
@@ -140,10 +136,7 @@ def build_maia_images(
     dev_distros = ["microk8s", "k0s"]
 
     if "storage_class" not in cluster_config_dict:
-        if (
-            "k8s_distribution" in cluster_config_dict
-            and cluster_config_dict["k8s_distribution"] in dev_distros
-        ):
+        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
             if cluster_config_dict["k8s_distribution"] == "microk8s":
                 cluster_config_dict["storage_class"] = "microk8s-hostpath"
             elif cluster_config_dict["k8s_distribution"] == "k0s":
@@ -160,11 +153,7 @@ def build_maia_images(
         registry_server = "registry." + cluster_config_dict["domain"]
 
     admin_group_id = os.environ["admin_group_ID"]
-    docker_secret_name = (
-        f"{registry_server}{registry_path}".replace(".", "-")
-        .replace("/", "-")
-        .replace(":", "-")
-    )
+    docker_secret_name = f"{registry_server}{registry_path}".replace(".", "-").replace("/", "-").replace(":", "-")
     if docker_secret_name.endswith("-"):
         docker_secret_name = docker_secret_name[:-1]
 
@@ -209,10 +198,7 @@ def build_maia_images(
     }
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
 
-    if (
-        json_key_path is not None
-        and "minnelab.github.io/MAIA" not in os.environ["MAIA_HELM_REPO_URL"]
-    ):
+    if json_key_path is not None and "minnelab.github.io/MAIA" not in os.environ["MAIA_HELM_REPO_URL"]:
         try:
             with open(json_key_path, "r") as f:
                 docker_credentials = json.load(f)
@@ -267,9 +253,7 @@ def build_maia_images(
             "maia-dashboard",
             build_versions["maia-dashboard"],
             "dashboard",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -285,9 +269,7 @@ def build_maia_images(
             "maia-workspace",
             build_versions["maia-workspace"],
             "docker/MAIA-Workspace",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -303,9 +285,7 @@ def build_maia_images(
             "maia-workspace-notebook",
             build_versions["maia-workspace-notebook"],
             "docker/Notebooks/Base",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace:{build_versions['maia-workspace']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace:{build_versions['maia-workspace']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -321,9 +301,7 @@ def build_maia_images(
             "maia-workspace-notebook-ssh",
             build_versions["maia-workspace-notebook-ssh"],
             "docker/Notebooks/SSH",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -499,9 +477,7 @@ def build_maia_images(
             "maia-workspace-base-notebook",
             build_versions["maia-workspace-base-notebook"],
             "docker/Notebooks/Base",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -555,9 +531,7 @@ def build_maia_images(
         "admin_group_ID": admin_group_id,
         "destination_server": f"{cluster_address}",
         "sourceRepos": [os.environ["MAIA_HELM_REPO_URL"]],
-        "dockerRegistryServer": "https://" + registry_server
-        if "registry_server" not in os.environ
-        else registry_server,
+        "dockerRegistryServer": "https://" + registry_server if "registry_server" not in os.environ else registry_server,
         "dockerRegistryUsername": registry_username,
         "dockerRegistryPassword": registry_password,
         "dockerRegistryEmail": registry_email,
@@ -570,12 +544,8 @@ def build_maia_images(
             {"maia_dashboard_values": "maia_dashboard_values"},
             {"maia_workspace_values": "maia_workspace_values"},
             {"maia_workspace_notebook_values": "maia_workspace_notebook_values"},
-            {
-                "maia_workspace_notebook_ssh_values": "maia_workspace_notebook_ssh_values"
-            },
-            {
-                "maia_workspace_notebook_ssh_addons_values": "maia_workspace_notebook_ssh_addons_values"
-            },
+            {"maia_workspace_notebook_ssh_values": "maia_workspace_notebook_ssh_values"},
+            {"maia_workspace_notebook_ssh_addons_values": "maia_workspace_notebook_ssh_addons_values"},
             {"maia_lab_pro_values": "maia_lab_pro_values"},
             {"monai_toolkit_values": "monai_toolkit_values"},
             {"maia_xnat_values": "maia_xnat_values"},
@@ -587,18 +557,10 @@ def build_maia_images(
         [
             {"maia_workspace_base_values": "maia_workspace_base_values"},
             {"maia_filebrowser_values": "maia_filebrowser_values"},
-            {
-                "maia_workspace_base_notebook_values": "maia_workspace_base_notebook_values"
-            },
-            {
-                "maia_workspace_base_notebook_ssh_values": "maia_workspace_base_notebook_ssh_values"
-            },
-            {
-                "maia_gpu_booking_admission_controller_values": "maia_gpu_booking_admission_controller_values"
-            },
-            {
-                "maia_gpu_booking_pod_terminator_values": "maia_gpu_booking_pod_terminator_values"
-            },
+            {"maia_workspace_base_notebook_values": "maia_workspace_base_notebook_values"},
+            {"maia_workspace_base_notebook_ssh_values": "maia_workspace_base_notebook_ssh_values"},
+            {"maia_gpu_booking_admission_controller_values": "maia_gpu_booking_admission_controller_values"},
+            {"maia_gpu_booking_pod_terminator_values": "maia_gpu_booking_pod_terminator_values"},
         ]
     )
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
@@ -608,9 +570,7 @@ def build_maia_images(
 
     if not os.path.isabs(config_folder):
         config_folder = os.path.abspath(config_folder)
-    initialize_config_dir(
-        config_dir=str(Path(config_folder).joinpath(project_id)), job_name=project_id
-    )
+    initialize_config_dir(config_dir=str(Path(config_folder).joinpath(project_id)), job_name=project_id)
     cfg = hydra_compose("values.yaml")
     OmegaConf.save(
         cfg,

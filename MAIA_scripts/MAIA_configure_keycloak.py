@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 from keycloak import KeycloakAdmin
 from keycloak import KeycloakOpenIDConnection
-import json
 import argparse
 
 
@@ -28,9 +27,7 @@ def create_admin_user_and_group(server_url: str, client_secret: str):
                 "firstName": "Admin",
                 "lastName": "Maia",
                 "requiredActions": ["UPDATE_PASSWORD"],
-                "credentials": [
-                    {"type": "password", "temporary": True, "value": "Admin"}
-                ],
+                "credentials": [{"type": "password", "temporary": True, "value": "Admin"}],
             }
         )
     except Exception as e:
@@ -66,12 +63,8 @@ def create_admin_user_and_group(server_url: str, client_secret: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--client_secret", type=str, required=True, help="The client secret to use"
-    )
-    parser.add_argument(
-        "--server_url", type=str, required=True, help="The server URL to configure"
-    )
+    parser.add_argument("--client_secret", type=str, required=True, help="The client secret to use")
+    parser.add_argument("--server_url", type=str, required=True, help="The server URL to configure")
     args = parser.parse_args()
     create_admin_user_and_group(args.server_url, args.client_secret)
 

@@ -64,9 +64,7 @@ EPILOG = dedent(
 
 
 def get_arg_parser():
-    pars = ArgumentParser(
-        description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter
-    )
+    pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
         "--cluster-config",
@@ -82,9 +80,7 @@ def get_arg_parser():
         help="Configuration Folder where to locate (and temporarily store) the MAIA configuration files.",
     )
 
-    pars.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + version
-    )
+    pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
 
@@ -125,64 +121,41 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     admin_group_id = os.environ["admin_group_ID"]
     project_id = "maia-core"
 
-    if (
-        "argocd_destination_cluster_address" in cluster_config_dict
-        and not cluster_config_dict["argocd_destination_cluster_address"].endswith(
-            "/k8s/clusters/local"
-        )
-    ):
+    if "argocd_destination_cluster_address" in cluster_config_dict and not cluster_config_dict[
+        "argocd_destination_cluster_address"
+    ].endswith("/k8s/clusters/local"):
         cluster_address = cluster_config_dict["argocd_destination_cluster_address"]
-        if (
-            cluster_config_dict["argocd_destination_cluster_address"]
-            != "https://kubernetes.default.svc"
-        ):
+        if cluster_config_dict["argocd_destination_cluster_address"] != "https://kubernetes.default.svc":
             project_id += f"-{cluster_config_dict['cluster_name']}"
     else:
         cluster_address = "https://kubernetes.default.svc"
 
     dev_distros = ["microk8s", "k0s"]
     if "ingress_class" not in cluster_config_dict:
-        if (
-            "k8s_distribution" in cluster_config_dict
-            and cluster_config_dict["k8s_distribution"] in dev_distros
-        ):
+        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
             cluster_config_dict["ingress_class"] = "maia-core-traefik"
         else:
             cluster_config_dict["ingress_class"] = "nginx"
 
     helm_commands = []
-    helm_commands.append(
-        create_prometheus_values(config_folder, project_id, cluster_config_dict)
-    )
+    helm_commands.append(create_prometheus_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_metrics_server_values(config_folder, project_id))
     helm_commands.append(create_loki_values(config_folder, project_id))
     helm_commands.append(create_tempo_values(config_folder, project_id))
-    helm_commands.append(
-        create_core_toolkit_values(config_folder, project_id, cluster_config_dict)
-    )
+    helm_commands.append(create_core_toolkit_values(config_folder, project_id, cluster_config_dict))
 
     # Allow either traefik or nginx ingress controller
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        helm_commands.append(
-            create_traefik_values(config_folder, project_id, cluster_config_dict)
-        )
+        helm_commands.append(create_traefik_values(config_folder, project_id, cluster_config_dict))
     else:
         helm_commands.append(create_ingress_nginx_values(config_folder, project_id))
 
     helm_commands.append(create_metallb_values(config_folder, project_id))
     helm_commands.append(create_cert_manager_values(config_folder, project_id))
-    helm_commands.append(
-        create_gpu_operator_values(config_folder, project_id, cluster_config_dict)
-    )
-    helm_commands.append(
-        create_nfs_server_provisioner_values(
-            config_folder, project_id, cluster_config_dict
-        )
-    )
+    helm_commands.append(create_gpu_operator_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_nfs_server_provisioner_values(config_folder, project_id, cluster_config_dict))
 
-    helm_commands.append(
-        create_loginapp_values(config_folder, project_id, cluster_config_dict)
-    )
+    helm_commands.append(create_loginapp_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_minio_operator_values(config_folder, project_id))
 
     if "MAIA_DASHBOARD_DOMAIN" in os.environ and "dashboard_api_secret" in os.environ:
@@ -190,8 +163,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
         if (
-            not helm_command["repo"].startswith("http")
-            and not Path(helm_command["repo"]).exists()
+            not helm_command["repo"].startswith("http") and not Path(helm_command["repo"]).exists()
         ):  # If the repo is not a HTTP URL, it is an OCI registry (i.e. Harbor)
             original_repo = helm_command["repo"]
             helm_command["repo"] = f"oci://{helm_command['repo']}"
@@ -264,11 +236,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
                 "-n",
                 helm_command["namespace"],
                 helm_command["release"],
-                "/tmp/"
-                + helm_command["chart"]
-                + "-"
-                + helm_command["version"]
-                + ".tgz",
+                "/tmp/" + helm_command["chart"] + "-" + helm_command["version"] + ".tgz",
                 "--values",
                 helm_command["values"],
             ]
@@ -338,9 +306,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(values))
 
-    initialize_config_dir(
-        config_dir=str(Path(config_folder).joinpath(project_id)), job_name=project_id
-    )
+    initialize_config_dir(config_dir=str(Path(config_folder).joinpath(project_id)), job_name=project_id)
     cfg = hydra_compose("values.yaml")
     OmegaConf.save(
         cfg,
@@ -348,9 +314,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
         resolve=True,
     )
 
-    revision = asyncio.run(
-        verify_installed_maia_core_toolkit(project_id, os.environ["argocd_namespace"])
-    )
+    revision = asyncio.run(verify_installed_maia_core_toolkit(project_id, os.environ["argocd_namespace"]))
 
     if json_key_path is not None:
         try:

@@ -27,14 +27,14 @@ EPILOG = dedent(
     Example call:
     ::
         {filename} --config-folder /path/to/config
-    """.format(filename=Path(__file__).stem)
+    """.format(
+        filename=Path(__file__).stem
+    )
 )
 
 
 def get_arg_parser():
-    pars = ArgumentParser(
-        description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter
-    )
+    pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
         "--config-folder",
@@ -69,9 +69,7 @@ def get_arg_parser():
         help="Run MAIA_Configure_Installation.sh without prompts (requires env.json to exist).",
     )
 
-    pars.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + version
-    )
+    pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
 
@@ -95,9 +93,7 @@ def main():
     config_folder.mkdir(parents=True, exist_ok=True)
 
     if Path(config_folder).joinpath("config.yaml").exists():
-        config_dict = yaml.safe_load(
-            Path(config_folder).joinpath("config.yaml").read_text()
-        )
+        config_dict = yaml.safe_load(Path(config_folder).joinpath("config.yaml").read_text())
         os.environ["CONFIG_FOLDER"] = str(config_folder)
         if "env" in config_dict:
             for key, value in config_dict["env"].items():
@@ -122,9 +118,7 @@ def main():
         print(f"Error installing Ansible collection: {e}")
         sys.exit(1)
 
-    inventory_path = (
-        args.inventory_path if args.inventory_path else config_folder / "inventory"
-    )
+    inventory_path = args.inventory_path if args.inventory_path else config_folder / "inventory"
     # Step 2: Run MAIA_Configure_Installation.sh
     if not args.skip_configure:
         print("\n=== Step 2: Running MAIA_Configure_Installation.sh ===")
@@ -137,9 +131,7 @@ def main():
         env_json = config_folder / "env.json"
         if args.configure_no_prompt:
             if not env_json.exists():
-                print(
-                    f"Error: --configure-no-prompt requires env.json to exist at {env_json}"
-                )
+                print(f"Error: --configure-no-prompt requires env.json to exist at {env_json}")
                 sys.exit(1)
             configure_cmd = [str(configure_script), str(env_json)]
         else:
@@ -204,10 +196,7 @@ def main():
     else:
         print("\n=== Step 3: Skipping prepare_hosts.yaml ===")
 
-    if (
-        "selfsigned" in config_dict["cluster_config_extra_env"]
-        and "configure_hosts" in config_dict["steps"]
-    ):
+    if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:
         print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
         target_hosts = "localhost"
         cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
@@ -231,9 +220,7 @@ def main():
             print(f"Error running configure_host_linux.yaml: {e}")
             sys.exit(1)
         else:
-            print(
-                "\n=== Step 3.1: Skipping configure_host_linux.yaml for localhost ==="
-            )
+            print("\n=== Step 3.1: Skipping configure_host_linux.yaml for localhost ===")
         print("\n=== Step 3.2: Running configure_host_linux.yaml for all hosts ===")
         target_hosts = "all"
         configure_host_cmd = [
@@ -351,10 +338,7 @@ def main():
                     f"{key}={value}",
                 ]
             )
-    if (
-        "steps" in config_dict
-        and "configure_oidc_authentication" in config_dict["steps"]
-    ):
+    if "steps" in config_dict and "configure_oidc_authentication" in config_dict["steps"]:
         try:
             run_command(configure_oidc_authentication_cmd)
 
@@ -382,10 +366,7 @@ def main():
                     f"{key}={value}",
                 ]
             )
-    if (
-        "steps" in config_dict
-        and "get_kubeconfig_from_rancher_local" in config_dict["steps"]
-    ):
+    if "steps" in config_dict and "get_kubeconfig_from_rancher_local" in config_dict["steps"]:
         try:
             run_command(get_kubeconfig_from_rancher_local_cmd)
         except subprocess.CalledProcessError as e:
