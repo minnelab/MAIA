@@ -104,9 +104,7 @@ def get_arg_parser():
     default="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
 )
 def main(cluster_config, config_folder, project_id, build_version_file, registry_path, cluster_address):
-    build_maia_images(
-        cluster_config, config_folder, project_id, build_version_file, registry_path, cluster_address
-    )
+    build_maia_images(cluster_config, config_folder, project_id, build_version_file, registry_path, cluster_address)
 
 
 def build_maia_images(
@@ -120,7 +118,7 @@ def build_maia_images(
 
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
     dev_distros = ["microk8s", "k0s"]
-    
+
     if "storage_class" not in cluster_config_dict:
         if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
             if cluster_config_dict["k8s_distribution"] == "microk8s":
@@ -142,7 +140,6 @@ def build_maia_images(
     docker_secret_name = f"{registry_server}{registry_path}".replace(".", "-").replace("/", "-").replace(":", "-")
     if docker_secret_name.endswith("-"):
         docker_secret_name = docker_secret_name[:-1]
-
 
     if build_version_file is not None:
         if build_version_file.startswith("https"):
@@ -256,9 +253,7 @@ def build_maia_images(
             "maia-workspace",
             build_versions["maia-workspace"],
             "docker/MAIA-Workspace",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -290,9 +285,7 @@ def build_maia_images(
             "maia-workspace-notebook-ssh",
             build_versions["maia-workspace-notebook-ssh"],
             "docker/Notebooks/SSH",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"
-            ],
+            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"],
             registry_credentials=registry_credentials,
         )
     )
@@ -528,7 +521,6 @@ def build_maia_images(
         "dockerRegistryEmail": registry_email,
         "dockerRegistrySecretName": docker_secret_name,
     }
-
 
     values["defaults"].extend(
         [

@@ -35,6 +35,7 @@ from MAIA.maia_core import (
     create_metrics_server_values,
 )
 from loguru import logger
+
 version = MAIA.__version__
 
 
@@ -122,7 +123,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             project_id += f"-{cluster_config_dict['cluster_name']}"
     else:
         cluster_address = "https://kubernetes.default.svc"
-    
+
     dev_distros = ["microk8s", "k0s"]
     if "ingress_class" not in cluster_config_dict:
         if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
@@ -152,12 +153,12 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     helm_commands.append(create_minio_operator_values(config_folder, project_id))
 
     if "MAIA_DASHBOARD_DOMAIN" in os.environ and "dashboard_api_secret" in os.environ:
-        helm_commands.append(
-            create_gpu_booking_values(config_folder, project_id)
-        )
+        helm_commands.append(create_gpu_booking_values(config_folder, project_id))
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
-        if not helm_command["repo"].startswith("http") and not Path(helm_command["repo"]).exists(): # If the repo is not a HTTP URL, it is an OCI registry (i.e. Harbor)
+        if (
+            not helm_command["repo"].startswith("http") and not Path(helm_command["repo"]).exists()
+        ):  # If the repo is not a HTTP URL, it is an OCI registry (i.e. Harbor)
             original_repo = helm_command["repo"]
             helm_command["repo"] = f"oci://{helm_command['repo']}"
             try:
@@ -172,9 +173,9 @@ def install_maia_core_toolkit(cluster_config, config_folder):
                     password = docker_credentials
 
             subprocess.run(
-                ["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"], 
+                ["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"],
                 input=password.encode(),
-                check=True
+                check=True,
             )
             logger.debug(" ".join(["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"]))
             subprocess.run(
@@ -361,8 +362,8 @@ def install_maia_core_toolkit(cluster_config, config_folder):
                 json_key_path=json_key_path,
             )
         )
-        
-    #for app in get_maia_toolkit_apps(project_id, os.environ["ARGOCD_PASSWORD"], os.environ["argocd_host"]):
+
+    # for app in get_maia_toolkit_apps(project_id, os.environ["ARGOCD_PASSWORD"], os.environ["argocd_host"]):
     #    sync_argocd_app(project_id, app["name"], app["version"], os.environ["argocd_host"], os.environ["ARGOCD_PASSWORD"])
 
 

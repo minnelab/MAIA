@@ -102,19 +102,25 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         hub_image = os.environ["hub_image"]
         hub_tag = os.environ["hub_tag"]
     namespace = user_form["group_ID"].lower().replace("_", "-")
-    if "hub_image_"+namespace in os.environ:
-        hub_image = os.environ["hub_image_"+namespace]
-        hub_tag = os.environ["hub_tag_"+namespace]
+    if "hub_image_" + namespace in os.environ:
+        hub_image = os.environ["hub_image_" + namespace]
+        hub_tag = os.environ["hub_tag_" + namespace]
 
     base_url = None
     if "base_url" in os.environ:
         base_url = os.environ["base_url"]
-    if "base_url_"+namespace in os.environ:
-        base_url = os.environ["base_url_"+namespace]
+    if "base_url_" + namespace in os.environ:
+        base_url = os.environ["base_url_" + namespace]
 
     keycloak = None
-    
-    if "keycloak_client_id" in os.environ and "keycloak_client_secret" in os.environ and "keycloak_authorize_url" in os.environ and "keycloak_token_url" in os.environ and "keycloak_userdata_url" in os.environ:
+
+    if (
+        "keycloak_client_id" in os.environ
+        and "keycloak_client_secret" in os.environ
+        and "keycloak_authorize_url" in os.environ
+        and "keycloak_token_url" in os.environ
+        and "keycloak_userdata_url" in os.environ
+    ):
         keycloak = {
             "client_id": os.environ["keycloak_client_id"],
             "client_secret": os.environ["keycloak_client_secret"],
@@ -226,7 +232,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     ]
     jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}
 
-
     if not minimal:
         jh_template["singleuser"]["extraEnv"]["INSTALL_QUPATH"] = "1"
         jh_template["singleuser"]["extraEnv"]["INSTALL_SLICER"] = "1"
@@ -283,7 +288,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "BUCKET_NAME": os.environ["BUCKET_NAME"],
                 }
                 settings = SimpleNamespace(**settings_dict)
-                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(minio_env_name, os.environ["BUCKET_NAME"], settings)
+                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(
+                    minio_env_name, os.environ["BUCKET_NAME"], settings
+                )
             else:
                 client.fget_object(os.environ["BUCKET_NAME"], minio_env_name, minio_env_name)
                 with open(minio_env_name, "r") as f:
@@ -317,12 +324,12 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 ] = f"https://{hub_address}/{group_subdomain}-hub/oauth_callback"
 
     if "JHUB_IMAGE" in os.environ:
-        jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE"] , "tag": "1.0"}
+        jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE"], "tag": "1.0"}
         jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE"].replace(".", "-").replace("/", "-")]
-        
-    if "JHUB_IMAGE_"+namespace in os.environ:
-        jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE_"+namespace], "tag": "1.0"}
-        jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE_"+namespace].replace(".", "-").replace("/", "-")]
+
+    if "JHUB_IMAGE_" + namespace in os.environ:
+        jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE_" + namespace], "tag": "1.0"}
+        jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE_" + namespace].replace(".", "-").replace("/", "-")]
 
     if gpu_request == 0:
         jh_template["singleuser"]["extraEnv"]["NVIDIA_VISIBLE_DEVICES"] = ""
@@ -393,29 +400,29 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
 
     if "imagePullSecrets" in os.environ:
         jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets"]]
-    
-    if "imagePullSecrets_"+namespace in os.environ:
-        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets_"+namespace]]
+
+    if "imagePullSecrets_" + namespace in os.environ:
+        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets_" + namespace]]
     if not minimal:
-        if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
-            registry_url = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
+        if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+            registry_url = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
         else:
             registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
         jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
     maia_workspace_version = os.environ["maia_workspace_version"]
     maia_workspace_image = os.environ["maia_workspace_image"]
-    if "maia_workspace_image_"+namespace in os.environ:
-        maia_workspace_image = os.environ["maia_workspace_image_"+namespace]
-    if "maia_workspace_version_"+namespace in os.environ:
-        maia_workspace_version = os.environ["maia_workspace_version_"+namespace]
+    if "maia_workspace_image_" + namespace in os.environ:
+        maia_workspace_image = os.environ["maia_workspace_image_" + namespace]
+    if "maia_workspace_version_" + namespace in os.environ:
+        maia_workspace_version = os.environ["maia_workspace_version_" + namespace]
     if not minimal:
         maia_workspace_image = os.environ["maia_workspace_pro_image"]
         maia_workspace_version = os.environ["maia_workspace_pro_version"]
-        if "maia_workspace_pro_image_"+namespace in os.environ:
-            maia_workspace_image = os.environ["maia_workspace_pro_image_"+namespace]
-        if "maia_workspace_pro_version_"+namespace in os.environ:
-            maia_workspace_version = os.environ["maia_workspace_pro_version_"+namespace]
+        if "maia_workspace_pro_image_" + namespace in os.environ:
+            maia_workspace_image = os.environ["maia_workspace_pro_image_" + namespace]
+        if "maia_workspace_pro_version_" + namespace in os.environ:
+            maia_workspace_version = os.environ["maia_workspace_pro_version_" + namespace]
 
     jh_template["singleuser"]["profileList"] = [
         {
@@ -456,10 +463,12 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     ]
 
     deploy_monai_toolkit = not minimal
-    if ("maia_monai_toolkit_image" in os.environ or "maia_monai_toolkit_image_"+namespace in os.environ) and deploy_monai_toolkit:
+    if (
+        "maia_monai_toolkit_image" in os.environ or "maia_monai_toolkit_image_" + namespace in os.environ
+    ) and deploy_monai_toolkit:
         image = os.environ["maia_monai_toolkit_image"]
-        if "maia_monai_toolkit_image_"+namespace in os.environ:
-            image = os.environ["maia_monai_toolkit_image_"+namespace]
+        if "maia_monai_toolkit_image_" + namespace in os.environ:
+            image = os.environ["maia_monai_toolkit_image_" + namespace]
         jh_template["singleuser"]["profileList"].append(
             {
                 "display_name": "MONAI Toolkit 3.0",
@@ -548,7 +557,11 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
 
     if gpu_request > 0:
         for profile in jh_template["singleuser"]["profileList"]:
-            if "environment" in profile["kubespawner_override"] and "NVIDIA_VISIBLE_DEVICES" in profile["kubespawner_override"]["environment"] and profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] == "":
+            if (
+                "environment" in profile["kubespawner_override"]
+                and "NVIDIA_VISIBLE_DEVICES" in profile["kubespawner_override"]["environment"]
+                and profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] == ""
+            ):
                 continue
             else:
                 profile["kubespawner_override"]["extra_resource_limits"] = {"nvidia.com/gpu": gpu_request}

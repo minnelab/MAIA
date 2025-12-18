@@ -66,7 +66,6 @@ def get_arg_parser():
         help="YAML configuration file used to extract the project configuration.",
     )
 
-
     pars.add_argument(
         "--cluster-config", type=str, required=True, help="YAML configuration file used to extract the cluster configuration."
     )
@@ -145,22 +144,22 @@ def deploy_maia_toolkit_api(
     redeploy_enabled=True,
     return_values_only=False,
 ):
-    #Override cluster config with project-specific configuration, if found
+    # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
     if f"{namespace_id}-cluster-config" in cluster_config_dict:
         for key, value in cluster_config_dict[f"{namespace_id}-cluster-config"].items():
             cluster_config_dict[key] = value
             if key == "env":
                 for env_key, env_value in value.items():
-                    os.environ[env_key+"_"+namespace_id] = env_value
+                    os.environ[env_key + "_" + namespace_id] = env_value
     project_form_dict["extra_configs"] = {}
-    if "enable_cifs_"+namespace_id in os.environ:
-        project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_"+namespace_id]
+    if "enable_cifs_" + namespace_id in os.environ:
+        project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_" + namespace_id]
     else:
         project_form_dict["extra_configs"]["enable_cifs"] = False
-    
-    if "MAIA_PRIVATE_REGISTRY_"+namespace_id in os.environ:
-        private_maia_registry = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace_id]
+
+    if "MAIA_PRIVATE_REGISTRY_" + namespace_id in os.environ:
+        private_maia_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace_id]
     else:
         private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
 
@@ -211,15 +210,19 @@ def deploy_maia_toolkit_api(
 
     copy_certificate_authority_secret(namespace)
 
-    helm_commands.append(
-        create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal)
-    )
+    helm_commands.append(create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal))
 
     helm_commands.append(
-        create_filebrowser_values(project_form_dict, cluster_config_dict, config_folder, mlflow_configs=mlflow_configs, mount_cifs=project_form_dict["extra_configs"]["enable_cifs"])
+        create_filebrowser_values(
+            project_form_dict,
+            cluster_config_dict,
+            config_folder,
+            mlflow_configs=mlflow_configs,
+            mount_cifs=project_form_dict["extra_configs"]["enable_cifs"],
+        )
     )
     if not minimal:
-        #helm_commands.append(deploy_oauth2_proxy(cluster_config_dict, project_form_dict, config_folder))
+        # helm_commands.append(deploy_oauth2_proxy(cluster_config_dict, project_form_dict, config_folder))
 
         helm_commands.append(deploy_mysql(cluster_config_dict, project_form_dict, config_folder, mysql_configs=mysql_configs))
         helm_commands.append(
@@ -234,8 +237,8 @@ def deploy_maia_toolkit_api(
 
         helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, config_folder))
 
-    if "JSON_KEY_PATH_"+namespace_id in os.environ:
-        json_key_path = os.environ["JSON_KEY_PATH_"+namespace_id]
+    if "JSON_KEY_PATH_" + namespace_id in os.environ:
+        json_key_path = os.environ["JSON_KEY_PATH_" + namespace_id]
     else:
         json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
@@ -256,7 +259,7 @@ def deploy_maia_toolkit_api(
             subprocess.run(
                 ["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"],
                 input=password,
-                text=True
+                text=True,
             )
 
             print(" ".join(["helm", "registry", "login", original_repo, "--username", username, "--password-stdin"]))
@@ -344,7 +347,7 @@ def deploy_maia_toolkit_api(
     if not minimal:
         values["defaults"].append({"mlflow_values": "mlflow_values"})
         values["defaults"].append({"mysql_values": "mysql_values"})
-        #values["defaults"].append({"oauth2_proxy_values": "oauth2_proxy_values"})
+        # values["defaults"].append({"oauth2_proxy_values": "oauth2_proxy_values"})
         values["defaults"].append({"orthanc_values": "orthanc_values"})
 
     with open(Path(config_folder).joinpath(group_id, "values.yaml"), "w") as f:

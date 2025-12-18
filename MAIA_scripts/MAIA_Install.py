@@ -11,6 +11,7 @@ from textwrap import dedent
 import MAIA
 import json
 import yaml
+
 version = MAIA.__version__
 
 DESC = dedent(
@@ -105,12 +106,7 @@ def main():
 
     # Step 1: Install Ansible collection
     print("\n=== Step 1: Installing Ansible collection ===")
-    ansible_galaxy_cmd = [
-        "ansible-galaxy",
-        "collection",
-        "install",
-        str(args.ansible_collection_path)
-    ]
+    ansible_galaxy_cmd = ["ansible-galaxy", "collection", "install", str(args.ansible_collection_path)]
     try:
         run_command(ansible_galaxy_cmd)
     except subprocess.CalledProcessError as e:
@@ -130,9 +126,7 @@ def main():
         env_json = config_folder / "env.json"
         if args.configure_no_prompt:
             if not env_json.exists():
-                print(
-                    f"Error: --configure-no-prompt requires env.json to exist at {env_json}"
-                )
+                print(f"Error: --configure-no-prompt requires env.json to exist at {env_json}")
                 sys.exit(1)
             configure_cmd = [str(configure_script), str(env_json)]
         else:
@@ -155,7 +149,7 @@ def main():
         # Try to get it from env.json if it exists
         env_json = config_folder / "env.json"
         if env_json.exists():
-            
+
             with open(env_json) as f:
                 env_data = json.load(f)
                 if "CONFIG_FOLDER" in env_data:
@@ -183,10 +177,12 @@ def main():
     ]
     if "prepare_hosts" in config_dict:
         for key, value in config_dict["prepare_hosts"].items():
-            prepare_hosts_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            prepare_hosts_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "prepare_hosts" in config_dict["steps"]:
         try:
             run_command(prepare_hosts_cmd)
@@ -253,10 +249,12 @@ def main():
     ]
     if "install_microk8s" in config_dict:
         for key, value in config_dict["install_microk8s"].items():
-            install_microk8s_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            install_microk8s_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "install_microk8s" in config_dict["steps"]:
         try:
             run_command(install_microk8s_cmd)
@@ -277,10 +275,12 @@ def main():
     ]
     if "install_maia_core" in config_dict:
         for key, value in config_dict["install_maia_core"].items():
-            install_maia_core_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            install_maia_core_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "install_maia_core" in config_dict["steps"]:
         try:
             run_command(install_maia_core_cmd)
@@ -302,10 +302,12 @@ def main():
     ]
     if "install_maia_admin" in config_dict:
         for key, value in config_dict["install_maia_admin"].items():
-            install_maia_admin_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            install_maia_admin_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "install_maia_admin" in config_dict["steps"]:
         try:
             run_command(install_maia_admin_cmd)
@@ -314,7 +316,7 @@ def main():
             sys.exit(1)
     else:
         print("\n=== Step 6: Skipping install_maia_admin.yaml ===")
-        
+
     # Step 7: Run configure_oidc_authentication.yaml
     print("\n=== Step 7: Running configure_oidc_authentication.yaml ===")
     configure_oidc_authentication_cmd = [
@@ -327,10 +329,12 @@ def main():
     ]
     if "configure_oidc_authentication" in config_dict:
         for key, value in config_dict["configure_oidc_authentication"].items():
-            configure_oidc_authentication_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            configure_oidc_authentication_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "configure_oidc_authentication" in config_dict["steps"]:
         try:
             run_command(configure_oidc_authentication_cmd)
@@ -340,7 +344,7 @@ def main():
             sys.exit(1)
     else:
         print("\n=== Step 7: Skipping configure_oidc_authentication.yaml ===")
-        
+
     # Step 8: Run get_kubeconfig_from_rancher_local.yaml
     print("\n=== Step 8: Running get_kubeconfig_from_rancher_local.yaml ===")
     get_kubeconfig_from_rancher_local_cmd = [
@@ -353,10 +357,12 @@ def main():
     ]
     if "get_kubeconfig_from_rancher_local" in config_dict:
         for key, value in config_dict["get_kubeconfig_from_rancher_local"].items():
-            get_kubeconfig_from_rancher_local_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            get_kubeconfig_from_rancher_local_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "get_kubeconfig_from_rancher_local" in config_dict["steps"]:
         try:
             run_command(get_kubeconfig_from_rancher_local_cmd)
@@ -367,7 +373,7 @@ def main():
             print("\n=== Step 8: Skipping get_kubeconfig_from_rancher_local.yaml ===")
     else:
         print("\n=== Step 8: Skipping get_kubeconfig_from_rancher_local.yaml ===")
-        
+
     # Step 9: Run configure_maia_dashboard.yaml
     print("\n=== Step 9: Running configure_maia_dashboard.yaml ===")
     configure_maia_dashboard_cmd = [
@@ -380,10 +386,12 @@ def main():
     ]
     if "configure_maia_dashboard" in config_dict:
         for key, value in config_dict["configure_maia_dashboard"].items():
-            configure_maia_dashboard_cmd.extend([
-                "-e",
-                f"{key}={value}",
-            ])
+            configure_maia_dashboard_cmd.extend(
+                [
+                    "-e",
+                    f"{key}={value}",
+                ]
+            )
     if "steps" in config_dict and "configure_maia_dashboard" in config_dict["steps"]:
         try:
             run_command(configure_maia_dashboard_cmd)
