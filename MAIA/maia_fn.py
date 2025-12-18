@@ -112,10 +112,10 @@ def get_ssh_port_dict(port_type, namespace, port_range, maia_metallb_ip=None):
                     if svc.spec.type == "LoadBalancer" and svc.status.load_balancer.ingress[0].ip == maia_metallb_ip:
                         for port in svc.spec.ports:
                             if (
-                                port.name == "ssh"
-                                and svc.metadata.namespace == namespace
-                                or port.name == "orthanc-dicom"
-                                and svc.metadata.namespace == namespace
+                                (port.name == "ssh"
+                                and svc.metadata.namespace == namespace)
+                                or (port.name == "orthanc-dicom"
+                                and svc.metadata.namespace == namespace)
                             ):
                                 if svc.metadata.name.endswith("-ssh"):
                                     used_port.append({svc.metadata.name[: -len("-ssh")]: int(port.port)})
@@ -174,8 +174,6 @@ def get_ssh_ports(n_requested_ports, port_type, ip_range, maia_metallb_ip=None):
     config.load_kube_config_from_dict(kubeconfig)
 
     v1 = client.CoreV1Api()
-
-    print(v1.list_namespace(watch=False))
 
     try:
         used_port = []
@@ -433,6 +431,8 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
     mysql_values["chart_name"] = "mkg"
     mysql_values["chart_version"] = "1.0.4"
     mysql_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
+        mysql_values["repo_url"] = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
 
     Path(config_folder).joinpath(user_config["group_ID"], "mysql_values").mkdir(parents=True, exist_ok=True)
 
@@ -478,10 +478,18 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
     config.load_kube_config_from_dict(kubeconfig)
 
+    docker_image = os.environ.get("MAIA_PRIVATE_REGISTRY", None) + "/maia-mlflow"
+    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
+        docker_image = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace] + "/maia-mlflow"
+    
+    private_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
+        private_registry = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
+    
     mlflow_config = {
         "namespace": namespace,
         "chart_name": "mlflow-v1",
-        "docker_image": os.environ.get("MAIA_PRIVATE_REGISTRY", None) + "/maia-mlflow",
+        "docker_image": docker_image,
         "tag": "1.0",
         "deployment": True,
         "memory_request": "2Gi",
@@ -528,14 +536,13 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
             "traefik_resolver"
         ]
 
-    registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-    mlflow_config["image_pull_secret"] = registry_url.replace(".", "-").replace("/", "-")
+    mlflow_config["image_pull_secret"] = private_registry.replace(".", "-").replace("/", "-")
 
     mlflow_values = read_config_dict_and_generate_helm_values_dict(mlflow_config, kubeconfig)
 
     mlflow_values["chart_name"] = "mkg"
     mlflow_values["chart_version"] = "1.0.4"
-    mlflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+    mlflow_values["repo_url"] = private_registry
 
     Path(config_folder).joinpath(user_config["group_ID"], "mlflow_values").mkdir(parents=True, exist_ok=True)
 
@@ -572,12 +579,26 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     with open(Path(config_folder).joinpath(user_config["group_ID"], "maia_namespace_values", "namespace_values.yaml"), "r") as f:
         namespace_values = yaml.safe_load(f)
         orthanc_port = namespace_values["orthanc"]["port"]
-
+    namespace = user_config["group_ID"].lower().replace("_", "-")
     random_path = generate_random_password(16)
+    private_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
+        private_registry = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
+    
+    docker_image = os.environ["maia_orthanc_image"]
+    docker_version = os.environ["maia_orthanc_version"]
+    if "maia_orthanc_image_"+namespace in os.environ:
+        docker_image = os.environ["maia_orthanc_image_"+namespace]
+    if "maia_orthanc_version_"+namespace in os.environ:
+        docker_version = os.environ["maia_orthanc_version_"+namespace]
+    
+    image_pull_secret = os.environ["imagePullSecrets"]
+    if "imagePullSecrets_"+namespace in os.environ:
+        image_pull_secret = os.environ["imagePullSecrets_"+namespace]
     orthanc_config = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
-        "imagePullSecret": os.environ["imagePullSecrets"],
-        "image": {"repository": os.environ["maia_orthanc_image"], "tag": os.environ["maia_orthanc_version"]},
+        "imagePullSecret": image_pull_secret,
+        "image": {"repository": docker_image, "tag": docker_version},
         "cpu": "1000m",
         "memory": "1Gi",
         "gpu": False,
@@ -601,12 +622,11 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
             "mysqlDatabase": "orthanc",
         }
 
-    registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-    orthanc_config["imagePullSecret"] = registry_url.replace(".", "-").replace("/", "-")
+    orthanc_config["imagePullSecret"] = private_registry.replace(".", "-").replace("/", "-")
 
     namespace = user_config["group_ID"].lower().replace("_", "-")
     orthanc_custom_config = {
-        "LuaScripts" : ["/mnt/msp_spleen.lua"],
+        "LuaScripts" : ["/mnt/msp_models.lua"],
         "StableAge": 5,
         "DicomModalities": {
             #f"{namespace}-xnat": [f"{namespace}-XNAT", "maia-xnat.xnat", "8104"],
@@ -685,7 +705,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
 
     orthanc_config["chart_name"] = "maia-orthanc"
     orthanc_config["chart_version"] = "1.1.0"
-    orthanc_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+    orthanc_config["repo_url"] = private_registry
 
     Path(config_folder).joinpath(user_config["group_ID"], "orthanc_values").mkdir(parents=True, exist_ok=True)
 

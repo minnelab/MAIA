@@ -907,12 +907,18 @@ def create_cifs_secret_from_context(namespace, user_id, username, password, publ
             "username": base64.b64encode(encrypted_username.encode()).decode(),
             "password": base64.b64encode(encrypted_password.encode()).decode(),
         }
-
         try:
-            api_response = api_instance.create_namespaced_secret(namespace, secret)
-            print(api_response)
-        except ApiException as e:
-            print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+            # Check if the secret already exists
+            existing_secret = api_instance.read_namespaced_secret(secret.metadata.name, namespace)
+            # If it exists, delete it
+            if existing_secret is not None:
+                print(f"Deleting existing secret: {secret.metadata.name}")
+                api_instance.delete_namespaced_secret(secret.metadata.name, namespace)
+        except kubernetes.client.exceptions.ApiException as e:
+            print(f"Exception checking/deleting existing secret: {e}")
+            if e.status != 404:
+                raise
+        api_instance.create_namespaced_secret(namespace, secret)
 
 
 def create_cifs_secret(request, cluster_id, settings, namespace, user_id, username, password, public_key):

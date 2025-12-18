@@ -89,6 +89,10 @@ def deploy_maia_kaniko(
     registry_password = registry_credentials.get("password") if registry_credentials else None
     registry_email = registry_credentials.get("email") if registry_credentials else None
 
+    registry_complete_url = registry_url
+    if registry_url.startswith("https://index.docker.io/v1/"):
+        registry_complete_url = registry_url.replace("https://index.docker.io/v1/", "")
+
     kaniko_values.update(
         {
             "docker_registry_secret": registry_secret_name,
@@ -105,9 +109,9 @@ def deploy_maia_kaniko(
             "git_token": os.environ.get("GIT_TOKEN"),
             "args": [
                 "--dockerfile=Dockerfile",
-                f"--context={os.environ['MAIA_GIT_REPO_URL']}",  # refs/heads/mybranch
+                f"--context={os.environ['MAIA_GIT_REPO_URL']}",  # git://github.com/acme/myproject.git#refs/heads/mybranch#<desired-commit-id>
                 "--context-sub-path=" + subpath,
-                "--destination={}/{}:{}".format(registry_url, image_name, image_tag),
+                "--destination={}/{}:{}".format(registry_complete_url, image_name, image_tag),
                 "--cache=true",
                 "--cache-dir=/cache",
                 "--insecure",

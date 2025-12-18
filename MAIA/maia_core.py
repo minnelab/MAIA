@@ -12,14 +12,7 @@ import loguru
 logger = loguru.logger
 
 def sync_argocd_app(project_name, app_name, chart_version, argo_cd_host, password):
-    response = requests.post(f"{argo_cd_host}/api/v1/session", json={"username":"admin","password":password}, verify=False)
-    if response.status_code == 200:
-        token = response.json()["token"]
-        headers = {"Authorization": f"Bearer {token}"}  # <- session cookie
-    else:
-        print(f"Failed to get token: {response.status_code}")
-        print(response.text)
-        return
+    headers = {"Authorization": f"Bearer {password}"}  # <- session cookie
     # 2. Trigger sync
     url = f"{argo_cd_host}/api/v1/applications/{project_name}-{app_name}/sync"
     payload = {
@@ -97,6 +90,7 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
                         "enabled": True,
                         "name": "OAuth",
                         "empty_scopes": False,
+                        "tls_skip_verify_insecure": True,
                         "role_attribute_path": f"contains(groups[*], '{admin_group_id}') && 'Admin' || 'Viewer'",
                         "scopes": "openid profile email",
                         "team_ids": admin_group_id,
@@ -150,11 +144,17 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-            cluster_config_dict["traefik_resolver"]
-        )
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
     elif cluster_config_dict["ingress_class"] == "nginx":
-        prometheus_values["grafana"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            prometheus_values["grafana"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            prometheus_values["grafana"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
         prometheus_values["grafana"]["ingress"]["tls"][0]["secretName"] = "grafana." + cluster_config_dict["domain"]
 
     Path(config_folder).joinpath(project_id, "prometheus_values").mkdir(parents=True, exist_ok=True)
@@ -302,10 +302,13 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
 
     core_toolkit_values = {
         "namespace": "maia-core-toolkit",
-        "chart_version": "0.1.8",
-        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", None),
+        "chart_version": "0.2.2",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),
         "chart_name": "maia-core-toolkit",
+        "admin_group_ID": os.environ["admin_group_ID"],
     }
+    if os.environ.get("MAIA_PRIVATE_REGISTRY", None) == "":
+        core_toolkit_values["repo_url"] = "https://minnelab.github.io/MAIA/"
     if "metallb_ip_pool" in cluster_config_dict:
         metallb_ip_pool = cluster_config_dict["metallb_ip_pool"]
     else:
@@ -316,7 +319,7 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
             {
                 "dashboard": {"enabled": True, "dashboard_domain": "dashboard." + cluster_config_dict["domain"]},
                 "default_ingress_class": cluster_config_dict["ingress_class"],
-                "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"], "certResolver": cluster_config_dict["traefik_resolver"]},
+                "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
                 "metallb": {"enabled": True, "addresses": metallb_ip_pool},
             }
         )
@@ -329,6 +332,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
                 "metallb": {"enabled": True, "addresses": metallb_ip_pool},
             }
         )
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        core_toolkit_values.update({"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"]}})
+    else:
+        core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 
     Path(config_folder).joinpath(project_id, "core_toolkit_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:
@@ -391,24 +398,12 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
 
     traefik_values.update(
         {
-            "certificatesResolvers": {
-                cluster_config_dict["traefik_resolver"]: {
-                    "acme": {
-                        "email": cluster_config_dict["ingress_resolver_email"],
-                        # "httpchallenge": "true",
-                        "httpchallenge": {"entryPoint": "web"},
-                        "caserver": "https://acme-v02.api.letsencrypt.org/directory",
-                        # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
-                        "storage": "/data/acme.json",
-                    }
-                }
-            },
+            
             "ingressRoute": {
                 "dashboard": {
                     "enabled": True,
                     "matchRule": "Host(`{}`)".format("traefik." + cluster_config_dict["domain"]),  # && PathPrefix(`/dashboard`)
                     "entryPoints": ["websecure"],
-                    "tls": {"certResolver": cluster_config_dict["traefik_resolver"]},
                     "middlewares": [{"name": "traefik-dashboard-auth"}, {"name": "traefik-dashboard-replace-path"}],
                 }
             },
@@ -462,6 +457,23 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
             ],
         }
     )
+    
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        ...
+    else:
+        traefik_values["ingressRoute"]["dashboard"]["tls"]={"certResolver": cluster_config_dict["traefik_resolver"]}
+        traefik_values["certificatesResolvers"] = {
+                cluster_config_dict["traefik_resolver"]: {
+                    "acme": {
+                        "email": cluster_config_dict["ingress_resolver_email"],
+                        # "httpchallenge": "true",
+                        "httpchallenge": {"entryPoint": "web"},
+                        "caserver": "https://acme-v02.api.letsencrypt.org/directory",
+                        # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
+                        "storage": "/data/acme.json",
+                    }
+                }
+            }
 
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
@@ -623,11 +635,17 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-            cluster_config_dict["traefik_resolver"]
-        )
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
     elif cluster_config_dict["ingress_class"] == "nginx":
-        rancher_values["ingress"]["extraAnnotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            rancher_values["ingress"]["extraAnnotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
 
     Path(config_folder).joinpath(project_id, "rancher_values").mkdir(parents=True, exist_ok=True)
 
@@ -690,6 +708,19 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
                 {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
             ],
         }
+    elif cluster_config_dict["k8s_distribution"] == "k0s":
+        gpu_operator_values.update({
+            "operator": {
+                "defaultRuntime": "containerd"
+            },
+            "toolkit": {
+                "env": [
+                    {"name": "CONTAINERD_CONFIG", "value": "/etc/k0s/containerd.d/nvidia.toml"},
+                    {"name": "CONTAINERD_SOCKET", "value": "/run/k0s/containerd.sock"},
+                    {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
+                ]
+            }
+        })
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -888,11 +919,11 @@ def create_gpu_booking_values(config_folder, project_id):
         {
             "image": {
                 "pod_terminator": {
-                    "repository": "minnelab/gpu-booking-pod-terminator",
+                    "repository": "ghcr.io/minnelab/gpu-booking-pod-terminator",
                     "pullPolicy": "IfNotPresent",
                     "tag": "1.4",
                 },
-                "repository": "minnelab/gpu-booking-admission-controller",
+                "repository": "ghcr.io/minnelab/gpu-booking-admission-controller",
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },
