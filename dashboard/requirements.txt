@@ -30,4 +30,3 @@ python-keycloak
 omegaconf
 hydra-core
 pyhelm3
-git+https://github.com/globocom/argocd-client.git
