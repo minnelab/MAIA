@@ -153,7 +153,7 @@ def deploy_maia_toolkit_api(
             if key == "env":
                 for env_key, env_value in value.items():
                     os.environ[env_key+"_"+namespace_id] = env_value
-    
+    project_form_dict["extra_configs"] = {}
     if "enable_cifs_"+namespace_id in os.environ:
         project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_"+namespace_id]
     else:

@@ -1350,6 +1350,10 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     maia_dashboard_values["clusters"][0]["bucket_name"] = cluster_config_dict["bucket_name"]
     maia_dashboard_values["clusters"][0]["docker_server"] = "ghcr.io/minnelab"
     maia_dashboard_values["clusters"][0]["argocd_destination_cluster_address"] = cluster_config_dict["argocd_destination_cluster_address"] if "argocd_destination_cluster_address" in cluster_config_dict else "https://kubernetes.default.svc"
+    if "projects" in cluster_config_dict:
+        for project in cluster_config_dict["projects"]:
+            maia_dashboard_values["clusters"][0][project] = cluster_config_dict[project]
+    maia_dashboard_values["clusters"][0]
     debug = False
 
     if debug:
