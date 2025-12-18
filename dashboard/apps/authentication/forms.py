@@ -62,7 +62,7 @@ class SignUpForm(UserCreationForm):
             maia_groups[pending_project] = pending_project + " (Pending)"
 
         self.fields['namespace'] = forms.ChoiceField(
-            choices=[(maia_group,maia_group) for maia_group in maia_groups.values()],
+            choices=[(maia_group,maia_group) for maia_group in maia_groups.values() if maia_group not in ["admin", "users"]],
             widget=forms.Select(attrs={
             'class': "form-select text-center fw-bold",
                 'style': 'max-width: auto;',
