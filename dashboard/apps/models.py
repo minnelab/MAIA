@@ -5,10 +5,12 @@ from rest_framework import serializers
 import sys
 import inspect
 from django.contrib.auth.models import User
-from django.utils.translation import gettext_lazy as _
-'''
+
+"""
 Leave this Helper Class in the TOP of the file
-'''
+"""
+
+
 class Utils:
     @staticmethod
     def get_class(config, name: str) -> models.Model:
@@ -23,7 +25,7 @@ class Utils:
         class Serializer(serializers.ModelSerializer):
             class Meta:
                 model = Utils.get_class(config, name)
-                fields = '__all__'
+                fields = "__all__"
 
         return Serializer
 
@@ -36,13 +38,15 @@ class Utils:
         # we are confident that never returns None
         return None
 
-'''
+
+"""
 Add your models below
-'''
+"""
+
 
 class Book(models.Model):
     class Meta:
-        app_label = 'dyn_datatables'
+        app_label = "dyn_datatables"
 
     name = models.CharField(max_length=100)
 
@@ -50,26 +54,25 @@ class Book(models.Model):
 class MAIAProject(models.Model):
 
     class Meta:
-        app_label = 'authentication'
+        app_label = "authentication"
 
     id = models.AutoField(primary_key=True, null=False, auto_created=True)
-    email = models.EmailField('email', max_length=150, null=True)
-    namespace = models.CharField('namespace', max_length=150, blank=True, unique=True)
-    gpu = models.CharField('gpu', max_length=150, blank=True, null=True)
-    date = models.DateField('date', default=datetime.date.today)
-        
-    memory_limit = models.TextField('memory_limit',default='2G',null=True)
-    cpu_limit = models.TextField('memory_limit', default='2', null=True)
+    email = models.EmailField("email", max_length=150, null=True)
+    namespace = models.CharField("namespace", max_length=150, blank=True, unique=True)
+    gpu = models.CharField("gpu", max_length=150, blank=True, null=True)
+    date = models.DateField("date", default=datetime.date.today)
+
+    memory_limit = models.TextField("memory_limit", default="2G", null=True)
+    cpu_limit = models.TextField("memory_limit", default="2", null=True)
+
+    conda = models.TextField("conda", default="N/A", null=True)
+
+    cluster = models.TextField("cluster", default="N/A", null=True)
+    minimal_env = models.TextField("minimal_env", default="Base", null=True)
 
 
-    conda = models.TextField('conda',default='N/A',null=True)
-
-    cluster = models.TextField('cluster', default='N/A', null=True)
-    minimal_env = models.TextField('minimal_env', default="Base", null=True)
 class MAIAUser(User):
     class Meta:
-        app_label = 'authentication'
+        app_label = "authentication"
 
-    namespace = models.CharField('namespace', max_length=150, blank=True)
-   
-    
+    namespace = models.CharField("namespace", max_length=150, blank=True)

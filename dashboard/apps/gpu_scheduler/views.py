@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -21,7 +21,8 @@ import os
 import yaml
 from apps.models import MAIAProject
 
-@method_decorator(csrf_exempt, name='dispatch')  # 🚀 This disables CSRF for this API
+
+@method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
 class GPUSchedulabilityAPIView(APIView):
     permission_classes = [AllowAny]  # 🚀 Allow requests without authentication or CSRF
 
@@ -32,16 +33,24 @@ class GPUSchedulabilityAPIView(APIView):
                 return Response({"error": "Missing booking data"}, status=400)
             if not booking_data.get("starting_time") or not booking_data.get("ending_time") or not booking_data.get("gpu"):
                 return Response({"error": "Missing starting_time, ending_time or gpu"}, status=400)
-            if not booking_data.get("gpu") in [gpu["name"] for gpu in settings.GPU_SPECS]:
+            if booking_data.get("gpu") not in [gpu["name"] for gpu in settings.GPU_SPECS]:
                 return Response({"error": "Invalid gpu"}, status=400)
         except Exception as e:
             return Response({"error": str(e)}, status=400)
         overlapping_time_slots, gpu_availability_per_slot, total_replicas = verify_gpu_availability(
             global_existing_bookings=GPUBooking.objects.all().values(),
             new_booking=request.data.get("booking"),
-            gpu_specs=settings.GPU_SPECS)
-        return Response({"overlapping_time_slots": overlapping_time_slots, "gpu_availability_per_slot": gpu_availability_per_slot, "total_replicas": total_replicas,"EXISTING_BOOKINGS": GPUBooking.objects.all().values()}, status=200)
-
+            gpu_specs=settings.GPU_SPECS,
+        )
+        return Response(
+            {
+                "overlapping_time_slots": overlapping_time_slots,
+                "gpu_availability_per_slot": gpu_availability_per_slot,
+                "total_replicas": total_replicas,
+                "EXISTING_BOOKINGS": GPUBooking.objects.all().values(),
+            },
+            status=200,
+        )
 
     def post(self, request, *args, **kwargs):
         try:
@@ -61,8 +70,13 @@ class GPUSchedulabilityAPIView(APIView):
                 gpu = booking_data["gpu"]
                 # Calculate the total number of days for existing bookings
                 existing_bookings = GPUBooking.objects.filter(user_email=user_email)
-                is_bookable, err_msg = verify_gpu_booking_policy(existing_bookings, booking_data, global_existing_bookings=GPUBooking.objects.all().values(), gpu_specs=settings.GPU_SPECS)
-                
+                is_bookable, err_msg = verify_gpu_booking_policy(
+                    existing_bookings,
+                    booking_data,
+                    global_existing_bookings=GPUBooking.objects.all().values(),
+                    gpu_specs=settings.GPU_SPECS,
+                )
+
                 if not is_bookable:
                     return Response({"error": err_msg}, status=400)
                 # Create the new booking
@@ -71,22 +85,28 @@ class GPUSchedulabilityAPIView(APIView):
                     start_date=booking_data["starting_time"],
                     end_date=booking_data["ending_time"],
                     namespace=namespace,
-                    gpu=gpu
+                    gpu=gpu,
                 )
                 return Response({"message": "Booking created successfully"})
 
             try:
                 user_statuses = GPUBooking.objects.filter(user_email=user_email)
-                
+
                 is_schedulable = False
-                
+
                 current_time = datetime.now(timezone.utc)
                 is_schedulable = any(
-                    status.start_date <= current_time and status.end_date >= current_time and status.namespace.lower().replace("_","-") == namespace.lower().replace("_","-")
+                    status.start_date <= current_time
+                    and status.end_date >= current_time
+                    and status.namespace.lower().replace("_", "-") == namespace.lower().replace("_", "-")
                     for status in user_statuses
                 )
                 if is_schedulable:
-                    status = next(status for status in user_statuses if status.start_date <= current_time and status.end_date >= current_time)
+                    status = next(
+                        status
+                        for status in user_statuses
+                        if status.start_date <= current_time and status.end_date >= current_time
+                    )
                     return Response({"schedulable": is_schedulable, "until": status.end_date, "gpu": status.gpu})
                 else:
                     return Response({"schedulable": is_schedulable, "until": None})
@@ -99,32 +119,33 @@ class GPUSchedulabilityAPIView(APIView):
 
 @login_required(login_url="/maia/login/")
 def admin_delete_booking(request, id):
-    
-    id_token = request.session.get('oidc_id_token')
-    
+
+    id_token = request.session.get("oidc_id_token")
+
     booking = GPUBooking.objects.get(id=id)
     if not request.user.is_superuser:
         return JsonResponse({"error": "You do not have permission to delete this booking."}, status=403)
 
     booking.delete()
-    pod_name = "jupyter-"+convert_username_to_jupyterhub_username(booking.user_email)
-    
-    _, cluster_id = get_project(booking.namespace, settings=settings,maia_project_model=MAIAProject)
+    pod_name = "jupyter-" + convert_username_to_jupyterhub_username(booking.user_email)
+
+    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject)
     local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
 
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
         yaml.dump(local_kubeconfig_dict, f)
 
         os.environ["KUBECONFIG_LOCAL"] = str(Path("/tmp").joinpath("kubeconfig-project-local"))
-        
-    label_pod_for_deletion(booking.namespace.lower().replace("_","-"), pod_name=pod_name)
+
+    label_pod_for_deletion(booking.namespace.lower().replace("_", "-"), pod_name=pod_name)
     return redirect("/maia/gpu-booking/my-bookings/")
+
 
 @login_required(login_url="/maia/login/")
 def delete_booking(request, id):
-    
-    id_token = request.session.get('oidc_id_token')
-    
+
+    id_token = request.session.get("oidc_id_token")
+
     booking = GPUBooking.objects.get(id=id)
     if request.user.email != booking.user_email and not request.user.is_superuser:
         return JsonResponse({"error": "You do not have permission to delete this booking."}, status=403)
@@ -135,21 +156,22 @@ def delete_booking(request, id):
             start_date=booking.start_date,
             end_date=datetime.now(timezone.utc),
             namespace=booking.namespace,
-            gpu=booking.gpu
+            gpu=booking.gpu,
         )
     booking.delete()
-    pod_name = "jupyter-"+convert_username_to_jupyterhub_username(booking.user_email)
-    
-    _, cluster_id = get_project(booking.namespace, settings=settings,maia_project_model=MAIAProject)
+    pod_name = "jupyter-" + convert_username_to_jupyterhub_username(booking.user_email)
+
+    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject)
     local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
 
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
         yaml.dump(local_kubeconfig_dict, f)
 
         os.environ["KUBECONFIG_LOCAL"] = str(Path("/tmp").joinpath("kubeconfig-project-local"))
-        
-    label_pod_for_deletion(booking.namespace.lower().replace("_","-"), pod_name=pod_name)
+
+    label_pod_for_deletion(booking.namespace.lower().replace("_", "-"), pod_name=pod_name)
     return redirect("/maia/gpu-booking/my-bookings/")
+
 
 @login_required(login_url="/maia/login/")
 def book_gpu(request):
@@ -158,11 +180,11 @@ def book_gpu(request):
 
     email = request.user.email
 
-    id_token = request.session.get('oidc_id_token')
+    id_token = request.session.get("oidc_id_token")
     groups = request.user.groups.all()
 
     namespaces = []
-    
+
     if request.user.is_superuser:
         namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
 
@@ -172,31 +194,37 @@ def book_gpu(request):
             if str(group) != "MAIA:users":
                 namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
-    initial_data = {'user_email': email, 'namespace': namespaces[0] if namespaces else None}
-    
+    initial_data = {"user_email": email, "namespace": namespaces[0] if namespaces else None}
+
     if request.method == "POST":
         form = GPUBookingForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            msg = 'Request for GPU Booking submitted successfully.'
+            msg = "Request for GPU Booking submitted successfully."
             success = True
             return redirect("/maia/gpu-booking/my-bookings/")
         else:
             print(form.errors)
-            msg = 'Form is not valid'
+            msg = "Form is not valid"
     else:
         form = GPUBookingForm(request.POST or None, request.FILES or None, initial=initial_data)
         if not request.user.is_superuser:
-            form.fields['namespace'].choices = [(ns, ns) for ns in namespaces]
-        form.fields['user_email'] = forms.EmailField(
+            form.fields["namespace"].choices = [(ns, ns) for ns in namespaces]
+        form.fields["user_email"] = forms.EmailField(
             widget=forms.EmailInput(
-            attrs={
-                "placeholder": "Your Email.",
-                "class": "form-control",
-
-            }
-            ))
-    context = {"namespaces": namespaces, "dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success}
+                attrs={
+                    "placeholder": "Your Email.",
+                    "class": "form-control",
+                }
+            )
+        )
+    context = {
+        "namespaces": namespaces,
+        "dashboard_version": settings.DASHBOARD_VERSION,
+        "form": form,
+        "msg": msg,
+        "success": success,
+    }
     if request.user.is_superuser:
         context["username"] = request.user.username + " [ADMIN]"
         context["user"] = ["admin"]
@@ -207,8 +235,8 @@ def book_gpu(request):
 
 @login_required(login_url="/maia/login/")
 def gpu_booking_info(request):
-    
-    id_token = request.session.get('oidc_id_token')
+
+    id_token = request.session.get("oidc_id_token")
     groups = request.user.groups.all()
     namespaces = []
     if request.user.is_superuser:
@@ -217,18 +245,16 @@ def gpu_booking_info(request):
     else:
         for group in groups:
             if str(group) != "MAIA:users":
-                namespaces.append(str(group).split(":")[-1].lower().replace("_","-"))
+                namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
     if request.user.is_superuser:
         bookings = GPUBooking.objects.all()
     else:
         bookings = GPUBooking.objects.filter(user_email=request.user.email)
-    
-    
+
     bookings_dict = []
     total_days = 0
-    
-   
+
     for booking in bookings:
         if booking.start_date <= datetime.now(timezone.utc) and booking.end_date >= datetime.now(timezone.utc):
             status = "Active"
@@ -243,12 +269,17 @@ def gpu_booking_info(request):
             "status": status,
             "email": booking.user_email,
             "namespace": booking.namespace,
-            "id": booking.id
+            "id": booking.id,
         }
         total_days += (booking.end_date - booking.start_date).days
         bookings_dict.append(booking_item)
-    
-    context = {"namespaces": namespaces, "dashboard_version": settings.DASHBOARD_VERSION, "bookings": bookings_dict, "total_days": total_days}
+
+    context = {
+        "namespaces": namespaces,
+        "dashboard_version": settings.DASHBOARD_VERSION,
+        "bookings": bookings_dict,
+        "total_days": total_days,
+    }
     if request.user.is_superuser:
         context["username"] = request.user.username + " [ADMIN]"
         context["user"] = ["admin"]

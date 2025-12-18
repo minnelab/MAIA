@@ -16,6 +16,7 @@ from django.conf import settings
 from apps.models import MAIAUser
 import os
 
+
 def login_view(request):
     form = LoginForm(request.POST or None)
 
@@ -31,14 +32,24 @@ def login_view(request):
                 login(request, user)
                 return redirect("/")
             else:
-                msg = 'Invalid credentials'
+                msg = "Invalid credentials"
         else:
-            msg = 'Error validating the form'
+            msg = "Error validating the form"
 
     backend = "default"
     if "BACKEND" in os.environ:
         backend = os.environ["BACKEND"]
-    return render(request, "accounts/login.html", {"BACKEND": backend,"dashboard_version": settings.DASHBOARD_VERSION,"form": form, "msg": msg, "GITHUB_AUTH": GITHUB_AUTH})
+    return render(
+        request,
+        "accounts/login.html",
+        {
+            "BACKEND": backend,
+            "dashboard_version": settings.DASHBOARD_VERSION,
+            "form": form,
+            "msg": msg,
+            "GITHUB_AUTH": GITHUB_AUTH,
+        },
+    )
 
 
 def register_user(request):
@@ -52,64 +63,74 @@ def register_user(request):
 
             namespace = form.cleaned_data.get("namespace")
             if namespace.endswith(" (Pending)"):
-                namespace = namespace[:-len(" (Pending)")]
-            form.instance.namespace = namespace+",users"
+                namespace = namespace[: -len(" (Pending)")]
+            form.instance.namespace = namespace + ",users"
             form.save()
             username = form.cleaned_data.get("username")
             raw_password = form.cleaned_data.get("password1")
             namespace = form.cleaned_data.get("namespace")
- 
 
             user = authenticate(username=username, password=raw_password)
 
             user.is_active = False
             user.save()
 
-            #if os.environ["DEBUG"] != "True":
-                #send_email(email, os.environ["admin_email"], email)
+            # if os.environ["DEBUG"] != "True":
+            # send_email(email, os.environ["admin_email"], email)
             if settings.DISCORD_URL is not None:
                 send_discord_message(username=username, namespace=namespace, url=settings.DISCORD_URL)
-            msg = 'Request for Account Registration submitted successfully. Please wait for the admin to approve your request.'
+            msg = "Request for Account Registration submitted successfully. Please wait for the admin to approve your request."
             success = True
 
-            #return redirect("/login/")
+            # return redirect("/login/")
 
         else:
             print(form.errors)
-            if 'username' in form.errors and any('already exists' in str(e) for e in form.errors['username']):
+            if "username" in form.errors and any("already exists" in str(e) for e in form.errors["username"]):
                 requested_namespace = form.cleaned_data.get("namespace")
                 user_in_db = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
                 namespace_is_already_registered = False
                 if user_in_db:
                     user_id = user_in_db.id
                     namespace = user_in_db.namespace
-                    for ns in namespace.split(','):
+                    for ns in namespace.split(","):
                         if ns == requested_namespace:
                             namespace_is_already_registered = True
                     if not namespace_is_already_registered:
                         namespace = f"{namespace},{requested_namespace}"
                         MAIAUser.objects.filter(id=user_id).update(namespace=namespace)
-                        msg = 'A user with that email already exists. {} has now requested to be registered to the project {}'.format(form.cleaned_data.get("email"), form.cleaned_data.get("namespace"))
-                        send_discord_message(username=form.cleaned_data.get("email"), namespace=namespace, url=settings.DISCORD_URL)
+                        msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
+                            form.cleaned_data.get("email"), form.cleaned_data.get("namespace")
+                        )
+                        send_discord_message(
+                            username=form.cleaned_data.get("email"), namespace=namespace, url=settings.DISCORD_URL
+                        )
                         success = True
-                    else: 
-                        msg = 'A user with that username already exists and has been already registered to the project {}'.format(form.cleaned_data.get("namespace"))
+                    else:
+                        msg = "A user with that username already exists and has been already registered to the project {}".format(
+                            form.cleaned_data.get("namespace")
+                        )
                         success = True
                 else:
-                    msg = 'A user with that username does not exist.'
+                    msg = "A user with that username does not exist."
             else:
-                msg = 'Form is not valid'
+                msg = "Form is not valid"
     else:
         form = SignUpForm()
 
-    return render(request, "accounts/register.html", {"dashboard_version": settings.DASHBOARD_VERSION,"form": form, "msg": msg, "success": success})
+    return render(
+        request,
+        "accounts/register.html",
+        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+    )
+
 
 @login_required(login_url="/maia/login/")
 def send_maia_email(request):
-    
+
     if not request.user.is_superuser:
         return redirect("/maia/")
-    
+
     hostname = settings.HOSTNAME
     register_project_url = f"https://{hostname}/maia/register_project/"
     register_user_url = f"https://{hostname}/maia/register/"
@@ -122,26 +143,27 @@ def send_maia_email(request):
         form = MAIAInfoForm(request.POST, request.FILES)
         if form.is_valid():
             send_maia_info_email(form.cleaned_data.get("email"), register_project_url, register_user_url, discord_support_link)
-            msg = 'Request for MAIA Info submitted successfully.'
+            msg = "Request for MAIA Info submitted successfully."
             success = True
 
-            #return redirect("/login/")
+            # return redirect("/login/")
 
         else:
             print(form.errors)
-            msg = 'Form is not valid'
+            msg = "Form is not valid"
     else:
         form = MAIAInfoForm()
 
-    return render(request, "accounts/send_maia_info.html", {"dashboard_version": settings.DASHBOARD_VERSION,"form": form, "msg": msg, "success": success})
+    return render(
+        request,
+        "accounts/send_maia_info.html",
+        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+    )
 
 
 def register_project(request):
     msg = None
     success = False
-
-
-   
 
     minio_available = verify_minio_availability(settings=settings)
     if request.method == "POST":
@@ -149,52 +171,72 @@ def register_project(request):
         form = RegisterProjectForm(request.POST, request.FILES)
         if form.is_valid():
 
-            
             form.save()
             email = form.cleaned_data.get("email")
             namespace = form.cleaned_data.get("namespace")
-            
+
             if not minio_available:
                 print("MinIO is not available, skipping conda env storage")
-                msg = 'Request for Project Registration submitted successfully. Note: MinIO is not available, skipping conda env storage.'
+                msg = "Request for Project Registration submitted successfully. Note: MinIO is not available, skipping conda env storage."
                 success = True
-                return render(request, "accounts/register_project.html", {"dashboard_version": settings.DASHBOARD_VERSION,"minio_available":minio_available,"form": form, "msg": msg, "success": success})
+                return render(
+                    request,
+                    "accounts/register_project.html",
+                    {
+                        "dashboard_version": settings.DASHBOARD_VERSION,
+                        "minio_available": minio_available,
+                        "form": form,
+                        "msg": msg,
+                        "success": success,
+                    },
+                )
 
-            
-            if 'conda' in request.FILES and minio_available:
-                conda_file = request.FILES['conda']
-                if conda_file.name.endswith('.zip'):
-                    client = Minio(settings.MINIO_URL,
-                                access_key=settings.MINIO_ACCESS_KEY,
-                                secret_key=settings.MINIO_SECRET_KEY,
-                                secure=settings.MINIO_SECURE)
-                    with open(f"/tmp/{namespace}_env.zip", 'wb+') as destination:
-                        for chunk in request.FILES['conda'].chunks():
+            if "conda" in request.FILES and minio_available:
+                conda_file = request.FILES["conda"]
+                if conda_file.name.endswith(".zip"):
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
+                    with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
+                        for chunk in request.FILES["conda"].chunks():
                             destination.write(chunk)
                     print(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
                     client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.zip", f"/tmp/{namespace}_env.zip")
                     print(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
-                else:    
-                    with open(f"/tmp/{namespace}_env", 'wb+') as destination:
-                        for chunk in request.FILES['conda'].chunks():
+                else:
+                    with open(f"/tmp/{namespace}_env", "wb+") as destination:
+                        for chunk in request.FILES["conda"].chunks():
                             destination.write(chunk)
                     print(f"Storing {namespace}_env in MinIO, in bucket {settings.BUCKET_NAME}")
                     client.fput_object(settings.BUCKET_NAME, f"{namespace}_env", f"/tmp/{namespace}_env")
                     print(get_minio_shareable_link(f"{namespace}_env", settings.BUCKET_NAME, settings))
-            
+
             if settings.DISCORD_URL is not None:
                 send_discord_message(username=email, namespace=namespace, url=settings.DISCORD_URL, project_registration=True)
-            msg = 'Request for Project Registration submitted successfully.'
+            msg = "Request for Project Registration submitted successfully."
             success = True
-            
-            #check_pending_projects_and_assign_id(settings=settings)
+
+            # check_pending_projects_and_assign_id(settings=settings)
 
             # return redirect("/login/")
 
         else:
             print(form.errors)
-            msg = 'Form is not valid'
+            msg = "Form is not valid"
     else:
         form = RegisterProjectForm()
 
-    return render(request, "accounts/register_project.html", {"dashboard_version": settings.DASHBOARD_VERSION,"minio_available":minio_available,"form": form, "msg": msg, "success": success})
+    return render(
+        request,
+        "accounts/register_project.html",
+        {
+            "dashboard_version": settings.DASHBOARD_VERSION,
+            "minio_available": minio_available,
+            "form": form,
+            "msg": msg,
+            "success": success,
+        },
+    )

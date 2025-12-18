@@ -7,6 +7,7 @@ from functools import wraps
 
 from django.http import HttpResponseRedirect, HttpResponse
 
+
 def check_permission(function):
     @wraps(function)
     def wrap(viewRequest, *args, **kwargs):
@@ -18,12 +19,12 @@ def check_permission(function):
                 return function(viewRequest, *args, **kwargs)
 
             # All good - allow the processing
-            return HttpResponseRedirect('/login/')
+            return HttpResponseRedirect("/login/")
 
         except Exception as e:
 
             # On error
-            return HttpResponse( 'Error: ' + str( e ) )
+            return HttpResponse("Error: " + str(e))
 
         return function(viewRequest, *args, **kwargs)
 
