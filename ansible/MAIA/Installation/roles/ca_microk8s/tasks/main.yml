@@ -36,6 +36,7 @@
   register: create_secret
   failed_when: create_secret.rc != 0 and 'AlreadyExists' not in (create_secret.stderr | default(''))
   changed_when: "'Created' in create_secret.stdout"
+  ignore_errors: true
 
 
 - name: Show secret creation result

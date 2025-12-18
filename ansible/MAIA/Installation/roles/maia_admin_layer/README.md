@@ -45,18 +45,6 @@ The following defaults are defined in `defaults/main.yml`:
 | Variable | Type | Description |
 | --- | --- | --- |
 | `config_folder` | string | Path to config folder containing `env.json` and `{{ cluster_name }}.yaml` |
-| `DEPLOY_KUBECONFIG` | string | Kubeconfig path for cluster access |
-| `argocd_namespace` | string | Namespace where ArgoCD is installed |
-| `admin_group_ID` | string | Keycloak admin group ID |
-| `admin_project_chart` | string | Helm chart reference for admin project |
-| `admin_project_repo` | string | Repository for the admin project chart |
-| `admin_project_version` | string | Version of the admin project chart |
-| `keycloak_client_secret` | string | Client secret for Keycloak configuration |
-| `minio_admin_password` | string | Admin password for MinIO tenant |
-| `minio_root_password` | string | Root password for MinIO tenant |
-| `dashboard_api_secret` | string | API secret for MAIA dashboard |
-| `mysql_dashboard_password` | string | Password for dashboard MySQL backend |
-| `ARGOCD_PASSWORD` | string | Password for ArgoCD CLI login |
 
 ## Optional Values
 

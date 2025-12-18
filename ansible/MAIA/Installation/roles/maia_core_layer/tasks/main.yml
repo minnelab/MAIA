@@ -61,6 +61,7 @@
     --version {{ prometheus_chart_version }}
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  when: auto_sync | bool
 
 
 - name: Install latest argocd CLI
@@ -107,12 +108,11 @@
   ansible.builtin.set_fact:
     use_selfsigned: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).selfsigned | default(false) }}"
   delegate_to: localhost
-  when: auto_sync | bool
 
 - name: Rollout restart maia-core-traefik deployment if selfsigned is enabled
   ansible.builtin.shell: |
     kubectl rollout restart deployment/maia-core-traefik -n traefik
-  when: use_selfsigned | bool and auto_sync | bool
+  when: auto_sync | bool and use_selfsigned | bool
   changed_when: true
   delegate_to: localhost
   environment:
@@ -126,3 +126,12 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Re-Sync maia-core-traefik application
+  ansible.builtin.shell: |
+    argocd app sync maia-core-traefik
+  register: argocd_sync_result
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  when: auto_sync | bool

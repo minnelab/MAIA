@@ -1,6 +1,10 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # NFS Server tasks
+- name: Ensure all pending package configurations are completed
+  ansible.builtin.command: sudo dpkg --configure -a
+  become: true
+
 - name: Install NFS server packages
   ansible.builtin.apt:
     name: "{{ item }}"

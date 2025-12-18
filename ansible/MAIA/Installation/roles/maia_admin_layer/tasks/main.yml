@@ -296,33 +296,33 @@
     container: minio
     command: >-
       /bin/sh -c '
-        echo '{
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "admin:*"
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "kms:*"
-              ]
-            },
-            {
-              "Effect": "Allow",
-              "Action": [
-                "s3:*"
-              ],
-              "Resource": [
-                "arn:aws:s3:::*"
-              ]
-            }
-          ]
-        }' > /tmp/maia-admin-policy.json;
-        mc admin policy create local "MAIA:admin" /tmp/maia-admin-policy.json;
+      echo "{
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [
+          {
+            \"Effect\": \"Allow\",
+            \"Action\": [
+              \"admin:*\"
+            ]
+          },
+          {
+            \"Effect\": \"Allow\",
+            \"Action\": [
+              \"kms:*\"
+            ]
+          },
+          {
+            \"Effect\": \"Allow\",
+            \"Action\": [
+              \"s3:*\"
+            ],
+            \"Resource\": [
+              \"arn:aws:s3:::*\"
+            ]
+          }
+        ]
+      }" > /tmp/maia-admin-policy.json;
+      mc admin policy create local "MAIA:admin" /tmp/maia-admin-policy.json;
       '
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'

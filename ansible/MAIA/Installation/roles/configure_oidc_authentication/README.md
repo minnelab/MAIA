@@ -10,6 +10,7 @@ The `configure_oidc_authentication` role:
 3. Extracts `domain` and `rancher_password` from the cluster configuration
 4. Logs in to Rancher and obtains an API token
 5. Accepts the Rancher EULA using the obtained token
+6. Configures Harbor with OIDC authentication
 
 It is intended to be used after the cluster and Rancher are up and reachable.
 
@@ -33,7 +34,10 @@ Defined in `defaults/main.yml`:
 | Variable | Default | Type | Description |
 | --- | --- | --- | --- |
 | `config_folder` | `/opt/maia/config` | string | Folder containing `env.json` and cluster YAML |
-
+| `configure_rancher` | `true` | boolean | Configure Rancher with OIDC authentication. |
+| `configure_harbor` | `true` | boolean | Configure Harbor with OIDC authentication. |
+| `harbor_admin_user` | `admin` | string | Harbor admin user. |
+| `harbor_admin_pass` | `Harbor12345` | string | Harbor admin password. |
 ## Required Values
 
 The role requires a valid cluster configuration file at:
@@ -44,6 +48,34 @@ This file must contain at least:
 - `rancher_password`
 
 The `cluster_name` is expected to be provided via `env.json` or from the calling playbook.
+
+## Optional Values
+
+All other variables are optional and can be overridden when using the role:
+
+### `configure_rancher`
+- **Type**: `boolean`
+- **Default**: `true`
+- **Description**: Configure Rancher with OIDC authentication.
+
+If `configure_rancher` is set to `false`, the role will not configure Rancher.
+
+### `configure_harbor`
+- **Type**: `boolean`
+- **Default**: `true`
+- **Description**: Configure Harbor with OIDC authentication.
+
+If `configure_harbor` is set to `false`, the role will not configure Harbor.
+
+### `harbor_admin_user`
+- **Type**: `string`
+- **Default**: `admin`
+- **Description**: Harbor admin user.
+
+### `harbor_admin_pass`
+- **Type**: `string`
+- **Default**: `Harbor12345`
+- **Description**: Harbor admin password.
 
 ## Usage
 

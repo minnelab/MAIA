@@ -18,4 +18,24 @@ argument_specs:
         type: str
         required: true
         description: "Path to the configuration folder containing env.json and the cluster config YAML (e.g. /opt/maia/config)."
+      configure_rancher:
+        type: bool
+        required: false
+        default: true
+        description: "Configure Rancher with OIDC authentication."
+      configure_harbor:
+        type: bool
+        required: false
+        default: true
+        description: "Configure Harbor with OIDC authentication."
+      harbor_admin_user:
+        type: str
+        required: false
+        default: admin
+        description: "Harbor admin user."
+      harbor_admin_pass:
+        type: str
+        required: false
+        default: Harbor12345
+        description: "Harbor admin password."
 

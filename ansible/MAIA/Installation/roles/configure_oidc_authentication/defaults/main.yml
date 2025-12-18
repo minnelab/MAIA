@@ -4,5 +4,8 @@
 
 # Path to the configuration folder containing env.json and cluster config YAML
 config_folder: /opt/maia/config
+configure_rancher: true
+configure_harbor: true
 
-
+harbor_admin_user: admin
+harbor_admin_pass: Harbor12345
