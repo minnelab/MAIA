@@ -38,11 +38,15 @@ EPILOG = dedent(
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Send welcome email to new MAIA users", epilog=EPILOG, formatter_class=RawTextHelpFormatter
+        description="Send welcome email to new MAIA users",
+        epilog=EPILOG,
+        formatter_class=RawTextHelpFormatter,
     )
     parser.add_argument("--email", required=True, help="Recipient email address")
     parser.add_argument("--url", required=True, help="MAIA platform URL")
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
+    parser.add_argument(
+        "-v", "--version", action="version", version="%(prog)s " + version
+    )
 
     return parser
 
@@ -115,13 +119,14 @@ def send_welcome_user_email(receiver_email, maia_url):
     # Create a secure SSL context
     context = ssl.create_default_context()
 
-    with smtplib.SMTP_SSL(os.environ["email_smtp_server"], port, context=context) as server:
+    with smtplib.SMTP_SSL(
+        os.environ["email_smtp_server"], port, context=context
+    ) as server:
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 
 
 def main():
-
     args = get_arg_parser().parse_args()
     try:
         send_welcome_user_email(args.email, args.url)
