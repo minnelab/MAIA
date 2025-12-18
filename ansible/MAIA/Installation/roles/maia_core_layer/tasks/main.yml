@@ -54,6 +54,7 @@
 
 - name: Install Prometheus stack for MAIA Core observability
   ansible.builtin.command: >
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && helm repo update && \
     helm upgrade --install {{ prometheus_release_name }}
     {{ prometheus_chart_name }}
     -n observability
@@ -72,6 +73,7 @@
   args:
     creates: /usr/local/bin/argocd
   delegate_to: localhost
+  become: true
   when: auto_sync | default(true) | bool
 
 - name: Login to ArgoCD using CLI
