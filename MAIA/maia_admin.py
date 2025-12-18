@@ -345,12 +345,16 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         else:
             orthanc_ssh_port = ssh_ports[-1]
 
-
+    if "MAIA_PRIVATE_REGISTRY_"+namespace in os.environ:
+        repo_url = os.environ["MAIA_PRIVATE_REGISTRY_"+namespace]
+    else:
+        repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        
     maia_namespace_values = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "chart_name": "maia-namespace",
         "chart_version": "1.7.3",
-        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),
+        "repo_url": repo_url,
         "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
         "serviceType": cluster_config["ssh_port_type"],
         "users": users,
@@ -366,6 +370,14 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "dockerRegistrySecretName": os.environ["imagePullSecrets"],
             "dockerRegistrySecret": encode_docker_registry_secret(
                 os.environ["docker_server"], os.environ["docker_username"], os.environ["docker_password"]
+            ),
+        }
+    if "imagePullSecrets_"+namespace in os.environ:
+        maia_namespace_values["dockerRegistrySecret"] = {
+            "enabled": True,
+            "dockerRegistrySecretName": os.environ["imagePullSecrets_"+namespace],
+            "dockerRegistrySecret": encode_docker_registry_secret(
+                os.environ["docker_server"+namespace], os.environ["docker_username"+namespace], os.environ["docker_password"+namespace]
             ),
         }
 
@@ -1337,6 +1349,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     maia_dashboard_values["clusters"][0]["url_type"] = cluster_config_dict["url_type"]
     maia_dashboard_values["clusters"][0]["bucket_name"] = cluster_config_dict["bucket_name"]
     maia_dashboard_values["clusters"][0]["docker_server"] = "ghcr.io/minnelab"
+    maia_dashboard_values["clusters"][0]["argocd_destination_cluster_address"] = cluster_config_dict["argocd_destination_cluster_address"] if "argocd_destination_cluster_address" in cluster_config_dict else "https://kubernetes.default.svc"
     debug = False
 
     if debug:
@@ -1417,8 +1430,13 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         {"name": "OIDC_OP_JWKS_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs"},
         {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
         {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
-        {"name": "maia_workspace_version", "value": "1.8.0"},
-        {"name": "maia_workspace_image", "value": "ghcr.io/minnelab/maia-workspace-base-notebook-ssh"},
+
+        {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", "1.8.0")},
+        {"name": "maia_workspace_image", "value": os.environ.get("maia_workspace_image", "ghcr.io/minnelab/maia-workspace-base-notebook-ssh")},
+        {"name": "argocd_namespace", "value": "argocd"},
+        {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
+        {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
+        {"name": "maia_project_version", "value": os.environ.get("maia_project_version", "1.7.1")},
     ])
     if "MAIA_PRIVATE_REGISTRY" in os.environ and "docker_username" in os.environ and "docker_password" in os.environ and "docker_email" in os.environ:
         maia_dashboard_values["env"].extend([
