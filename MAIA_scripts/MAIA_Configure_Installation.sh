@@ -117,6 +117,10 @@ for var in "${required_vars[@]}"; do
       export PUBLIC_REGISTRY=1
       continue
     fi
+    if [ "$var" = "INGRESS_RESOLVER_EMAIL" ] && [ -v INGRESS_RESOLVER_EMAIL ] && [ -z "${INGRESS_RESOLVER_EMAIL}" ]; then
+      export INGRESS_RESOLVER_EMAIL=""
+      continue
+    fi
     # If PUBLIC_REGISTRY=1, skip prompting for HARBOR_USERNAME and HARBOR_PASSWORD
     if [ "$PUBLIC_REGISTRY" = "1" ]; then
       if [ "$var" = "HARBOR_USERNAME" ] || [ "$var" = "HARBOR_PASSWORD" ]; then
@@ -151,6 +155,9 @@ for var in "${required_vars[@]}"; do
         elif [ "$var" == "CONFIG_FOLDER" ]; then
           input_var="$(pwd)/${CLUSTER_NAME}-config"
           echo "CONFIG_FOLDER set to $input_var"
+        elif [ "$var" == "INGRESS_RESOLVER_EMAIL" ]; then
+          export $var=""
+          echo "INGRESS_RESOLVER_EMAIL left empty"
         else
           echo "Error: $var is not set. Exiting."
           exit 1
@@ -221,7 +228,8 @@ else
 fi
 
 export SSH_PORT_TYPE=${SSH_PORT_TYPE:-NodePort}
-export PORT_RANGE=${PORT_RANGE:-[30000,31000]}
+export PORT_RANGE_LOWER_BOUND=${PORT_RANGE_LOWER_BOUND:-30000}
+export PORT_RANGE_UPPER_BOUND=${PORT_RANGE_UPPER_BOUND:-31000}
 
 if [ "$K8S_DISTRIBUTION" = "microk8s" ]; then
   export STORAGE_CLASS=${STORAGE_CLASS:-microk8s-hostpath}
@@ -244,7 +252,8 @@ rootCA: $CONFIG_FOLDER/ca.crt
 bucket_name: $BUCKET_NAME
 ssh_port_type: $SSH_PORT_TYPE
 port_range:
-$PORT_RANGE
+- $PORT_RANGE_LOWER_BOUND
+- $PORT_RANGE_UPPER_BOUND
 shared_storage_class: $SHARED_STORAGE_CLASS
 storage_class: $STORAGE_CLASS
 url_type: $URL_TYPE

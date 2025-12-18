@@ -122,10 +122,7 @@ def main():
     # Step 2: Run MAIA_Configure_Installation.sh
     if not args.skip_configure:
         print("\n=== Step 2: Running MAIA_Configure_Installation.sh ===")
-        configure_script = Path(__file__).parent / "MAIA_Configure_Installation.sh"
-        if not configure_script.exists():
-            print(f"Error: Configuration script not found: {configure_script}")
-            sys.exit(1)
+        configure_script = "MAIA_Configure_Installation.sh"
 
         # Check if env.json exists for no-prompt mode
         env_json = config_folder / "env.json"
