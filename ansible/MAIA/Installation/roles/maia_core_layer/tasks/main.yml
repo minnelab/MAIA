@@ -80,12 +80,13 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  when: auto_sync | bool
 
 - name: Login to ArgoCD using CLI
   ansible.builtin.shell: |
     argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
     argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
-    argocd login $ARGOCD_SERVER_IP:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+    argocd login {{ argocd_server_ip.stdout }}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
   environment:
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
   register: argocd_cli_login
