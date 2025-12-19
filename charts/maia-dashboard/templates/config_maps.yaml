@@ -18,7 +18,10 @@ data:
         {{ .name }}={{ .value }}
         {{- end }}
     gpu-specs.yaml: |-
-        gpu_specs: {{- if not .Values.gpuList }}[]{{- else }}
+        {{- if not .Values.gpuList }}
+        gpu_specs: []
+        {{- else }}
+        gpu_specs:
         {{- range $index, $gpu := $.Values.gpuList }}
           - name: "{{ $gpu.name }}"
             vram: "{{ $gpu.vram }}"
