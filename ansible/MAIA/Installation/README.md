@@ -15,6 +15,28 @@ pip install maia-toolkit ansible jmespath
 ```bash
 apt install jq yq apache2-utils
 ```
+**Kubernetes tools:**
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+chmod 700 get_helm.sh
+./get_helm.sh
+
+VERSION=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep tag_name | cut -d '"' -f 4)
+curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
+chmod +x /usr/local/bin/argocd
+```
+
+And verify the installations:
+```bash
+kubectl version
+helm version
+argocd version
+```
+
+Minimal Host Requirements:
 
 ## Installation
 
@@ -31,6 +53,12 @@ To run this installer, you must provide a **configuration folder** containing:
 
 - **Inventory**: An Ansible inventory file or folder defining your hosts and their roles.
 - **Configuration file**: A `config.yaml` file describing the installation steps and options.
+
+### Example `inventory` file:
+```yaml
+[control-plane]
+maia-dev-node-0 ansible_host=127.0.0.1 ansible_connection=local ansible_user=ansible-user ansible_become_password=ansible ansible_become=true ansible_become_method=sudo
+```
 
 ### Example `config.yaml`
 

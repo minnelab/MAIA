@@ -83,8 +83,8 @@ steps:
 prepare_hosts:
   nvidia_drivers: true
   ufw: true
-  nfs: true
-  cifs: true
+  nfs: false
+  cifs: false
 
 configure_hosts:
   auto_sync: true
@@ -117,7 +117,7 @@ configure_maia_dashboard:
 
 env:
   MAIA_PRIVATE_REGISTRY: ""
-  CLUSTER_DOMAIN: "maia.example.com"
+  CLUSTER_DOMAIN: "example.maia.com"
   CLUSTER_NAME: "maia-cluster"
   INGRESS_RESOLVER_EMAIL: ""
   K8S_DISTRIBUTION: "microk8s"
@@ -131,14 +131,7 @@ cluster_config_extra_env:
 
 ```ini
 [control-plane]
-maia-node-0 ansible_user=root ansible_become=true
-
-[nfs_server]
-maia-node-0 ansible_user=root ansible_become=true
-
-[nfs_clients]
-maia-node-1 ansible_user=root ansible_become=true
-maia-node-2 ansible_user=root ansible_become=true
+maia-dev-node-0 ansible_host=127.0.0.1 ansible_connection=local ansible_user=ansible-user ansible_become_password=ansible ansible_become=true ansible_become_method=sudo
 ```
 
 #### Run the installer
