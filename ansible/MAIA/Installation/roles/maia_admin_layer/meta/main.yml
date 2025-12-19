@@ -31,3 +31,8 @@ argument_specs:
         required: false
         default: true
         description: "Enable ArgoCD application synchronization and post-install tasks."
+      argocd_port:
+        type: int
+        required: false
+        default: 8080
+        description: "ArgoCD port for CLI login."

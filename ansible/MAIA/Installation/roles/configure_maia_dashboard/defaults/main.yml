@@ -8,3 +8,5 @@ config_folder: /opt/maia/config
 # Enable automatic ArgoCD application synchronization and deployment restart
 auto_sync: true
 
+# ArgoCD port for CLI login
+argocd_port: 8080

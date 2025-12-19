@@ -13,3 +13,5 @@ maia_admin_namespaces:
 # Enable automatic ArgoCD application synchronization and post-install steps
 auto_sync: true
 
+# ArgoCD port for CLI login
+argocd_port: 8080

@@ -94,30 +94,20 @@
   delegate_to: localhost
   when: auto_sync | bool
 
-- name: Rollout restart argocd-server deployment in argocd namespace
-  ansible.builtin.shell: |
-    kubectl rollout restart deployment/argocd-server -n argocd
-  register: argocd_server_rollout_result
-  changed_when: argocd_server_rollout_result.rc == 0
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  when: auto_sync | bool
-
 - name: Login to ArgoCD using CLI (with fallback)
   ansible.builtin.shell: |
     export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
-    argocd login localhost:8080 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
     argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
-    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+    argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
   environment:
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   register: argocd_cli_login
   changed_when: false
   delegate_to: localhost
-  retries: 5
-  delay: 20
   when: auto_sync | bool
   
 
@@ -259,9 +249,11 @@
 - name: Login to ArgoCD using CLI (with fallback)
   ansible.builtin.shell: |
     export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
-    argocd login localhost:8080 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
     argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
-    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+    argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
   environment:
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"

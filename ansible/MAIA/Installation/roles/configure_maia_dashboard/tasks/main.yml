@@ -42,10 +42,14 @@
 
 - name: Login to ArgoCD using CLI (with fallback)
   ansible.builtin.shell: |
-    argocd login localhost:8080 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
-    argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure
+    export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
+    argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
   environment:
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   register: argocd_cli_login
   changed_when: false
   delegate_to: localhost

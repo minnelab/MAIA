@@ -38,6 +38,7 @@ Defined in `defaults/main.yml`:
 | --- | --- | --- | --- |
 | `config_folder` | `/opt/maia/config` | string | Folder containing `env.json` and cluster YAML |
 | `auto_sync` | `true` | boolean | Enable ArgoCD application synchronization and deployment restart |
+| `argocd_port` | `8080` | integer | ArgoCD port for CLI login |
 
 ## Required Values
 
@@ -74,6 +75,13 @@ All other variables are optional and can be overridden when using the role:
 - **Description**: Enable ArgoCD application synchronization and deployment restart.
 
 If `auto_sync` is set to `false`, the role will skip ArgoCD login, application synchronization, and deployment restart steps.
+
+### `argocd_port`
+- **Type**: `integer`
+- **Default**: `8080`
+- **Description**: ArgoCD port for CLI login.
+
+If `argocd_port` is set to a different value, the role will use the specified port for ArgoCD CLI login.
 
 ## Usage
 

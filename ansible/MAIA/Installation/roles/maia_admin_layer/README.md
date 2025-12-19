@@ -39,6 +39,7 @@ The following defaults are defined in `defaults/main.yml`:
 | --- | --- | --- | --- |
 | `maia_admin_namespaces` | `[harbor, keycloak, maia-admin-toolkit, maia-dashboard, cattle-system]` | list | Namespaces created for MAIA Admin components |
 | `auto_sync` | `true` | bool | Enable ArgoCD synchronization and post-install tasks |
+| `argocd_port` | `8080` | integer | ArgoCD port for CLI login |
 
 ## Required Values
 
@@ -52,7 +53,7 @@ The following defaults are defined in `defaults/main.yml`:
 | --- | --- | --- | --- |
 | `maia_admin_namespaces` | list | See defaults | Override namespaces created by the role |
 | `auto_sync` | bool | `true` | Disable to skip ArgoCD sync and post-install actions |
-
+| `argocd_port` | integer | `8080` | ArgoCD port for CLI login |
 ## Usage
 
 ### Basic Usage
