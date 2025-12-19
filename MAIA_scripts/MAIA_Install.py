@@ -62,7 +62,7 @@ def get_arg_parser():
         action="store_true",
         help="Skip running MAIA_Configure_Installation.sh. Use this if configuration is already done.",
     )
-    
+
     pars.add_argument(
         "--configure-local-host",
         action="store_true",
@@ -199,7 +199,7 @@ def main():
     else:
         print("\n=== Step 3: Skipping prepare_hosts.yaml ===")
 
-    if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:     
+    if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:
         if args.configure_local_host:
             print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
             target_hosts = "localhost"
