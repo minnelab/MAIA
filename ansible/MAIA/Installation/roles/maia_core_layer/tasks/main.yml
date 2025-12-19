@@ -133,11 +133,14 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
-- name: Re-Sync maia-core-traefik application
+- name: Re-Sync ArgoCD applications
   ansible.builtin.shell: |
-    argocd app sync maia-core-traefik
+    argocd app sync {{ item }}
   register: argocd_sync_result
   changed_when: false
   failed_when: false
   delegate_to: localhost
+  retries: "{{ argocd_sync_retries }}"
+  delay: "{{ argocd_sync_retry_delay }}"
+  loop: "{{ maia_core_argocd_applications }}"
   when: auto_sync | bool
