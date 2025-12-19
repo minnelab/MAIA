@@ -36,4 +36,3 @@ minio:
   openIdConfigUrl: "https://iam.{{ domain }}/realms/maia/.well-known/openid-configuration"
   ingress:
     annotations: {}
-    tlsSecretName: "minio-selfsigned"
