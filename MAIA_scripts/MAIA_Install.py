@@ -169,10 +169,11 @@ def main():
     config_folder_env = os.environ["CONFIG_FOLDER"]
     if "cluster_config_extra_env" in config_dict:
         cluster_name = os.environ["CLUSTER_NAME"]
-        with open(Path(config_folder_env).joinpath(f"{cluster_name}.yaml"), "a") as f:
+        with open(Path(config_folder_env).joinpath(f"{cluster_name}.yaml"), "r") as f:
             existing_data = yaml.safe_load(f) or {}
             for key, value in config_dict["cluster_config_extra_env"].items():
                 existing_data[key] = value
+        with open(Path(config_folder_env).joinpath(f"{cluster_name}.yaml"), "w") as f:
             yaml.dump(existing_data, f)
     # Step 3: Run prepare_hosts.yaml
     print("\n=== Step 3: Running prepare_hosts.yaml ===")
