@@ -146,6 +146,7 @@ Once the installation is complete, you can access the MAIA Dashboard at `https:/
 Wait for the dashboard to be ready by checking the `maia-dashboard` namespace:
 
 ```bash
+export KUBECONFIG=<CONFIG_FOLDER>/<CLUSTER_NAME>-kubeconfig.yaml
 kubectl get pod -n maia-dashboard
 ```
 Output:
