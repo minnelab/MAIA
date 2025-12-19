@@ -62,6 +62,12 @@ def get_arg_parser():
         action="store_true",
         help="Skip running MAIA_Configure_Installation.sh. Use this if configuration is already done.",
     )
+    
+    pars.add_argument(
+        "--configure-local-host",
+        action="store_true",
+        help="Configure the local host with the subdomain and IP address for self-signed certificates.",
+    )
 
     pars.add_argument(
         "--configure-no-prompt",
@@ -193,31 +199,32 @@ def main():
     else:
         print("\n=== Step 3: Skipping prepare_hosts.yaml ===")
 
-    if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:
-        print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
-        target_hosts = "localhost"
-        cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
-        host_ip = "127.0.0.1"
-        configure_host_linux_cmd = [
-            "ansible-playbook",
-            "-K",
-            "-i",
-            str(inventory_path),
-            str(playbooks_dir + ".configure_host"),
-            "-e",
-            f"target_hosts={target_hosts}",
-            "-e",
-            f"cluster_domain={cluster_domain}",
-            "-e",
-            f"host_ip={host_ip}",
-        ]
-        try:
-            run_command(configure_host_linux_cmd)
-        except subprocess.CalledProcessError as e:
-            print(f"Error running configure_host_linux.yaml: {e}")
-            sys.exit(1)
-        else:
-            print("\n=== Step 3.1: Skipping configure_host_linux.yaml for localhost ===")
+    if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:     
+        if args.configure_local_host:
+            print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
+            target_hosts = "localhost"
+            cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
+            host_ip = "127.0.0.1"
+            configure_host_linux_cmd = [
+                "ansible-playbook",
+                "-K",
+                "-i",
+                str(inventory_path),
+                str(playbooks_dir + ".configure_host"),
+                "-e",
+                f"target_hosts={target_hosts}",
+                "-e",
+                f"cluster_domain={cluster_domain}",
+                "-e",
+                f"host_ip={host_ip}",
+            ]
+            try:
+                run_command(configure_host_linux_cmd)
+            except subprocess.CalledProcessError as e:
+                print(f"Error running configure_host_linux.yaml: {e}")
+                sys.exit(1)
+            else:
+                print("\n=== Step 3.1: Skipping configure_host_linux.yaml for localhost ===")
         print("\n=== Step 3.2: Running configure_host_linux.yaml for all hosts ===")
         target_hosts = "all"
         configure_host_cmd = [
