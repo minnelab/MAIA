@@ -118,7 +118,6 @@ for var in "${required_vars[@]}"; do
       continue
     fi
     if [ "$var" = "INGRESS_RESOLVER_EMAIL" ] && [ -v INGRESS_RESOLVER_EMAIL ] && [ -z "${INGRESS_RESOLVER_EMAIL}" ]; then
-      export INGRESS_RESOLVER_EMAIL=""
       continue
     fi
     # If PUBLIC_REGISTRY=1, skip prompting for HARBOR_USERNAME and HARBOR_PASSWORD
