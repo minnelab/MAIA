@@ -1262,7 +1262,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         "namespace": "maia-dashboard",
         "repo_url": "https://minnelab.github.io/MAIA/",
         "chart_name": "maia-dashboard",
-        "chart_version": "0.2.1",
+        "chart_version": "0.2.2",
     }
 
     maia_dashboard_values.update(

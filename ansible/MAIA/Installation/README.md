@@ -141,3 +141,17 @@ From your terminal, execute:
 ```bash
 MAIA_install --config-folder /path/to/config_folder
 ```
+Once the installation is complete, you can access the MAIA Dashboard at `https://maia.<cluster_domain>`.
+Wait for the dashboard to be ready by checking the `maia-dashboard` namespace:
+
+```bash
+export KUBECONFIG=<CONFIG_FOLDER>/<CLUSTER_NAME>-kubeconfig.yaml
+kubectl get pod -n maia-dashboard
+```
+Output:
+```bash
+NAME                                               READY   STATUS    RESTARTS   AGE
+admin-minio-tenant-pool-0-0                        2/2     Running   0          44m
+maia-admin-maia-dashboard-b87475666-2vs77          1/1     Running   0          3m15s
+maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          3m57s
+```

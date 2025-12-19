@@ -142,6 +142,20 @@ MAIA_Install --config-folder <CONFIG_FOLDER>
 
 Replace `<CONFIG_FOLDER>` with the path to the folder containing your `config.yaml` and `inventory`.
 
+Once the installation is complete, you can access the MAIA Dashboard at `https://maia.<cluster_domain>`.
+Wait for the dashboard to be ready by checking the `maia-dashboard` namespace:
+
+```bash
+kubectl get pod -n maia-dashboard
+```
+Output:
+```bash
+NAME                                               READY   STATUS    RESTARTS   AGE
+admin-minio-tenant-pool-0-0                        2/2     Running   0          44m
+maia-admin-maia-dashboard-b87475666-2vs77          1/1     Running   0          3m15s
+maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          3m57s
+```
+
 ## MAIA Architecture
 
 MAIA is built on top of Kubernetes, a popular open-source container orchestration platform. The platform is designed to be modular and extensible, allowing users to customize and extend its functionality to suit their needs. 
