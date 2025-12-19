@@ -263,6 +263,8 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
+  retries: 5
+  delay: 20
   when: auto_sync | bool
 - name: Sync maia-core-loginapp ArgoCD application
   ansible.builtin.shell: |
