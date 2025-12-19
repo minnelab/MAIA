@@ -36,7 +36,19 @@ helm version
 argocd version
 ```
 
-Minimal Host Requirements:
+### Minimum Hardware Requirements
+
+To successfully deploy a minimal MAIA environment, your host should meet at least the following hardware specifications:
+
+- **Memory:** 8 GB RAM
+- **CPU:** 4 CPU cores
+- **Disk:** 20 GB available storage
+
+**Operating System:**  
+MAIA installation has been fully tested on Ubuntu 22.04 and 24.04 LTS.
+
+> **Note:**  
+> These requirements are **ONLY** for deploying and running the MAIA platform and a basic Kubernetes cluster. If you plan to run large projects or host resource-intensive workloads, you should scale up CPU, memory, disk space, and add GPUs as needed for your use case.
 
 ## Installation
 
