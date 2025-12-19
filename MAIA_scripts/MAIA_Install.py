@@ -200,10 +200,10 @@ def main():
         print("\n=== Step 3: Skipping prepare_hosts.yaml ===")
 
     if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:
+        cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
         if args.configure_local_host:
             print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
-            target_hosts = "localhost"
-            cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
+            target_hosts = "localhost"        
             host_ip = "127.0.0.1"
             configure_host_linux_cmd = [
                 "ansible-playbook",
