@@ -23,8 +23,6 @@ sudo chmod +x /usr/local/bin/argocd
 
 export MAIA_PRIVATE_REGISTRY=""
 export INGRESS_RESOLVER_EMAIL=""
-#export CLUSTER_DOMAIN="dev.maia.se"
-#export CLUSTER_NAME="maia-dev"
 
 export K8S_DISTRIBUTION="microk8s"
 export CONFIG_FOLDER="maia-config"
@@ -52,7 +50,7 @@ EOF
 
 cat <<EOF > $CONFIG_FOLDER/config.yaml
 cluster_config_extra_env:
-  key: value
+  selfsigned: true
 EOF
 
 MAIA_Install --config-folder $CONFIG_FOLDER
