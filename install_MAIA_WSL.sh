@@ -53,4 +53,5 @@ cluster_config_extra_env:
   selfsigned: true
 EOF
 
+export PATH=$HOME/.local/bin:$PATH
 MAIA_Install --config-folder $CONFIG_FOLDER
