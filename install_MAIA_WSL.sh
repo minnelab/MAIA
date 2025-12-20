@@ -3,7 +3,7 @@
 sudo apt update
 sudo apt install -y python3-pip ufw curl
 sudo apt install -y jq yq apache2-utils
-pip install maia-toolkit ansible jmespath
+pip install maia-toolkit ansible jmespath --break-system-packages
 
 
 
