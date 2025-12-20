@@ -28,9 +28,9 @@ data:
     }
     {{ .Values.selfsigned.cluster_domain }}:53 {
     hosts {
-        10.0.2.2 iam.{{ .Values.selfsigned.cluster_domain }}
-        10.0.2.2 registry.{{ .Values.selfsigned.cluster_domain }}
-        10.0.2.2 mgmt.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} iam.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} registry.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} mgmt.{{ .Values.selfsigned.cluster_domain }}
         fallthrough
       }
     forward . /etc/resolv.conf

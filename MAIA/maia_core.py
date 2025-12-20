@@ -298,7 +298,7 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
 
     core_toolkit_values = {
         "namespace": "maia-core-toolkit",
-        "chart_version": "0.2.2",
+        "chart_version": "0.2.3",
         "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),
         "chart_name": "maia-core-toolkit",
         "admin_group_ID": os.environ["admin_group_ID"],
