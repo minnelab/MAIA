@@ -42,6 +42,73 @@ from rest_framework.permissions import AllowAny
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPIView(APIView):
+    permission_classes = [AllowAny]
+
+
+
+    def get(self, request, *args, **kwargs):
+        secret_token = request.data.get("token")
+        if not secret_token or secret_token != settings.SECRET_KEY:
+            return Response({"error": "Invalid or missing secret token"}, status=403)
+        if kwargs.get("path") == "list-users":
+            # Return list of users (all MAIAUser emails and ids)
+            users = MAIAUser.objects.all().values('id', 'email', 'username', 'first_name', 'last_name')
+            return Response({"users": users}, status=200)
+        if kwargs.get("path") == "list-groups":
+            # Return list of groups (all MAIAProject namespaces)
+            groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
+            return Response({"groups": groups}, status=200)
+
+    def post(self, request, *args, **kwargs):
+        secret_token = request.data.get("token")
+        if not secret_token or secret_token != settings.SECRET_KEY:
+            return Response({"error": "Invalid or missing secret token"}, status=403)
+        if kwargs.get("path") == "create-user":
+            # Create a new user
+            email = request.data.get("email")
+            username = request.data.get("username")
+            first_name = request.data.get("first_name")
+            last_name = request.data.get("last_name")
+            namespace = request.data.get("namespace")
+            MAIAUser.objects.create(email=email, username=username, first_name=first_name, last_name=last_name, namespace=namespace)
+            register_user_in_keycloak(email=email, settings=settings)
+            for group in namespace.split(","):
+                register_users_in_group_in_keycloak(group_id=group, emails=[email], settings=settings)
+            return Response({"message": "User created successfully"}, status=200)
+        if kwargs.get("path") == "update-user":
+            # Update a user
+            namespace = request.data.get("namespace")
+            MAIAUser.objects.filter(email=email).update(namespace=namespace)
+            return Response({"message": "User updated successfully"}, status=200)
+        if kwargs.get("path") == "delete-user":
+            # Delete a user
+            email = request.data.get("email")
+            MAIAUser.objects.filter(email=email).delete()
+            return Response({"message": "User deleted successfully"}, status=200)
+        if kwargs.get("path") == "create-group":
+            # Create a new group
+            group_id = request.data.get("group_id")
+            gpu = request.data.get("gpu")
+            date = request.data.get("date")
+            memory_limit = request.data.get("memory_limit")
+            cpu_limit = request.data.get("cpu_limit")
+            conda = request.data.get("conda")
+            cluster = request.data.get("cluster")
+            minimal_env = request.data.get("minimal_env")
+            user_id = request.data.get("user_id")
+            MAIAProject.objects.create(namespace=group_id, email=user_id, gpu=gpu, date=date, memory_limit=memory_limit, cpu_limit=cpu_limit, conda=conda, cluster=cluster, minimal_env=minimal_env)
+            register_group_in_keycloak(group_id=group_id, settings=settings)
+            register_users_in_group_in_keycloak(group_id=group_id, emails=[user_id], settings=settings)
+            return Response({"message": "Group created successfully"}, status=200)
+        if kwargs.get("path") == "delete-group":
+            # Delete a group
+            group_id = request.data.get("group_id")
+            MAIAProject.objects.filter(namespace=group_id).delete()
+            delete_group_in_keycloak(group_id=group_id, settings=settings)
+            return Response({"message": "Group deleted successfully"}, status=200)
+        return Response({"message": "Invalid path"}, status=400)
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
 class ProjectChartValuesAPIView(APIView):
