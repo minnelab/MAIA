@@ -241,12 +241,13 @@ def delete_user(email,force=False):
                     settings=settings
                 )
             if force:
-                if group !=settings.ADMIN_GROUP[len("MAIA:")]:
+                if group !=settings.ADMIN_GROUP[len("MAIA:"):]:
                     remove_user_from_group_in_keycloak(
                         email=email,
                         group_id=group,
                         settings=settings
                     )
+                    print
                     user.namespace = _remove_group_from_namespace(user.namespace, group)
                     user.save(update_fields=["namespace"])
         if not user.is_superuser:
