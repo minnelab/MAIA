@@ -168,10 +168,17 @@ def update_user(email, namespace):
                 emails=[email],  
                 settings=settings,  
             )  
-        except KeycloakPostError as e:  
-            logger.error(  
-                f"Error adding user {email} to group {group} in Keycloak during update: {e}"  
-            )  
+        except KeycloakPostError as e:
+            if getattr(e, "response_code", None) == 409:
+                continue
+            else:
+                logger.error(  
+                    f"Error adding user {email} to group {group} in Keycloak during update: {e}"  
+                )  
+                return {
+                    "message": f"Failed to add user {email} to group {group} in Keycloak during update: {e}",
+                    "status": 500,
+                }
 
     # Remove user from groups they are no longer part of in Keycloak  
     for group in groups_to_remove:  
@@ -185,9 +192,16 @@ def update_user(email, namespace):
                 settings=settings,  
             )  
         except KeycloakPostError as e:  
-            logger.error(  
-                f"Error removing user {email} from group {group} in Keycloak during update: {e}"  
-            )  
+            if getattr(e, "response_code", None) == 409:
+                continue
+            else:
+                logger.error(  
+                    f"Error removing user {email} from group {group} in Keycloak during update: {e}"  
+                )
+                return {
+                    "message": f"Failed to remove user {email} from group {group} in Keycloak during update: {e}",
+                    "status": 500,
+                }
     return {"message": "User updated successfully", "status": 200}
 
 
@@ -245,7 +259,14 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         register_group_in_keycloak(group_id=group_id, settings=settings)
         group_already_exists = False
     except KeycloakPostError as e:
-        group_already_exists = True
+        if getattr(e, "response_code", None) == 409:
+            group_already_exists = True
+        else:
+            logger.error(f"Error registering group {group_id} in Keycloak: {e}")
+            return {
+                "message": f"Failed to register group {group_id} in Keycloak: {e}",
+                "status": 500,
+            }
         logger.error(f"Error registering group {group_id} in Keycloak: {e}")
 
     if email_list and len(email_list) > 0:
@@ -303,8 +324,14 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                         settings=settings,  
                     )  
         except KeycloakPostError as e:
-            logger.error(f"Error processing user list for group {group_id}: {e}")  
-            return {"message": "Error processing user list for group", "status": 400}
+            if getattr(e, "response_code", None) == 409:
+                continue
+            else:
+                logger.error(f"Error processing user list for group {group_id}: {e}")
+                return {
+                    "message": f"Error processing user list for group {group_id}: {e}",
+                    "status": 500,
+                }
     
     # Create or update the project
     try:
