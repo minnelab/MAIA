@@ -166,7 +166,7 @@ def update_user(email, namespace):
     user = user_qs.first() 
     # If user does not exist in the database, there is nothing to sync in Keycloak  
     if not user:  
-        return {"message": "User updated successfully", "status": 200}   
+        return {"message": "User does not exist", "status": 204}   
     old_namespace = user.namespace if user else None  
 
     # Update namespace in the MAIA database  
