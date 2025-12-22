@@ -138,7 +138,7 @@ class UserManagementAPICreateGroupView(APIView):
         cluster = request.data.get("cluster")
         minimal_env = request.data.get("minimal_env")
         user_id = request.data.get("user_id")
-        email_list = request.data.getlist("email_list", [])
+        email_list = request.data.get("email_list", [])
         result = create_group_service(
             group_id, gpu, date, memory_limit, cpu_limit,
             conda, cluster, minimal_env, user_id, email_list
