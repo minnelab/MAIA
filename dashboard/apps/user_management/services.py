@@ -3,6 +3,38 @@ Service functions for user and group management.
 
 This module contains reusable functions for managing users and groups,
 including MAIA database operations and Keycloak integration.
+
+Usage Examples:
+    # Create a new user
+    from apps.user_management.services import create_user
+    result = create_user(
+        email="user@example.com",
+        username="johndoe",
+        first_name="John",
+        last_name="Doe",
+        namespace="admin,users,project1"
+    )
+    
+    # Create a new group
+    from apps.user_management.services import create_group
+    result = create_group(
+        group_id="project1",
+        gpu="2",
+        date="2025-12-22",
+        memory_limit="16Gi",
+        cpu_limit="4",
+        conda="base",
+        cluster="cluster1",
+        minimal_env="false",
+        user_id="admin@example.com",
+        user_list=["user1@example.com", "user2@example.com"]
+    )
+    
+    # Delete a user
+    from apps.user_management.services import delete_user
+    result = delete_user(email="user@example.com")
+    
+All functions return a dictionary with 'message' and 'status' keys.
 """
 
 from django.conf import settings
