@@ -9,6 +9,8 @@ from django.template.defaultfilters import register
 from MAIA.kubernetes_utils import get_namespaces, get_cluster_status
 import urllib3
 import os
+from MAIA.keycloak_utils import get_groups_for_user
+from apps.models import MAIAUser, User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import requests
@@ -108,6 +110,17 @@ def index_view(request):
     except Exception:
         return redirect("/login/")
 
+
+    if not MAIAUser.objects.filter(email=request.user.email).exists():
+        if not User.objects.filter(email=request.user.email).exists():
+            namespaces = get_groups_for_user(email=request.user.email, settings=settings)
+            maia_user = MAIAUser.objects.create(email=request.user.email, username=request.user.username, namespace=",".join(namespaces))
+            maia_user.save()
+        else:
+            namespaces = get_groups_for_user(email=request.user.email, settings=settings)
+            User.objects.filter(email=request.user.email).delete()
+            maia_user = MAIAUser.objects.create(email=request.user.email, username=request.user.username, namespace=",".join(namespaces))
+            maia_user.save()
     context = {
         "segment": "index",
         "status": status,

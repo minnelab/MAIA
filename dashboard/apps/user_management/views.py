@@ -9,6 +9,7 @@ from pathlib import Path
 from .forms import UserTableForm
 from apps.models import MAIAUser, MAIAProject
 import json
+import time
 from MAIA.kubernetes_utils import (
     generate_kubeconfig,
     create_helm_repo_secret_from_context,
@@ -33,13 +34,13 @@ import urllib3
 import yaml
 from django.shortcuts import redirect
 from MAIA_scripts.MAIA_install_project_toolkit import deploy_maia_toolkit_api
-
+from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from .services import (
     create_user as create_user_service,
     update_user as update_user_service,
@@ -52,24 +53,47 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIView(APIView):
-    permission_classes = [AllowAny]
-
-
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        secret_token = request.data.get("token")
-        if not secret_token or secret_token != settings.SECRET_KEY:
-            return Response({"error": "Invalid or missing secret token"}, status=403)
+        id_token = request.query_params.get("token")  
+        if not id_token:  
+            auth_header = request.headers.get("Authorization")  
+            if auth_header:  
+                # Support common "Bearer <token>" format  
+                if auth_header.lower().startswith("bearer "):  
+                    id_token = auth_header[7:]  
+                else:  
+                    id_token = auth_header 
+            # Verify id_token using django-oidc setting
+
+        try:
+            # Try to validate the id_token using the backend; this will raise an exception if invalid
+            backend = OIDCAuthenticationBackend()
+            userinfo = backend.verify_token(id_token)
+            if not userinfo:
+                return Response({"error": "Invalid ID token"}, status=403)
+            groups = userinfo.get("groups", [])
+            expiration_time = userinfo.get("exp")
+            if expiration_time < time.time():
+                return Response({"error": "Token expired"}, status=403)
+            if "MAIA:admin" not in groups:
+                return Response({"error": "Unauthorized"}, status=403)
+        except Exception as e:
+            return Response({"error": "Invalid or missing ID token"}, status=403)
         if kwargs.get("path") == "list-users":
             # Return list of users (all MAIAUser emails and ids)
-            users = MAIAUser.objects.all().values('id', 'email', 'username','namespace')
+            users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
             keycloak_users = get_maia_users_from_keycloak(settings=settings)
-            for user in users:
-                if user["email"] not in [keycloak_user["email"] for keycloak_user in keycloak_users]:
-                    user["keycloak"] = "not registered"
-                else:
-                    user["keycloak"] = "registered"
-                user["keycloak_groups"] = [group for group in keycloak_users if user["email"] == group["email"]][0]["groups"]
+            keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}  
+            for user in users:  
+                keycloak_info = keycloak_users_by_email.get(user["email"])  
+                if keycloak_info:  
+                    user["keycloak"] = "registered"  
+                    user["keycloak_groups"] = keycloak_info.get("groups", [])  
+                else:  
+                    user["keycloak"] = "not registered"  
+                    user["keycloak_groups"] = []  
             return Response({"users": users}, status=200)
         if kwargs.get("path") == "list-groups":
             # Return list of groups (all MAIAProject namespaces)
@@ -77,10 +101,36 @@ class UserManagementAPIView(APIView):
             return Response({"groups": groups}, status=200)
 
     def post(self, request, *args, **kwargs):
-        secret_token = request.data.get("token")
-        if not secret_token or secret_token != settings.SECRET_KEY:
-            return Response({"error": "Invalid or missing secret token"}, status=403)
+        id_token = request.query_params.get("token")  
+        if not id_token:  
+            auth_header = request.headers.get("Authorization")  
+            if auth_header:  
+                # Support common "Bearer <token>" format  
+                if auth_header.lower().startswith("bearer "):  
+                    id_token = auth_header[7:]  
+                else:  
+                    id_token = auth_header 
+            # Verify id_token using django-oidc setting
+
+        try:
+            # Try to validate the id_token using the backend; this will raise an exception if invalid
+            backend = OIDCAuthenticationBackend()
+            userinfo = backend.verify_token(id_token)
+            if not userinfo:
+                return Response({"error": "Invalid ID token"}, status=403)
+            groups = userinfo.get("groups", [])
+            expiration_time = userinfo.get("exp")
+            if expiration_time < time.time():
+                return Response({"error": "Token expired"}, status=403)
+            if "MAIA:admin" not in groups:
+                return Response({"error": "Unauthorized"}, status=403)
+        except Exception as e:
+            return Response({"error": "Invalid or missing ID token"}, status=403)
         if kwargs.get("path") == "create-user":
+            required_fields = ["email", "username", "first_name", "last_name", "namespace"]
+            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            if missing_fields:
+                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
             # Create a new user
             email = request.data.get("email")
             username = request.data.get("username")
@@ -90,17 +140,29 @@ class UserManagementAPIView(APIView):
             result = create_user_service(email, username, first_name, last_name, namespace)
             return Response({"message": result["message"]}, status=result["status"])
         if kwargs.get("path") == "update-user":
+            required_fields = ["email", "namespace"]
+            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            if missing_fields:
+                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
             # Update a user
             email = request.data.get("email")
             namespace = request.data.get("namespace")
             result = update_user_service(email, namespace)
             return Response({"message": result["message"]}, status=result["status"])
         if kwargs.get("path") == "delete-user":
+            required_fields = ["email"]
+            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            if missing_fields:
+                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
             # Delete a user
             email = request.data.get("email")
             result = delete_user_service(email)
             return Response({"message": result["message"]}, status=result["status"])
         if kwargs.get("path") == "create-group":
+            required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "user_list"]
+            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            if missing_fields:
+                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
             # Create a new group
             group_id = request.data.get("group_id")
             gpu = request.data.get("gpu")
@@ -118,6 +180,10 @@ class UserManagementAPIView(APIView):
             )
             return Response({"message": result["message"]}, status=result["status"])
         if kwargs.get("path") == "delete-group":
+            required_fields = ["group_id"]
+            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            if missing_fields:
+                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
             # Delete a group
             group_id = request.data.get("group_id")
             result = delete_group_service(group_id)

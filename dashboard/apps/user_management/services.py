@@ -39,6 +39,8 @@ All functions return a dictionary with 'message' and 'status' keys.
 
 import logging
 from django.conf import settings
+from django.db import IntegrityError
+from keycloak.exceptions import KeycloakPostError
 from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import (
     register_user_in_keycloak,
@@ -115,15 +117,17 @@ def create_user(email, username, first_name, last_name, namespace):
             last_name=last_name,
             namespace=namespace
         )
-    except Exception as e:
+    except IntegrityError as e:
         # If user already exists, update their namespace
         MAIAUser.objects.filter(email=email).update(namespace=namespace)
     
     # Register user in Keycloak
     try:
         register_user_in_keycloak(email=email, settings=settings)
-    except Exception as e:
+        user_already_exists = False
+    except KeycloakPostError as e:
         logger.error(f"Error registering user {email} in Keycloak: {e}")
+        user_already_exists = True
     
     # Register user in their groups
     if namespace:
@@ -135,7 +139,7 @@ def create_user(email, username, first_name, last_name, namespace):
                 settings=settings
             )
     
-    return {"message": "User created successfully", "status": 200}
+    return {"message": "User already exists in Keycloak" if user_already_exists else "User created successfully", "status": 200}
 
 
 def update_user(email, namespace):
@@ -149,7 +153,57 @@ def update_user(email, namespace):
     Returns:
         dict: Success message or error information
     """
-    MAIAUser.objects.filter(email=email).update(namespace=namespace)
+    user_qs = MAIAUser.objects.filter(email=email)  
+    user = user_qs.first() 
+    # If user does not exist in the database, there is nothing to sync in Keycloak  
+    if not user:  
+        return {"message": "User updated successfully", "status": 200}   
+    old_namespace = user.namespace if user else None  
+
+    # Update namespace in the MAIA database  
+    user_qs.update(namespace=namespace)  
+
+
+
+    # Normalize namespaces to sets of group IDs  
+    old_groups = {  
+        g.strip() for g in (old_namespace or "").split(",") if g.strip()  
+    }  
+    new_groups = {  
+        g.strip() for g in (namespace or "").split(",") if g.strip()  
+    }  
+
+    groups_to_add = new_groups - old_groups  
+    groups_to_remove = old_groups - new_groups  
+
+    # Add user to newly assigned groups in Keycloak  
+    for group in groups_to_add:  
+        try:  
+            register_users_in_group_in_keycloak(  
+                group_id=group,  
+                emails=[email],  
+                settings=settings,  
+            )  
+        except Exception as e:  
+            logger.error(  
+                f"Error adding user {email} to group {group} in Keycloak during update: {e}"  
+            )  
+
+    # Remove user from groups they are no longer part of in Keycloak  
+    for group in groups_to_remove:  
+        # Keep behavior consistent with delete_user: do not remove from reserved groups  
+        if group in ["admin", "users"]:  
+            continue  
+        try:  
+            remove_user_from_group_in_keycloak(  
+                email=email,  
+                group_id=group,  
+                settings=settings,  
+            )  
+        except Exception as e:  
+            logger.error(  
+                f"Error removing user {email} from group {group} in Keycloak during update: {e}"  
+            )  
     return {"message": "User updated successfully", "status": 200}
 
 
@@ -164,6 +218,8 @@ def delete_user(email):
         dict: Success message or error information
     """
     user = MAIAUser.objects.filter(email=email).first()
+    if not user:
+        return {"message": "User deleted successfully", "status": 200}
     if user and user.namespace:
         groups = [g.strip() for g in user.namespace.split(",") if g.strip()]
         for group in groups:
@@ -198,6 +254,15 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         dict: Success message or error information
     """
     # Handle user list if provided
+        # Register group in Keycloak
+    try:
+        register_group_in_keycloak(group_id=group_id, settings=settings)
+        group_already_exists = False
+    except KeycloakPostError as e:
+        group_already_exists = True
+        logger.error(f"Error registering group {group_id} in Keycloak: {e}")
+    if type(user_list) != list:
+        return {"message": "User list must be a list", "status": 400}
     if user_list and len(user_list) > 0:
         try:
             for user_email in user_list:
@@ -250,7 +315,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             cluster=cluster,
             minimal_env=minimal_env
         )
-    except Exception as e:
+    except IntegrityError as e:
         MAIAProject.objects.filter(namespace=group_id).update(
             email=user_id,
             gpu=gpu,
@@ -261,13 +326,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             cluster=cluster,
             minimal_env=minimal_env
         )
-    
-    # Register group in Keycloak
-    try:
-        register_group_in_keycloak(group_id=group_id, settings=settings)
-    except Exception as e:
-        logger.error(f"Error registering group {group_id} in Keycloak: {e}")
-    
+
+        
     # Add the owner to the group
     register_users_in_group_in_keycloak(
         group_id=group_id,
@@ -291,7 +351,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             settings=settings
         )
     
-    return {"message": "Group created successfully", "status": 200}
+    return {"message": "Group already exists in Keycloak" if group_already_exists else "Group created successfully", "status": 200, "group_already_exists": group_already_exists}
 
 
 def delete_group(group_id):
@@ -304,9 +364,9 @@ def delete_group(group_id):
     Returns:
         dict: Success message or error information
     """
+    if not MAIAProject.objects.filter(namespace=group_id).exists():
+        return {"message": "Group does not exist", "status": 400}
     MAIAProject.objects.filter(namespace=group_id).delete()
-    delete_group_in_keycloak(group_id=group_id, settings=settings)
-    
     # Remove all users from the group in Keycloak
     users_in_group = get_list_of_users_requesting_a_group(
         group_id=group_id,
@@ -318,5 +378,6 @@ def delete_group(group_id):
             group_id=group_id,
             settings=settings
         )
+    delete_group_in_keycloak(group_id=group_id, settings=settings)
     
     return {"message": "Group deleted successfully", "status": 200}
