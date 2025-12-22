@@ -5,7 +5,16 @@ Copyright (c) 2019 - present AppSeed.us
 
 from django.urls import path
 from apps.user_management import views
-from apps.user_management.views import ProjectChartValuesAPIView, UserManagementAPIListUsersView, UserManagementAPIListGroupsView, UserManagementAPICreateUserView, UserManagementAPIUpdateUserView, UserManagementAPIDeleteUserView, UserManagementAPICreateGroupView, UserManagementAPIDeleteGroupView
+from apps.user_management.views import (
+    ProjectChartValuesAPIView,
+    UserManagementAPIListUsersView,
+    UserManagementAPIListGroupsView,
+    UserManagementAPICreateUserView,
+    UserManagementAPIUpdateUserView,
+    UserManagementAPIDeleteUserView,
+    UserManagementAPICreateGroupView,
+    UserManagementAPIDeleteGroupView,
+)
 
 urlpatterns = [
     # The home page

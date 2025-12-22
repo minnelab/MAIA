@@ -1,42 +1,3 @@
-"""
-Service functions for user and group management.
-
-This module contains reusable functions for managing users and groups,
-including MAIA database operations and Keycloak integration.
-
-Usage Examples:
-    # Create a new user
-    from apps.user_management.services import create_user
-    result = create_user(
-        email="user@example.com",
-        username="johndoe",
-        first_name="John",
-        last_name="Doe",
-        namespace="admin,users,project1"
-    )
-    
-    # Create a new group
-    from apps.user_management.services import create_group
-    result = create_group(
-        group_id="project1",
-        gpu="2",
-        date="2025-12-22",
-        memory_limit="16Gi",
-        cpu_limit="4",
-        conda="base",
-        cluster="cluster1",
-        minimal_env="false",
-        user_id="admin@example.com",
-        user_list=["user1@example.com", "user2@example.com"]
-    )
-    
-    # Delete a user
-    from apps.user_management.services import delete_user
-    result = delete_user(email="user@example.com")
-    
-All functions return a dictionary with 'message' and 'status' keys.
-"""
-
 import logging
 from django.conf import settings
 from django.db import IntegrityError
@@ -49,7 +10,6 @@ from MAIA.keycloak_utils import (
     delete_group_in_keycloak,
     remove_user_from_group_in_keycloak,
     get_list_of_users_requesting_a_group,
-    get_maia_users_from_keycloak,
     get_groups_for_user,
 )
 
@@ -321,13 +281,13 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                     if users_to_update:  
                         MAIAUser.objects.bulk_update(users_to_update, ["namespace"])  
             
-            # Clean up Keycloak groups
-            for user_email in emails_to_remove:  
-                remove_user_from_group_in_keycloak(  
-                    email=user_email,  
-                    group_id=group_id,  
-                    settings=settings,  
-                )  
+                # Clean up Keycloak groups
+                for user_email in emails_to_remove:  
+                    remove_user_from_group_in_keycloak(  
+                        email=user_email,  
+                        group_id=group_id,  
+                        settings=settings,  
+                    )  
         except KeycloakPostError as e:
             logger.error(f"Error processing user list for group {group_id}: {e}")  
             return {"message": "Error processing user list for group", "status": 400}

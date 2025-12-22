@@ -32,9 +32,11 @@ def get_jwks():
             response = requests.get(JWKS_URL, verify=verify_param, timeout=5)
             response.raise_for_status()
             jwks = response.json()
-            _jwks_cache = jwks
+            public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}  
+            _jwks_cache = public_keys
             _jwks_cache_timestamp = now
-            return jwks
+            
+            return public_keys
         except (requests.RequestException, ValueError) as e:
             # Treat JWKS retrieval/parsing issues as authentication failures  
             raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e  
@@ -61,9 +63,7 @@ class KeycloakAuthentication(BaseAuthentication):
         if not kid:  
             raise AuthenticationFailed("Missing key ID in token header")  
 
-        jwks = get_jwks()
-
-        public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}  
+        public_keys = get_jwks()
 
         key = public_keys.get(kid)
         if not key:
