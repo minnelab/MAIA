@@ -122,7 +122,7 @@ def delete_user(email):
         dict: Success message or error information
     """
     user = MAIAUser.objects.filter(email=email).first()
-    if user:
+    if user and user.namespace:
         for group in user.namespace.split(","):
             if group not in ["admin", "users"]:
                 remove_user_from_group_in_keycloak(
@@ -160,9 +160,9 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             for user_email in user_list:
                 user = MAIAUser.objects.filter(email=user_email).first()
                 if user:
-                    namespace = user.namespace
+                    namespace = user.namespace or ""
                     if group_id not in namespace.split(","):
-                        namespace = namespace + "," + group_id
+                        namespace = namespace + "," + group_id if namespace else group_id
                         user.namespace = namespace
                         user.save()
                     register_users_in_group_in_keycloak(
@@ -180,7 +180,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                 for user_email in registered_users:
                     if user_email not in user_list:
                         user = MAIAUser.objects.filter(email=user_email).first()
-                        if user:
+                        if user and user.namespace:
                             namespace_list = user.namespace.split(",")
                             if group_id in namespace_list:
                                 namespace_list.remove(group_id)
@@ -239,9 +239,9 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     )
     user = MAIAUser.objects.filter(email=user_id).first()
     if user:
-        namespace = user.namespace
+        namespace = user.namespace or ""
         if group_id not in namespace.split(","):
-            namespace = namespace + "," + group_id
+            namespace = namespace + "," + group_id if namespace else group_id
             user.namespace = namespace
             user.save()
     
