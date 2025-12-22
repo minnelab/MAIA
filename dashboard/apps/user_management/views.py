@@ -110,8 +110,8 @@ class UserManagementAPIView(APIView):
             result = delete_user_service(email)
             return Response({"message": result["message"]}, status=result["status"])
         elif request.path == "/maia/user-management/create-group":
-            required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "user_list"]
-            missing_fields = [field for field in required_fields if not request.data.get(field)]
+            required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "email_list"]
+            missing_fields = [field for field in required_fields if not request.data.get(field) and field != "email_list"]
             if missing_fields:
                 return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
             # Create a new group
@@ -124,10 +124,10 @@ class UserManagementAPIView(APIView):
             cluster = request.data.get("cluster")
             minimal_env = request.data.get("minimal_env")
             user_id = request.data.get("user_id")
-            user_list = request.data.get("user_list", None)
+            email_list = request.data.get("email_list", None)
             result = create_group_service(
                 group_id, gpu, date, memory_limit, cpu_limit,
-                conda, cluster, minimal_env, user_id, user_list
+                conda, cluster, minimal_env, user_id, email_list
             )
             return Response({"message": result["message"]}, status=result["status"])
         elif request.path == "/maia/user-management/delete-group":
