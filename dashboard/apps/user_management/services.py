@@ -53,6 +53,46 @@ from MAIA.keycloak_utils import (
 logger = logging.getLogger(__name__)
 
 
+def _add_group_to_namespace(namespace, group_id):
+    """
+    Helper function to safely add a group to a namespace string.
+    
+    Args:
+        namespace (str): Comma-separated namespace string (can be None or empty)
+        group_id (str): Group ID to add
+        
+    Returns:
+        str: Updated namespace string
+    """
+    if not namespace:
+        return group_id
+    
+    groups = [g.strip() for g in namespace.split(",") if g.strip()]
+    if group_id not in groups:
+        groups.append(group_id)
+    return ",".join(groups)
+
+
+def _remove_group_from_namespace(namespace, group_id):
+    """
+    Helper function to safely remove a group from a namespace string.
+    
+    Args:
+        namespace (str): Comma-separated namespace string (can be None or empty)
+        group_id (str): Group ID to remove
+        
+    Returns:
+        str: Updated namespace string
+    """
+    if not namespace:
+        return ""
+    
+    groups = [g.strip() for g in namespace.split(",") if g.strip()]
+    if group_id in groups:
+        groups.remove(group_id)
+    return ",".join(groups)
+
+
 def create_user(email, username, first_name, last_name, namespace):
     """
     Create a new MAIA user and register them in Keycloak.
@@ -123,7 +163,8 @@ def delete_user(email):
     """
     user = MAIAUser.objects.filter(email=email).first()
     if user and user.namespace:
-        for group in user.namespace.split(","):
+        groups = [g.strip() for g in user.namespace.split(",") if g.strip()]
+        for group in groups:
             if group not in ["admin", "users"]:
                 remove_user_from_group_in_keycloak(
                     email=email,
@@ -160,11 +201,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             for user_email in user_list:
                 user = MAIAUser.objects.filter(email=user_email).first()
                 if user:
-                    namespace = user.namespace or ""
-                    if group_id not in namespace.split(","):
-                        namespace = namespace + "," + group_id if namespace else group_id
-                        user.namespace = namespace
-                        user.save()
+                    user.namespace = _add_group_to_namespace(user.namespace, group_id)
+                    user.save()
                     register_users_in_group_in_keycloak(
                         group_id=group_id,
                         emails=[user_email],
@@ -180,12 +218,9 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                 for user_email in registered_users:
                     if user_email not in user_list:
                         user = MAIAUser.objects.filter(email=user_email).first()
-                        if user and user.namespace:
-                            namespace_list = user.namespace.split(",")
-                            if group_id in namespace_list:
-                                namespace_list.remove(group_id)
-                                user.namespace = ",".join(namespace_list)
-                                user.save()
+                        if user:
+                            user.namespace = _remove_group_from_namespace(user.namespace, group_id)
+                            user.save()
             
             # Clean up Keycloak groups
             users = get_maia_users_from_keycloak(settings=settings)
@@ -198,7 +233,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                     )
         except Exception as e:
             logger.error(f"Error parsing user list: {e}")
-            return {"message": f"Error parsing user list: {e}", "status": 400}
+            return {"message": "Error processing user list for group", "status": 400}
     
     # Create or update the project
     try:
@@ -239,11 +274,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     )
     user = MAIAUser.objects.filter(email=user_id).first()
     if user:
-        namespace = user.namespace or ""
-        if group_id not in namespace.split(","):
-            namespace = namespace + "," + group_id if namespace else group_id
-            user.namespace = namespace
-            user.save()
+        user.namespace = _add_group_to_namespace(user.namespace, group_id)
+        user.save()
     
     # Register all users in the group
     users_in_group = get_list_of_users_requesting_a_group(
