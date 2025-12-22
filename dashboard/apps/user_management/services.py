@@ -195,9 +195,6 @@ def update_user(email, namespace):
 
     # Remove user from groups they are no longer part of in Keycloak  
     for group in groups_to_remove:  
-        # Keep behavior consistent with delete_user: do not remove from reserved groups  
-        if group in RESERVED_GROUPS:  
-            continue  
         try:  
             remove_user_from_group_in_keycloak(  
                 email=email,  
@@ -243,7 +240,7 @@ def delete_user(email):
                     group_id=group,
                     settings=settings
                 )
-    
+        
     return {"message": "User deleted successfully", "status": 200}
 
 
