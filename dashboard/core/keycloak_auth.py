@@ -20,7 +20,7 @@ class KeycloakAuthentication(BaseAuthentication):
 
         parts = auth_header.split()
         if len(parts) != 2 or parts[0].lower() != "bearer":
-            raise AuthenticationFailed("Invalid Authorization header")
+            raise AuthenticationFailed("Invalid Authorization header. Expected format: 'Bearer <token>'.")
 
         token = parts[1]
 
