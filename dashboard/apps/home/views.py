@@ -15,6 +15,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import requests
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -110,7 +113,12 @@ def index_view(request):
     except Exception:
         return redirect("/login/")
     if not MAIAUser.objects.filter(email=request.user.email).exists():
-        namespaces = get_groups_for_user(email=request.user.email, settings=settings)  
+        logger.info(f"Creating MAIAUser for {request.user.email}")
+        try:
+            namespaces = get_groups_for_user(email=request.user.email, settings=settings)  
+        except Exception as e:
+            logger.error(f"Error getting groups for user {request.user.email}: {e}")
+            namespaces = []
         if User.objects.filter(email=request.user.email).exists():  
             User.objects.filter(email=request.user.email).delete()  
         MAIAUser.objects.create(  

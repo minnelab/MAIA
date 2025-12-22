@@ -25,11 +25,24 @@ class KeycloakAuthentication(BaseAuthentication):
         token = parts[1]
 
         # Decode header to find which key to use
-        unverified_header = jwt.get_unverified_header(token)
-        kid = unverified_header["kid"]
+        try:  
+            unverified_header = jwt.get_unverified_header(token)  
+        except jwt.InvalidTokenError as e:  
+            raise AuthenticationFailed(f"Invalid token header: {str(e)}")  
 
-        jwks = requests.get(JWKS_URL, verify=False).json()
-        public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks["keys"]}
+        kid = unverified_header.get("kid")  
+        if not kid:  
+            raise AuthenticationFailed("Missing key ID in token header")  
+
+        try:  
+            response = requests.get(JWKS_URL, verify=False, timeout=5)  
+            response.raise_for_status()  
+            jwks = response.json()  
+        except (requests.RequestException, ValueError) as exc:  
+            # Treat JWKS retrieval/parsing issues as authentication failures  
+            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from exc  
+
+        public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}  
 
         key = public_keys.get(kid)
         if not key:
@@ -49,8 +62,11 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed(f"Invalid token: {str(e)}")
 
         # Optionally, map Keycloak username/email to Django user
-        try:
-            user = MAIAUser.objects.get(email=payload["email"])
-        except MAIAUser.DoesNotExist:
-            user = MAIAUser.objects.create(email=payload["email"])
+        email = payload.get("email")  
+        if not email:  
+            raise AuthenticationFailed("Token does not contain an email claim")  
+        try:  
+            user = MAIAUser.objects.get(email=email)  
+        except MAIAUser.DoesNotExist:  
+            return (None, token)
         return (user, token)

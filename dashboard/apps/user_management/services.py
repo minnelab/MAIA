@@ -163,8 +163,6 @@ def update_user(email, namespace):
     # Update namespace in the MAIA database  
     user_qs.update(namespace=namespace)  
 
-
-
     # Normalize namespaces to sets of group IDs  
     old_groups = {  
         g.strip() for g in (old_namespace or "").split(",") if g.strip()  
@@ -221,9 +219,10 @@ def delete_user(email):
     if not user:
         return {"message": "User deleted successfully", "status": 200}
     else:
+        namespace = user.namespace
         user = MAIAUser.objects.filter(email=email).delete()
-    if user.namespace:
-        groups = [g.strip() for g in user.namespace.split(",") if g.strip()]
+    if namespace:
+        groups = [g.strip() for g in namespace.split(",") if g.strip()]
         for group in groups:
             if group not in ["admin", "users"]:
                 remove_user_from_group_in_keycloak(
@@ -263,7 +262,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         group_already_exists = True
         logger.error(f"Error registering group {group_id} in Keycloak: {e}")
 
-    if user_list and len(user_list) > 0:
+    if len(user_list) > 0:
         try:
             # Batch-fetch users to avoid N+1 queries  
             users_by_email = {  
