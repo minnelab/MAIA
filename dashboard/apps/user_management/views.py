@@ -9,7 +9,6 @@ from pathlib import Path
 from .forms import UserTableForm
 from apps.models import MAIAUser, MAIAProject
 import json
-import time
 from MAIA.kubernetes_utils import (
     generate_kubeconfig,
     create_helm_repo_secret_from_context,
@@ -34,7 +33,6 @@ import urllib3
 import yaml
 from django.shortcuts import redirect
 from MAIA_scripts.MAIA_install_project_toolkit import deploy_maia_toolkit_api
-from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt

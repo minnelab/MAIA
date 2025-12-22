@@ -1,4 +1,5 @@
 # keycloak_auth.py
+import os
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 import requests
@@ -12,6 +13,31 @@ KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
 
 # Fetch Keycloak JWKS (public keys)
 JWKS_URL = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
+
+import threading
+
+_jwks_cache = None
+_jwks_cache_timestamp = 0
+_jwks_cache_lock = threading.Lock()
+_JWKS_CACHE_TTL = 300  # seconds
+
+def get_jwks():
+    global _jwks_cache, _jwks_cache_timestamp
+    now = time.time()
+    with _jwks_cache_lock:
+        if _jwks_cache is not None and (now - _jwks_cache_timestamp < _JWKS_CACHE_TTL):
+            return _jwks_cache
+        try:
+            verify_param = os.environ.get("OIDC_CA_BUNDLE", True)
+            response = requests.get(JWKS_URL, verify=verify_param, timeout=5)
+            response.raise_for_status()
+            jwks = response.json()
+            _jwks_cache = jwks
+            _jwks_cache_timestamp = now
+            return jwks
+        except (requests.RequestException, ValueError) as e:
+            # Treat JWKS retrieval/parsing issues as authentication failures  
+            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e  
 
 class KeycloakAuthentication(BaseAuthentication):
     def authenticate(self, request):
@@ -35,14 +61,7 @@ class KeycloakAuthentication(BaseAuthentication):
         if not kid:  
             raise AuthenticationFailed("Missing key ID in token header")  
 
-        try:  
-            verify_param = getattr(settings, "OIDC_CA_BUNDLE", True)
-            response = requests.get(JWKS_URL, verify=verify_param, timeout=5)  
-            response.raise_for_status()  
-            jwks = response.json()
-        except (requests.RequestException, ValueError) as e:  
-            # Treat JWKS retrieval/parsing issues as authentication failures  
-            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e  
+        jwks = get_jwks()
 
         public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}  
 
@@ -72,7 +91,7 @@ class KeycloakAuthentication(BaseAuthentication):
         except MAIAUser.DoesNotExist:  
             raise AuthenticationFailed("User not found for the provided token")
         groups = payload.get("groups", [])
-        if "MAIA:admin" not in groups:
-            raise AuthenticationFailed("Unauthorized")
+        if os.environ["ADMIN_GROUP"] not in groups:
+            raise AuthenticationFailed("Unauthorized: {} group membership required".format(os.environ["ADMIN_GROUP"]))
 
         return (user, None)
