@@ -74,6 +74,8 @@ def verify_id_token(id_token):
         return Response({"error": "Invalid or missing ID token"}, status=403)
 
     return Response({"message": "Token is valid"}, status=200)
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -140,7 +142,7 @@ class UserManagementAPIView(APIView):
             namespace = request.data.get("namespace")
             result = create_user_service(email, username, first_name, last_name, namespace)
             return Response({"message": result["message"]}, status=result["status"])
-        if kwargs.get("path") == "update-user":
+        elif kwargs.get("path") == "update-user":
             required_fields = ["email", "namespace"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -150,7 +152,7 @@ class UserManagementAPIView(APIView):
             namespace = request.data.get("namespace")
             result = update_user_service(email, namespace)
             return Response({"message": result["message"]}, status=result["status"])
-        if kwargs.get("path") == "delete-user":
+        elif kwargs.get("path") == "delete-user":
             required_fields = ["email"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -159,7 +161,7 @@ class UserManagementAPIView(APIView):
             email = request.data.get("email")
             result = delete_user_service(email)
             return Response({"message": result["message"]}, status=result["status"])
-        if kwargs.get("path") == "create-group":
+        elif kwargs.get("path") == "create-group":
             required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "user_list"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -180,7 +182,7 @@ class UserManagementAPIView(APIView):
                 conda, cluster, minimal_env, user_id, user_list
             )
             return Response({"message": result["message"]}, status=result["status"])
-        if kwargs.get("path") == "delete-group":
+        elif kwargs.get("path") == "delete-group":
             required_fields = ["group_id"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -189,7 +191,8 @@ class UserManagementAPIView(APIView):
             group_id = request.data.get("group_id")
             result = delete_group_service(group_id)
             return Response({"message": result["message"]}, status=result["status"])
-        return Response({"message": "Invalid path"}, status=400)
+        else:
+            return Response({"message": "Invalid path"}, status=400)
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
 class ProjectChartValuesAPIView(APIView):

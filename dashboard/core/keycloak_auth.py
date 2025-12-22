@@ -38,9 +38,9 @@ class KeycloakAuthentication(BaseAuthentication):
             response = requests.get(JWKS_URL, verify=False, timeout=5)  
             response.raise_for_status()  
             jwks = response.json()  
-        except (requests.RequestException, ValueError) as exc:  
+        except (requests.RequestException, ValueError) as e:  
             # Treat JWKS retrieval/parsing issues as authentication failures  
-            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from exc  
+            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e  
 
         public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}  
 
@@ -68,5 +68,5 @@ class KeycloakAuthentication(BaseAuthentication):
         try:  
             user = MAIAUser.objects.get(email=email)  
         except MAIAUser.DoesNotExist:  
-            return (None, token)
-        return (user, token)
+            raise AuthenticationFailed("User not found for the provided token")  
+        return (user, None)

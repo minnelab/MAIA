@@ -217,7 +217,7 @@ def delete_user(email):
     """
     user = MAIAUser.objects.filter(email=email).first()
     if not user:
-        return {"message": "User deleted successfully", "status": 200}
+        return {"message": "User does not exist", "status": 204}
     else:
         namespace = user.namespace
         user = MAIAUser.objects.filter(email=email).delete()
