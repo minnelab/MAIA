@@ -226,6 +226,7 @@ OIDC_OP_USER_ENDPOINT = os.getenv("OIDC_OP_USER_ENDPOINT", None)
 OIDC_OP_JWKS_ENDPOINT = os.getenv("OIDC_OP_JWKS_ENDPOINT", None)
 OIDC_RP_SIGN_ALGO = os.getenv("OIDC_RP_SIGN_ALGO", None)
 OIDC_RP_SCOPES = os.getenv("OIDC_RP_SCOPES", None)
+os.environ["OIDC_CA_BUNDLE"] = "/etc/MAIA/ca.crt"
 OIDC_CA_BUNDLE = os.getenv("OIDC_CA_BUNDLE", None)
 OIDC_STORE_ID_TOKEN = True
 
@@ -254,6 +255,8 @@ API_GENERATOR = {
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "core.keycloak_auth.KeycloakAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
     ],
 }
 
