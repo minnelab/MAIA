@@ -38,7 +38,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from .services import (
     create_user as create_user_service,
     update_user as update_user_service,
@@ -52,7 +52,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIListGroupsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     def get(self, request, *args, **kwargs):
         groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
         return Response({"groups": groups}, status=200)
@@ -60,7 +60,7 @@ class UserManagementAPIListGroupsView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIListUsersView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     def get(self, request, *args, **kwargs):
         users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
         keycloak_users = get_maia_users_from_keycloak(settings=settings)
@@ -77,7 +77,7 @@ class UserManagementAPIListUsersView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPICreateUserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
         required_fields = ["email", "username", "first_name", "last_name", "namespace"]
         missing_fields = [field for field in required_fields if not request.data.get(field)]
@@ -95,7 +95,7 @@ class UserManagementAPICreateUserView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIUpdateUserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
         required_fields = ["email", "namespace"]
         missing_fields = [field for field in required_fields if not request.data.get(field)]
@@ -109,7 +109,7 @@ class UserManagementAPIUpdateUserView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIDeleteUserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
         required_fields = ["email"]
         missing_fields = [field for field in required_fields if not request.data.get(field)]
@@ -122,7 +122,7 @@ class UserManagementAPIDeleteUserView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPICreateGroupView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
         required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id"]
         missing_fields = [field for field in required_fields if not request.data.get(field)]
@@ -148,7 +148,7 @@ class UserManagementAPICreateGroupView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIDeleteGroupView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request, *args, **kwargs):
         required_fields = ["group_id"]

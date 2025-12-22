@@ -15,6 +15,7 @@ from MAIA.keycloak_utils import (
 
 logger = logging.getLogger(__name__)
 
+RESERVED_GROUPS = [settings.ADMIN_GROUP[len("MAIA:"):], settings.USERS_GROUP[len("MAIA:"):]]
 
 def _add_group_to_namespace(namespace, group_id):
     """
@@ -82,8 +83,15 @@ def create_user(email, username, first_name, last_name, namespace):
     if not created:
         # If user already exists, update their namespace to match the provided value
         if user.namespace != namespace:
+            old_namespace = user.namespace
             user.namespace = namespace
             user.save(update_fields=["namespace"])
+            logger.info(
+                "Updated namespace for existing user '%s' from '%s' to '%s'",
+                email,
+                old_namespace,
+                namespace,
+            )
     
     # Register user in Keycloak
     try:
@@ -91,7 +99,13 @@ def create_user(email, username, first_name, last_name, namespace):
         user_already_exists = False
     except KeycloakPostError as e:
         logger.error(f"Error registering user {email} in Keycloak: {e}")
-        user_already_exists = True
+        if getattr(e, "response_code", None) == 409:
+            user_already_exists = True
+        else:
+            return {
+                "message": "Failed to register user in Keycloak",
+                "status": 500,
+            }
     
     # Register user in their groups
     if namespace:
@@ -162,7 +176,7 @@ def update_user(email, namespace):
     # Remove user from groups they are no longer part of in Keycloak  
     for group in groups_to_remove:  
         # Keep behavior consistent with delete_user: do not remove from reserved groups  
-        if group in ["admin", "users"]:  
+        if group in RESERVED_GROUPS:  
             continue  
         try:  
             remove_user_from_group_in_keycloak(  
@@ -196,7 +210,7 @@ def delete_user(email):
     if namespace:
         groups = [g.strip() for g in namespace.split(",") if g.strip()]
         for group in groups:
-            if group not in ["admin", "users"]:
+            if group not in RESERVED_GROUPS:
                 remove_user_from_group_in_keycloak(
                     email=email,
                     group_id=group,

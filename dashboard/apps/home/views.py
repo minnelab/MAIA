@@ -120,8 +120,14 @@ def index_view(request):
         except KeycloakPostError as e:
             logger.error(f"Error getting groups for user {request.user.email}: {e}")
             namespaces = []
-        if User.objects.filter(email=request.user.email).exists():  
-            User.objects.filter(email=request.user.email).delete()  
+        legacy_users_qs = User.objects.filter(email=request.user.email)
+        if legacy_users_qs.exists():
+            logger.warning(
+                "Deleting %d legacy User record(s) for email %s before creating MAIAUser",
+                legacy_users_qs.count(),
+                request.user.email,
+            )
+            legacy_users_qs.delete()
         MAIAUser.objects.create(  
             email=request.user.email,  
             username=request.user.username,  

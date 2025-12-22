@@ -90,11 +90,5 @@ class KeycloakAuthentication(BaseAuthentication):
             user = MAIAUser.objects.get(email=email)  
         except MAIAUser.DoesNotExist:  
             raise AuthenticationFailed("User not found for the provided token")
-        groups = payload.get("groups", [])
-        admin_group = getattr(settings, "ADMIN_GROUP", os.environ.get("ADMIN_GROUP"))
-        if not admin_group:
-            raise AuthenticationFailed("Server misconfigured: ADMIN_GROUP not set in settings or environment variables")
-        if admin_group not in groups:
-            raise AuthenticationFailed(f"Unauthorized: {admin_group} group membership required")
 
         return (user, None)
