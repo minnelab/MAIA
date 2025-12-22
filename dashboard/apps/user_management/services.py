@@ -169,7 +169,7 @@ def update_user(email, namespace):
     user = user_qs.first() 
     # If user does not exist in the database, there is nothing to sync in Keycloak  
     if not user:  
-        return {"message": "User does not exist", "status": 204}   
+        return {"message": "User does not exist", "status": 404}   
     old_namespace = user.namespace if user else None  
 
     # Update namespace in the MAIA database  
@@ -194,7 +194,7 @@ def update_user(email, namespace):
                 emails=[email],  
                 settings=settings,  
             )  
-        except Exception as e:  
+        except KeycloakPostError as e:  
             logger.error(  
                 f"Error adding user {email} to group {group} in Keycloak during update: {e}"  
             )  
@@ -210,7 +210,7 @@ def update_user(email, namespace):
                 group_id=group,  
                 settings=settings,  
             )  
-        except Exception as e:  
+        except KeycloakPostError as e:  
             logger.error(  
                 f"Error removing user {email} from group {group} in Keycloak during update: {e}"  
             )  
@@ -328,7 +328,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                     group_id=group_id,  
                     settings=settings,  
                 )  
-        except Exception as e:
+        except KeycloakPostError as e:
             logger.error(f"Error processing user list for group {group_id}: {e}")  
             return {"message": "Error processing user list for group", "status": 400}
     

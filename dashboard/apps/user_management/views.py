@@ -124,8 +124,8 @@ class UserManagementAPIDeleteUserView(APIView):
 class UserManagementAPICreateGroupView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
-        required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "email_list"]
-        missing_fields = [field for field in required_fields if not request.data.get(field) and field != "email_list"]
+        required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id"]
+        missing_fields = [field for field in required_fields if not request.data.get(field)]
         if missing_fields:
             return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
         # Create a new group
@@ -138,7 +138,7 @@ class UserManagementAPICreateGroupView(APIView):
         cluster = request.data.get("cluster")
         minimal_env = request.data.get("minimal_env")
         user_id = request.data.get("user_id")
-        email_list = request.data.get("email_list", None)
+        email_list = request.data.getlist("email_list", [])
         result = create_group_service(
             group_id, gpu, date, memory_limit, cpu_limit,
             conda, cluster, minimal_env, user_id, email_list

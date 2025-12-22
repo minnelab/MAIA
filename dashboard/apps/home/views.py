@@ -10,6 +10,7 @@ from MAIA.kubernetes_utils import get_namespaces, get_cluster_status
 import urllib3
 import os
 from MAIA.keycloak_utils import get_groups_for_user
+from keycloak.exceptions import KeycloakPostError
 from apps.models import MAIAUser, User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -116,7 +117,7 @@ def index_view(request):
         logger.info(f"Creating MAIAUser for {request.user.email}")
         try:
             namespaces = get_groups_for_user(email=request.user.email, settings=settings)  
-        except Exception as e:
+        except KeycloakPostError as e:
             logger.error(f"Error getting groups for user {request.user.email}: {e}")
             namespaces = []
         if User.objects.filter(email=request.user.email).exists():  
