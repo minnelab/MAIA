@@ -109,18 +109,15 @@ def index_view(request):
         )
     except Exception:
         return redirect("/login/")
-
-
     if not MAIAUser.objects.filter(email=request.user.email).exists():
-        if not User.objects.filter(email=request.user.email).exists():
-            namespaces = get_groups_for_user(email=request.user.email, settings=settings)
-            maia_user = MAIAUser.objects.create(email=request.user.email, username=request.user.username, namespace=",".join(namespaces))
-            maia_user.save()
-        else:
-            namespaces = get_groups_for_user(email=request.user.email, settings=settings)
-            User.objects.filter(email=request.user.email).delete()
-            maia_user = MAIAUser.objects.create(email=request.user.email, username=request.user.username, namespace=",".join(namespaces))
-            maia_user.save()
+        namespaces = get_groups_for_user(email=request.user.email, settings=settings)  
+        if User.objects.filter(email=request.user.email).exists():  
+            User.objects.filter(email=request.user.email).delete()  
+        MAIAUser.objects.create(  
+            email=request.user.email,  
+            username=request.user.username,  
+            namespace=",".join(namespaces),  
+        )  
     context = {
         "segment": "index",
         "status": status,

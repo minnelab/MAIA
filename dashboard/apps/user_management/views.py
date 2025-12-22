@@ -51,6 +51,29 @@ from .services import (
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+def verify_id_token(id_token):
+    try:
+            # Try to validate the id_token using the backend; this will raise an exception if invalid
+        backend = OIDCAuthenticationBackend()
+        userinfo = backend.verify_token(id_token)
+        if not userinfo:
+            return Response({"error": "Invalid ID token"}, status=403)
+        groups = userinfo.get("groups", [])
+        expiration_time = userinfo.get("exp")
+        if expiration_time is None:  
+            return Response({"error": "Token missing expiration"}, status=403)
+        try:  
+            expiration_time = int(expiration_time)  
+        except (TypeError, ValueError):  
+            return Response({"error": "Token has invalid expiration"}, status=403)  
+        if expiration_time < time.time():
+            return Response({"error": "Token expired"}, status=403)
+        if "MAIA:admin" not in groups:
+            return Response({"error": "Unauthorized"}, status=403)
+    except Exception as e:
+        return Response({"error": "Invalid or missing ID token"}, status=403)
+
+    return Response({"message": "Token is valid"}, status=200)
 @method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -67,20 +90,9 @@ class UserManagementAPIView(APIView):
                     id_token = auth_header 
             # Verify id_token using django-oidc setting
 
-        try:
-            # Try to validate the id_token using the backend; this will raise an exception if invalid
-            backend = OIDCAuthenticationBackend()
-            userinfo = backend.verify_token(id_token)
-            if not userinfo:
-                return Response({"error": "Invalid ID token"}, status=403)
-            groups = userinfo.get("groups", [])
-            expiration_time = userinfo.get("exp")
-            if expiration_time < time.time():
-                return Response({"error": "Token expired"}, status=403)
-            if "MAIA:admin" not in groups:
-                return Response({"error": "Unauthorized"}, status=403)
-        except Exception as e:
-            return Response({"error": "Invalid or missing ID token"}, status=403)
+        response = verify_id_token(id_token)
+        if response.status_code != 200:
+            return Response({"error": response.data["error"]}, status=response.status_code)
         if kwargs.get("path") == "list-users":
             # Return list of users (all MAIAUser emails and ids)
             users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
@@ -112,20 +124,9 @@ class UserManagementAPIView(APIView):
                     id_token = auth_header 
             # Verify id_token using django-oidc setting
 
-        try:
-            # Try to validate the id_token using the backend; this will raise an exception if invalid
-            backend = OIDCAuthenticationBackend()
-            userinfo = backend.verify_token(id_token)
-            if not userinfo:
-                return Response({"error": "Invalid ID token"}, status=403)
-            groups = userinfo.get("groups", [])
-            expiration_time = userinfo.get("exp")
-            if expiration_time < time.time():
-                return Response({"error": "Token expired"}, status=403)
-            if "MAIA:admin" not in groups:
-                return Response({"error": "Unauthorized"}, status=403)
-        except Exception as e:
-            return Response({"error": "Invalid or missing ID token"}, status=403)
+        response = verify_id_token(id_token)
+        if response.status_code != 200:
+            return Response({"error": response.data["error"]}, status=response.status_code)
         if kwargs.get("path") == "create-user":
             required_fields = ["email", "username", "first_name", "last_name", "namespace"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]

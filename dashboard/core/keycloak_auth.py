@@ -1,7 +1,6 @@
 # keycloak_auth.py
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
-from django.contrib.auth.models import AnonymousUser
 import requests
 import jwt
 from django.conf import settings
@@ -12,9 +11,6 @@ KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
 
 # Fetch Keycloak JWKS (public keys)
 JWKS_URL = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
-jwks = requests.get(JWKS_URL, verify=False).json()
-public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks["keys"]}
-
 
 class KeycloakAuthentication(BaseAuthentication):
     def authenticate(self, request):
@@ -31,6 +27,9 @@ class KeycloakAuthentication(BaseAuthentication):
         # Decode header to find which key to use
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header["kid"]
+
+        jwks = requests.get(JWKS_URL, verify=False).json()
+        public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks["keys"]}
 
         key = public_keys.get(kid)
         if not key:
@@ -50,5 +49,8 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed(f"Invalid token: {str(e)}")
 
         # Optionally, map Keycloak username/email to Django user
-        user = MAIAUser.objects.get(email=payload["email"])
+        try:
+            user = MAIAUser.objects.get(email=payload["email"])
+        except MAIAUser.DoesNotExist:
+            user = MAIAUser.objects.create(email=payload["email"])
         return (user, token)

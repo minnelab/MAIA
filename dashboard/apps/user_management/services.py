@@ -220,7 +220,9 @@ def delete_user(email):
     user = MAIAUser.objects.filter(email=email).first()
     if not user:
         return {"message": "User deleted successfully", "status": 200}
-    if user and user.namespace:
+    else:
+        user = MAIAUser.objects.filter(email=email).delete()
+    if user.namespace:
         groups = [g.strip() for g in user.namespace.split(",") if g.strip()]
         for group in groups:
             if group not in ["admin", "users"]:
@@ -229,7 +231,6 @@ def delete_user(email):
                     group_id=group,
                     settings=settings
                 )
-    MAIAUser.objects.filter(email=email).delete()
     
     return {"message": "User deleted successfully", "status": 200}
 
@@ -253,41 +254,61 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     Returns:
         dict: Success message or error information
     """
-    # Handle user list if provided
-        # Register group in Keycloak
+    if user_list is not None and not isinstance(user_list, list): 
+        return {"message": "User list must be a list", "status": 400}
     try:
         register_group_in_keycloak(group_id=group_id, settings=settings)
         group_already_exists = False
     except KeycloakPostError as e:
         group_already_exists = True
         logger.error(f"Error registering group {group_id} in Keycloak: {e}")
-    if type(user_list) != list:
-        return {"message": "User list must be a list", "status": 400}
+
     if user_list and len(user_list) > 0:
         try:
-            for user_email in user_list:
-                user = MAIAUser.objects.filter(email=user_email).first()
-                if user:
-                    user.namespace = _add_group_to_namespace(user.namespace, group_id)
-                    user.save()
-                    register_users_in_group_in_keycloak(
-                        group_id=group_id,
-                        emails=[user_email],
-                        settings=settings
-                    )
-            
-            # Remove users not in the new list
-            registered_users = get_list_of_users_requesting_a_group(
-                group_id=group_id,
-                maia_user_model=MAIAUser
-            )
-            if len(registered_users) > 0:
-                for user_email in registered_users:
-                    if user_email not in user_list:
-                        user = MAIAUser.objects.filter(email=user_email).first()
-                        if user:
-                            user.namespace = _remove_group_from_namespace(user.namespace, group_id)
-                            user.save()
+            # Batch-fetch users to avoid N+1 queries  
+            users_by_email = {  
+                user.email: user  
+                for user in MAIAUser.objects.filter(email__in=user_list)  
+            }  
+
+            users_to_update = []  
+            emails_to_add_in_keycloak = []  
+
+            # Update namespaces in memory and prepare batched Keycloak registration  
+            for user_email in user_list:  
+                user = users_by_email.get(user_email)  
+                if user:  
+                    user.namespace = _add_group_to_namespace(user.namespace, group_id)  
+                    users_to_update.append(user)  
+                    emails_to_add_in_keycloak.append(user_email)  
+
+            if users_to_update:  
+                MAIAUser.objects.bulk_update(users_to_update, ["namespace"])  
+
+            if emails_to_add_in_keycloak:  
+                register_users_in_group_in_keycloak(  
+                    group_id=group_id,  
+                    emails=emails_to_add_in_keycloak,  
+                    settings=settings,  
+                )  
+
+            # Remove users not in the new list  
+            registered_users = get_list_of_users_requesting_a_group(  
+                group_id=group_id,  
+                maia_user_model=MAIAUser  
+            )  
+            if len(registered_users) > 0:  
+                emails_to_remove = [  
+                    user_email for user_email in registered_users  
+                    if user_email not in user_list  
+                ]  
+                if emails_to_remove:  
+                    users_to_update = []  
+                    for user in MAIAUser.objects.filter(email__in=emails_to_remove):  
+                        user.namespace = _remove_group_from_namespace(user.namespace, group_id)  
+                        users_to_update.append(user)  
+                    if users_to_update:  
+                        MAIAUser.objects.bulk_update(users_to_update, ["namespace"])  
             
             # Clean up Keycloak groups
             users = get_maia_users_from_keycloak(settings=settings)
@@ -299,7 +320,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                         settings=settings
                     )
         except Exception as e:
-            logger.error(f"Error parsing user list: {e}")
+            logger.error(f"Error processing user list for group {group_id}: {e}")  
             return {"message": "Error processing user list for group", "status": 400}
     
     # Create or update the project
@@ -344,10 +365,10 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         group_id=group_id,
         maia_user_model=MAIAUser
     )
-    for user_email in users_in_group:
-        register_users_in_group_in_keycloak(
-            group_id=group_id,
-            emails=[user_email],
+    if users_in_group:  
+        register_users_in_group_in_keycloak(  
+            group_id=group_id,  
+            emails=users_in_group,  
             settings=settings
         )
     
