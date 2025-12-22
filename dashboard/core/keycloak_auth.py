@@ -35,8 +35,8 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Missing key ID in token header")  
 
         try:  
-            #verify_param = False #"/etc/MAIA/ca.crt"#getattr(settings, "OIDC_CA_BUNDLE", True)
-            response = requests.get(JWKS_URL, verify=False, timeout=5)  
+            verify_param = getattr(settings, "OIDC_CA_BUNDLE", True)
+            response = requests.get(JWKS_URL, verify=verify_param, timeout=5)  
             response.raise_for_status()  
             jwks = response.json()
         except (requests.RequestException, ValueError) as e:  
