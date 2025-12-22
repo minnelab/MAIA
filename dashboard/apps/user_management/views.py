@@ -95,7 +95,7 @@ class UserManagementAPIView(APIView):
         response = verify_id_token(id_token)
         if response.status_code != 200:
             return Response({"error": response.data["error"]}, status=response.status_code)
-        if kwargs.get("path") == "list-users":
+        if request.path == "/maia/user-management/list-users":
             # Return list of users (all MAIAUser emails and ids)
             users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
             keycloak_users = get_maia_users_from_keycloak(settings=settings)
@@ -109,7 +109,7 @@ class UserManagementAPIView(APIView):
                     user["keycloak"] = "not registered"  
                     user["keycloak_groups"] = []  
             return Response({"users": users}, status=200)
-        if kwargs.get("path") == "list-groups":
+        if request.path == "/maia/user-management/list-groups":
             # Return list of groups (all MAIAProject namespaces)
             groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
             return Response({"groups": groups}, status=200)
@@ -129,7 +129,7 @@ class UserManagementAPIView(APIView):
         response = verify_id_token(id_token)
         if response.status_code != 200:
             return Response({"error": response.data["error"]}, status=response.status_code)
-        if kwargs.get("path") == "create-user":
+        if request.path == "/maia/user-management/create-user":
             required_fields = ["email", "username", "first_name", "last_name", "namespace"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -142,7 +142,7 @@ class UserManagementAPIView(APIView):
             namespace = request.data.get("namespace")
             result = create_user_service(email, username, first_name, last_name, namespace)
             return Response({"message": result["message"]}, status=result["status"])
-        elif kwargs.get("path") == "update-user":
+        elif request.path == "/maia/user-management/update-user":
             required_fields = ["email", "namespace"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -152,7 +152,7 @@ class UserManagementAPIView(APIView):
             namespace = request.data.get("namespace")
             result = update_user_service(email, namespace)
             return Response({"message": result["message"]}, status=result["status"])
-        elif kwargs.get("path") == "delete-user":
+        elif request.path == "/maia/user-management/delete-user":
             required_fields = ["email"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -161,7 +161,7 @@ class UserManagementAPIView(APIView):
             email = request.data.get("email")
             result = delete_user_service(email)
             return Response({"message": result["message"]}, status=result["status"])
-        elif kwargs.get("path") == "create-group":
+        elif request.path == "/maia/user-management/create-group":
             required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "user_list"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -182,7 +182,7 @@ class UserManagementAPIView(APIView):
                 conda, cluster, minimal_env, user_id, user_list
             )
             return Response({"message": result["message"]}, status=result["status"])
-        elif kwargs.get("path") == "delete-group":
+        elif request.path == "/maia/user-management/delete-group":
             required_fields = ["group_id"]
             missing_fields = [field for field in required_fields if not request.data.get(field)]
             if missing_fields:
@@ -192,7 +192,7 @@ class UserManagementAPIView(APIView):
             result = delete_group_service(group_id)
             return Response({"message": result["message"]}, status=result["status"])
         else:
-            return Response({"message": "Invalid path"}, status=400)
+            return Response({"message": "Invalid path: " + request.path}, status=400)
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
 class ProjectChartValuesAPIView(APIView):
