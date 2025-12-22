@@ -35,9 +35,10 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Missing key ID in token header")  
 
         try:  
+            #verify_param = False #"/etc/MAIA/ca.crt"#getattr(settings, "OIDC_CA_BUNDLE", True)
             response = requests.get(JWKS_URL, verify=False, timeout=5)  
             response.raise_for_status()  
-            jwks = response.json()  
+            jwks = response.json()
         except (requests.RequestException, ValueError) as e:  
             # Treat JWKS retrieval/parsing issues as authentication failures  
             raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e  
@@ -68,5 +69,5 @@ class KeycloakAuthentication(BaseAuthentication):
         try:  
             user = MAIAUser.objects.get(email=email)  
         except MAIAUser.DoesNotExist:  
-            raise AuthenticationFailed("User not found for the provided token")  
+            raise AuthenticationFailed("User not found for the provided token")
         return (user, None)

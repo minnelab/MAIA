@@ -71,7 +71,7 @@ def verify_id_token(id_token):
         if "MAIA:admin" not in groups:
             return Response({"error": "Unauthorized"}, status=403)
     except Exception as e:
-        return Response({"error": "Invalid or missing ID token"}, status=403)
+        return Response({"error": "Invalid or missing ID token: " + str(e)}, status=403)
 
     return Response({"message": "Token is valid"}, status=200)
 
