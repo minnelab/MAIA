@@ -146,6 +146,33 @@ def remove_user_from_group_in_keycloak(email, group_id, settings):
 
     return None
 
+def delete_user_in_keycloak(email, settings):
+    """
+    Delete a user in Keycloak
+
+    Parameters
+    ----------
+    email : str
+        The email address of the user to be deleted.
+    settings : object
+        An object containing the Keycloak server settings. It should have the following attributes:
+        - OIDC_SERVER_URL: str, the URL of the Keycloak server.
+        - OIDC_USERNAME: str, the username for Keycloak authentication.
+        - OIDC_REALM_NAME: str, the realm name in Keycloak.
+        - OIDC_RP_CLIENT_ID: str, the client ID for Keycloak.
+        - OIDC_RP_CLIENT_SECRET: str, the client secret for Keycloak.
+
+    Returns
+    -------
+    None
+    """
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=settings.OIDC_SERVER_URL,
+        username=settings.OIDC_USERNAME,
+        password="",
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    keycloak_admin.delete_user(email)
 
 def delete_group_in_keycloak(group_id, settings):
     """
