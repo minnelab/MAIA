@@ -37,6 +37,7 @@ Usage Examples:
 All functions return a dictionary with 'message' and 'status' keys.
 """
 
+import logging
 from django.conf import settings
 from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import (
@@ -48,6 +49,8 @@ from MAIA.keycloak_utils import (
     get_list_of_users_requesting_a_group,
     get_maia_users_from_keycloak,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def create_user(email, username, first_name, last_name, namespace):
@@ -80,7 +83,7 @@ def create_user(email, username, first_name, last_name, namespace):
     try:
         register_user_in_keycloak(email=email, settings=settings)
     except Exception as e:
-        print(f"Error registering user {email} in Keycloak: {e}")
+        logger.error(f"Error registering user {email} in Keycloak: {e}")
     
     # Register user in their groups
     for group in namespace.split(","):
@@ -178,12 +181,10 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                     if user_email not in user_list:
                         user = MAIAUser.objects.filter(email=user_email).first()
                         if user:
-                            namespace = user.namespace
-                            if group_id in namespace.split(","):
-                                namespace = namespace.replace(group_id, "").replace(",,", ",")
-                                if namespace.endswith(","):
-                                    namespace = namespace[:-1]
-                                user.namespace = namespace
+                            namespace_list = user.namespace.split(",")
+                            if group_id in namespace_list:
+                                namespace_list.remove(group_id)
+                                user.namespace = ",".join(namespace_list)
                                 user.save()
             
             # Clean up Keycloak groups
@@ -196,7 +197,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                         settings=settings
                     )
         except Exception as e:
-            print(f"Error parsing user list: {e}")
+            logger.error(f"Error parsing user list: {e}")
             return {"message": f"Error parsing user list: {e}", "status": 400}
     
     # Create or update the project
@@ -228,7 +229,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     try:
         register_group_in_keycloak(group_id=group_id, settings=settings)
     except Exception as e:
-        print(f"Error registering group {group_id} in Keycloak: {e}")
+        logger.error(f"Error registering group {group_id} in Keycloak: {e}")
     
     # Add the owner to the group
     register_users_in_group_in_keycloak(
@@ -237,11 +238,12 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         settings=settings
     )
     user = MAIAUser.objects.filter(email=user_id).first()
-    namespace = user.namespace
-    if group_id not in namespace.split(","):
-        namespace = namespace + "," + group_id
-        user.namespace = namespace
-        user.save()
+    if user:
+        namespace = user.namespace
+        if group_id not in namespace.split(","):
+            namespace = namespace + "," + group_id
+            user.namespace = namespace
+            user.save()
     
     # Register all users in the group
     users_in_group = get_list_of_users_requesting_a_group(
