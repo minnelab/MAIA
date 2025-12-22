@@ -247,6 +247,8 @@ def delete_user(email,force=False):
                         group_id=group,
                         settings=settings
                     )
+                    user.namespace = _remove_group_from_namespace(user.namespace, group)
+                    user.save(update_fields=["namespace"])
         if not user.is_superuser:
             MAIAUser.objects.filter(email=email).delete()
             if force:
