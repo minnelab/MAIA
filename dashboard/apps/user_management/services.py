@@ -277,7 +277,15 @@ def sync_list_of_users_for_group(group_id, email_list):
                 group_id=group_id,  
                 emails=emails_to_add_in_keycloak,  
                 settings=settings,  
-            )  
+            ) 
+            if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
+                logger.info(f"Updating admin group, adding users to admin group")
+                for user_email in emails_to_add_in_keycloak:
+                    user = MAIAUser.objects.filter(email=user_email).first()
+                    if user:
+                        user.is_superuser = True
+                        user.is_staff = True
+                        user.save(update_fields=["is_superuser", "is_staff"])
 
         # Remove users not in the new list  
         registered_users = get_list_of_users_requesting_a_group(  
@@ -296,6 +304,15 @@ def sync_list_of_users_for_group(group_id, email_list):
                     users_to_update.append(user)  
                 if users_to_update:  
                     MAIAUser.objects.bulk_update(users_to_update, ["namespace"])  
+                
+                if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
+                    logger.info(f"Updating admin group, removing users from admin group")
+                    for user_email in emails_to_remove:
+                        user = MAIAUser.objects.filter(email=user_email).first()
+                        if user:
+                            user.is_superuser = False
+                            user.is_staff = False
+                            user.save(update_fields=["is_superuser", "is_staff"])
         
             # Clean up Keycloak groups
             for user_email in emails_to_remove:  
@@ -347,17 +364,17 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     except KeycloakPostError as e:
         if getattr(e, "response_code", None) == 409:
             group_already_exists = True
+            logger.error(f"Error registering group {group_id} in Keycloak: {e}")
         else:
             logger.error(f"Error registering group {group_id} in Keycloak: {e}")
             return {
                 "message": f"Failed to register group {group_id} in Keycloak: {e}",
                 "status": 500,
-            }
-        logger.error(f"Error registering group {group_id} in Keycloak: {e}")
+            }      
 
-    if email_list and len(email_list) > 0:
-        sync_list_of_users_for_group(group_id, email_list)
-    
+    if email_list and len(email_list) == 0:
+        email_list = [user_id]
+    sync_list_of_users_for_group(group_id, email_list)    
     # Create or update the project
     try:
         MAIAProject.objects.create(
@@ -420,6 +437,8 @@ def delete_group(group_id):
     Returns:
         dict: Success message or error information
     """
+    if group_id in RESERVED_GROUPS:
+        return {"message": "Group is a reserved group and cannot be deleted", "status": 403}
     if not MAIAProject.objects.filter(namespace=group_id).exists():
         return {"message": "Group does not exist", "status": 400}
     MAIAProject.objects.filter(namespace=group_id).delete()
