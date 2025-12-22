@@ -50,6 +50,7 @@ from MAIA.keycloak_utils import (
     remove_user_from_group_in_keycloak,
     get_list_of_users_requesting_a_group,
     get_maia_users_from_keycloak,
+    get_groups_for_user,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,7 +139,15 @@ def create_user(email, username, first_name, last_name, namespace):
                 emails=[email],
                 settings=settings
             )
-    
+        if user_already_exists:
+            groups_in_keycloak = get_groups_for_user(email=email, settings=settings)
+            for group in groups_in_keycloak:
+                if group not in groups:
+                    remove_user_from_group_in_keycloak(
+                        email=email,
+                        group_id=group,
+                        settings=settings
+                    )
     return {"message": "User already exists in Keycloak" if user_already_exists else "User created successfully", "status": 200}
 
 
