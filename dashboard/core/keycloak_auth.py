@@ -61,7 +61,7 @@ class KeycloakAuthentication(BaseAuthentication):
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed("Token expired")
         except jwt.InvalidTokenError as e:
-            raise AuthenticationFailed("Invalid token")
+            raise AuthenticationFailed(f"Invalid token: {str(e)}") from e
 
         # Optionally, map Keycloak username/email to Django user
         email = payload.get("email")  
@@ -72,15 +72,6 @@ class KeycloakAuthentication(BaseAuthentication):
         except MAIAUser.DoesNotExist:  
             raise AuthenticationFailed("User not found for the provided token")
         groups = payload.get("groups", [])
-        expiration_time = payload.get("exp")
-        if expiration_time is None:  
-            raise AuthenticationFailed("Token missing expiration")
-        try:  
-            expiration_time = int(expiration_time)  
-        except (TypeError, ValueError):  
-            raise AuthenticationFailed("Token has invalid expiration")  
-        if expiration_time < time.time():
-            raise AuthenticationFailed("Token expired")
         if "MAIA:admin" not in groups:
             raise AuthenticationFailed("Unauthorized")
 

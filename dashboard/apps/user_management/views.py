@@ -53,94 +53,114 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class UserManagementAPIView(APIView):
+class UserManagementAPIListGroupsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, *args, **kwargs):
+        groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
+        return Response({"groups": groups}, status=200)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPIListUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, *args, **kwargs):
+        users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
+        keycloak_users = get_maia_users_from_keycloak(settings=settings)
+        keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}  
+        for user in users:  
+            keycloak_info = keycloak_users_by_email.get(user["email"])  
+            if keycloak_info:  
+                user["keycloak"] = "registered"  
+                user["keycloak_groups"] = keycloak_info.get("groups", [])  
+            else:  
+                user["keycloak"] = "not registered"  
+                user["keycloak_groups"] = []  
+        return Response({"users": users}, status=200)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPICreateUserView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        required_fields = ["email", "username", "first_name", "last_name", "namespace"]
+        missing_fields = [field for field in required_fields if not request.data.get(field)]
+        if missing_fields:
+            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
+        # Create a new user
+        email = request.data.get("email")
+        username = request.data.get("username")
+        first_name = request.data.get("first_name")
+        last_name = request.data.get("last_name")
+        namespace = request.data.get("namespace")
+        result = create_user_service(email, username, first_name, last_name, namespace)
+        return Response({"message": result["message"]}, status=result["status"])
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPIUpdateUserView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        required_fields = ["email", "namespace"]
+        missing_fields = [field for field in required_fields if not request.data.get(field)]
+        if missing_fields:
+            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
+        # Update a user
+        email = request.data.get("email")
+        namespace = request.data.get("namespace")
+        result = update_user_service(email, namespace)
+        return Response({"message": result["message"]}, status=result["status"])
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPIDeleteUserView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        required_fields = ["email"]
+        missing_fields = [field for field in required_fields if not request.data.get(field)]
+        if missing_fields:
+            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
+        # Delete a user
+        email = request.data.get("email")
+        result = delete_user_service(email)
+        return Response({"message": result["message"]}, status=result["status"])
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPICreateGroupView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "email_list"]
+        missing_fields = [field for field in required_fields if not request.data.get(field) and field != "email_list"]
+        if missing_fields:
+            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
+        # Create a new group
+        group_id = request.data.get("group_id")
+        gpu = request.data.get("gpu")
+        date = request.data.get("date")
+        memory_limit = request.data.get("memory_limit")
+        cpu_limit = request.data.get("cpu_limit")
+        conda = request.data.get("conda")
+        cluster = request.data.get("cluster")
+        minimal_env = request.data.get("minimal_env")
+        user_id = request.data.get("user_id")
+        email_list = request.data.get("email_list", None)
+        result = create_group_service(
+            group_id, gpu, date, memory_limit, cpu_limit,
+            conda, cluster, minimal_env, user_id, email_list
+        )
+        return Response({"message": result["message"]}, status=result["status"])
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UserManagementAPIDeleteGroupView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        if request.path == "/maia/user-management/list-users":
-            # Return list of users (all MAIAUser emails and ids)
-            users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
-            keycloak_users = get_maia_users_from_keycloak(settings=settings)
-            keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}  
-            for user in users:  
-                keycloak_info = keycloak_users_by_email.get(user["email"])  
-                if keycloak_info:  
-                    user["keycloak"] = "registered"  
-                    user["keycloak_groups"] = keycloak_info.get("groups", [])  
-                else:  
-                    user["keycloak"] = "not registered"  
-                    user["keycloak_groups"] = []  
-            return Response({"users": users}, status=200)
-        if request.path == "/maia/user-management/list-groups":
-            # Return list of groups (all MAIAProject namespaces)
-            groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
-            return Response({"groups": groups}, status=200)
-
     def post(self, request, *args, **kwargs):
-        if request.path == "/maia/user-management/create-user":
-            required_fields = ["email", "username", "first_name", "last_name", "namespace"]
-            missing_fields = [field for field in required_fields if not request.data.get(field)]
-            if missing_fields:
-                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-            # Create a new user
-            email = request.data.get("email")
-            username = request.data.get("username")
-            first_name = request.data.get("first_name")
-            last_name = request.data.get("last_name")
-            namespace = request.data.get("namespace")
-            result = create_user_service(email, username, first_name, last_name, namespace)
-            return Response({"message": result["message"]}, status=result["status"])
-        elif request.path == "/maia/user-management/update-user":
-            required_fields = ["email", "namespace"]
-            missing_fields = [field for field in required_fields if not request.data.get(field)]
-            if missing_fields:
-                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-            # Update a user
-            email = request.data.get("email")
-            namespace = request.data.get("namespace")
-            result = update_user_service(email, namespace)
-            return Response({"message": result["message"]}, status=result["status"])
-        elif request.path == "/maia/user-management/delete-user":
-            required_fields = ["email"]
-            missing_fields = [field for field in required_fields if not request.data.get(field)]
-            if missing_fields:
-                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-            # Delete a user
-            email = request.data.get("email")
-            result = delete_user_service(email)
-            return Response({"message": result["message"]}, status=result["status"])
-        elif request.path == "/maia/user-management/create-group":
-            required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id", "email_list"]
-            missing_fields = [field for field in required_fields if not request.data.get(field) and field != "email_list"]
-            if missing_fields:
-                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-            # Create a new group
-            group_id = request.data.get("group_id")
-            gpu = request.data.get("gpu")
-            date = request.data.get("date")
-            memory_limit = request.data.get("memory_limit")
-            cpu_limit = request.data.get("cpu_limit")
-            conda = request.data.get("conda")
-            cluster = request.data.get("cluster")
-            minimal_env = request.data.get("minimal_env")
-            user_id = request.data.get("user_id")
-            email_list = request.data.get("email_list", None)
-            result = create_group_service(
-                group_id, gpu, date, memory_limit, cpu_limit,
-                conda, cluster, minimal_env, user_id, email_list
-            )
-            return Response({"message": result["message"]}, status=result["status"])
-        elif request.path == "/maia/user-management/delete-group":
-            required_fields = ["group_id"]
-            missing_fields = [field for field in required_fields if not request.data.get(field)]
-            if missing_fields:
-                return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-            # Delete a group
-            group_id = request.data.get("group_id")
-            result = delete_group_service(group_id)
-            return Response({"message": result["message"]}, status=result["status"])
-        else:
-            return Response({"message": "Invalid path: " + request.path}, status=400)
+        required_fields = ["group_id"]
+        missing_fields = [field for field in required_fields if not request.data.get(field)]
+        if missing_fields:
+            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
+        # Delete a group
+        group_id = request.data.get("group_id")
+        result = delete_group_service(group_id)
+        return Response({"message": result["message"]}, status=result["status"])
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
 class ProjectChartValuesAPIView(APIView):
