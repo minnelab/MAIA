@@ -170,6 +170,10 @@ def delete_user_in_keycloak(email, settings):
         server_url=settings.OIDC_SERVER_URL,
         username=settings.OIDC_USERNAME,
         password="",
+        realm_name=settings.OIDC_REALM_NAME,
+        client_id=settings.OIDC_RP_CLIENT_ID,
+        client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
+        verify=False,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     keycloak_admin.delete_user(email)
