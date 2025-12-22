@@ -1,7 +1,7 @@
 import logging
 from django.conf import settings
 from django.db import IntegrityError
-from keycloak.exceptions import KeycloakPostError
+from keycloak.exceptions import KeycloakPostError, KeycloakDeleteError
 from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import (
     register_user_in_keycloak,
@@ -11,6 +11,7 @@ from MAIA.keycloak_utils import (
     remove_user_from_group_in_keycloak,
     get_list_of_users_requesting_a_group,
     get_groups_for_user,
+    delete_user_in_keycloak
 )
 
 logger = logging.getLogger(__name__)
@@ -215,13 +216,13 @@ def update_user(email, namespace):
     return {"message": "User updated successfully", "status": 200}
 
 
-def delete_user(email):
+def delete_user(email,force=False):
     """
     Delete a user and remove them from all Keycloak groups.
     
     Args:
         email (str): User's email address
-        
+        force (bool): Whether to force the deletion of the user from Keycloak. Default is False.
     Returns:
         dict: Success message or error information
     """
@@ -230,7 +231,6 @@ def delete_user(email):
         return {"message": "User does not exist", "status": 404}
     else:
         namespace = user.namespace
-        MAIAUser.objects.filter(email=email).delete()
     if namespace:
         groups = [g.strip() for g in namespace.split(",") if g.strip()]
         for group in groups:
@@ -240,7 +240,35 @@ def delete_user(email):
                     group_id=group,
                     settings=settings
                 )
-        
+            if force:
+                if group !=settings.ADMIN_GROUP[len("MAIA:")]:
+                    remove_user_from_group_in_keycloak(
+                        email=email,
+                        group_id=group,
+                        settings=settings
+                    )
+        if not user.is_superuser:
+            MAIAUser.objects.filter(email=email).delete()
+            if force:
+                try:
+                    delete_user_in_keycloak(email=email, settings=settings)
+                    logger.info(f"User {email} deleted from Keycloak")
+                except KeycloakDeleteError as e:
+                    if getattr(e, "response_code", None) == 404:
+                        logger.warning(f"User {email} does not exist in Keycloak and was not deleted")
+                    else:
+                        logger.error(f"Error deleting user {email} from Keycloak: {e}")
+                        return {
+                            "message": f"Error deleting user {email} from Keycloak: {e}",
+                            "status": 500,
+                        }
+        else:
+            logger.warning(f"User {email} is a superuser and cannot be deleted")
+            return {
+                "message": f"User {email} is a superuser and cannot be deleted",
+                "status": 403,
+            }
+
     return {"message": "User deleted successfully", "status": 200}
 
 
@@ -278,6 +306,7 @@ def sync_list_of_users_for_group(group_id, email_list):
             if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
                 logger.info(f"Updating admin group, adding users to admin group")
                 for user_email in emails_to_add_in_keycloak:
+                    logger.info(f"Adding user {user_email} to admin group")
                     user = MAIAUser.objects.filter(email=user_email).first()
                     if user:
                         user.is_superuser = True
@@ -305,6 +334,7 @@ def sync_list_of_users_for_group(group_id, email_list):
                 if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
                     logger.info(f"Updating admin group, removing users from admin group")
                     for user_email in emails_to_remove:
+                        logger.info(f"Removing user {user_email} from admin group")
                         user = MAIAUser.objects.filter(email=user_email).first()
                         if user:
                             user.is_superuser = False
@@ -371,6 +401,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
 
     if email_list and len(email_list) == 0:
         email_list = [user_id]
+    else:
+        email_list = [user_id] + email_list
     sync_list_of_users_for_group(group_id, email_list)    
     # Create or update the project
     try:

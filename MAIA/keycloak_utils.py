@@ -176,7 +176,10 @@ def delete_user_in_keycloak(email, settings):
         verify=False,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
-    keycloak_admin.delete_user(email)
+    for user in keycloak_admin.get_users():
+        if "email" in user and user["email"] == email:
+            keycloak_admin.delete_user(user["id"])
+            break
 
 def delete_group_in_keycloak(group_id, settings):
     """

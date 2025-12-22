@@ -117,7 +117,8 @@ class UserManagementAPIDeleteUserView(APIView):
             return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
         # Delete a user
         email = request.data.get("email")
-        result = delete_user_service(email)
+        force = request.data.get("force", False)
+        result = delete_user_service(email, force)
         return Response({"message": result["message"]}, status=result["status"])
 
 @method_decorator(csrf_exempt, name='dispatch')
