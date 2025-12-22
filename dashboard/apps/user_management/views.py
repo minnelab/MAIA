@@ -27,6 +27,7 @@ from MAIA.keycloak_utils import (
     delete_group_in_keycloak,
     get_groups_for_user,
     remove_user_from_group_in_keycloak,
+    get_maia_users_from_keycloak,
 )
 import urllib3
 import yaml
@@ -54,7 +55,14 @@ class UserManagementAPIView(APIView):
             return Response({"error": "Invalid or missing secret token"}, status=403)
         if kwargs.get("path") == "list-users":
             # Return list of users (all MAIAUser emails and ids)
-            users = MAIAUser.objects.all().values('id', 'email', 'username', 'first_name', 'last_name')
+            users = MAIAUser.objects.all().values('id', 'email', 'username','namespace')
+            keycloak_users = get_maia_users_from_keycloak(settings=settings)
+            for user in users:
+                if user["email"] not in [keycloak_user["email"] for keycloak_user in keycloak_users]:
+                    user["keycloak"] = "not registered"
+                else:
+                    user["keycloak"] = "registered"
+                user["keycloak_groups"] = [group for group in keycloak_users if user["email"] == group["email"]][0]["groups"]
             return Response({"users": users}, status=200)
         if kwargs.get("path") == "list-groups":
             # Return list of groups (all MAIAProject namespaces)
@@ -72,8 +80,14 @@ class UserManagementAPIView(APIView):
             first_name = request.data.get("first_name")
             last_name = request.data.get("last_name")
             namespace = request.data.get("namespace")
-            MAIAUser.objects.create(email=email, username=username, first_name=first_name, last_name=last_name, namespace=namespace)
-            register_user_in_keycloak(email=email, settings=settings)
+            try:
+                MAIAUser.objects.create(email=email, username=username, first_name=first_name, last_name=last_name, namespace=namespace)
+            except Exception as e:
+                MAIAUser.objects.filter(email=email).update(namespace=namespace)
+            try:
+                register_user_in_keycloak(email=email, settings=settings)
+            except Exception as e:
+                print(f"Error registering user {email} in Keycloak: {e}")
             for group in namespace.split(","):
                 register_users_in_group_in_keycloak(group_id=group, emails=[email], settings=settings)
             return Response({"message": "User created successfully"}, status=200)
@@ -85,7 +99,13 @@ class UserManagementAPIView(APIView):
         if kwargs.get("path") == "delete-user":
             # Delete a user
             email = request.data.get("email")
+            user = MAIAUser.objects.filter(email=email).first()
+            if user:
+                for group in user.namespace.split(","):
+                    if group not in ["admin", "users"]:
+                        remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
             MAIAUser.objects.filter(email=email).delete()
+
             return Response({"message": "User deleted successfully"}, status=200)
         if kwargs.get("path") == "create-group":
             # Create a new group
@@ -98,15 +118,69 @@ class UserManagementAPIView(APIView):
             cluster = request.data.get("cluster")
             minimal_env = request.data.get("minimal_env")
             user_id = request.data.get("user_id")
-            MAIAProject.objects.create(namespace=group_id, email=user_id, gpu=gpu, date=date, memory_limit=memory_limit, cpu_limit=cpu_limit, conda=conda, cluster=cluster, minimal_env=minimal_env)
-            register_group_in_keycloak(group_id=group_id, settings=settings)
+            if "user_list" in request.data:
+                try:
+                    user_list = request.data.get("user_list")
+                    if len(user_list) > 0:
+                        for user in user_list:
+                            user = MAIAUser.objects.filter(email=user).first()
+                            if user:
+                                namespace = user.namespace
+                                if group_id not in namespace.split(","):
+                                    namespace = namespace + "," + group_id
+                                    user.namespace = namespace
+                                    user.save()
+                                register_users_in_group_in_keycloak(group_id=group_id, emails=[user], settings=settings)
+                        registered_users = get_list_of_users_requesting_a_group(group_id=group_id, maia_user_model=MAIAUser)
+                        if len(registered_users) > 0:
+                            for user in registered_users:
+                                if user not in user_list:
+                                    user = MAIAUser.objects.filter(email=user).first()
+                                    if user:
+                                        namespace = user.namespace
+                                        if group_id in namespace.split(","):
+                                            namespace = namespace.replace(group_id, "").replace(",,", ",")
+                                            if namespace.endswith(","):
+                                                namespace = namespace[:-1]
+
+                                            user.namespace = namespace
+                                            user.save()
+                        users = get_maia_users_from_keycloak(settings=settings)
+                        for user in users:
+                            if user["email"] not in user_list and "MAIA:" + group_id in user["groups"]:
+                                remove_user_from_group_in_keycloak(email=user["email"], group_id=group_id, settings=settings)
+                    else:
+                        return Response({"message": "No users found in the user list"}, status=400)
+                except Exception as e:
+                    print(f"Error parsing user list: {e}")
+            try:
+                MAIAProject.objects.create(namespace=group_id, email=user_id, gpu=gpu, date=date, memory_limit=memory_limit, cpu_limit=cpu_limit, conda=conda, cluster=cluster, minimal_env=minimal_env)
+            except Exception as e:
+                MAIAProject.objects.filter(namespace=group_id).update(email=user_id, gpu=gpu, date=date, memory_limit=memory_limit, cpu_limit=cpu_limit, conda=conda, cluster=cluster, minimal_env=minimal_env)
+            
+            try:
+                register_group_in_keycloak(group_id=group_id, settings=settings)
+            except Exception as e:
+                print(f"Error registering group {group_id} in Keycloak: {e}")
             register_users_in_group_in_keycloak(group_id=group_id, emails=[user_id], settings=settings)
+            user = MAIAUser.objects.filter(email=user_id).first()
+            namespace = user.namespace
+            if group_id not in namespace.split(","):
+                namespace = namespace + "," + group_id
+                user.namespace = namespace
+                user.save()
+            users_in_group = get_list_of_users_requesting_a_group(group_id=group_id, maia_user_model=MAIAUser)
+            for user in users_in_group:
+                register_users_in_group_in_keycloak(group_id=group_id, emails=[user], settings=settings)
             return Response({"message": "Group created successfully"}, status=200)
         if kwargs.get("path") == "delete-group":
             # Delete a group
             group_id = request.data.get("group_id")
             MAIAProject.objects.filter(namespace=group_id).delete()
             delete_group_in_keycloak(group_id=group_id, settings=settings)
+            users_in_group = get_list_of_users_requesting_a_group(group_id=group_id, maia_user_model=MAIAUser)
+            for user in users_in_group:
+                remove_user_from_group_in_keycloak(email=user.email, group_id=group_id, settings=settings)
             return Response({"message": "Group deleted successfully"}, status=200)
         return Response({"message": "Invalid path"}, status=400)
 
