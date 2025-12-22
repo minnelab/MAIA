@@ -126,12 +126,14 @@ def create_user(email, username, first_name, last_name, namespace):
         logger.error(f"Error registering user {email} in Keycloak: {e}")
     
     # Register user in their groups
-    for group in namespace.split(","):
-        register_users_in_group_in_keycloak(
-            group_id=group,
-            emails=[email],
-            settings=settings
-        )
+    if namespace:
+        groups = [g.strip() for g in namespace.split(",") if g.strip()]
+        for group in groups:
+            register_users_in_group_in_keycloak(
+                group_id=group,
+                emails=[email],
+                settings=settings
+            )
     
     return {"message": "User created successfully", "status": 200}
 
@@ -310,9 +312,9 @@ def delete_group(group_id):
         group_id=group_id,
         maia_user_model=MAIAUser
     )
-    for user in users_in_group:
+    for user_email in users_in_group:
         remove_user_from_group_in_keycloak(
-            email=user.email,
+            email=user_email,
             group_id=group_id,
             settings=settings
         )
