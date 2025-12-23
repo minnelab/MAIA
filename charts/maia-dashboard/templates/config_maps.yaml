@@ -13,6 +13,10 @@ data:
     #        {{- end }}
     #        ]
     #    }
+    {{- if .Values.ca_crt }}
+    ca.crt: |-
+        {{- .Values.ca_crt | nindent 8 }}
+    {{- end }}
     env.env: |-
         {{- range .Values.env }}
         {{ .name }}={{ .value }}

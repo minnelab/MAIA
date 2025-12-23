@@ -92,7 +92,7 @@ class UserManagementAPICreateUserView(APIView):
 
 class UserManagementAPIUpdateUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
-    def post(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs):
         required_fields = ["email", "namespace"]
         missing_fields = [field for field in required_fields if not request.data.get(field)]
         if missing_fields:
@@ -105,13 +105,7 @@ class UserManagementAPIUpdateUserView(APIView):
 
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
-    def post(self, request, *args, **kwargs):
-        required_fields = ["email"]
-        missing_fields = [field for field in required_fields if not request.data.get(field)]
-        if missing_fields:
-            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-        # Delete a user
-        email = request.data.get("email")
+    def delete(self, request, email, *args, **kwargs):
         force = request.data.get("force", False)
         result = delete_user_service(email, force)
         return Response({"message": result["message"]}, status=result["status"])
@@ -144,13 +138,7 @@ class UserManagementAPICreateGroupView(APIView):
 class UserManagementAPIDeleteGroupView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def post(self, request, *args, **kwargs):
-        required_fields = ["group_id"]
-        missing_fields = [field for field in required_fields if not request.data.get(field)]
-        if missing_fields:
-            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-        # Delete a group
-        group_id = request.data.get("group_id")
+    def delete(self, request, group_id, *args, **kwargs):
         result = delete_group_service(group_id)
         return Response({"message": result["message"]}, status=result["status"])
 

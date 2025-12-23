@@ -1488,8 +1488,14 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
             {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
             {"name": "maia_project_version", "value": os.environ.get("maia_project_version", "1.7.1")},
+            {"name": "ADMIN_GROUP", "value": "MAIA:admin"},
+            {"name": "USERS_GROUP", "value": "MAIA:users"},
         ]
     )
+    if "rootCA" in cluster_config_dict and "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        maia_dashboard_values["ca_crt"] = open(Path(cluster_config_dict["rootCA"])).read()
+        config_path = maia_dashboard_values["dashboard"]["local_config_path"]
+        maia_dashboard_values["env"].append({"name": "OIDC_CA_BUNDLE", "value": f"{config_path}/ca.crt"})
     if (
         "MAIA_PRIVATE_REGISTRY" in os.environ
         and "docker_username" in os.environ

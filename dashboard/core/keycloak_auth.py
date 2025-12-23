@@ -22,6 +22,20 @@ _jwks_cache_lock = threading.Lock()
 _JWKS_CACHE_TTL = 300  # seconds
 
 def get_jwks():
+    """
+    Retrieve and cache the JSON Web Key Set (JWKS) from Keycloak.
+    The JWKS is fetched from ``JWKS_URL`` and cached in-memory for
+    ``_JWKS_CACHE_TTL`` seconds. Access to the shared cache is protected
+    by ``_jwks_cache_lock`` to ensure thread safety in concurrent
+    environments.
+    Returns:
+        dict[str, Any]: A mapping from Key ID (``kid``) to the corresponding
+        public key object built via ``jwt.algorithms.RSAAlgorithm.from_jwk``,
+        suitable for verifying RS256-signed tokens issued by Keycloak.
+    Raises:
+        AuthenticationFailed: If the JWKS cannot be retrieved from the
+        Keycloak server or the response cannot be parsed.
+    """
     global _jwks_cache, _jwks_cache_timestamp
     now = time.time()
     with _jwks_cache_lock:
@@ -29,19 +43,31 @@ def get_jwks():
             return _jwks_cache
         try:
             verify_param = os.environ.get("OIDC_CA_BUNDLE", True)
-            response = requests.get(JWKS_URL, verify=verify_param, timeout=5)
+            response = requests.get(JWKS_URL, verify=verify_param, timeout=15)
             response.raise_for_status()
             jwks = response.json()
-            public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}  
+            public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}
             _jwks_cache = public_keys
             _jwks_cache_timestamp = now
-            
+
             return public_keys
         except (requests.RequestException, ValueError) as e:
-            # Treat JWKS retrieval/parsing issues as authentication failures  
-            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e  
+            # Treat JWKS retrieval/parsing issues as authentication failures
+            raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e
 
 class KeycloakAuthentication(BaseAuthentication):
+    """
+    Django REST Framework authentication backend for validating Keycloak access tokens.
+    This backend expects an ``Authorization: Bearer <token>`` header on incoming requests.
+    It retrieves the appropriate public key from Keycloak's JWKS endpoint based on the
+    token's ``kid`` header, verifies the JWT signature, issuer and audience, and then
+    maps the token's ``email`` claim to a ``MAIAUser`` record.
+    On successful authentication, :meth:`authenticate` returns a ``(user, None)`` tuple
+    as expected by DRF. If the header is missing, malformed, the token is invalid or
+    expired, or no corresponding user can be found, it raises
+    :class:`rest_framework.exceptions.AuthenticationFailed` or returns ``None`` to allow
+    other authentication backends to run.
+    """
     def authenticate(self, request):
         auth_header = request.headers.get("Authorization")
         if not auth_header:
@@ -54,14 +80,14 @@ class KeycloakAuthentication(BaseAuthentication):
         token = parts[1]
 
         # Decode header to find which key to use
-        try:  
-            unverified_header = jwt.get_unverified_header(token)  
-        except jwt.InvalidTokenError as e:  
-            raise AuthenticationFailed(f"Invalid token header: {str(e)}")  
+        try:
+            unverified_header = jwt.get_unverified_header(token)
+        except jwt.InvalidTokenError as e:
+            raise AuthenticationFailed(f"Invalid token header: {str(e)}")
 
-        kid = unverified_header.get("kid")  
-        if not kid:  
-            raise AuthenticationFailed("Missing key ID in token header")  
+        kid = unverified_header.get("kid")
+        if not kid:
+            raise AuthenticationFailed("Missing key ID in token header")
 
         public_keys = get_jwks()
 
@@ -83,12 +109,12 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed(f"Invalid token: {str(e)}") from e
 
         # Optionally, map Keycloak username/email to Django user
-        email = payload.get("email")  
-        if not email:  
-            raise AuthenticationFailed("Token does not contain an email claim")  
-        try:  
-            user = MAIAUser.objects.get(email=email)  
-        except MAIAUser.DoesNotExist:  
+        email = payload.get("email")
+        if not email:
+            raise AuthenticationFailed("Token does not contain an email claim")
+        try:
+            user = MAIAUser.objects.get(email=email)
+        except MAIAUser.DoesNotExist:
             raise AuthenticationFailed("User not found for the provided token")
 
         return (user, None)

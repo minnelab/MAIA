@@ -116,7 +116,7 @@ def index_view(request):
     if not MAIAUser.objects.filter(email=request.user.email).exists():
         logger.info(f"Creating MAIAUser for {request.user.email}")
         try:
-            namespaces = get_groups_for_user(email=request.user.email, settings=settings)  
+            namespaces = get_groups_for_user(email=request.user.email, settings=settings)
         except KeycloakPostError as e:
             logger.error(f"Error getting groups for user {request.user.email}: {e}")
             namespaces = []
@@ -128,13 +128,13 @@ def index_view(request):
                 request.user.email,
             )
             legacy_users_qs.delete()
-        MAIAUser.objects.get_or_create(  
-            email=request.user.email,  
+        MAIAUser.objects.get_or_create(
+            email=request.user.email,
             defaults={
-                "username": request.user.username,  
-                "namespace": ",".join(namespaces),  
+                "username": request.user.username,
+                "namespace": ",".join(namespaces),
             }
-        )  
+        )
     context = {
         "segment": "index",
         "status": status,
