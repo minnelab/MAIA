@@ -56,7 +56,7 @@ MAIA ships with a **one-command installer** that sets up everything you need: Ku
 
 The installer is powered by the **`MAIA.Installation` Ansible collection**, which provides roles and playbooks to install and configure the MAIA platform on a Kubernetes cluster.
 
-For more details, please refer to the [MAIA.Installation]() documentation.
+For more details, please refer to the [MAIA.Installation](https://galaxy.ansible.com/ui/repo/published/maia/installation) documentation.
 
 To run the installer, you must prepare a **configuration folder** containing:
 

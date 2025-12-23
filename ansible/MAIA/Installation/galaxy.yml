@@ -38,9 +38,9 @@ license_file: ''
 tags:
 - maia
 - kubernetes
-- maia-core
-- maia-admin
-- maia-dashboard
+- maia_core
+- maia_admin
+- maia_dashboard
 
 # Collections that this collection requires to be installed for it to be usable. The key of the dict is the
 # collection label 'namespace.name'. The value is a version range
