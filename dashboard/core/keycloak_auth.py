@@ -42,8 +42,8 @@ def get_jwks():
         if _jwks_cache is not None and (now - _jwks_cache_timestamp < _JWKS_CACHE_TTL):
             return _jwks_cache
         try:
-            verify_param = getattr(settings, "OIDC_CA_BUNDLE", True)
-            response = requests.get(JWKS_URL, verify=verify_param, timeout=15)
+            ssl_verification = getattr(settings, "OIDC_CA_BUNDLE", True)
+            response = requests.get(JWKS_URL, verify=ssl_verification, timeout=15)
             response.raise_for_status()
             jwks = response.json()
             public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}
