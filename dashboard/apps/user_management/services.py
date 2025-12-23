@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 RESERVED_GROUPS = []
 if getattr(settings, "ADMIN_GROUP", None):
-    RESERVED_GROUPS.append(settings.ADMIN_GROUP[len("MAIA:"):])
+    RESERVED_GROUPS.append(settings.ADMIN_GROUP)
 if getattr(settings, "USERS_GROUP", None):
-    RESERVED_GROUPS.append(settings.USERS_GROUP[len("MAIA:"):])
+    RESERVED_GROUPS.append(settings.USERS_GROUP)
 
 def _add_group_to_namespace(namespace, group_id):
     """
@@ -257,7 +257,7 @@ def delete_user(email, force=False):
                     settings=settings
                 )
             if force:
-                if group != settings.ADMIN_GROUP[len("MAIA:"):]:
+                if group != settings.ADMIN_GROUP:
                     remove_user_from_group_in_keycloak(
                         email=email,
                         group_id=group,
@@ -348,7 +348,7 @@ def sync_list_of_users_for_group(group_id, email_list):
                     "message": f"Error processing user list for group {group_id}: {e}",
                     "status": 500,
                 }
-        if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
+        if group_id == settings.ADMIN_GROUP:
             logger.info(f"Updating admin group, adding users to admin group")
             for user_email in emails_to_add_in_keycloak:
                 logger.info(f"Adding user to admin group")
@@ -376,15 +376,14 @@ def sync_list_of_users_for_group(group_id, email_list):
             if users_to_update:
                 MAIAUser.objects.bulk_update(users_to_update, ["namespace"])
             
-            if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
+            if group_id == settings.ADMIN_GROUP:
                 logger.info(f"Updating admin group, removing users from admin group")
-                admin_users_to_update = list(MAIAUser.objects.filter(email__in=emails_to_remove))
+                admin_users_qs = MAIAUser.objects.filter(email__in=emails_to_remove)
+                admin_users_to_update = list(admin_users_qs)
                 for user in admin_users_to_update:
                     logger.info(f"Removing user from admin group")
-                    user.is_superuser = False
-                    user.is_staff = False
                 if admin_users_to_update:
-                    MAIAUser.objects.bulk_update(admin_users_to_update, ["is_superuser", "is_staff"])
+                    admin_users_qs.update(is_superuser=False, is_staff=False)
     
         # Clean up Keycloak groups
         for user_email in emails_to_remove:
@@ -436,7 +435,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     except KeycloakPostError as e:
         if getattr(e, "response_code", None) == 409:
             group_already_exists = True
-            logger.error(f"Error registering group {group_id} in Keycloak: {e}")
+            logger.warning(f"Group {group_id} already exists in Keycloak")
         else:
             logger.error(f"Error registering group {group_id} in Keycloak: {e}")
             return {
@@ -444,7 +443,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                 "status": 500,
             }
 
-    if email_list and len(email_list) == 0:
+    if not email_list:
         email_list = [user_id]
     else:
         email_list = [user_id] + email_list

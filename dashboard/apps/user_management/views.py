@@ -85,17 +85,18 @@ class UserManagementAPIListGroupsView(APIView):
 class UserManagementAPIListUsersView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def get(self, request, *args, **kwargs):
-        users = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
+        users_queryset = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
+        users = list(users_queryset)
         keycloak_users = get_maia_users_from_keycloak(settings=settings)
-        keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}  
-        for user in users:  
-            keycloak_info = keycloak_users_by_email.get(user["email"])  
-            if keycloak_info:  
-                user["keycloak"] = "registered"  
-                user["keycloak_groups"] = keycloak_info.get("groups", [])  
-            else:  
-                user["keycloak"] = "not registered"  
-                user["keycloak_groups"] = []  
+        keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}
+        for user in users:
+            keycloak_info = keycloak_users_by_email.get(user["email"])
+            if keycloak_info:
+                user["keycloak"] = "registered"
+                user["keycloak_groups"] = keycloak_info.get("groups", [])
+            else:
+                user["keycloak"] = "not registered"
+                user["keycloak_groups"] = []
         return Response({"users": users}, status=200)
 
 class UserManagementAPICreateUserView(APIView):

@@ -128,13 +128,26 @@ def index_view(request):
                 request.user.email,
             )
             legacy_users_qs.delete()
-        MAIAUser.objects.get_or_create(
+        maia_user, created = MAIAUser.objects.get_or_create(
             email=request.user.email,
             defaults={
                 "username": request.user.username,
                 "namespace": ",".join(namespaces),
             }
         )
+        if not created:
+            # Handle race condition where MAIAUser was created between the exists() check and get_or_create().
+            updated = False
+            namespace_str = ",".join(namespaces)
+            if maia_user.username != request.user.username:
+                maia_user.username = request.user.username
+                updated = True
+            if maia_user.namespace != namespace_str:
+                maia_user.namespace = namespace_str
+                updated = True
+            if updated:
+                logger.info(f"Updated existing MAIAUser for {request.user.email} after get_or_create.")
+                maia_user.save()
     context = {
         "segment": "index",
         "status": status,

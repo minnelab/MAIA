@@ -1,5 +1,3 @@
-# keycloak_auth.py
-import os
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 import requests
