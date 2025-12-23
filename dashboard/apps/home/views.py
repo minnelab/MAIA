@@ -128,10 +128,12 @@ def index_view(request):
                 request.user.email,
             )
             legacy_users_qs.delete()
-        MAIAUser.objects.create(  
+        MAIAUser.objects.get_or_create(  
             email=request.user.email,  
-            username=request.user.username,  
-            namespace=",".join(namespaces),  
+            defaults={
+                "username": request.user.username,  
+                "namespace": ",".join(namespaces),  
+            }
         )  
     context = {
         "segment": "index",

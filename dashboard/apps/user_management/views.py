@@ -50,7 +50,6 @@ from .services import (
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIListGroupsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def get(self, request, *args, **kwargs):
@@ -58,7 +57,6 @@ class UserManagementAPIListGroupsView(APIView):
         return Response({"groups": groups}, status=200)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIListUsersView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def get(self, request, *args, **kwargs):
@@ -75,7 +73,6 @@ class UserManagementAPIListUsersView(APIView):
                 user["keycloak_groups"] = []  
         return Response({"users": users}, status=200)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPICreateUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
@@ -93,7 +90,6 @@ class UserManagementAPICreateUserView(APIView):
         return Response({"message": result["message"]}, status=result["status"])
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIUpdateUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
@@ -107,7 +103,6 @@ class UserManagementAPIUpdateUserView(APIView):
         result = update_user_service(email, namespace)
         return Response({"message": result["message"]}, status=result["status"])
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
@@ -121,7 +116,6 @@ class UserManagementAPIDeleteUserView(APIView):
         result = delete_user_service(email, force)
         return Response({"message": result["message"]}, status=result["status"])
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPICreateGroupView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
@@ -147,7 +141,6 @@ class UserManagementAPICreateGroupView(APIView):
         return Response({"message": result["message"]}, status=result["status"])
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class UserManagementAPIDeleteGroupView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
