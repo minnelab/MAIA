@@ -33,7 +33,7 @@ import urllib3
 import yaml
 from django.shortcuts import redirect
 from MAIA_scripts.MAIA_install_project_toolkit import deploy_maia_toolkit_api
-
+from rest_framework import serializers
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -48,6 +48,14 @@ from .services import (
 )
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+class CreateUserSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+    username = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=30)
+    last_name = serializers.CharField(max_length=150)
+    namespace = serializers.CharField(max_length=100, allow_blank=False, trim_whitespace=True)
 
 
 class UserManagementAPIListGroupsView(APIView):
@@ -81,11 +89,17 @@ class UserManagementAPICreateUserView(APIView):
         if missing_fields:
             return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
         # Create a new user
-        email = request.data.get("email")
-        username = request.data.get("username")
-        first_name = request.data.get("first_name")
-        last_name = request.data.get("last_name")
-        namespace = request.data.get("namespace")
+
+        serializer = CreateUserSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
+
+        validated_data = serializer.validated_data
+        email = validated_data["email"]
+        username = validated_data["username"]
+        first_name = validated_data["first_name"]
+        last_name = validated_data["last_name"]
+        namespace = validated_data["namespace"]
         result = create_user_service(email, username, first_name, last_name, namespace)
         return Response({"message": result["message"]}, status=result["status"])
 

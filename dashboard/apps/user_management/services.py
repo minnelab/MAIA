@@ -468,18 +468,6 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             cluster=cluster,
             minimal_env=minimal_env
         )
-
-    # Add the owner to the group
-    register_users_in_group_in_keycloak(
-        group_id=group_id,
-        emails=[user_id],
-        settings=settings
-    )
-
-    user = MAIAUser.objects.filter(email=user_id).first()
-    if user:
-        user.namespace = _add_group_to_namespace(user.namespace, group_id)
-        user.save()
     
     # Register all users in the group
     users_in_group = get_list_of_users_requesting_a_group(
