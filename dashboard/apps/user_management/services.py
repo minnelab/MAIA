@@ -350,16 +350,10 @@ def sync_list_of_users_for_group(group_id, email_list):
                 # 409 means "already exists", so we mark it as success and proceed
             elif getattr(e, "response_code", None) == 404:
                 logger.warning(f"One or more users do not exist in the database and were not added to group {group_id}")
-                return {
-                    "message": f"One or more users do not exist in the database and were not added to group {group_id}",
-                    "status": 404,
-                }
+                raise
             else:
                 logger.error(f"Error processing user list for group {group_id}: {e}")
-                return {
-                    "message": f"Error processing user list for group {group_id}: {e}",
-                    "status": 500,
-                }
+                raise
     if getattr(settings, "ADMIN_GROUP", None) and group_id == getattr(settings, "ADMIN_GROUP", None):
         logger.info(f"Updating admin group, adding users to admin group")
         for user_email in emails_to_add_in_keycloak:
@@ -415,10 +409,7 @@ def sync_list_of_users_for_group(group_id, email_list):
                     continue
                 else:
                     logger.error(f"Error removing user from group {group_id}: {e}")
-                    return {
-                        "message": f"Error removing user from group {group_id}: {e}",
-                        "status": 500,
-                    }
+                    raise
     
     return {"message": "List of users synchronized successfully", "status": 200}
 
@@ -532,18 +523,12 @@ def delete_group(group_id):
                 continue
             else:
                 logger.error(f"Error removing user from group {group_id} in Keycloak: {e}")
-                return {
-                    "message": f"Error removing user from group {group_id} in Keycloak: {e}",
-                    "status": 500,
-                }
+                raise
     try:
         delete_group_in_keycloak(group_id=group_id, settings=settings)
     except KeycloakDeleteError as e:
         if getattr(e, "response_code", None) == 404:
             logger.warning(f"Group does not exist in Keycloak and could not be deleted")
-            return {
-                "message": f"Group does not exist in Keycloak and could not be deleted",
-                "status": 404,
-            }
+            raise
     MAIAProject.objects.filter(namespace=group_id).delete()
     return {"message": "Group deleted successfully", "status": 200}
