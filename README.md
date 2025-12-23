@@ -157,6 +157,40 @@ maia-admin-maia-dashboard-b87475666-2vs77          1/1     Running   0          
 maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          3m57s
 ```
 
+For first-access, you can use the following credentials:
+```bash
+username: admin@maia.se
+password [Temporary]: Admin
+```
+
+### Installation on Windows Subsystem for Linux (WSL)
+
+To install MAIA on Windows Subsystem for Linux (WSL), you can use the following one-command installer:
+```bash
+LATEST=$(curl -s https://api.github.com/repos/minnelab/MAIA/releases/latest | grep tag_name | cut -d '"' -f4)
+wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA_WSL.sh" && chmod +x install_MAIA_WSL.sh && ./install_MAIA_WSL.sh
+```
+To access all the features of MAIA, verify that all the subdomains are mapped in your Windows hosts file:
+
+
+```bash
+# Add the following lines to your Windows hosts file:
+# C:\Windows\System32\drivers\etc\hosts
+<WSL_IP> <domain>
+<WSL_IP> traefik.<domain>
+<WSL_IP> dashboard.<domain>
+<WSL_IP> grafana.<domain>
+<WSL_IP> iam.<domain>
+<WSL_IP> registry.<domain>
+<WSL_IP> mgmt.<domain>
+<WSL_IP> minio.<domain>
+<WSL_IP> argocd.<domain>
+<WSL_IP> maia.<domain>
+<WSL_IP> test.<domain>
+<WSL_IP> minio.test.<domain>
+<WSL_IP> login.<domain>
+```
+
 ## MAIA Architecture
 
 MAIA is built on top of Kubernetes, a popular open-source container orchestration platform. The platform is designed to be modular and extensible, allowing users to customize and extend its functionality to suit their needs. 
