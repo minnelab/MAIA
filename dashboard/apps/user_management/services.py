@@ -356,13 +356,15 @@ def sync_list_of_users_for_group(group_id, email_list):
                 raise
     if getattr(settings, "ADMIN_GROUP", None) and group_id == getattr(settings, "ADMIN_GROUP", None):
         logger.info(f"Updating admin group, adding users to admin group")
-        for user_email in emails_to_add_in_keycloak:
-            logger.info(f"Adding user {user_email} to admin group")
-            user = MAIAUser.objects.filter(email=user_email).first()
-            if user:
-                user.is_superuser = True
-                user.is_staff = True
-                user.save(update_fields=["is_superuser", "is_staff"])
+        # Bulk update: Set is_superuser and is_staff for all admin users being added
+        admin_users_qs = MAIAUser.objects.filter(email__in=emails_to_add_in_keycloak)
+        admin_users_to_update = list(admin_users_qs)
+        for user in admin_users_to_update:
+            logger.info(f"Adding user {user.email} to admin group")
+            user.is_superuser = True
+            user.is_staff = True
+        if admin_users_to_update:
+            MAIAUser.objects.bulk_update(admin_users_to_update, ["is_superuser", "is_staff"])
 
     # Remove users not in the new list
     registered_users = get_list_of_users_requesting_a_group(

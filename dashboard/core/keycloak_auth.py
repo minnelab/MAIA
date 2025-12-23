@@ -7,13 +7,6 @@ from django.conf import settings
 from apps.models import MAIAUser
 import threading
 
-KEYCLOAK_REALM = settings.OIDC_REALM_NAME
-KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
-KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
-
-# Fetch Keycloak JWKS (public keys)
-JWKS_URL = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
-
 _jwks_cache = None
 _jwks_cache_timestamp = 0
 _jwks_cache_lock = threading.Lock()
@@ -34,6 +27,9 @@ def get_jwks():
         AuthenticationFailed: If the JWKS cannot be retrieved from the
         Keycloak server or the response cannot be parsed.
     """
+    KEYCLOAK_REALM = settings.OIDC_REALM_NAME
+    KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
+    JWKS_URL = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
     global _jwks_cache, _jwks_cache_timestamp
     now = time.time()
     with _jwks_cache_lock:
@@ -92,7 +88,9 @@ class KeycloakAuthentication(BaseAuthentication):
         key = public_keys.get(kid)
         if not key:
             raise AuthenticationFailed("Unknown key ID")
-
+        KEYCLOAK_REALM = settings.OIDC_REALM_NAME
+        KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
+        KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
         try:
             payload = jwt.decode(
                 token,
