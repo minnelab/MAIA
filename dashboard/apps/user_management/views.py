@@ -51,7 +51,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class UpdateUserSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
-    namespace = serializers.TextField(allow_blank=False, trim_whitespace=True)
+    namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
 
     def validate_namespace(self, value):
         namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
@@ -66,7 +66,7 @@ class CreateUserSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
     first_name = serializers.CharField(max_length=30)
     last_name = serializers.CharField(max_length=150)
-    namespace = serializers.TextField(allow_blank=False, trim_whitespace=True)
+    namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
 
     def validate_namespace(self, value):
         namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
