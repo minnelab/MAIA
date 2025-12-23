@@ -1488,8 +1488,8 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
             {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
             {"name": "maia_project_version", "value": os.environ.get("maia_project_version", "1.7.1")},
-            {"name": "ADMIN_GROUP", "value": "admin"},
-            {"name": "USERS_GROUP", "value": "users"},
+            {"name": "ADMIN_GROUP", "value": cluster_config_dict.get("admin_group", "admin")},
+            {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
         ]
     )
     if "rootCA" in cluster_config_dict and "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:

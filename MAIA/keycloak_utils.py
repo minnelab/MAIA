@@ -176,10 +176,9 @@ def delete_user_in_keycloak(email, settings):
         verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
-    for user in keycloak_admin.get_users():
-        if "email" in user and user["email"] == email:
-            keycloak_admin.delete_user(user["id"])
-            break
+    users = keycloak_admin.get_users(query={"email": email})
+    if users:
+        keycloak_admin.delete_user(users[0]["id"])
 
 def delete_group_in_keycloak(group_id, settings):
     """

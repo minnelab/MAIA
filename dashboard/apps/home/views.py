@@ -113,41 +113,6 @@ def index_view(request):
         )
     except Exception:
         return redirect("/login/")
-    if not MAIAUser.objects.filter(email=request.user.email).exists():
-        logger.info(f"Creating MAIAUser for {request.user.email}")
-        try:
-            namespaces = get_groups_for_user(email=request.user.email, settings=settings)
-        except KeycloakPostError as e:
-            logger.error(f"Error getting groups for user {request.user.email}: {e}")
-            namespaces = []
-        legacy_users_qs = User.objects.filter(email=request.user.email)
-        deleted_count, _ = legacy_users_qs.delete()
-        if deleted_count > 0:
-            logger.warning(
-                "Deleting %d legacy User record(s) for email %s before creating MAIAUser",
-                deleted_count,
-                request.user.email,
-            )
-        maia_user, created = MAIAUser.objects.get_or_create(
-            email=request.user.email,
-            defaults={
-                "username": request.user.username,
-                "namespace": ",".join(namespaces),
-            }
-        )
-        if not created:
-            # Handle race condition where MAIAUser was created between the exists() check and get_or_create().
-            updated = False
-            namespace_str = ",".join(namespaces)
-            if maia_user.username != request.user.username:
-                maia_user.username = request.user.username
-                updated = True
-            if maia_user.namespace != namespace_str:
-                maia_user.namespace = namespace_str
-                updated = True
-            if updated:
-                logger.info(f"Updated existing MAIAUser for {request.user.email} after get_or_create.")
-                maia_user.save()
     context = {
         "segment": "index",
         "status": status,

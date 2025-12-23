@@ -150,11 +150,21 @@ def create_user(email, username, first_name, last_name, namespace):
             groups_in_keycloak = get_groups_for_user(email=email, settings=settings)
             for group in groups_in_keycloak:
                 if group not in groups:
-                    remove_user_from_group_in_keycloak(
-                        email=email,
-                        group_id=group,
-                        settings=settings
-                    )
+                    try:
+                        remove_user_from_group_in_keycloak(
+                            email=email,
+                            group_id=group,
+                            settings=settings
+                        )
+                    except KeycloakDeleteError as e:
+                        if getattr(e, "response_code", None) == 409:
+                            logger.warning(f"User was already not in group {group} in Keycloak")
+                        else:
+                            logger.error(f"Error removing user {email} from group {group} in Keycloak: {e}")
+                            return {
+                                "message": f"Failed to remove user {email} from group {group} in Keycloak: {e}",
+                                "status": 500,
+                            }
     return {"message": "User already exists in Keycloak" if user_already_exists else "User created successfully", "status": 200}
 
 
@@ -305,6 +315,8 @@ def sync_list_of_users_for_group(group_id, email_list):
             Keycloak, returns a dictionary with "message" and "status" keys
             describing the error.
     """
+    if not email_list:
+        email_list = []
     # Batch-fetch users to avoid N+1 queries
     users_by_email = {
         user.email: user
@@ -348,15 +360,15 @@ def sync_list_of_users_for_group(group_id, email_list):
                     "message": f"Error processing user list for group {group_id}: {e}",
                     "status": 500,
                 }
-        if getattr(settings, "ADMIN_GROUP", None) and group_id == getattr(settings, "ADMIN_GROUP", None):
-            logger.info(f"Updating admin group, adding users to admin group")
-            for user_email in emails_to_add_in_keycloak:
-                logger.info(f"Adding user {user_email} to admin group")
-                user = MAIAUser.objects.filter(email=user_email).first()
-                if user:
-                    user.is_superuser = True
-                    user.is_staff = True
-                    user.save(update_fields=["is_superuser", "is_staff"])
+    if getattr(settings, "ADMIN_GROUP", None) and group_id == getattr(settings, "ADMIN_GROUP", None):
+        logger.info(f"Updating admin group, adding users to admin group")
+        for user_email in emails_to_add_in_keycloak:
+            logger.info(f"Adding user {user_email} to admin group")
+            user = MAIAUser.objects.filter(email=user_email).first()
+            if user:
+                user.is_superuser = True
+                user.is_staff = True
+                user.save(update_fields=["is_superuser", "is_staff"])
 
     # Remove users not in the new list
     registered_users = get_list_of_users_requesting_a_group(
