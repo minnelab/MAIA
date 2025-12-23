@@ -99,7 +99,8 @@ class KeycloakAuthentication(BaseAuthentication):
                 key=key,
                 algorithms=["RS256"],
                 audience=KEYCLOAK_CLIENT_ID,
-                issuer=f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}"
+                issuer=f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}",
+                options={"verify_exp": True},
             )
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed("Token expired")

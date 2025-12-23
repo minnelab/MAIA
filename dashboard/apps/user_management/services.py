@@ -348,7 +348,7 @@ def sync_list_of_users_for_group(group_id, email_list):
                     "message": f"Error processing user list for group {group_id}: {e}",
                     "status": 500,
                 }
-        if settings.ADMIN_GROUP and group_id == settings.ADMIN_GROUP:
+        if getattr(settings, "ADMIN_GROUP", None) and group_id == getattr(settings, "ADMIN_GROUP", None):
             logger.info(f"Updating admin group, adding users to admin group")
             for user_email in emails_to_add_in_keycloak:
                 logger.info(f"Adding user {user_email} to admin group")
@@ -376,7 +376,7 @@ def sync_list_of_users_for_group(group_id, email_list):
             if users_to_update:
                 MAIAUser.objects.bulk_update(users_to_update, ["namespace"])
             
-            if settings.ADMIN_GROUP and group_id == settings.ADMIN_GROUP:
+            if getattr(settings, "ADMIN_GROUP", None) and group_id == getattr(settings, "ADMIN_GROUP", None):
                 logger.info(f"Updating admin group, removing users from admin group")
                 admin_users_qs = MAIAUser.objects.filter(email__in=emails_to_remove)
                 admin_users_to_update = list(admin_users_qs)
@@ -446,10 +446,11 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                 "status": 500,
             }
 
-    if not email_list:
-        email_list = [user_id]
-    else:
-        email_list = [user_id] + email_list
+    if user_id and MAIAUser.objects.filter(email=user_id).exists():
+        if not email_list:
+            email_list = [user_id]
+        else:
+            email_list = [user_id] + email_list
     sync_result = sync_list_of_users_for_group(group_id, email_list)
     
     if isinstance(sync_result, dict):
