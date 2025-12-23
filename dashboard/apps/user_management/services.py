@@ -353,13 +353,13 @@ def sync_list_of_users_for_group(group_id, email_list):
                 )  
     except KeycloakPostError as e:
         if getattr(e, "response_code", None) == 404:
-            logger.warning(f"User {user_email} does not exist in the database and was not added to group {group_id}")
+            logger.warning(f"One or more users do not exist in the database and were not added to group {group_id}")
             return {
-                "message": f"User {user_email} does not exist in the database and was not added to group {group_id}",
+                "message": f"One or more users do not exist in the database and were not added to group {group_id}",
                 "status": 404,
             }
         if getattr(e, "response_code", None) == 409:
-            logger.warning(f"User {user_email} already exists in group {group_id}")
+            logger.warning(f"One or more users already exists in group {group_id}")
         else:
             logger.error(f"Error processing user list for group {group_id}: {e}")
             return {
