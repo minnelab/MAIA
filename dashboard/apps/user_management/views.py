@@ -58,6 +58,19 @@ class CreateUserSerializer(serializers.Serializer):
     namespace = serializers.CharField(max_length=100, allow_blank=False, trim_whitespace=True)
 
 
+class CreateGroupSerializer(serializers.Serializer):
+    group_id = serializers.CharField(max_length=100)
+    gpu = serializers.CharField(max_length=100)
+    date = serializers.DateField()
+    memory_limit = serializers.CharField(max_length=100)
+    cpu_limit = serializers.CharField(max_length=100)
+    conda = serializers.CharField(max_length=100)
+    cluster = serializers.CharField(max_length=100)
+    minimal_env = serializers.CharField(max_length=100)
+    user_id = serializers.CharField(max_length=100)
+    email_list = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
+
+
 class UserManagementAPIListGroupsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def get(self, request, *args, **kwargs):
@@ -132,16 +145,21 @@ class UserManagementAPICreateGroupView(APIView):
         if missing_fields:
             return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
         # Create a new group
-        group_id = request.data.get("group_id")
-        gpu = request.data.get("gpu")
-        date = request.data.get("date")
-        memory_limit = request.data.get("memory_limit")
-        cpu_limit = request.data.get("cpu_limit")
-        conda = request.data.get("conda")
-        cluster = request.data.get("cluster")
-        minimal_env = request.data.get("minimal_env")
-        user_id = request.data.get("user_id")
-        email_list = request.data.get("email_list", [])
+        serializer = CreateGroupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
+
+        validated_data = serializer.validated_data
+        group_id = validated_data["group_id"]
+        gpu = validated_data["gpu"]
+        date = validated_data["date"]
+        memory_limit = validated_data["memory_limit"]
+        cpu_limit = validated_data["cpu_limit"]
+        conda = validated_data["conda"]
+        cluster = validated_data["cluster"]
+        minimal_env = validated_data["minimal_env"]
+        user_id = validated_data["user_id"]
+        email_list = validated_data["email_list"]
         result = create_group_service(
             group_id, gpu, date, memory_limit, cpu_limit,
             conda, cluster, minimal_env, user_id, email_list
