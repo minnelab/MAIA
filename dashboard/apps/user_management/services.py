@@ -132,9 +132,9 @@ def create_user(email, username, first_name, last_name, namespace):
         for group in groups:
             try:
                 register_users_in_group_in_keycloak(
-                group_id=group,
-                emails=[email],
-                settings=settings
+                    group_id=group,
+                    emails=[email],
+                    settings=settings
             )
             except KeycloakPostError as e:
                 if getattr(e, "response_code", None) == 409:
@@ -267,7 +267,7 @@ def delete_user(email, force=False):
                     settings=settings
                 )
             if force:
-                if group != settings.ADMIN_GROUP:
+                if getattr(settings, "USERS_GROUP", None) and group == getattr(settings, "USERS_GROUP", None):
                     remove_user_from_group_in_keycloak(
                         email=email,
                         group_id=group,
@@ -511,7 +511,6 @@ def delete_group(group_id):
         return {"message": "Group is a reserved group and cannot be deleted", "status": 403}
     if not MAIAProject.objects.filter(namespace=group_id).exists():
         return {"message": "Group does not exist", "status": 400}
-    MAIAProject.objects.filter(namespace=group_id).delete()
     # Remove all users from the group in Keycloak
     users_in_group = get_list_of_users_requesting_a_group(
         group_id=group_id,
@@ -546,5 +545,5 @@ def delete_group(group_id):
                 "message": f"Group does not exist in Keycloak and could not be deleted",
                 "status": 404,
             }
-    
+    MAIAProject.objects.filter(namespace=group_id).delete()
     return {"message": "Group deleted successfully", "status": 200}

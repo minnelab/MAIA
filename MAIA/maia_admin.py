@@ -1492,7 +1492,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
         ]
     )
-    if "rootCA" in cluster_config_dict and "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+    if "rootCA" in cluster_config_dict and cluster_config_dict.get("selfsigned", False):
         with open(Path(cluster_config_dict["rootCA"]), "r") as f:
             maia_dashboard_values["ca_crt"] = f.read()
             config_path = maia_dashboard_values["dashboard"]["local_config_path"]

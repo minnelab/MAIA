@@ -9,9 +9,6 @@ from django.template.defaultfilters import register
 from MAIA.kubernetes_utils import get_namespaces, get_cluster_status
 import urllib3
 import os
-from MAIA.keycloak_utils import get_groups_for_user
-from keycloak.exceptions import KeycloakPostError
-from apps.models import MAIAUser, User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import requests
