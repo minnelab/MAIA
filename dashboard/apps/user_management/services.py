@@ -218,7 +218,7 @@ def update_user(email, namespace):
                 group_id=group,
                 settings=settings,
             )
-        except KeycloakPostError as e:
+        except KeycloakDeleteError as e:
             if getattr(e, "response_code", None) == 409:
                 continue
             else:
@@ -348,10 +348,10 @@ def sync_list_of_users_for_group(group_id, email_list):
                     "message": f"Error processing user list for group {group_id}: {e}",
                     "status": 500,
                 }
-        if group_id == settings.ADMIN_GROUP:
+        if settings.ADMIN_GROUP and group_id == settings.ADMIN_GROUP:
             logger.info(f"Updating admin group, adding users to admin group")
             for user_email in emails_to_add_in_keycloak:
-                logger.info(f"Adding user to admin group")
+                logger.info(f"Adding user {user_email} to admin group")
                 user = MAIAUser.objects.filter(email=user_email).first()
                 if user:
                     user.is_superuser = True
@@ -376,12 +376,12 @@ def sync_list_of_users_for_group(group_id, email_list):
             if users_to_update:
                 MAIAUser.objects.bulk_update(users_to_update, ["namespace"])
             
-            if group_id == settings.ADMIN_GROUP:
+            if settings.ADMIN_GROUP and group_id == settings.ADMIN_GROUP:
                 logger.info(f"Updating admin group, removing users from admin group")
                 admin_users_qs = MAIAUser.objects.filter(email__in=emails_to_remove)
                 admin_users_to_update = list(admin_users_qs)
                 for user in admin_users_to_update:
-                    logger.info(f"Removing user from admin group")
+                    logger.info(f"Removing user {user.email} from admin group")
                 if admin_users_to_update:
                     admin_users_qs.update(is_superuser=False, is_staff=False)
     
@@ -393,7 +393,7 @@ def sync_list_of_users_for_group(group_id, email_list):
                     group_id=group_id,
                     settings=settings,
                 )
-            except KeycloakPostError as e:
+            except KeycloakDeleteError as e:
                 if getattr(e, "response_code", None) == 409:
                     logger.warning(f"User was already not in group {group_id}")
                     # Already not in group, so continue
@@ -407,6 +407,9 @@ def sync_list_of_users_for_group(group_id, email_list):
                         "message": f"Error removing user from group {group_id}: {e}",
                         "status": 500,
                     }
+    
+    return {"message": "List of users synchronized successfully", "status": 200}
+
 
 def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list=None):
     """
@@ -478,18 +481,6 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             minimal_env=minimal_env
         )
     
-    # Register all users in the group
-    users_in_group = get_list_of_users_requesting_a_group(
-        group_id=group_id,
-        maia_user_model=MAIAUser
-    )
-    if users_in_group:
-        register_users_in_group_in_keycloak(
-            group_id=group_id,
-            emails=users_in_group,
-            settings=settings
-        )
-    
     return {"message": "Group already exists in Keycloak" if group_already_exists else "Group created successfully", "status": 200, "group_already_exists": group_already_exists}
 
 @transaction.atomic
@@ -520,7 +511,7 @@ def delete_group(group_id):
                 group_id=group_id,
                 settings=settings
             )
-        except KeycloakPostError as e:
+        except KeycloakDeleteError as e:
             if getattr(e, "response_code", None) == 409:
                 logger.warning(f"User was already not in group {group_id} in Keycloak")
                 continue

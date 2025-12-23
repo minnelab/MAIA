@@ -121,13 +121,13 @@ def index_view(request):
             logger.error(f"Error getting groups for user {request.user.email}: {e}")
             namespaces = []
         legacy_users_qs = User.objects.filter(email=request.user.email)
-        if legacy_users_qs.exists():
+        deleted_count, _ = legacy_users_qs.delete()
+        if deleted_count > 0:
             logger.warning(
                 "Deleting %d legacy User record(s) for email %s before creating MAIAUser",
-                legacy_users_qs.count(),
+                deleted_count,
                 request.user.email,
             )
-            legacy_users_qs.delete()
         maia_user, created = MAIAUser.objects.get_or_create(
             email=request.user.email,
             defaults={

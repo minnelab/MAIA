@@ -1,3 +1,4 @@
+from rest_framework import serializers
 import os
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -33,7 +34,6 @@ import urllib3
 import yaml
 from django.shortcuts import redirect
 from MAIA_scripts.MAIA_install_project_toolkit import deploy_maia_toolkit_api
-from rest_framework import serializers
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -134,7 +134,8 @@ class UserManagementAPIUpdateUserView(APIView):
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def delete(self, request, email, *args, **kwargs):
-        force = request.data.get("force", False)
+        force_param = request.query_params.get("force", "false")
+        force = str(force_param).lower() in ("1", "true", "yes", "on")
         result = delete_user_service(email, force)
         return Response({"message": result["message"]}, status=result["status"])
 
