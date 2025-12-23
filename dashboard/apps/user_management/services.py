@@ -257,7 +257,7 @@ def delete_user(email, force=False):
                     settings=settings
                 )
             if force:
-                if group !=settings.ADMIN_GROUP[len("MAIA:"):]:
+                if group != settings.ADMIN_GROUP[len("MAIA:"):]:
                     remove_user_from_group_in_keycloak(
                         email=email,
                         group_id=group,
@@ -294,6 +294,16 @@ def delete_user(email, force=False):
 def sync_list_of_users_for_group(group_id, email_list):
     """
     Sync a list of users for a group.
+
+    Args:
+        group_id (str): Identifier of the group to synchronize.
+        email_list (Iterable[str]): List of user email addresses that should
+            be members of the group.
+    Returns:
+        dict | None: Returns None when synchronization completes
+            successfully. If an error occurs while updating users in
+            Keycloak, returns a dictionary with "message" and "status" keys
+            describing the error.
     """
     # Batch-fetch users to avoid N+1 queries
     users_by_email = {
@@ -368,13 +378,13 @@ def sync_list_of_users_for_group(group_id, email_list):
             
             if group_id == settings.ADMIN_GROUP[len("MAIA:"):]:
                 logger.info(f"Updating admin group, removing users from admin group")
-                for user_email in emails_to_remove:
+                admin_users_to_update = list(MAIAUser.objects.filter(email__in=emails_to_remove))
+                for user in admin_users_to_update:
                     logger.info(f"Removing user from admin group")
-                    user = MAIAUser.objects.filter(email=user_email).first()
-                    if user:
-                        user.is_superuser = False
-                        user.is_staff = False
-                        user.save(update_fields=["is_superuser", "is_staff"])
+                    user.is_superuser = False
+                    user.is_staff = False
+                if admin_users_to_update:
+                    MAIAUser.objects.bulk_update(admin_users_to_update, ["is_superuser", "is_staff"])
     
         # Clean up Keycloak groups
         for user_email in emails_to_remove:

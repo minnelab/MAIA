@@ -489,7 +489,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -657,7 +657,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     group_id = namespace
@@ -802,7 +802,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     realm_name=settings.OIDC_REALM_NAME,
                     client_id=settings.OIDC_RP_CLIENT_ID,
                     client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-                    verify=False,
+                    verify=getattr(settings, "OIDC_CA_BUNDLE", True),
                 )
 
                 keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -850,7 +850,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     realm_name=settings.OIDC_REALM_NAME,
                     client_id=settings.OIDC_RP_CLIENT_ID,
                     client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-                    verify=False,
+                    verify=getattr(settings, "OIDC_CA_BUNDLE", True),
                 )
 
                 keycloak_admin = KeycloakAdmin(connection=keycloak_connection)

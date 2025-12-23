@@ -49,6 +49,10 @@ from .services import (
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+class UpdateUserSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+    namespace = serializers.CharField(max_length=100, allow_blank=False, trim_whitespace=True)
+
 
 class CreateUserSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
@@ -97,10 +101,6 @@ class UserManagementAPIListUsersView(APIView):
 class UserManagementAPICreateUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
-        required_fields = ["email", "username", "first_name", "last_name", "namespace"]
-        missing_fields = [field for field in required_fields if not request.data.get(field)]
-        if missing_fields:
-            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
         # Create a new user
 
         serializer = CreateUserSerializer(data=request.data)
@@ -120,13 +120,13 @@ class UserManagementAPICreateUserView(APIView):
 class UserManagementAPIUpdateUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def patch(self, request, *args, **kwargs):
-        required_fields = ["email", "namespace"]
-        missing_fields = [field for field in required_fields if not request.data.get(field)]
-        if missing_fields:
-            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
-        # Update a user
-        email = request.data.get("email")
-        namespace = request.data.get("namespace")
+        serializer = UpdateUserSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
+
+        validated_data = serializer.validated_data
+        email = validated_data["email"]
+        namespace = validated_data["namespace"]
         result = update_user_service(email, namespace)
         return Response({"message": result["message"]}, status=result["status"])
 
@@ -140,10 +140,6 @@ class UserManagementAPIDeleteUserView(APIView):
 class UserManagementAPICreateGroupView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def post(self, request, *args, **kwargs):
-        required_fields = ["group_id", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "user_id"]
-        missing_fields = [field for field in required_fields if not request.data.get(field)]
-        if missing_fields:
-            return Response({"error": f"Missing required parameter(s): {', '.join(missing_fields)}"}, status=400)
         # Create a new group
         serializer = CreateGroupSerializer(data=request.data)
         if not serializer.is_valid():

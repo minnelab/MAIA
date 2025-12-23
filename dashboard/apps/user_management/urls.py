@@ -31,6 +31,6 @@ urlpatterns = [
     path("delete-group/<str:group_id>", UserManagementAPIDeleteGroupView.as_view(), name="delete_group"),
     path("register-user-in-group/<str:email>", views.register_user_in_group_view),
     path("register-group/<str:group_id>", views.register_group_view),
-    path("delete-group/<str:group_id>", views.delete_group_view),
+    path("delete-group-view/<str:group_id>", views.delete_group_view),
     path("remove-user-from-group/<str:email>", views.remove_user_from_group_view),
 ]

@@ -32,7 +32,7 @@ def get_user_ids(settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -85,7 +85,7 @@ def get_groups_for_user(email, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     groups = keycloak_admin.get_groups()
@@ -131,7 +131,7 @@ def remove_user_from_group_in_keycloak(email, group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     groups = keycloak_admin.get_groups()
@@ -173,7 +173,7 @@ def delete_user_in_keycloak(email, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     for user in keycloak_admin.get_users():
@@ -209,7 +209,7 @@ def delete_group_in_keycloak(group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     groups = keycloak_admin.get_groups()
@@ -255,7 +255,7 @@ def get_groups_in_keycloak(settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -304,7 +304,7 @@ def register_user_in_keycloak(email, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -362,7 +362,7 @@ def register_group_in_keycloak(group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -413,7 +413,7 @@ def register_users_in_group_in_keycloak(emails, group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -536,7 +536,7 @@ def get_maia_users_from_keycloak(settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)

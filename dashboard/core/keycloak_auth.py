@@ -7,14 +7,14 @@ import jwt
 import time
 from django.conf import settings
 from apps.models import MAIAUser
+import threading
+
 KEYCLOAK_REALM = settings.OIDC_REALM_NAME
 KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
 KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
 
 # Fetch Keycloak JWKS (public keys)
 JWKS_URL = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
-
-import threading
 
 _jwks_cache = None
 _jwks_cache_timestamp = 0
@@ -42,7 +42,7 @@ def get_jwks():
         if _jwks_cache is not None and (now - _jwks_cache_timestamp < _JWKS_CACHE_TTL):
             return _jwks_cache
         try:
-            verify_param = os.environ.get("OIDC_CA_BUNDLE", True)
+            verify_param = getattr(settings, "OIDC_CA_BUNDLE", True)
             response = requests.get(JWKS_URL, verify=verify_param, timeout=15)
             response.raise_for_status()
             jwks = response.json()
@@ -83,7 +83,7 @@ class KeycloakAuthentication(BaseAuthentication):
         try:
             unverified_header = jwt.get_unverified_header(token)
         except jwt.InvalidTokenError as e:
-            raise AuthenticationFailed(f"Invalid token header: {str(e)}")
+            raise AuthenticationFailed("Invalid token header")
 
         kid = unverified_header.get("kid")
         if not kid:

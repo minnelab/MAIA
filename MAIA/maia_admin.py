@@ -1493,9 +1493,10 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         ]
     )
     if "rootCA" in cluster_config_dict and "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-        maia_dashboard_values["ca_crt"] = open(Path(cluster_config_dict["rootCA"])).read()
-        config_path = maia_dashboard_values["dashboard"]["local_config_path"]
-        maia_dashboard_values["env"].append({"name": "OIDC_CA_BUNDLE", "value": f"{config_path}/ca.crt"})
+        with open(Path(cluster_config_dict["rootCA"]), "r") as f:
+            maia_dashboard_values["ca_crt"] = f.read()
+            config_path = maia_dashboard_values["dashboard"]["local_config_path"]
+            maia_dashboard_values["env"].append({"name": "OIDC_CA_BUNDLE", "value": f"{config_path}/ca.crt"})
     if (
         "MAIA_PRIVATE_REGISTRY" in os.environ
         and "docker_username" in os.environ
