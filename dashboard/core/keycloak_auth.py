@@ -77,7 +77,7 @@ class KeycloakAuthentication(BaseAuthentication):
         try:
             unverified_header = jwt.get_unverified_header(token)
         except jwt.InvalidTokenError as e:
-            raise AuthenticationFailed("Invalid token header")
+            raise AuthenticationFailed("Invalid token header") from e
 
         kid = unverified_header.get("kid")
         if not kid:

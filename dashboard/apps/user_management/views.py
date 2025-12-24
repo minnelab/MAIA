@@ -8,6 +8,7 @@ from kubernetes import config
 from django.contrib.auth.models import User
 from pathlib import Path
 from .forms import UserTableForm
+import re
 from apps.models import MAIAUser, MAIAProject
 import json
 from MAIA.kubernetes_utils import (
@@ -55,9 +56,15 @@ class UpdateUserSerializer(serializers.Serializer):
 
     def validate_namespace(self, value):
         namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
+        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
         for ns in namespaces:
-            if len(ns) > 100:
-                raise serializers.ValidationError("Each namespace must be at most 100 characters long.")
+            if len(ns) > 63:
+                raise serializers.ValidationError("Each namespace must be at most 63 characters long (Kubernetes namespace limit).")
+            if not re.match(dns_label_regex, ns):
+                raise serializers.ValidationError(
+                    "Each namespace must conform to Kubernetes namespace rules: "
+                    "lowercase alphanumeric characters or '-', start and end with alphanumeric."
+                )
         return ",".join(namespaces)
 
 
@@ -70,14 +77,20 @@ class CreateUserSerializer(serializers.Serializer):
 
     def validate_namespace(self, value):
         namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
+        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
         for ns in namespaces:
-            if len(ns) > 1000:
-                raise serializers.ValidationError("Each namespace must be at most 1000 characters long.")
+            if len(ns) > 63:
+                raise serializers.ValidationError("Each namespace must be at most 63 characters long (Kubernetes namespace limit).")
+            if not re.match(dns_label_regex, ns):
+                raise serializers.ValidationError(
+                    "Each namespace must conform to Kubernetes namespace rules: "
+                    "lowercase alphanumeric characters or '-', start and end with alphanumeric."
+                )
         return ",".join(namespaces)
 
 
 class CreateGroupSerializer(serializers.Serializer):
-    group_id = serializers.CharField(max_length=100)
+    group_id = serializers.CharField(max_length=63)
     gpu = serializers.CharField(max_length=100)
     date = serializers.DateField()
     memory_limit = serializers.CharField(max_length=100)
@@ -85,19 +98,44 @@ class CreateGroupSerializer(serializers.Serializer):
     conda = serializers.CharField(max_length=100)
     cluster = serializers.CharField(max_length=100)
     minimal_env = serializers.CharField(max_length=100)
-    user_id = serializers.CharField(max_length=100)
+    user_id = serializers.EmailField(max_length=254)
     email_list = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
 
+    def validate_group_id(self, value):
+        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        if len(value) > 63:
+            raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
+        if not re.match(dns_label_regex, value):
+            raise serializers.ValidationError(
+                "Group ID must conform to Kubernetes namespace rules: "
+                "lowercase alphanumeric characters or '-', start and end with alphanumeric."
+            )
+
+class DeleteGroupSerializer(serializers.Serializer):
+    group_id = serializers.CharField(max_length=63)
+    def validate_group_id(self, value):
+        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        if len(value) > 63:
+            raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
+        if not re.match(dns_label_regex, value):
+            raise serializers.ValidationError(
+                "Group ID must conform to Kubernetes namespace rules: "
+                "lowercase alphanumeric characters or '-', start and end with alphanumeric."
+            )
+
+
+class EmailPathSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
 class UserManagementAPIListGroupsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
     def get(self, request, *args, **kwargs):
         groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
         return Response({"groups": groups}, status=200)
 
 
 class UserManagementAPIListUsersView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
     def get(self, request, *args, **kwargs):
         users_queryset = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
         users = list(users_queryset)
@@ -114,7 +152,7 @@ class UserManagementAPIListUsersView(APIView):
         return Response({"users": users}, status=200)
 
 class UserManagementAPICreateUserView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
     def post(self, request, *args, **kwargs):
         # Create a new user
 
@@ -133,7 +171,7 @@ class UserManagementAPICreateUserView(APIView):
 
 
 class UserManagementAPIUpdateUserView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
     def patch(self, request, *args, **kwargs):
         serializer = UpdateUserSerializer(data=request.data)
         if not serializer.is_valid():
@@ -148,13 +186,17 @@ class UserManagementAPIUpdateUserView(APIView):
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     def delete(self, request, email, *args, **kwargs):
+        serializer = EmailPathSerializer(data={"email": email})
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
+        validated_email = serializer.validated_data["email"]
         force_param = request.query_params.get("force", "false")
         force = str(force_param).lower() in ("1", "true", "yes", "on")
-        result = delete_user_service(email, force)
+        result = delete_user_service(validated_email, force)
         return Response({"message": result["message"]}, status=result["status"])
 
 class UserManagementAPICreateGroupView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
     def post(self, request, *args, **kwargs):
         # Create a new group
         serializer = CreateGroupSerializer(data=request.data)
@@ -180,9 +222,15 @@ class UserManagementAPICreateGroupView(APIView):
 
 
 class UserManagementAPIDeleteGroupView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
 
     def delete(self, request, group_id, *args, **kwargs):
+        serializer = DeleteGroupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
+
+        validated_data = serializer.validated_data
+        group_id = validated_data["group_id"]   
         result = delete_group_service(group_id)
         return Response({"message": result["message"]}, status=result["status"])
 
