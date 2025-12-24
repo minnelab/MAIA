@@ -50,16 +50,19 @@ from .services import (
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+
 class UpdateUserSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
     namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
 
     def validate_namespace(self, value):
         namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
-        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         for ns in namespaces:
             if len(ns) > 63:
-                raise serializers.ValidationError("Each namespace must be at most 63 characters long (Kubernetes namespace limit).")
+                raise serializers.ValidationError(
+                    "Each namespace must be at most 63 characters long (Kubernetes namespace limit)."
+                )
             if not re.match(dns_label_regex, ns):
                 raise serializers.ValidationError(
                     "Each namespace must conform to Kubernetes namespace rules: "
@@ -77,10 +80,12 @@ class CreateUserSerializer(serializers.Serializer):
 
     def validate_namespace(self, value):
         namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
-        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         for ns in namespaces:
             if len(ns) > 63:
-                raise serializers.ValidationError("Each namespace must be at most 63 characters long (Kubernetes namespace limit).")
+                raise serializers.ValidationError(
+                    "Each namespace must be at most 63 characters long (Kubernetes namespace limit)."
+                )
             if not re.match(dns_label_regex, ns):
                 raise serializers.ValidationError(
                     "Each namespace must conform to Kubernetes namespace rules: "
@@ -102,7 +107,7 @@ class CreateGroupSerializer(serializers.Serializer):
     email_list = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
 
     def validate_group_id(self, value):
-        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         if len(value) > 63:
             raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
         if not re.match(dns_label_regex, value):
@@ -111,10 +116,12 @@ class CreateGroupSerializer(serializers.Serializer):
                 "lowercase alphanumeric characters or '-', start and end with alphanumeric."
             )
 
+
 class DeleteGroupSerializer(serializers.Serializer):
     group_id = serializers.CharField(max_length=63)
+
     def validate_group_id(self, value):
-        dns_label_regex = r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         if len(value) > 63:
             raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
         if not re.match(dns_label_regex, value):
@@ -127,17 +134,22 @@ class DeleteGroupSerializer(serializers.Serializer):
 class EmailPathSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+
 class UserManagementAPIListGroupsView(APIView):
     permission_classes = [IsAdminUser]
+
     def get(self, request, *args, **kwargs):
-        groups = MAIAProject.objects.all().values('id', 'namespace', 'gpu', 'date', 'memory_limit', 'cpu_limit', 'conda', 'cluster', 'minimal_env', 'email')
+        groups = MAIAProject.objects.all().values(
+            "id", "namespace", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "email"
+        )
         return Response({"groups": groups}, status=200)
 
 
 class UserManagementAPIListUsersView(APIView):
     permission_classes = [IsAdminUser]
+
     def get(self, request, *args, **kwargs):
-        users_queryset = MAIAUser.objects.all().values('id', 'email', 'username', 'namespace')
+        users_queryset = MAIAUser.objects.all().values("id", "email", "username", "namespace")
         users = list(users_queryset)
         keycloak_users = get_maia_users_from_keycloak(settings=settings)
         keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}
@@ -151,8 +163,10 @@ class UserManagementAPIListUsersView(APIView):
                 user["keycloak_groups"] = []
         return Response({"users": users}, status=200)
 
+
 class UserManagementAPICreateUserView(APIView):
     permission_classes = [IsAdminUser]
+
     def post(self, request, *args, **kwargs):
         # Create a new user
 
@@ -172,6 +186,7 @@ class UserManagementAPICreateUserView(APIView):
 
 class UserManagementAPIUpdateUserView(APIView):
     permission_classes = [IsAdminUser]
+
     def patch(self, request, *args, **kwargs):
         serializer = UpdateUserSerializer(data=request.data)
         if not serializer.is_valid():
@@ -183,8 +198,10 @@ class UserManagementAPIUpdateUserView(APIView):
         result = update_user_service(email, namespace)
         return Response({"message": result["message"]}, status=result["status"])
 
+
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
+
     def delete(self, request, email, *args, **kwargs):
         serializer = EmailPathSerializer(data={"email": email})
         if not serializer.is_valid():
@@ -195,8 +212,10 @@ class UserManagementAPIDeleteUserView(APIView):
         result = delete_user_service(validated_email, force)
         return Response({"message": result["message"]}, status=result["status"])
 
+
 class UserManagementAPICreateGroupView(APIView):
     permission_classes = [IsAdminUser]
+
     def post(self, request, *args, **kwargs):
         # Create a new group
         serializer = CreateGroupSerializer(data=request.data)
@@ -215,8 +234,7 @@ class UserManagementAPICreateGroupView(APIView):
         user_id = validated_data["user_id"]
         email_list = validated_data["email_list"]
         result = create_group_service(
-            group_id, gpu, date, memory_limit, cpu_limit,
-            conda, cluster, minimal_env, user_id, email_list
+            group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list
         )
         return Response({"message": result["message"]}, status=result["status"])
 
@@ -230,9 +248,10 @@ class UserManagementAPIDeleteGroupView(APIView):
             return Response({"error": serializer.errors}, status=400)
 
         validated_data = serializer.validated_data
-        group_id = validated_data["group_id"]   
+        group_id = validated_data["group_id"]
         result = delete_group_service(group_id)
         return Response({"message": result["message"]}, status=result["status"])
+
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
 class ProjectChartValuesAPIView(APIView):
