@@ -12,6 +12,7 @@ _jwks_cache_timestamp = 0
 _jwks_cache_lock = threading.Lock()
 _JWKS_CACHE_TTL = 300  # seconds
 
+
 def get_jwks():
     """
     Retrieve and cache the JSON Web Key Set (JWKS) from Keycloak.
@@ -49,6 +50,7 @@ def get_jwks():
             # Treat JWKS retrieval/parsing issues as authentication failures
             raise AuthenticationFailed("Unable to fetch JWKS for token verification") from e
 
+
 class KeycloakAuthentication(BaseAuthentication):
     """
     Django REST Framework authentication backend for validating Keycloak access tokens.
@@ -62,6 +64,7 @@ class KeycloakAuthentication(BaseAuthentication):
     :class:`rest_framework.exceptions.AuthenticationFailed` or returns ``None`` to allow
     other authentication backends to run.
     """
+
     def authenticate(self, request):
         auth_header = request.headers.get("Authorization")
         if not auth_header:
