@@ -4,11 +4,11 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2507.19489-b31b1b.svg)](https://arxiv.org/abs/2507.19489)
 
 [![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
-
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
 ![Version](https://img.shields.io/badge/MAIA-v2.0.0-blue)
 [![License](https://img.shields.io/badge/license-GPL%203.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 ![Python](https://img.shields.io/badge/python-3.8+-orange)
+[![Ansible Collection](https://img.shields.io/badge/Ansible%20Galaxy-maia.installation-blue?logo=ansible)](https://galaxy.ansible.com/maia/installation)
 
 
 ![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/minnelab/MAIA?logo=github)
@@ -56,7 +56,7 @@ MAIA ships with a **one-command installer** that sets up everything you need: Ku
 
 The installer is powered by the **`MAIA.Installation` Ansible collection**, which provides roles and playbooks to install and configure the MAIA platform on a Kubernetes cluster.
 
-For more details, please refer to the [MAIA.Installation]() documentation.
+For more details, please refer to the [MAIA.Installation](https://galaxy.ansible.com/ui/repo/published/maia/installation) documentation.
 
 To run the installer, you must prepare a **configuration folder** containing:
 
@@ -155,6 +155,40 @@ NAME                                               READY   STATUS    RESTARTS   
 admin-minio-tenant-pool-0-0                        2/2     Running   0          44m
 maia-admin-maia-dashboard-b87475666-2vs77          1/1     Running   0          3m15s
 maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          3m57s
+```
+
+For first-access, you can use the following credentials:
+```bash
+username: admin@maia.se
+password [Temporary]: Admin
+```
+
+### Installation on Windows Subsystem for Linux (WSL)
+
+To install MAIA on Windows Subsystem for Linux (WSL), you can use the following one-command installer:
+```bash
+LATEST=$(curl -s https://api.github.com/repos/minnelab/MAIA/releases/latest | grep tag_name | cut -d '"' -f4)
+wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA_WSL.sh" && chmod +x install_MAIA_WSL.sh && ./install_MAIA_WSL.sh
+```
+To access all the features of MAIA, verify that all the subdomains are mapped in your Windows hosts file:
+
+
+```bash
+# Add the following lines to your Windows hosts file:
+# C:\Windows\System32\drivers\etc\hosts
+<WSL_IP> <domain>
+<WSL_IP> traefik.<domain>
+<WSL_IP> dashboard.<domain>
+<WSL_IP> grafana.<domain>
+<WSL_IP> iam.<domain>
+<WSL_IP> registry.<domain>
+<WSL_IP> mgmt.<domain>
+<WSL_IP> minio.<domain>
+<WSL_IP> argocd.<domain>
+<WSL_IP> maia.<domain>
+<WSL_IP> test.<domain>
+<WSL_IP> minio.test.<domain>
+<WSL_IP> login.<domain>
 ```
 
 ## MAIA Architecture

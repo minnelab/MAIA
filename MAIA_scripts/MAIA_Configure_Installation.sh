@@ -122,7 +122,7 @@ for var in "${required_vars[@]}"; do
     fi
     # If PUBLIC_REGISTRY=1, skip prompting for HARBOR_USERNAME and HARBOR_PASSWORD
     if [ "$PUBLIC_REGISTRY" = "1" ]; then
-      if [ "$var" = "HARBOR_USERNAME" ] || [ "$var" = "HARBOR_PASSWORD" ]; then
+      if [ "$var" = "HARBOR_USERNAME" ] || [ "$var" = "HARBOR_PASSWORD" ] || [ "$var" = "MAIA_PRIVATE_REGISTRY" ]; then
         continue
       fi
     fi
