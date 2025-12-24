@@ -106,7 +106,7 @@ class KeycloakAuthentication(BaseAuthentication):
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed("Token expired")
         except jwt.InvalidTokenError as e:
-            raise AuthenticationFailed(f"Invalid token: {str(e)}") from e
+            raise AuthenticationFailed("Invalid or malformed token") from e
 
         # Optionally, map Keycloak username/email to Django user
         email = payload.get("email")

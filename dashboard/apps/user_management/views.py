@@ -51,6 +51,18 @@ from .services import (
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
+def group_id_validator(value):
+    dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    if len(value) > 63:
+        raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
+    if not re.match(dns_label_regex, value):
+        raise serializers.ValidationError(
+            "Group ID must conform to Kubernetes namespace rules: "
+            "lowercase alphanumeric characters or '-', start and end with alphanumeric."
+        )
+    return value
+
+
 class UpdateUserSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
     namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
@@ -107,28 +119,14 @@ class CreateGroupSerializer(serializers.Serializer):
     email_list = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
 
     def validate_group_id(self, value):
-        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-        if len(value) > 63:
-            raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
-        if not re.match(dns_label_regex, value):
-            raise serializers.ValidationError(
-                "Group ID must conform to Kubernetes namespace rules: "
-                "lowercase alphanumeric characters or '-', start and end with alphanumeric."
-            )
+        return group_id_validator(value)
 
 
 class DeleteGroupSerializer(serializers.Serializer):
     group_id = serializers.CharField(max_length=63)
 
     def validate_group_id(self, value):
-        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-        if len(value) > 63:
-            raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
-        if not re.match(dns_label_regex, value):
-            raise serializers.ValidationError(
-                "Group ID must conform to Kubernetes namespace rules: "
-                "lowercase alphanumeric characters or '-', start and end with alphanumeric."
-            )
+        return group_id_validator(value)
 
 
 class EmailPathSerializer(serializers.Serializer):
@@ -200,7 +198,7 @@ class UserManagementAPIUpdateUserView(APIView):
 
 
 class UserManagementAPIDeleteUserView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAdminUser]
 
     def delete(self, request, email, *args, **kwargs):
         serializer = EmailPathSerializer(data={"email": email})
@@ -243,7 +241,7 @@ class UserManagementAPIDeleteGroupView(APIView):
     permission_classes = [IsAdminUser]
 
     def delete(self, request, group_id, *args, **kwargs):
-        serializer = DeleteGroupSerializer(data=request.data)
+        serializer = DeleteGroupSerializer(data={"group_id": group_id})
         if not serializer.is_valid():
             return Response({"error": serializer.errors}, status=400)
 
