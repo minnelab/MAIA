@@ -62,25 +62,28 @@ def group_id_validator(value):
         )
     return value
 
+def namespace_validator(value):
+    namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
+    dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    for ns in namespaces:
+        if len(ns) > 63:
+            raise serializers.ValidationError(
+                "Each namespace must be at most 63 characters long (Kubernetes namespace limit)."
+            )
+        if not re.match(dns_label_regex, ns):
+            raise serializers.ValidationError(
+                "Each namespace must conform to Kubernetes namespace rules: "
+                "lowercase alphanumeric characters or '-', start and end with alphanumeric."
+            )
+    return ",".join(namespaces)
+
 
 class UpdateUserSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
     namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
 
     def validate_namespace(self, value):
-        namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
-        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-        for ns in namespaces:
-            if len(ns) > 63:
-                raise serializers.ValidationError(
-                    "Each namespace must be at most 63 characters long (Kubernetes namespace limit)."
-                )
-            if not re.match(dns_label_regex, ns):
-                raise serializers.ValidationError(
-                    "Each namespace must conform to Kubernetes namespace rules: "
-                    "lowercase alphanumeric characters or '-', start and end with alphanumeric."
-                )
-        return ",".join(namespaces)
+        return namespace_validator(value)
 
 
 class CreateUserSerializer(serializers.Serializer):
@@ -91,19 +94,7 @@ class CreateUserSerializer(serializers.Serializer):
     namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
 
     def validate_namespace(self, value):
-        namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
-        dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-        for ns in namespaces:
-            if len(ns) > 63:
-                raise serializers.ValidationError(
-                    "Each namespace must be at most 63 characters long (Kubernetes namespace limit)."
-                )
-            if not re.match(dns_label_regex, ns):
-                raise serializers.ValidationError(
-                    "Each namespace must conform to Kubernetes namespace rules: "
-                    "lowercase alphanumeric characters or '-', start and end with alphanumeric."
-                )
-        return ",".join(namespaces)
+        return namespace_validator(value)
 
 
 class CreateGroupSerializer(serializers.Serializer):

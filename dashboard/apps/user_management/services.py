@@ -251,7 +251,21 @@ def delete_user(email, force=False):
         groups = [g.strip() for g in namespace.split(",") if g.strip()]
         for group in groups:
             if group not in RESERVED_GROUPS:
-                remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
+                try:
+                    remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
+                except KeycloakDeleteError as e:
+                    if getattr(e, "response_code", None) == 404:
+                        logger.warning(
+                            f"User {email} is not a member of group {group} in Keycloak and could not be removed"
+                        )
+                    else:
+                        logger.error(
+                            f"Error removing user {email} from group {group} in Keycloak."
+                        )
+                        return {
+                            "message": f"Error removing user {email} from group {group} in Keycloak.",
+                            "status": 500,
+                        }
             if force:
                 if getattr(settings, "USERS_GROUP", None) and group == getattr(settings, "USERS_GROUP", None):
                     remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
