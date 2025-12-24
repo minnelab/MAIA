@@ -255,13 +255,9 @@ def delete_user(email, force=False):
                     remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
                 except KeycloakDeleteError as e:
                     if getattr(e, "response_code", None) == 404:
-                        logger.warning(
-                            f"User {email} is not a member of group {group} in Keycloak and could not be removed"
-                        )
+                        logger.warning(f"User {email} is not a member of group {group} in Keycloak and could not be removed")
                     else:
-                        logger.error(
-                            f"Error removing user {email} from group {group} in Keycloak."
-                        )
+                        logger.error(f"Error removing user {email} from group {group} in Keycloak.")
                         return {
                             "message": f"Error removing user {email} from group {group} in Keycloak.",
                             "status": 500,

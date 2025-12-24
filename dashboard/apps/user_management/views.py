@@ -62,14 +62,13 @@ def group_id_validator(value):
         )
     return value
 
+
 def namespace_validator(value):
     namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
     dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
     for ns in namespaces:
         if len(ns) > 63:
-            raise serializers.ValidationError(
-                "Each namespace must be at most 63 characters long (Kubernetes namespace limit)."
-            )
+            raise serializers.ValidationError("Each namespace must be at most 63 characters long (Kubernetes namespace limit).")
         if not re.match(dns_label_regex, ns):
             raise serializers.ValidationError(
                 "Each namespace must conform to Kubernetes namespace rules: "

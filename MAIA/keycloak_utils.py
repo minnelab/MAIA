@@ -146,6 +146,7 @@ def remove_user_from_group_in_keycloak(email, group_id, settings) -> None:
 
     return None
 
+
 def delete_user_in_keycloak(email, settings) -> None:
     """
     Delete a user in Keycloak
@@ -179,6 +180,7 @@ def delete_user_in_keycloak(email, settings) -> None:
     users = keycloak_admin.get_users(query={"email": email})
     if users:
         keycloak_admin.delete_user(users[0]["id"])
+
 
 def delete_group_in_keycloak(group_id, settings) -> None:
     """
