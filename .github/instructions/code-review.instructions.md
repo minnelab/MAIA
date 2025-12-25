@@ -1,14 +1,12 @@
+---
+applyTo: "**"
 # GitHub Copilot Code Review Instructions
 
-## Scope and Review Philosophy
-You are acting as a senior reviewer for this repository.  
-Your goal is to **approve changes quickly and decisively**, minimizing review churn.
+
 
 Assume:
 - Code formatting, linting, and style compliance are **already enforced** via tooling.
 - The author prefers **few, high-value comments** over incremental or speculative feedback.
-
----
 
 ## Explicitly Skip These Checks (Do NOT Comment On)
 Do **not** raise comments or suggestions related to:
@@ -85,3 +83,4 @@ The target outcome is:
 - Approval in **1 round**
 - **Maximum 2–3 rounds** under exceptional circumstances
 - Zero repetitive or newly introduced comments after the first review
+---
