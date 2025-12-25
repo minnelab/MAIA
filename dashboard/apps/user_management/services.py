@@ -433,16 +433,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             minimal_env=minimal_env,
         )
     except IntegrityError:
-        MAIAProject.objects.filter(namespace=group_id).update(
-            email=user_email,
-            gpu=gpu,
-            date=date,
-            memory_limit=memory_limit,
-            cpu_limit=cpu_limit,
-            conda=conda,
-            cluster=cluster,
-            minimal_env=minimal_env,
-        )
+        logger.warning(f"Group {group_id} already exists in the database")
+
 
     return {
         "message": "Group already exists in Keycloak" if group_already_exists else "Group created successfully",
