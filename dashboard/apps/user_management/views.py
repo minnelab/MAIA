@@ -1,5 +1,5 @@
-from rest_framework import serializers
 import os
+from rest_framework import serializers
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template import loader
@@ -49,13 +49,13 @@ from .services import (
 )
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
+DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 
 def group_id_validator(value):
-    dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    
     if len(value) > 63:
         raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
-    if not re.match(dns_label_regex, value):
+    if not re.match(DNS_LABEL_REGEX, value):
         raise serializers.ValidationError(
             "Group ID must conform to Kubernetes namespace rules: "
             "lowercase alphanumeric characters or '-', start and end with alphanumeric."
@@ -65,11 +65,10 @@ def group_id_validator(value):
 
 def namespace_validator(value):
     namespaces = [ns.strip() for ns in value.split(",") if ns.strip()]
-    dns_label_regex = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
     for ns in namespaces:
         if len(ns) > 63:
             raise serializers.ValidationError("Each namespace must be at most 63 characters long (Kubernetes namespace limit).")
-        if not re.match(dns_label_regex, ns):
+        if not re.match(DNS_LABEL_REGEX, ns):
             raise serializers.ValidationError(
                 "Each namespace must conform to Kubernetes namespace rules: "
                 "lowercase alphanumeric characters or '-', start and end with alphanumeric."
@@ -90,7 +89,7 @@ class CreateUserSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
     first_name = serializers.CharField(max_length=30)
     last_name = serializers.CharField(max_length=150)
-    namespace = serializers.CharField(max_length=1000, allow_blank=False, trim_whitespace=True)
+    namespace = serializers.CharField(max_length=1000, allow_blank=True, trim_whitespace=True)
 
     def validate_namespace(self, value):
         return namespace_validator(value)
@@ -194,7 +193,8 @@ class UserManagementAPIDeleteUserView(APIView):
             return Response({"error": {"email": ["This query parameter is required."]}}, status=400)
         serializer = EmailPathSerializer(data={"email": email})
         if not serializer.is_valid():
-            return Response({"error": serializer.errors}, status=400)
+            # Avoid leaking detailed validation errors for path parameters
+            return Response(status=404)
         validated_email = serializer.validated_data["email"]
         force_param = request.query_params.get("force", "false")
         force = str(force_param).lower() in ("1", "true", "yes", "on")

@@ -113,7 +113,7 @@ class KeycloakAuthentication(BaseAuthentication):
 
         # Optionally, map Keycloak username/email to Django user
         email = payload.get("email")
-        if not email:
+        if not email or not str(email).strip():
             raise AuthenticationFailed("Token does not contain an email claim")
         try:
             user = MAIAUser.objects.get(email=email)

@@ -125,10 +125,7 @@ def create_user(email, username, first_name, last_name, namespace):
                 user_already_exists = True
             else:
                 transaction.set_rollback(True)
-                return {
-                    "message": "Failed to register user in Keycloak",
-                    "status": 500,
-                }
+                raise
 
         # Add user to their groups in Keycloak
         if namespace:
@@ -143,10 +140,7 @@ def create_user(email, username, first_name, last_name, namespace):
                     else:
                         logger.error(f"Error adding user {email} to group {group} in Keycloak.")
                         transaction.set_rollback(True)
-                        return {
-                            "message": f"Failed to add user {email} to group {group} in Keycloak.",
-                            "status": 500,
-                        }
+                        raise
             if user_already_exists:
                 groups_in_keycloak = get_groups_for_user(email=email, settings=settings)
                 for group in groups_in_keycloak:
@@ -159,10 +153,7 @@ def create_user(email, username, first_name, last_name, namespace):
                             else:
                                 logger.error(f"Error removing user {email} from group {group} in Keycloak.")
                                 transaction.set_rollback(True)
-                                return {
-                                    "message": f"Failed to remove user {email} from group {group} in Keycloak.",
-                                    "status": 500,
-                                }
+                                raise
     return {"message": "User already exists in Keycloak" if user_already_exists else "User created successfully", "status": 200}
 
 
@@ -177,58 +168,60 @@ def update_user(email, namespace):
     Returns:
         dict: Success message or error information
     """
-    user_qs = MAIAUser.objects.filter(email=email)
-    user = user_qs.first()
-    # If user does not exist in the database, there is nothing to sync in Keycloak
-    if not user:
-        return {"message": "User does not exist", "status": 404}
-    old_namespace = user.namespace
+    with transaction.atomic():
+        try:
+            # Lock the user row to prevent concurrent modifications/deletion
+            user = MAIAUser.objects.select_for_update().get(email=email)
+        except MAIAUser.DoesNotExist:
+            # If user does not exist in the database, there is nothing to sync in Keycloak
+            return {"message": "User does not exist", "status": 404}
+        old_namespace = user.namespace
+        # Update namespace in the MAIA database using the locked instance
+        user.namespace = namespace
+        user.save(update_fields=["namespace"])
 
+    with transaction.atomic():
     # Update namespace in the MAIA database
-    user_qs.update(namespace=namespace)
+        user_qs.update(namespace=namespace)
 
-    # Normalize namespaces to sets of group IDs
-    old_groups = {g.strip() for g in (old_namespace or "").split(",") if g.strip()}
-    new_groups = {g.strip() for g in (namespace or "").split(",") if g.strip()}
+        # Normalize namespaces to sets of group IDs
+        old_groups = {g.strip() for g in (old_namespace or "").split(",") if g.strip()}
+        new_groups = {g.strip() for g in (namespace or "").split(",") if g.strip()}
 
-    groups_to_add = new_groups - old_groups
-    groups_to_remove = old_groups - new_groups
+        groups_to_add = new_groups - old_groups
+        groups_to_remove = old_groups - new_groups
 
-    # Add user to newly assigned groups in Keycloak
-    for group in groups_to_add:
-        try:
-            register_users_in_group_in_keycloak(
-                group_id=group,
-                emails=[email],
-                settings=settings,
-            )
-        except KeycloakPostError as e:
-            if getattr(e, "response_code", 0) == 409:
-                continue
-            else:
-                logger.error(f"Error adding user {email} to group {group} in Keycloak during update.")
-                return {
-                    "message": f"Failed to add user {email} to group {group} in Keycloak during update.",
-                    "status": 500,
-                }
+        # Add user to newly assigned groups in Keycloak
+        for group in groups_to_add:
+            try:
+                register_users_in_group_in_keycloak(
+                    group_id=group,
+                    emails=[email],
+                    settings=settings,
+                )
+            except KeycloakPostError as e:
+                if getattr(e, "response_code", 0) == 409:
+                    continue
+                else:
+                    logger.error(f"Error adding user {email} to group {group} in Keycloak during update.")
+                    transaction.set_rollback(True)
+                    raise
 
-    # Remove user from groups they are no longer part of in Keycloak
-    for group in groups_to_remove:
-        try:
-            remove_user_from_group_in_keycloak(
-                email=email,
-                group_id=group,
-                settings=settings,
-            )
-        except KeycloakDeleteError as e:
-            if getattr(e, "response_code", 0) == 409:
-                continue
-            else:
-                logger.error(f"Error removing user {email} from group {group} in Keycloak during update.")
-                return {
-                    "message": f"Failed to remove user {email} from group {group} in Keycloak during update.",
-                    "status": 500,
-                }
+        # Remove user from groups they are no longer part of in Keycloak
+        for group in groups_to_remove:
+            try:
+                remove_user_from_group_in_keycloak(
+                    email=email,
+                    group_id=group,
+                    settings=settings,
+                )
+            except KeycloakDeleteError as e:
+                if getattr(e, "response_code", 0) == 409:
+                    continue
+                else:
+                    logger.error(f"Error removing user {email} from group {group} in Keycloak during update.")
+                    transaction.set_rollback(True)
+                    raise
     return {"message": "User updated successfully", "status": 200}
 
 
@@ -395,7 +388,7 @@ def sync_list_of_users_for_group(group_id, email_list):
     return {"message": "List of users synchronized successfully", "status": 200}
 
 
-def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list=None):
+def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_email, email_list=None):
     """
     Create a new MAIA group/project and register it in Keycloak.
 
@@ -408,7 +401,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         conda (str): Conda environment configuration
         cluster (str): Cluster assignment
         minimal_env (str): Minimal environment flag
-        user_id (str): Email of the user creating/owning the group
+        user_email (str): Email of the user creating/owning the group
         email_list (list, optional): List of user emails to add to the group
 
     Returns:
@@ -430,11 +423,11 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
                 "status": 500,
             }
 
-    if user_id and MAIAUser.objects.filter(email=user_id).exists():
+    if user_email and MAIAUser.objects.filter(email=user_email).exists():
         if not email_list:
-            email_list = [user_id]
+            email_list = [user_email]
         else:
-            email_list = [user_id] + email_list
+            email_list = [user_email] + email_list
     sync_result = sync_list_of_users_for_group(group_id, email_list)
 
     if isinstance(sync_result, dict):
@@ -445,7 +438,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     try:
         MAIAProject.objects.create(
             namespace=group_id,
-            email=user_id,
+            email=user_email,
             gpu=gpu,
             date=date,
             memory_limit=memory_limit,
@@ -456,7 +449,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         )
     except IntegrityError:
         MAIAProject.objects.filter(namespace=group_id).update(
-            email=user_id,
+            email=user_email,
             gpu=gpu,
             date=date,
             memory_limit=memory_limit,
@@ -491,6 +484,7 @@ def delete_group(group_id):
     # Remove all users from the group in Keycloak
     users_in_group = get_list_of_users_requesting_a_group(group_id=group_id, maia_user_model=MAIAUser)
     for user_email in users_in_group:
+        maia_users = MAIAUser.objects.filter(email=user_email)
         try:
             remove_user_from_group_in_keycloak(email=user_email, group_id=group_id, settings=settings)
         except KeycloakDeleteError as e:
@@ -498,7 +492,6 @@ def delete_group(group_id):
                 logger.warning(f"User was already not in group {group_id} in Keycloak")
                 # Even if the user was already not in the group in Keycloak,
                 # ensure the namespace field in MAIAUser is updated.
-                maia_users = MAIAUser.objects.filter(email=user_email)
                 for maia_user in maia_users:
                     maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, group_id)
                 MAIAUser.objects.bulk_update(maia_users, ["namespace"])
@@ -507,7 +500,6 @@ def delete_group(group_id):
                 logger.warning(f"User does not exist in Keycloak and could not be removed from group {group_id}")
                 # If the user does not exist in Keycloak, still remove the group
                 # from the namespace field in MAIAUser.
-                maia_users = MAIAUser.objects.filter(email=user_email)
                 for maia_user in maia_users:
                     maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, group_id)
                 MAIAUser.objects.bulk_update(maia_users, ["namespace"])
@@ -517,7 +509,6 @@ def delete_group(group_id):
                 raise
         # On successful removal from the group in Keycloak, also update the
         # namespace field in MAIAUser to remove the group.
-        maia_users = MAIAUser.objects.filter(email=user_email)
         for maia_user in maia_users:
             maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, group_id)
         MAIAUser.objects.bulk_update(maia_users, ["namespace"])
