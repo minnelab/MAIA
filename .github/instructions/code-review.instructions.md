@@ -1,7 +1,7 @@
 ---
 applyTo: "**"
 # GitHub Copilot Code Review Instructions
-
+---
 
 
 Assume:
@@ -17,8 +17,6 @@ Do **not** raise comments or suggestions related to:
 - Minor refactors, “nice-to-have” cleanups, or personal preferences
 
 If a change is stylistically suboptimal but **correct and safe**, accept it.
-
----
 
 ## What You SHOULD Review
 Only comment if one of the following applies:
@@ -43,8 +41,6 @@ Only comment if one of the following applies:
 
 If none of the above apply, **approve without comment**.
 
----
-
 ## Review Structure (VERY IMPORTANT)
 Produce **one single, consolidated review** per request.
 
@@ -63,8 +59,6 @@ Your response must follow this structure:
 ❌ Do NOT split feedback across multiple responses  
 ❌ Do NOT introduce new concerns in follow-up review rounds unless the code has materially changed
 
----
-
 ## Follow-Up Review Rounds
 When reviewing an updated version:
 
@@ -74,8 +68,6 @@ When reviewing an updated version:
 
 > “All previously identified issues are resolved. Approved.”
 
----
-
 ## Acceptance Bias
 Default to **APPROVE** unless there is a strong, objective reason to block the change.
 
@@ -83,4 +75,3 @@ The target outcome is:
 - Approval in **1 round**
 - **Maximum 2–3 rounds** under exceptional circumstances
 - Zero repetitive or newly introduced comments after the first review
----
