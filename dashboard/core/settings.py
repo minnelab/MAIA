@@ -229,7 +229,7 @@ OIDC_RP_SCOPES = os.getenv("OIDC_RP_SCOPES", None)
 OIDC_CA_BUNDLE = os.getenv("OIDC_CA_BUNDLE", True)
 ADMIN_GROUP = os.getenv("ADMIN_GROUP", "admin")
 USERS_GROUP = os.getenv("USERS_GROUP", "users")
-JWKS_TIMEOUT = os.getenv("JWKS_TIMEOUT", 10)
+JWKS_TIMEOUT = int(os.getenv("JWKS_TIMEOUT", 10))
 OIDC_STORE_ID_TOKEN = True
 
 AUTHENTICATION_BACKENDS = (

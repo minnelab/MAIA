@@ -61,9 +61,11 @@ class KeycloakAuthentication(BaseAuthentication):
     It retrieves the appropriate public key from Keycloak's JWKS endpoint based on the
     token's ``kid`` header, verifies the JWT signature, issuer and audience, and then
     maps the token's ``email`` claim to a ``MAIAUser`` record.
-    On successful authentication, :meth:`authenticate` returns a ``(user, None)`` tuple
-    as expected by DRF. If the header is missing, malformed, the token is invalid or
-    expired, or no corresponding user can be found, it raises
+       On successful authentication, :meth:`authenticate` returns a ``(user, auth)`` tuple
+    as expected by DRF, where ``auth`` is the authentication credentials. In this
+    implementation the validated JWT is not stored or returned, so ``auth`` is always
+    ``None``. If the header is missing, malformed, the token is invalid or expired, or
+    no corresponding user can be found, it raises
     :class:`rest_framework.exceptions.AuthenticationFailed` or returns ``None`` to allow
     other authentication backends to run.
     """
@@ -113,7 +115,7 @@ class KeycloakAuthentication(BaseAuthentication):
 
         # Optionally, map Keycloak username/email to Django user
         email = payload.get("email")
-        if not email or not str(email).strip():
+        if not email or not isinstance(email, str) or not email.strip():
             raise AuthenticationFailed("Token does not contain an email claim")
         try:
             user = MAIAUser.objects.get(email=email)

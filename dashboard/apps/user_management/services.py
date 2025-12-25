@@ -254,11 +254,6 @@ def delete_user(email, force=False):
                             "message": f"Error removing user {email} from group {group} in Keycloak.",
                             "status": 500,
                         }
-            if force:
-                if getattr(settings, "USERS_GROUP", None) and group == getattr(settings, "USERS_GROUP", None):
-                    remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
-                    user.namespace = _remove_group_from_namespace(user.namespace, group)
-                    user.save(update_fields=["namespace"])
     MAIAUser.objects.filter(email=email).delete()
     if force:
         try:
@@ -384,6 +379,7 @@ def sync_list_of_users_for_group(group_id, email_list):
     return {"message": "List of users synchronized successfully", "status": 200}
 
 
+@transaction.atomic
 def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_email, email_list=None):
     """
     Create a new MAIA group/project and register it in Keycloak.
@@ -414,10 +410,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             logger.warning(f"Group {group_id} already exists in Keycloak")
         else:
             logger.error(f"Error registering group {group_id} in Keycloak.")
-            return {
-                "message": f"Failed to register group {group_id} in Keycloak.",
-                "status": 500,
-            }
+            raise
 
     if user_email and MAIAUser.objects.filter(email=user_email).exists():
         if not email_list:
@@ -429,7 +422,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     if isinstance(sync_result, dict):
         status = sync_result.get("status")
         if status is not None and status != 200:
-            return sync_result
+            raise
     # Create or update the project
     try:
         MAIAProject.objects.create(

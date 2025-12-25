@@ -194,8 +194,8 @@ class UserManagementAPIDeleteUserView(APIView):
             return Response({"error": {"email": ["This query parameter is required."]}}, status=400)
         serializer = EmailPathSerializer(data={"email": email})
         if not serializer.is_valid():
-            # Avoid leaking detailed validation errors for path parameters
-            return Response(status=404)
+            # Return a generic bad request error without leaking detailed validation information
+            return Response({"error": {"email": ["Invalid email format."]}}, status=400)
         validated_email = serializer.validated_data["email"]
         force_param = request.query_params.get("force", "false")
         force = str(force_param).lower() in ("1", "true", "yes", "on")
