@@ -220,7 +220,7 @@ def update_user(email, namespace):
                     raise
     return {"message": "User updated successfully", "status": 200}
 
-
+@transaction.atomic
 def delete_user(email, force=False):
     """
     Delete a user and remove them from all Keycloak groups.
@@ -250,10 +250,7 @@ def delete_user(email, force=False):
                         logger.warning(f"User {email} is not a member of group {group} in Keycloak and could not be removed")
                     else:
                         logger.error(f"Error removing user {email} from group {group} in Keycloak.")
-                        return {
-                            "message": f"Error removing user {email} from group {group} in Keycloak.",
-                            "status": 500,
-                        }
+                        raise
     MAIAUser.objects.filter(email=email).delete()
     if force:
         try:
@@ -264,10 +261,7 @@ def delete_user(email, force=False):
                 logger.warning(f"User {email} does not exist in Keycloak and was not deleted")
             else:
                 logger.error(f"Error deleting user {email} from Keycloak.")
-                return {
-                    "message": f"Error deleting user {email} from Keycloak.",
-                    "status": 500,
-                }
+                raise
     return {"message": "User deleted successfully", "status": 200}
 
 
@@ -422,7 +416,9 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     if isinstance(sync_result, dict):
         status = sync_result.get("status")
         if status is not None and status != 200:
-            raise
+            raise RuntimeError(
+                f"Failed to sync users for group {group_id}: {sync_result}"
+            )
     # Create or update the project
     try:
         MAIAProject.objects.create(

@@ -40,7 +40,6 @@ def get_jwks():
         try:
             ca_bundle = getattr(settings, "OIDC_CA_BUNDLE", None)
             ssl_verification = ca_bundle if ca_bundle else True
-            print
             response = requests.get(JWKS_URL, verify=ssl_verification, timeout=JWKS_TIMEOUT)
             response.raise_for_status()
             jwks = response.json()
