@@ -243,6 +243,9 @@ def delete_user(email, force=False):
         dict: Success message or error information
     """
     user = MAIAUser.objects.filter(email=email).first()
+    if user and user.is_superuser:
+        logger.error(f"User {email} is a superuser and cannot be deleted")
+        return {"message": "User is a superuser and cannot be deleted", "status": 500}
     if not user:
         return {"message": "User does not exist", "status": 404}
     else:
@@ -267,28 +270,20 @@ def delete_user(email, force=False):
                     remove_user_from_group_in_keycloak(email=email, group_id=group, settings=settings)
                     user.namespace = _remove_group_from_namespace(user.namespace, group)
                     user.save(update_fields=["namespace"])
-        if not user.is_superuser:
-            MAIAUser.objects.filter(email=email).delete()
-            if force:
-                try:
-                    delete_user_in_keycloak(email=email, settings=settings)
-                    logger.info(f"User {email} deleted from Keycloak")
-                except KeycloakDeleteError as e:
-                    if getattr(e, "response_code", 0) == 404:
-                        logger.warning(f"User {email} does not exist in Keycloak and was not deleted")
-                    else:
-                        logger.error(f"Error deleting user {email} from Keycloak.")
-                        return {
-                            "message": f"Error deleting user {email} from Keycloak.",
-                            "status": 500,
-                        }
-        else:
-            logger.warning(f"User {email} is a superuser and cannot be deleted")
-            return {
-                "message": f"User {email} is a superuser and cannot be deleted",
-                "status": 403,
-            }
-
+    MAIAUser.objects.filter(email=email).delete()
+    if force:
+        try:
+            delete_user_in_keycloak(email=email, settings=settings)
+            logger.info(f"User {email} deleted from Keycloak")
+        except KeycloakDeleteError as e:
+            if getattr(e, "response_code", 0) == 404:
+                logger.warning(f"User {email} does not exist in Keycloak and was not deleted")
+            else:
+                logger.error(f"Error deleting user {email} from Keycloak.")
+                return {
+                    "message": f"Error deleting user {email} from Keycloak.",
+                    "status": 500,
+                }
     return {"message": "User deleted successfully", "status": 200}
 
 

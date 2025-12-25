@@ -11,6 +11,7 @@ _jwks_cache = None
 _jwks_cache_timestamp = 0
 _jwks_cache_lock = threading.Lock()
 _JWKS_CACHE_TTL = 300  # seconds
+JWKS_TIMEOUT = getattr(settings, "JWKS_TIMEOUT", 10)  # seconds
 
 
 def get_jwks():
@@ -39,7 +40,8 @@ def get_jwks():
         try:
             ca_bundle = getattr(settings, "OIDC_CA_BUNDLE", None)
             ssl_verification = ca_bundle if ca_bundle else True
-            response = requests.get(JWKS_URL, verify=ssl_verification, timeout=10)
+            print
+            response = requests.get(JWKS_URL, verify=ssl_verification, timeout=JWKS_TIMEOUT)
             response.raise_for_status()
             jwks = response.json()
             public_keys = {jwk["kid"]: jwt.algorithms.RSAAlgorithm.from_jwk(jwk) for jwk in jwks.get("keys", [])}

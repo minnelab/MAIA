@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
-
+from typing import Any
 
 def get_user_ids(settings):
     """
@@ -505,7 +505,7 @@ def get_list_of_users_requesting_a_group(maia_user_model, group_id) -> list[str]
     return users
 
 
-def get_maia_users_from_keycloak(settings) -> list[dict[str, str]]:
+def get_maia_users_from_keycloak(settings) -> list[dict[str, Any]]:
     """
     Retrieves all users from Keycloak who are members of any MAIA group.
 

@@ -26,7 +26,7 @@ urlpatterns = [
     path("list-groups/", UserManagementAPIListGroupsView.as_view(), name="list_groups"),
     path("create-user/", UserManagementAPICreateUserView.as_view(), name="create_user"),
     path("update-user/", UserManagementAPIUpdateUserView.as_view(), name="update_user"),
-    path("delete-user/<str:email>", UserManagementAPIDeleteUserView.as_view(), name="delete_user"),
+    path("delete-user/", UserManagementAPIDeleteUserView.as_view(), name="delete_user"),
     path("create-group/", UserManagementAPICreateGroupView.as_view(), name="create_group"),
     path("delete-group/<str:group_id>", UserManagementAPIDeleteGroupView.as_view(), name="delete_group"),
     path("register-user-in-group/<str:email>", views.register_user_in_group_view),

@@ -516,7 +516,10 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         minio_envs = []
 
     for maia_group in maia_groups:
-        if maia_groups[maia_group] == "users" or maia_groups[maia_group] == "admin":
+        if maia_groups[maia_group] in (
+            getattr(settings, "USERS_GROUP", "users"),
+            getattr(settings, "ADMIN_GROUP", "admin"),
+        ):
             continue
         users = keycloak_admin.get_group_members(group_id=maia_group)
 

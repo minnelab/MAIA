@@ -156,8 +156,6 @@ class UserManagementAPICreateUserView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request, *args, **kwargs):
-        # Create a new user
-
         serializer = CreateUserSerializer(data=request.data)
         if not serializer.is_valid():
             return Response({"error": serializer.errors}, status=400)
@@ -190,7 +188,10 @@ class UserManagementAPIUpdateUserView(APIView):
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAdminUser]
 
-    def delete(self, request, email, *args, **kwargs):
+    def delete(self, request, *args, **kwargs):
+        email = request.query_params.get("email")
+        if email is None:
+            return Response({"error": {"email": ["This query parameter is required."]}}, status=400)
         serializer = EmailPathSerializer(data={"email": email})
         if not serializer.is_valid():
             return Response({"error": serializer.errors}, status=400)
@@ -205,7 +206,6 @@ class UserManagementAPICreateGroupView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request, *args, **kwargs):
-        # Create a new group
         serializer = CreateGroupSerializer(data=request.data)
         if not serializer.is_valid():
             return Response({"error": serializer.errors}, status=400)
