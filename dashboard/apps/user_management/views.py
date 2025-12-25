@@ -51,8 +51,9 @@ from .services import (
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 
+
 def group_id_validator(value):
-    
+
     if len(value) > 63:
         raise serializers.ValidationError("Group ID must be at most 63 characters long (Kubernetes namespace limit).")
     if not re.match(DNS_LABEL_REGEX, value):

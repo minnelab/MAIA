@@ -5,6 +5,7 @@ import os
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from typing import Any
 
+
 def get_user_ids(settings):
     """
     Retrieve user IDs and their associated MAIA groups from Keycloak.

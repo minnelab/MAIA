@@ -180,10 +180,6 @@ def update_user(email, namespace):
         user.namespace = namespace
         user.save(update_fields=["namespace"])
 
-    with transaction.atomic():
-    # Update namespace in the MAIA database
-        user_qs.update(namespace=namespace)
-
         # Normalize namespaces to sets of group IDs
         old_groups = {g.strip() for g in (old_namespace or "").split(",") if g.strip()}
         new_groups = {g.strip() for g in (namespace or "").split(",") if g.strip()}
