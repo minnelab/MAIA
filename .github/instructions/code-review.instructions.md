@@ -4,8 +4,6 @@ applyTo: "**"
 
 # GitHub Copilot Code Review Instructions
 
-
-
 Assume:
 - Code formatting, linting, and style compliance are **already enforced** via tooling.
 - The author prefers **few, high-value comments** over incremental or speculative feedback.
