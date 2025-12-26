@@ -52,7 +52,7 @@ spec:
               mountPath: {{ .Values.dashboard.local_db_path }}
             {{- if .Values.gpg_key }}
             - name: gpg-key
-              mountPath: /var/gpg.key
+              mountPath: /var/keys
             {{- end }}
           ports:
             - name: http
