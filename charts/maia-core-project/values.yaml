@@ -1,4 +1,0 @@
-argo_namespace: argocd
-admin_group_ID: "MAIA:admin"
-destination_server: ""
-sourceRepos: []
