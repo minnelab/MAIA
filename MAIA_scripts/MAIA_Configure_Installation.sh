@@ -2,9 +2,9 @@
 
 CORE_PROJECT_VERSION=$(python3 -c "from MAIA.versions import define_maia_core_versions; print(define_maia_core_versions()['core_project_chart_version'])")
 CORE_PROJECT_CHART="maia-core-project"
-CORE_PROJECT_REPO="git+https://github.com/minnelab/MAIA.git//charts/maia-core-project?ref=master" #"https://minnelab.github.io/MAIA/"
+CORE_PROJECT_REPO="https://minnelab.github.io/MAIA/"
 ADMIN_PROJECT_CHART="maia-admin-project"
-ADMIN_PROJECT_REPO="git+https://github.com/minnelab/MAIA.git//charts/maia-admin-project?ref=master" #"https://minnelab.github.io/MAIA/"
+ADMIN_PROJECT_REPO="https://minnelab.github.io/MAIA/"
 ADMIN_PROJECT_VERSION=$(python3 -c "from MAIA.versions import define_maia_admin_versions; print(define_maia_admin_versions()['admin_project_chart_version'])")
 ARGOCD_NAMESPACE="argocd"
 ADMIN_GROUP_ID="MAIA:admin"
