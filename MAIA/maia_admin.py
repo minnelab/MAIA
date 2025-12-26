@@ -1559,9 +1559,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
                 {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
                 {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
-                {"name": "GPG_KEY", "value": os.environ["GPG_KEY"]},
+                {"name": "GPG_KEY", "value": "/var/keys/gpg_key"},
             ]
         )
+        with open(os.environ["GPG_KEY"], "r") as f:
+            maia_dashboard_values["gpg_key"] = f.read()
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + "-dev"
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
