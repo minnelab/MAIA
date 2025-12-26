@@ -4,8 +4,11 @@ import requests
 import jwt
 import time
 from django.conf import settings
-from apps.models import MAIAUser
+from apps.models import MAIAUser, User
 import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 _jwks_cache = None
 _jwks_cache_timestamp = 0
@@ -119,6 +122,27 @@ class KeycloakAuthentication(BaseAuthentication):
         try:
             user = MAIAUser.objects.get(email=email)
         except MAIAUser.DoesNotExist:
-            raise AuthenticationFailed("User not found for the provided token")
+            legacy_users_qs = User.objects.filter(email=email)
+            if not legacy_users_qs.exists():
+                raise AuthenticationFailed("User not found for the provided token")
+            namespaces = [settings.USERS_GROUP]
+            if legacy_users_qs.first().is_staff and legacy_users_qs.first().is_superuser:
+                namespaces.append(settings.ADMIN_GROUP)
+            deleted_count, _ = legacy_users_qs.delete()
+            if deleted_count > 0:
+                logger.warning(
+                    "Deleting %d legacy User record(s) for email %s before creating MAIAUser",
+                    deleted_count,
+                    email,
+                )
+            user, created = MAIAUser.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email,
+                    "namespace": ",".join(namespaces),
+                    "is_staff": settings.ADMIN_GROUP in namespaces,
+                    "is_superuser": settings.ADMIN_GROUP in namespaces,
+                }
+            )
 
         return (user, None)
