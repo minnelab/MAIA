@@ -733,7 +733,7 @@ async def install_maia_project(
     """
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
-    if not project_repo.startswith("http") and not Path(project_repo).exists():
+    if not project_repo.startswith("http") and not Path(project_repo).exists() and not project_repo.startswith("git+"):
         chart = str("/tmp/" + project_chart + "-" + project_version + ".tgz")
         project_chart = "oci://" + project_repo + "/" + project_chart
 
