@@ -389,6 +389,7 @@ def deploy_maia_toolkit_api(
         "destination_server": f"{destination_cluster_address}",
         "sourceRepos": [
             "https://minnelab.github.io/MAIA/",
+            "https://github.com/minnelab/MAIA.git",
             "https://hub.jupyter.org/helm-chart/",
             "https://oauth2-proxy.github.io/manifests",
         ],
