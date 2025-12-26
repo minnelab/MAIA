@@ -795,10 +795,21 @@ async def install_maia_project(
         chart = await client.get_chart(project_chart, repo=project_repo, version=project_version)
     with open(values_file) as f:
         values = yaml.safe_load(f)
-   
+
     if project_repo.startswith("git+"):
         subprocess.run(
-            ["helm", "upgrade", "--install", group_id.lower().replace("_", "-"), project_repo, "--namespace", argo_cd_namespace, "--values", str(values_file), "--wait"],
+            [
+                "helm",
+                "upgrade",
+                "--install",
+                group_id.lower().replace("_", "-"),
+                project_repo,
+                "--namespace",
+                argo_cd_namespace,
+                "--values",
+                str(values_file),
+                "--wait",
+            ],
             check=True,
         )
     else:
@@ -1560,7 +1571,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     return {
         "namespace": maia_dashboard_values["namespace"],
         "release": f"{project_id}-dashboard",
-        "chart": maia_dashboard_values["chart_name"] if maia_dashboard_chart_type == "helm_repo" else maia_dashboard_values["path"],
+        "chart": (
+            maia_dashboard_values["chart_name"] if maia_dashboard_chart_type == "helm_repo" else maia_dashboard_values["path"]
+        ),
         "repo": maia_dashboard_values["repo_url"],
         "version": maia_dashboard_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
