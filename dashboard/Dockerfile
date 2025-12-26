@@ -1,5 +1,4 @@
 ARG BASE_IMAGE
-ARG MAIA_DASHBOARD_PATH="/etc/MAIA/dashboard"
 FROM $BASE_IMAGE
 
 
@@ -7,7 +6,7 @@ USER root
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-
+ARG MAIA_DASHBOARD_PATH="/etc/MAIA/dashboard"
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 RUN mkdir /etc/MAIA-Dashboard
@@ -31,11 +30,11 @@ RUN if [ "$DEVEL" = "1" ]; then \
     cd /etc && \
     git clone https://github.com/minnelab/MAIA.git && \
     cd /etc/MAIA/dashboard && \
-    mv start-script-dev.sh start-script.sh && \
+    mv /etc/MAIA-Dashboard/start-script_dev.sh start-script.sh && \
     chmod 777 start-script.sh && \
     chmod +x start-script.sh ; \
 fi
-WORKDIR ${MAIA_DASHBOARD_PATH}
+WORKDIR $MAIA_DASHBOARD_PATH
 
 ENTRYPOINT ["bash", "start-script.sh"]
 # gunicorn

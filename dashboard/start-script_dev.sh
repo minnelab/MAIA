@@ -2,18 +2,17 @@
 
 helm repo add maia https://minnelab.github.io/MAIA/
 helm repo update
-git clone https://github.com/minnelab/MAIA.git
-pip install ./MAIA
 
-
-cd ./MAIA
+cd /etc/MAIA/
 git checkout $DEV_BRANCH
 git pull
 
+pip install -e .
 git config --global user.email $GIT_EMAIL
 git config --global user.name $GIT_NAME
 gpg --import $GPG_KEY
 
+cd /etc/MAIA/dashboard
 python manage.py makemigrations authentication
 python manage.py makemigrations gpu_scheduler
 python manage.py makemigrations
