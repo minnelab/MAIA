@@ -374,7 +374,7 @@ def sync_list_of_users_for_group(group_id, email_list):
 
 
 @transaction.atomic
-def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_email, email_list=None):
+def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_email, email_list=None, description=None, supervisor=None):
     """
     Create a new MAIA group/project and register it in Keycloak.
 
@@ -389,6 +389,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         minimal_env (str): Minimal environment flag
         user_email (str): Email of the user creating/owning the group
         email_list (list, optional): List of user emails to add to the group
+        description (str, optional): Project description
+        supervisor (str, optional): Supervisor name for student projects
 
     Returns:
         dict: Success message or error information
@@ -431,6 +433,8 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             conda=conda,
             cluster=cluster,
             minimal_env=minimal_env,
+            description=description,
+            supervisor=supervisor,
         )
     except IntegrityError:
         logger.warning(f"Group {group_id} already exists in the database")

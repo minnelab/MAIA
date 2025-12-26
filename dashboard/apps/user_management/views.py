@@ -107,6 +107,8 @@ class CreateGroupSerializer(serializers.Serializer):
     minimal_env = serializers.CharField(max_length=100)
     user_id = serializers.EmailField(max_length=254, required=False, allow_blank=True)
     email_list = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    supervisor = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
 
     def validate_group_id(self, value):
         return group_id_validator(value)
@@ -128,7 +130,7 @@ class UserManagementAPIListGroupsView(APIView):
 
     def get(self, request, *args, **kwargs):
         groups = MAIAProject.objects.all().values(
-            "id", "namespace", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "email"
+            "id", "namespace", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "email", "description", "supervisor"
         )
         return Response({"groups": groups}, status=200)
 
@@ -224,8 +226,10 @@ class UserManagementAPICreateGroupView(APIView):
         minimal_env = validated_data["minimal_env"]
         user_id = validated_data.get("user_id", None)
         email_list = validated_data.get("email_list", None)
+        description = validated_data.get("description", None)
+        supervisor = validated_data.get("supervisor", None)
         result = create_group_service(
-            group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list
+            group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list, description, supervisor
         )
         return Response({"message": result["message"]}, status=result["status"])
 
