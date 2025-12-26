@@ -71,7 +71,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
     else:
-        core_project_chart_version = "0.1.8"
+        core_project_chart_version = "1.0.0"
 
     if os.environ.get("LOGINAPP_CHART_VERSION") is not None:
         loginapp_chart_version = os.environ.get("LOGINAPP_CHART_VERSION")
@@ -133,7 +133,7 @@ def define_maia_admin_versions():
     if os.environ.get("MAIA_DASHBOARD_CHART_VERSION") is not None:
         maia_dashboard_chart_version = os.environ.get("MAIA_DASHBOARD_CHART_VERSION")
     else:
-        maia_dashboard_chart_version = "0.2.2"
+        maia_dashboard_chart_version = "96-dashboard-api"  # "0.2.2"
 
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
@@ -148,7 +148,7 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_PROJECT_CHART_VERSION") is not None:
         admin_project_chart_version = os.environ.get("ADMIN_PROJECT_CHART_VERSION")
     else:
-        admin_project_chart_version = "0.1.4"
+        admin_project_chart_version = "1.0.0"
 
     return {
         "rancher_chart_version": rancher_chart_version,
