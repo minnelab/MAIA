@@ -787,17 +787,25 @@ async def install_maia_project(
         return ""
     if Path(project_repo).exists():
         chart = await client.get_chart(project_repo, version=project_version)
-    if not project_repo.startswith("http"):
+    elif project_repo.startswith("git+"):
+        ...
+    elif not project_repo.startswith("http"):
         chart = await client.get_chart(project_chart, repo=project_repo, version=project_version, insecure=True)
     else:
         chart = await client.get_chart(project_chart, repo=project_repo, version=project_version)
     with open(values_file) as f:
         values = yaml.safe_load(f)
-
-    revision = await client.install_or_upgrade_release(
-        group_id.lower().replace("_", "-"), chart, values, namespace=argo_cd_namespace, wait=True
-    )
-    logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
+   
+    if project_repo.startswith("git+"):
+        subprocess.run(
+            ["helm", "upgrade", "--install", group_id.lower().replace("_", "-"), project_repo, "--namespace", argo_cd_namespace, "--values", str(values_file), "--wait"],
+            check=True,
+        )
+    else:
+        revision = await client.install_or_upgrade_release(
+            group_id.lower().replace("_", "-"), chart, values, namespace=argo_cd_namespace, wait=True
+        )
+        logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
 
     return ""
 
