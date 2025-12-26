@@ -1,4 +1,5 @@
 ARG BASE_IMAGE
+ARG MAIA_DASHBOARD_PATH="/etc/MAIA/dashboard"
 FROM $BASE_IMAGE
 
 
@@ -20,9 +21,21 @@ COPY apps /etc/MAIA-Dashboard/apps
 COPY core /etc/MAIA-Dashboard/core
 
 COPY start-script.sh /etc/MAIA-Dashboard
+COPY start-script_dev.sh /etc/MAIA-Dashboard
 
 RUN chmod +x /etc/MAIA-Dashboard/start-script.sh
 RUN chmod 777 /etc/MAIA-Dashboard/start-script.sh
+
+ARG DEVEL=0
+RUN if [ "$DEVEL" = "1" ]; then \
+    cd /etc && \
+    git clone https://github.com/minnelab/MAIA.git && \
+    cd /etc/MAIA/dashboard && \
+    mv start-script-dev.sh start-script.sh && \
+    chmod 777 start-script.sh && \
+    chmod +x start-script.sh ; \
+fi
+WORKDIR ${MAIA_DASHBOARD_PATH}
 
 ENTRYPOINT ["bash", "start-script.sh"]
 # gunicorn
