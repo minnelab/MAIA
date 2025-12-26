@@ -35,6 +35,7 @@ keycloak_chart_version = define_maia_admin_versions()["keycloak_chart_version"]
 loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
 minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
 maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_chart_version"]
+maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 maia_dashboard_chart_type = define_maia_admin_versions()["maia_dashboard_chart_type"]
 
 
@@ -1298,7 +1299,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     maia_dashboard_values.update(
         {
-            "image": {"pullPolicy": "IfNotPresent", "tag": "2.4"},
+            "image": {"pullPolicy": "IfNotPresent", "tag": maia_dashboard_image_version},
             "storageClass": cluster_config_dict["storage_class"],
             "ingress": {
                 "enabled": True,
@@ -1532,6 +1533,17 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "imagePullSecrets", "value": os.environ["MAIA_PRIVATE_REGISTRY"].replace("/", "-")},
             ]
         )
+
+    if os.environ.get("DEV_BRANCH") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
+                {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
+                {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
+                {"name": "GPG_KEY", "value": os.environ["GPG_KEY"]},
+            ]
+        )
+        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + "-dev"
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
