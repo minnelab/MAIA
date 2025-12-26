@@ -284,6 +284,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             "https://prometheus-community.github.io/helm-charts",
             "https://grafana.github.io/helm-charts",
             "https://minnelab.github.io/MAIA/",
+            "https://github.com/minnelab/MAIA.git",
             "https://traefik.github.io/charts",
             "https://metallb.github.io/metallb",
             "https://charts.jetstack.io",

@@ -206,7 +206,7 @@ def main():
         cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
         if args.configure_local_host:
             print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
-            target_hosts = "localhost"        
+            target_hosts = "localhost"
             host_ip = "127.0.0.1"
             configure_host_linux_cmd = [
                 "ansible-playbook",

@@ -22,6 +22,22 @@ from MAIA.maia_fn import (
     get_ssh_ports,
 )
 
+from MAIA.versions import define_maia_admin_versions, define_maia_core_versions, define_maia_project_versions
+
+maia_namespace_chart_version = define_maia_project_versions()["maia_namespace_chart_version"]
+maia_workspace_image_version = define_maia_project_versions()["maia_workspace_image_version"]
+maia_project_chart_version = define_maia_project_versions()["maia_project_chart_version"]
+maia_filebrowser_chart_version = define_maia_project_versions()["maia_filebrowser_chart_version"]
+admin_toolkit_chart_version = define_maia_admin_versions()["admin_toolkit_chart_version"]
+admin_toolkit_chart_type = define_maia_admin_versions()["admin_toolkit_chart_type"]
+harbor_chart_version = define_maia_admin_versions()["harbor_chart_version"]
+keycloak_chart_version = define_maia_admin_versions()["keycloak_chart_version"]
+loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
+minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
+maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_chart_version"]
+maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
+maia_dashboard_chart_type = define_maia_admin_versions()["maia_dashboard_chart_type"]
+
 
 def generate_minio_configs(namespace):
     """
@@ -353,7 +369,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     maia_namespace_values = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "chart_name": "maia-namespace",
-        "chart_version": "1.7.3",
+        "chart_version": maia_namespace_chart_version,
         "repo_url": repo_url,
         "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
         "serviceType": cluster_config["ssh_port_type"],
@@ -508,7 +524,7 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
 
     maia_filebrowser_values = {
         "chart_name": "maia-filebrowser",
-        "chart_version": "1.0.0",
+        "chart_version": maia_filebrowser_chart_version,
         "repo_url": "https://minnelab.github.io/MAIA/",
         "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
     }
@@ -717,7 +733,7 @@ async def install_maia_project(
     """
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
-    if not project_repo.startswith("http") and not Path(project_repo).exists():
+    if not project_repo.startswith("http") and not Path(project_repo).exists() and not project_repo.startswith("git+"):
         chart = str("/tmp/" + project_chart + "-" + project_version + ".tgz")
         project_chart = "oci://" + project_repo + "/" + project_chart
 
@@ -771,17 +787,36 @@ async def install_maia_project(
         return ""
     if Path(project_repo).exists():
         chart = await client.get_chart(project_repo, version=project_version)
-    if not project_repo.startswith("http"):
+    elif project_repo.startswith("git+"):
+        ...
+    elif not project_repo.startswith("http"):
         chart = await client.get_chart(project_chart, repo=project_repo, version=project_version, insecure=True)
     else:
         chart = await client.get_chart(project_chart, repo=project_repo, version=project_version)
     with open(values_file) as f:
         values = yaml.safe_load(f)
 
-    revision = await client.install_or_upgrade_release(
-        group_id.lower().replace("_", "-"), chart, values, namespace=argo_cd_namespace, wait=True
-    )
-    logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
+    if project_repo.startswith("git+"):
+        subprocess.run(
+            [
+                "helm",
+                "upgrade",
+                "--install",
+                group_id.lower().replace("_", "-"),
+                project_repo,
+                "--namespace",
+                argo_cd_namespace,
+                "--values",
+                str(values_file),
+                "--wait",
+            ],
+            check=True,
+        )
+    else:
+        revision = await client.install_or_upgrade_release(
+            group_id.lower().replace("_", "-"), chart, values, namespace=argo_cd_namespace, wait=True
+        )
+        logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
 
     return ""
 
@@ -809,10 +844,18 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
 
     admin_toolkit_values = {
         "namespace": "maia-admin-toolkit",
-        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),
-        "chart_name": "maia-admin-toolkit",
-        "chart_version": "1.3.5",
+        "chart_version": admin_toolkit_chart_version,
     }
+
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and admin_toolkit_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
+
+    if admin_toolkit_chart_type == "helm_repo":
+        admin_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        admin_toolkit_values["chart_name"] = "maia-admin-toolkit"
+    elif admin_toolkit_chart_type == "git_repo":
+        admin_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        admin_toolkit_values["path"] = "charts/maia-admin-toolkit"
 
     admin_toolkit_values.update(
         {
@@ -880,7 +923,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
     return {
         "namespace": admin_toolkit_values["namespace"],
         "release": f"{project_id}-toolkit",
-        "chart": admin_toolkit_values["chart_name"],
+        "chart": admin_toolkit_values["chart_name"] if admin_toolkit_chart_type == "helm_repo" else admin_toolkit_values["path"],
         "repo": admin_toolkit_values["repo_url"],
         "version": admin_toolkit_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_admin_toolkit_values", "maia_admin_toolkit_values.yaml")),
@@ -919,7 +962,7 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
         "namespace": "harbor",
         "repo_url": "https://helm.goharbor.io",
         "chart_name": "harbor",
-        "chart_version": "1.16.0",
+        "chart_version": harbor_chart_version,
     }
 
     harbor_values.update(
@@ -1039,7 +1082,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
         "namespace": "keycloak",
         "repo_url": "https://charts.bitnami.com/bitnami",
         "chart_name": "keycloak",
-        "chart_version": "24.2.0",
+        "chart_version": keycloak_chart_version,
     }
 
     keycloak_values.update(
@@ -1125,7 +1168,7 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
         "namespace": "authentication",
         "repo_url": "https://storage.googleapis.com/loginapp-releases/charts/",
         "chart_name": "loginapp",
-        "chart_version": "1.3.0",
+        "chart_version": loginapp_chart_version,
     }
 
     secret = token_urlsafe(16).replace("-", "_")
@@ -1221,7 +1264,7 @@ def create_minio_operator_values(config_folder, project_id):
         "namespace": "minio-operator",
         "repo_url": "https://operator.min.io",
         "chart_name": "operator",
-        "chart_version": "6.0.4",
+        "chart_version": minio_operator_chart_version,
     }
 
     Path(config_folder).joinpath(project_id, "minio_operator_values").mkdir(parents=True, exist_ok=True)
@@ -1260,14 +1303,22 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     maia_dashboard_values = {
         "namespace": "maia-dashboard",
-        "repo_url": "https://minnelab.github.io/MAIA/",
-        "chart_name": "maia-dashboard",
-        "chart_version": "0.2.2",
+        "chart_version": maia_dashboard_chart_version,
     }
+
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_dashboard_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and maia_dashboard_chart_type is set to git_repo, which is not allowed")
+
+    if maia_dashboard_chart_type == "helm_repo":
+        maia_dashboard_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        maia_dashboard_values["chart_name"] = "maia-dashboard"
+    elif maia_dashboard_chart_type == "git_repo":
+        maia_dashboard_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        maia_dashboard_values["path"] = "charts/maia-dashboard"
 
     maia_dashboard_values.update(
         {
-            "image": {"pullPolicy": "IfNotPresent", "tag": "2.4"},
+            "image": {"pullPolicy": "IfNotPresent", "tag": maia_dashboard_image_version},
             "storageClass": cluster_config_dict["storage_class"],
             "ingress": {
                 "enabled": True,
@@ -1479,7 +1530,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 "name": "keycloak_userdata_url",
                 "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
             },
-            {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", "1.8.0")},
+            {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", maia_workspace_image_version)},
             {
                 "name": "maia_workspace_image",
                 "value": os.environ.get("maia_workspace_image", "ghcr.io/minnelab/maia-workspace-base-notebook-ssh"),
@@ -1487,7 +1538,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "argocd_namespace", "value": "argocd"},
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
             {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
-            {"name": "maia_project_version", "value": os.environ.get("maia_project_version", "1.7.1")},
+            {"name": "maia_project_version", "value": os.environ.get("maia_project_version", maia_project_chart_version)},
             {"name": "ADMIN_GROUP", "value": cluster_config_dict.get("admin_group", "admin")},
             {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
         ]
@@ -1514,6 +1565,19 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             ]
         )
 
+    if os.environ.get("DEV_BRANCH") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
+                {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
+                {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
+                {"name": "GPG_KEY", "value": "/var/gpg_key"},
+            ]
+        )
+        with open(os.environ["GPG_KEY"], "r") as f:
+            maia_dashboard_values["gpg_key"] = f.read()
+        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + "-dev"
+
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
@@ -1521,7 +1585,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     return {
         "namespace": maia_dashboard_values["namespace"],
         "release": f"{project_id}-dashboard",
-        "chart": maia_dashboard_values["chart_name"],
+        "chart": (
+            maia_dashboard_values["chart_name"] if maia_dashboard_chart_type == "helm_repo" else maia_dashboard_values["path"]
+        ),
         "repo": maia_dashboard_values["repo_url"],
         "version": maia_dashboard_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),

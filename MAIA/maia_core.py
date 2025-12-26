@@ -7,6 +7,23 @@ import requests
 from kubernetes import client, config
 from omegaconf import OmegaConf
 import loguru
+from MAIA.versions import define_maia_core_versions, define_maia_admin_versions
+
+
+prometheus_chart_version = define_maia_core_versions()["prometheus_chart_version"]
+loki_chart_version = define_maia_core_versions()["loki_chart_version"]
+tempo_chart_version = define_maia_core_versions()["tempo_chart_version"]
+core_toolkit_chart_version = define_maia_core_versions()["core_toolkit_chart_version"]
+core_toolkit_chart_type = define_maia_core_versions()["core_toolkit_chart_type"]
+traefik_chart_version = define_maia_core_versions()["traefik_chart_version"]
+metallb_chart_version = define_maia_core_versions()["metallb_chart_version"]
+cert_manager_chart_version = define_maia_core_versions()["cert_manager_chart_version"]
+rancher_chart_version = define_maia_admin_versions()["rancher_chart_version"]
+gpu_operator_chart_version = define_maia_core_versions()["gpu_operator_chart_version"]
+ingress_nginx_chart_version = define_maia_core_versions()["ingress_nginx_chart_version"]
+nfs_server_provisioner_chart_version = define_maia_core_versions()["nfs_server_provisioner_chart_version"]
+metrics_server_chart_version = define_maia_core_versions()["metrics_server_chart_version"]
+gpu_booking_chart_version = define_maia_core_versions()["gpu_booking_chart_version"]
 
 logger = loguru.logger
 
@@ -64,7 +81,7 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
 
     prometheus_values = {
         "namespace": "observability",
-        "chart_version": "45.5.0",
+        "chart_version": prometheus_chart_version,
         "repo_url": "https://prometheus-community.github.io/helm-charts",
         "chart_name": "kube-prometheus-stack",
     }  # TODO: Change this to updated values
@@ -187,7 +204,7 @@ def create_loki_values(config_folder, project_id):
 
     loki_values = {
         "namespace": "observability",
-        "chart_version": "2.9.9",
+        "chart_version": loki_chart_version,
         "repo_url": "https://grafana.github.io/helm-charts",
         "chart_name": "loki-stack",
     }  # TODO: Change this to updated values
@@ -233,7 +250,7 @@ def create_tempo_values(config_folder, project_id):
 
     tempo_values = {
         "namespace": "observability",
-        "chart_version": "1.0.0",
+        "chart_version": tempo_chart_version,
         "repo_url": "https://grafana.github.io/helm-charts",
         "chart_name": "tempo",
     }  # TODO: Change this to updated values
@@ -298,13 +315,24 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
 
     core_toolkit_values = {
         "namespace": "maia-core-toolkit",
-        "chart_version": "0.2.3",
-        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),
-        "chart_name": "maia-core-toolkit",
+        "chart_version": core_toolkit_chart_version,
         "admin_group_ID": os.environ["admin_group_ID"],
     }
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and core_toolkit_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
+
+    if core_toolkit_chart_type == "helm_repo":
+        core_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        core_toolkit_values["chart_name"] = "maia-core-toolkit"
+    elif core_toolkit_chart_type == "git_repo":
+        core_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        core_toolkit_values["path"] = "charts/maia-core-toolkit"
+
     if os.environ.get("MAIA_PRIVATE_REGISTRY", None) == "":
-        core_toolkit_values["repo_url"] = "https://minnelab.github.io/MAIA/"
+        if core_toolkit_chart_type == "helm_repo":
+            core_toolkit_values["repo_url"] = "https://minnelab.github.io/MAIA/"
+        elif core_toolkit_chart_type == "git_repo":
+            core_toolkit_values["repo_url"] = "https://github.com/minnelab/MAIA.git"
     if "metallb_ip_pool" in cluster_config_dict:
         metallb_ip_pool = cluster_config_dict["metallb_ip_pool"]
     else:
@@ -329,7 +357,9 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
             }
         )
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-        core_toolkit_values.update({"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}})
+        core_toolkit_values.update(
+            {"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}}
+        )
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 
@@ -343,7 +373,7 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         "version": core_toolkit_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml")),
         "release": f"{project_id}-toolkit",
-        "chart": core_toolkit_values["chart_name"],
+        "chart": core_toolkit_values["chart_name"] if core_toolkit_chart_type == "helm_repo" else core_toolkit_values["path"],
     }
 
 
@@ -378,7 +408,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
         "namespace": "traefik",
         "repo_url": "https://traefik.github.io/charts",
         "chart_name": "traefik",
-        "chart_version": "33.2.1",
+        "chart_version": traefik_chart_version,
     }  # TODO: Change this to updated values
 
     traefik_values.update(
@@ -500,7 +530,7 @@ def create_metallb_values(config_folder, project_id):
 
     metallb_values = {
         "namespace": "metallb-system",
-        "chart_version": "0.14.9",
+        "chart_version": metallb_chart_version,
         "repo_url": "https://metallb.github.io/metallb",
         "chart_name": "metallb",
     }  # TODO: Change this to updated values
@@ -538,7 +568,7 @@ def create_cert_manager_values(config_folder, project_id):
 
     cert_manager_chart_info = {
         "namespace": "cert-manager",
-        "chart_version": "1.16.2",
+        "chart_version": cert_manager_chart_version,
         "repo_url": "https://charts.jetstack.io",
         "chart_name": "cert-manager",
     }
@@ -589,7 +619,7 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
         "namespace": "cattle-system",
         "repo_url": "https://releases.rancher.com/server-charts/latest",
         "chart_name": "rancher",
-        "chart_version": "2.10.1",
+        "chart_version": rancher_chart_version,
     }  # TODO: Change this to updated values
 
     rancher_values.update(
@@ -655,7 +685,7 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
 
     gpu_operator_values = {
         "namespace": "gpu-operator",
-        "chart_version": "25.3.1",
+        "chart_version": gpu_operator_chart_version,
         "repo_url": "https://helm.ngc.nvidia.com/nvidia",
         "chart_name": "gpu-operator",
     }  # TODO: Change this to updated values
@@ -736,7 +766,7 @@ def create_ingress_nginx_values(config_folder, project_id):
         "namespace": "ingress-nginx",
         "repo_url": "https://kubernetes.github.io/ingress-nginx",
         "chart_name": "ingress-nginx",
-        "chart_version": "4.11.3",
+        "chart_version": ingress_nginx_chart_version,
     }  # TODO: Change this to updated values
 
     Path(config_folder).joinpath(project_id, "ingress_nginx_values").mkdir(parents=True, exist_ok=True)
@@ -783,7 +813,7 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
         "namespace": "nfs-server-provisioner",
         "repo_url": "https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/",
         "chart_name": "nfs-subdir-external-provisioner",
-        "chart_version": "4.0.18",
+        "chart_version": nfs_server_provisioner_chart_version,
     }
 
     if "nfs_server" not in cluster_config_dict or "nfs_path" not in cluster_config_dict:
@@ -829,7 +859,7 @@ def create_metrics_server_values(config_folder, project_id):
         "namespace": "metrics-server",
         "repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
         "chart_name": "metrics-server",
-        "chart_version": "3.13.0",
+        "chart_version": metrics_server_chart_version,
     }
 
     Path(config_folder).joinpath(project_id, "metrics_server_values").mkdir(parents=True, exist_ok=True)
@@ -884,7 +914,7 @@ def create_gpu_booking_values(config_folder, project_id):
         "namespace": "maia-webhooks",
         "repo_url": "https://minnelab.github.io/MAIA/",
         "chart_name": "gpu-booking",
-        "chart_version": "1.0.0",
+        "chart_version": gpu_booking_chart_version,
     }
 
     maia_dashboard_domain = os.environ["MAIA_DASHBOARD_DOMAIN"]
