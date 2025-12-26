@@ -904,7 +904,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
     return {
         "namespace": admin_toolkit_values["namespace"],
         "release": f"{project_id}-toolkit",
-        "chart": admin_toolkit_values["chart_name"],
+        "chart": admin_toolkit_values["chart_name"] if admin_toolkit_chart_type == "helm_repo" else admin_toolkit_values["path"],
         "repo": admin_toolkit_values["repo_url"],
         "version": admin_toolkit_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_admin_toolkit_values", "maia_admin_toolkit_values.yaml")),
@@ -1552,7 +1552,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     return {
         "namespace": maia_dashboard_values["namespace"],
         "release": f"{project_id}-dashboard",
-        "chart": maia_dashboard_values["chart_name"],
+        "chart": maia_dashboard_values["chart_name"] if maia_dashboard_chart_type == "helm_repo" else maia_dashboard_values["path"],
         "repo": maia_dashboard_values["repo_url"],
         "version": maia_dashboard_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
