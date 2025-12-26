@@ -61,7 +61,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_TOOLKIT_CHART_VERSION") is not None:
         core_toolkit_chart_version = os.environ.get("CORE_TOOLKIT_CHART_VERSION")
     else:
-        core_toolkit_chart_version = "0.2.3" # or "master"
+        core_toolkit_chart_version = "0.2.3"  # or "master"
 
     if os.environ.get("CORE_TOOLKIT_CHART_TYPE") is not None:
         core_toolkit_chart_type = os.environ.get("CORE_TOOLKIT_CHART_TYPE")
@@ -101,6 +101,7 @@ def define_maia_core_versions():
         "loginapp_chart_version": loginapp_chart_version,
         "minio_operator_chart_version": minio_operator_chart_version,
     }
+
 
 def define_maia_admin_versions():
 
@@ -144,7 +145,6 @@ def define_maia_admin_versions():
     else:
         maia_dashboard_chart_type = "git_repo"  # or "helm_repo"
 
-
     if os.environ.get("ADMIN_PROJECT_CHART_VERSION") is not None:
         admin_project_chart_version = os.environ.get("ADMIN_PROJECT_CHART_VERSION")
     else:
@@ -164,7 +164,6 @@ def define_maia_admin_versions():
 
 
 def define_maia_project_versions():
-
 
     if os.environ.get("MAIA_NAMESPACE_CHART_VERSION") is not None:
         maia_namespace_chart_version = os.environ.get("MAIA_NAMESPACE_CHART_VERSION")

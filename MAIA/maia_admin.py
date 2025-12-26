@@ -826,7 +826,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
         "namespace": "maia-admin-toolkit",
         "chart_version": admin_toolkit_chart_version,
     }
-    
+
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and admin_toolkit_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
 

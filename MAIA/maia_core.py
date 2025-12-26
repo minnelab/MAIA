@@ -357,7 +357,9 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
             }
         )
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-        core_toolkit_values.update({"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}})
+        core_toolkit_values.update(
+            {"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}}
+        )
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 

@@ -8,6 +8,7 @@ import environ
 import yaml
 
 from MAIA.versions import define_maia_admin_versions
+
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 
 env = environ.Env(
