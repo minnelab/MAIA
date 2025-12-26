@@ -14,7 +14,6 @@ spec:
     path: {{ .Values.core_toolkit_values.path }}
     {{- end }}
     repoURL: {{ .Values.core_toolkit_values.repo_url }}
-    {{- end }}
     targetRevision: {{ .Values.core_toolkit_values.chart_version }}
     helm:
       releaseName: {{ .Release.Name }}-toolkit

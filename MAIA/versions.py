@@ -71,7 +71,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
     else:
-        core_project_chart_version = "1.0.0"
+        core_project_chart_version = "1.0.1"
 
     if os.environ.get("LOGINAPP_CHART_VERSION") is not None:
         loginapp_chart_version = os.environ.get("LOGINAPP_CHART_VERSION")
