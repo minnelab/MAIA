@@ -33,6 +33,11 @@ spec:
         - name: db
           persistentVolumeClaim:
             claimName: {{ include "maia-dashboard.fullname" . }}-db
+        {{- if .Values.gpg_key }}
+        - name: gpg-key
+          secret:
+            secretName: {{ include "maia-dashboard.fullname" . }}-gpg-key
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -45,6 +50,11 @@ spec:
               mountPath: {{ .Values.dashboard.local_config_path }}
             - name: db
               mountPath: {{ .Values.dashboard.local_db_path }}
+            {{- if .Values.gpg_key }}
+            - name: gpg-key
+              mountPath: /var/keys
+              subPath: gpg_key
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
