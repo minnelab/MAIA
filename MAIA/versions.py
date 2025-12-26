@@ -61,7 +61,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_TOOLKIT_CHART_VERSION") is not None:
         core_toolkit_chart_version = os.environ.get("CORE_TOOLKIT_CHART_VERSION")
     else:
-        core_toolkit_chart_version = "0.2.3"  # or "master"
+        core_toolkit_chart_version = "master"  # "0.2.3"
 
     if os.environ.get("CORE_TOOLKIT_CHART_TYPE") is not None:
         core_toolkit_chart_type = os.environ.get("CORE_TOOLKIT_CHART_TYPE")
@@ -123,7 +123,7 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_TOOLKIT_CHART_VERSION") is not None:
         admin_toolkit_chart_version = os.environ.get("ADMIN_TOOLKIT_CHART_VERSION")
     else:
-        admin_toolkit_chart_version = "1.3.5"
+        admin_toolkit_chart_version = "master"  # "1.3.5"
 
     if os.environ.get("ADMIN_TOOLKIT_CHART_TYPE") is not None:
         admin_toolkit_chart_type = os.environ.get("ADMIN_TOOLKIT_CHART_TYPE")
