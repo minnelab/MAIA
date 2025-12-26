@@ -7,8 +7,14 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.core_toolkit_values.chart_name }}
     chart: {{ .Values.core_toolkit_values.chart_name }}
+    {{- end }}
+    {{- if .Values.core_toolkit_values.path }}
+    path: {{ .Values.core_toolkit_values.path }}
+    {{- end }}
     repoURL: {{ .Values.core_toolkit_values.repo_url }}
+    {{- end }}
     targetRevision: {{ .Values.core_toolkit_values.chart_version }}
     helm:
       releaseName: {{ .Release.Name }}-toolkit

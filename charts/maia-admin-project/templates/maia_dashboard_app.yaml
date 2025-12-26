@@ -7,7 +7,12 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.maia_dashboard_values.chart_name }}
     chart: {{ .Values.maia_dashboard_values.chart_name }}
+    {{- end }}
+    {{- if .Values.maia_dashboard_values.path }}
+    path: {{ .Values.maia_dashboard_values.path }}
+    {{- end }}
     repoURL: {{ .Values.maia_dashboard_values.repo_url }}
     targetRevision: {{ .Values.maia_dashboard_values.chart_version }}
     helm:
