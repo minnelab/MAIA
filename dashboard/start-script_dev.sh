@@ -11,6 +11,7 @@ pip install -e .
 git config --global user.email $GIT_EMAIL
 git config --global user.name $GIT_NAME
 gpg --import $GPG_KEY
+git config --global user.signingkey "$(gpg --list-secret-keys --with-colons | awk -F: '$1=="sec"{print $5; exit}')"
 
 cd /etc/MAIA/dashboard
 python manage.py makemigrations authentication
