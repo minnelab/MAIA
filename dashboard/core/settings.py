@@ -7,6 +7,9 @@ import os
 import environ
 import yaml
 
+from MAIA.versions import define_maia_admin_versions
+maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
+
 env = environ.Env(
     # set casting, default value
     DEBUG=(bool, True),
@@ -15,7 +18,7 @@ env = environ.Env(
     BUCKET_NAME=(str, ""),
 )
 
-DASHBOARD_VERSION = "2.4"
+DASHBOARD_VERSION = maia_dashboard_image_version
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 CORE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
