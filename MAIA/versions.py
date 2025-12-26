@@ -133,7 +133,7 @@ def define_maia_admin_versions():
     if os.environ.get("MAIA_DASHBOARD_CHART_VERSION") is not None:
         maia_dashboard_chart_version = os.environ.get("MAIA_DASHBOARD_CHART_VERSION")
     else:
-        maia_dashboard_chart_version = "96-dashboard-api"  # "0.2.2"
+        maia_dashboard_chart_version = "master"  # "0.2.2"
 
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
