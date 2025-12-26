@@ -1,0 +1,61 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+  delegate_to: localhost
+  run_once: true
+
+- name: Extract cluster domain
+  ansible.builtin.set_fact:
+    cluster_domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Share cluster domain with target hosts
+  ansible.builtin.set_fact:
+    cluster_domain_fact: "{{ cluster_domain }}"
+  delegate_facts: true
+
+- name: Ensure MicroK8s is installed
+  become: true
+  community.general.snap:
+    name: microk8s
+    state: present
+
+- name: Enable OIDC authentication
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ microk8s_apiserver_args_file }}"
+    line: "{{ item }}"
+    create: true
+  loop:
+    - "--oidc-username-claim={{ oidc_username_claim }}"
+    - "--oidc-groups-claim={{ oidc_groups_claim }}"
+    - "--oidc-issuer-url=https://{{ oidc_subdomain }}.{{ cluster_domain_fact }}/realms/{{ oidc_realm }}"
+    - "--oidc-client-id={{ oidc_client_id }}"
+    - "--oidc-ca-file={{ oidc_ca_file }}"
+
+- name: Restart MicroK8s
+  become: true
+  ansible.builtin.command: snap restart microk8s
+
+- name: Wait until MicroK8s is fully operational
+  become: true
+  ansible.builtin.shell: |
+    microk8s status --wait-ready
+  register: microk8s_status_result
+  retries: "{{ oidc_microk8s_retries }}"
+  delay: "{{ oidc_microk8s_retry_delay }}"
+  until: microk8s_status_result.rc == 0
+
+- name: Terminate playbook if MicroK8s is not operational
+  ansible.builtin.fail:
+    msg: "MicroK8s did not become operational in the expected time."
+  when: microk8s_status_result is failed

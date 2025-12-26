@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "maia-dashboard.fullname" . }}
+  labels:
+    {{- include "maia-dashboard.labels" . | nindent 4 }}
+data:
+    #cluster_config.json: |-
+    #    {
+    #    "GPU_LIST": [
+    #        {{- range $index, $gpu := $.Values.gpuList }}
+    #            "{{ $gpu }}"{{- if ne (add1 $index) (len $.Values.gpuList) }},{{- end }}
+    #        {{- end }}
+    #        ]
+    #    }
+    {{- if .Values.ca_crt }}
+    ca.crt: |-
+        {{- .Values.ca_crt | nindent 8 }}
+    {{- end }}
+    env.env: |-
+        {{- range .Values.env }}
+        {{ .name }}={{ .value }}
+        {{- end }}
+    gpu-specs.yaml: |-
+        {{- if not .Values.gpuList }}
+        gpu_specs: []
+        {{- else }}
+        gpu_specs:
+        {{- range $index, $gpu := $.Values.gpuList }}
+          - name: "{{ $gpu.name }}"
+            vram: "{{ $gpu.vram }}"
+            count: {{ $gpu.count }}
+            replicas: {{ $gpu.replicas }}
+            cluster: {{ $gpu.cluster }}
+        {{- end }}
+        {{- end }}
+    
+    {{- range $index, $cluster := .Values.clusters }}
+    {{ $cluster.cluster_name }}.yaml: |-
+        {{ $cluster | toYaml | nindent 8 }}
+    {{- end }}
+    
+    

@@ -1,0 +1,62 @@
+{{- if .Values.minio.enabled }}
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: admin-minio-tenant
+  namespace: {{ .Values.minio.namespace }}
+spec:
+  buckets:
+    - name: maia-envs
+  requestAutoCert: false
+  exposeServices:
+    console: true
+    minio: true
+  features:
+    domains:
+      console: https://{{ .Values.minio.consoleDomain }}
+  configuration:
+    name: admin-minio-storage-configuration
+  users:
+    - name: admin-minio-credentials
+  image: {{ .Values.minio.image }}
+  pools:
+    - servers: 1
+      name: pool-0
+      volumesPerServer: 1
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: {{ .Values.minio.storageClassName }}
+          resources:
+            requests:
+              storage: {{ .Values.minio.storageSize }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-console-ingress
+  namespace: {{ .Values.minio.namespace }}
+  annotations:
+    {{- if .Values.minio.ingress.annotations }}
+    {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  rules:
+    - host: {{ .Values.minio.consoleDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-minio-tenant-console
+                port:
+                  number: 9090
+  tls:
+    - hosts:
+        - {{ .Values.minio.consoleDomain }}
+      {{- if .Values.minio.ingress.tlsSecretName }}
+      secretName: {{ .Values.minio.ingress.tlsSecretName }}
+      {{- end }}
+{{- end }}

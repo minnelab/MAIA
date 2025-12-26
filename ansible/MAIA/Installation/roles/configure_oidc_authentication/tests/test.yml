@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+- hosts: all
+  remote_user: root
+  roles:
+    - configure_oidc_authentication
+
+

@@ -1,0 +1,90 @@
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: test-minio-tenant
+  namespace: default
+scheduler:
+  name: ""
+spec:
+  configuration:
+    name: storage-configuration
+  #credsSecret:
+  #  name: storage-user
+  exposeServices:
+    console: true
+    minio: true
+  features:
+    domains:
+      console: https://minio.test.maia.se
+  image: quay.io/minio/minio:RELEASE.2024-08-03T04-33-23Z
+  imagePullSecret: {}
+  mountPath: /export
+  pools:
+  - name: pool-0
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+    runtimeClassName: ""
+    servers: 1
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: microk8s-hostpath
+      status: {}
+    volumesPerServer: 1
+  requestAutoCert: false
+  buckets:
+    - name: "mlflow"
+  users:
+    - name: storage-user
+---
+apiVersion: v1
+data:
+  CONSOLE_ACCESS_KEY: dGVzdAo=
+  CONSOLE_SECRET_KEY: dGVzdHRlc3QK
+kind: Secret
+metadata:
+  name: storage-user
+  namespace: default
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: storage-configuration
+  namespace: default
+stringData:
+  config.env: |
+    export MINIO_BROWSER=on
+    export MINIO_ROOT_USER=root
+    export MINIO_ROOT_PASSWORD=rootroot
+type: Opaque
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-console-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+spec:
+  tls:
+    - hosts:
+        - "minio.test.maia.se"
+      secretName: test-domain-tls
+  rules:
+    - host: minio.test.maia.se
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: test-minio-tenant-console
+                port:
+                  number: 9090

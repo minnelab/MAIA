@@ -15,7 +15,7 @@ django-sslserver
 djangorestframework
 pandas
 matplotlib
-mozilla-django-oidc
+mozilla-django-oidc==4.0.1 # Pinned for compatibility with current Django/auth setup; update requires regression testing.
 django-bootstrap5
 django-bootstrap-v5
 django-crispy-forms
@@ -30,4 +30,3 @@ python-keycloak
 omegaconf
 hydra-core
 pyhelm3
-git+https://github.com/globocom/argocd-client.git

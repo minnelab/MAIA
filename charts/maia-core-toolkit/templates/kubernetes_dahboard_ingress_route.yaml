@@ -1,0 +1,49 @@
+{{- if .Values.dashboard.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: kubernetes-dashboard-transport
+  namespace: kube-system
+
+spec:
+  serverName: kubernetes-dashboard
+  insecureSkipVerify: true
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard-ingress
+  namespace: kube-system
+spec:
+  entryPoints:                      
+    - websecure
+  routes:                           
+  - kind: Rule
+    match:   Host(`{{ .Values.dashboard.dashboard_domain }}`) #&& PathPrefix(`/dashboard`)
+    priority: 10                    
+    services:                       
+    - kind: Service
+      name: kubernetes-dashboard
+      namespace: kube-system
+      port: 443                      
+      serversTransport: kubernetes-dashboard-transport
+    #middlewares:
+    #- name: kubernetes-dashboard-replace-path
+  {{- if .Values.certResolver }}
+  tls:                              
+    certResolver: {{ .Values.certResolver }}
+  {{- end }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: kubernetes-dashboard-replace-path
+  namespace: kube-system
+  resourceVersion: '49075'
+spec:
+  replacePathRegex:
+    regex: ^/dashboard/(.*)
+    replacement: /$1
+{{- end }}

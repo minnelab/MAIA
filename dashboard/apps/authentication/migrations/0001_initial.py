@@ -12,34 +12,44 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('auth', '0012_alter_user_first_name_max_length'),
+        ("auth", "0012_alter_user_first_name_max_length"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='MAIAProject',
+            name="MAIAProject",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False)),
-                ('email', models.EmailField(max_length=150, null=True, verbose_name='email')),
-                ('namespace', models.CharField(blank=True, max_length=150, unique=True, verbose_name='namespace')),
-                ('gpu', models.CharField(blank=True, max_length=150, null=True, verbose_name='gpu')),
-                ('date', models.DateField(default=datetime.date.today, verbose_name='date')),
-                ('memory_limit', models.TextField(default='2G', null=True, verbose_name='memory_limit')),
-                ('cpu_limit', models.TextField(default='2', null=True, verbose_name='memory_limit')),
-                ('conda', models.TextField(default='N/A', null=True, verbose_name='conda')),
-                ('cluster', models.TextField(default='N/A', null=True, verbose_name='cluster')),
-                ('minimal_env', models.TextField(default='Minimal', null=True, verbose_name='minimal_env')),
+                ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("email", models.EmailField(max_length=150, null=True, verbose_name="email")),
+                ("namespace", models.CharField(blank=True, max_length=150, unique=True, verbose_name="namespace")),
+                ("gpu", models.CharField(blank=True, max_length=150, null=True, verbose_name="gpu")),
+                ("date", models.DateField(default=datetime.date.today, verbose_name="date")),
+                ("memory_limit", models.TextField(default="2G", null=True, verbose_name="memory_limit")),
+                ("cpu_limit", models.TextField(default="2", null=True, verbose_name="memory_limit")),
+                ("conda", models.TextField(default="N/A", null=True, verbose_name="conda")),
+                ("cluster", models.TextField(default="N/A", null=True, verbose_name="cluster")),
+                ("minimal_env", models.TextField(default="Minimal", null=True, verbose_name="minimal_env")),
             ],
         ),
         migrations.CreateModel(
-            name='MAIAUser',
+            name="MAIAUser",
             fields=[
-                ('user_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to=settings.AUTH_USER_MODEL)),
-                ('namespace', models.CharField(blank=True, max_length=150, verbose_name='namespace')),
+                (
+                    "user_ptr",
+                    models.OneToOneField(
+                        auto_created=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        parent_link=True,
+                        primary_key=True,
+                        serialize=False,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                ("namespace", models.CharField(blank=True, max_length=150, verbose_name="namespace")),
             ],
-            bases=('auth.user',),
+            bases=("auth.user",),
             managers=[
-                ('objects', django.contrib.auth.models.UserManager()),
+                ("objects", django.contrib.auth.models.UserManager()),
             ],
         ),
     ]

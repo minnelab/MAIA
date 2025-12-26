@@ -1,14 +1,11 @@
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
-from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
-import subprocess
-import re
-import pandas as pd
+from django.contrib.auth.models import Group
+
 
 class HoneyCombOIDCAB(OIDCAuthenticationBackend):
     def verify_claims(self, claims):
         verified = super(HoneyCombOIDCAB, self).verify_claims(claims)
-        groups = claims.get('groups', [])
+        groups = claims.get("groups", [])
         group_verified = False
         for group in groups:
             if "MAIA:" in group:
@@ -18,13 +15,13 @@ class HoneyCombOIDCAB(OIDCAuthenticationBackend):
     def create_user(self, claims):
         user = super(HoneyCombOIDCAB, self).create_user(claims)
 
-        user.username = claims.get('preferred_username', '')
-        user.first_name = claims.get('name', '')
-        user.last_name = claims.get('family_name', '')
+        user.username = claims.get("preferred_username", "")
+        user.first_name = claims.get("name", "")
+        user.last_name = claims.get("family_name", "")
         user.is_active = True
         groups_id = []
         is_admin = False
-        for group in claims.get('groups', []):
+        for group in claims.get("groups", []):
             new_group, created = Group.objects.get_or_create(name=group)
             groups_id.append(new_group.id)
             if group == "MAIA:admin":
@@ -41,13 +38,13 @@ class HoneyCombOIDCAB(OIDCAuthenticationBackend):
         return user
 
     def update_user(self, user, claims):
-        user.username = claims.get('preferred_username', '')
-        user.first_name = claims.get('name', '')
-        user.last_name = claims.get('family_name', '')
+        user.username = claims.get("preferred_username", "")
+        user.first_name = claims.get("name", "")
+        user.last_name = claims.get("family_name", "")
         user.is_active = True
         groups_id = []
         is_admin = False
-        for group in claims.get('groups', []):
+        for group in claims.get("groups", []):
             new_group, created = Group.objects.get_or_create(name=group)
 
             new_group.permissions.add(28)

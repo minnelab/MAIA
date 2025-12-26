@@ -1,0 +1,30 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ufw
+
+# Enable UFW firewall
+ufw_enabled: true
+
+# Allow SSH access
+ufw_allow_ssh: true
+
+# SSH port
+ufw_ssh_port: 22
+
+# SSH protocol
+ufw_ssh_proto: tcp
+
+# Allow all nodes to communicate with all nodes (bidirectional)
+# This is essential for Kubernetes clusters
+ufw_allow_inter_node_communication: true
+
+# Additional ports to allow (list of dictionaries with port, proto, and optionally from_ip)
+# Example:
+# ufw_additional_rules:
+#   - port: 6443
+#     proto: tcp
+#   - port: 80
+#     proto: tcp
+#   - port: 443
+#     proto: tcp
+ufw_additional_rules: []

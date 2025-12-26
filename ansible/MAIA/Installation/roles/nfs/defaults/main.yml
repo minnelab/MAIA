@@ -1,0 +1,41 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for nfs
+
+# NFS export path on server
+nfs_export_path: /nfs
+
+# NFS mount path on client
+nfs_mount_path: /nfs
+
+# NFS export options (server-side)
+# Format: "client_spec(options)"
+# Example: "*(rw,sync,no_subtree_check,no_root_squash)"
+nfs_export_options: "*(rw,sync,no_subtree_check,no_root_squash)"
+
+# NFS mount options (client-side)
+# Example: "rw,sync,vers=4"
+nfs_mount_options: "rw,sync,vers=4"
+
+# Owner of export/mount directories
+nfs_export_owner: nobody
+
+# Group of export/mount directories
+nfs_export_group: nogroup
+
+# Permissions for export/mount directories (octal format)
+nfs_export_mode: '0777'
+
+# NFS server packages to install
+nfs_server_packages:
+  - nfs-kernel-server
+  - nfs-common
+  - rpcbind
+
+# NFS client packages to install
+nfs_client_packages:
+  - nfs-common
+  - rpcbind
+
+# NFS port for firewall rules
+nfs_port: 2049

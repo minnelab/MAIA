@@ -7,19 +7,18 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='GPUBooking',
+            name="GPUBooking",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('user_email', models.CharField(max_length=255)),
-                ('start_date', models.DateTimeField()),
-                ('end_date', models.DateTimeField()),
-                ('gpu', models.CharField(max_length=255)),
-                ('namespace', models.CharField(max_length=255)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("user_email", models.CharField(max_length=255)),
+                ("start_date", models.DateTimeField()),
+                ("end_date", models.DateTimeField()),
+                ("gpu", models.CharField(max_length=255)),
+                ("namespace", models.CharField(max_length=255)),
             ],
         ),
     ]

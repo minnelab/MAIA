@@ -1,0 +1,46 @@
+{{- if .Values.minio.enabled }}
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: {{ .Values.minio.namespace }}
+  namespace: {{ .Values.minio.namespace }}
+scheduler:
+  name: ""
+spec:
+  configuration:
+    name: storage-configuration
+  #credsSecret:
+  #  name: storage-user
+  exposeServices:
+    console: true
+    minio: true
+  features:
+    domains:
+      console: {{ .Values.minio.consoleDomain }}
+  image: quay.io/minio/minio:RELEASE.2024-08-03T04-33-23Z
+  imagePullSecret: {}
+  mountPath: /export
+  pools:
+  - name: pool-0
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+    runtimeClassName: ""
+    servers: 1
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.minio.storageSize }}
+        storageClassName: {{ .Values.minio.storageClassName }}
+      status: {}
+    volumesPerServer: 1
+  requestAutoCert: false
+  buckets:
+    - name: "mlflow"
+  users:
+    - name: storage-user
+{{- end }}

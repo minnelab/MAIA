@@ -3,8 +3,44 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import requests
 from kubernetes import client, config
 from omegaconf import OmegaConf
+import loguru
+from MAIA.versions import define_maia_core_versions, define_maia_admin_versions
+
+
+prometheus_chart_version = define_maia_core_versions()["prometheus_chart_version"]
+loki_chart_version = define_maia_core_versions()["loki_chart_version"]
+tempo_chart_version = define_maia_core_versions()["tempo_chart_version"]
+core_toolkit_chart_version = define_maia_core_versions()["core_toolkit_chart_version"]
+core_toolkit_chart_type = define_maia_core_versions()["core_toolkit_chart_type"]
+traefik_chart_version = define_maia_core_versions()["traefik_chart_version"]
+metallb_chart_version = define_maia_core_versions()["metallb_chart_version"]
+cert_manager_chart_version = define_maia_core_versions()["cert_manager_chart_version"]
+rancher_chart_version = define_maia_admin_versions()["rancher_chart_version"]
+gpu_operator_chart_version = define_maia_core_versions()["gpu_operator_chart_version"]
+ingress_nginx_chart_version = define_maia_core_versions()["ingress_nginx_chart_version"]
+nfs_server_provisioner_chart_version = define_maia_core_versions()["nfs_server_provisioner_chart_version"]
+metrics_server_chart_version = define_maia_core_versions()["metrics_server_chart_version"]
+gpu_booking_chart_version = define_maia_core_versions()["gpu_booking_chart_version"]
+
+logger = loguru.logger
+
+
+def sync_argocd_app(project_name, app_name, chart_version, argo_cd_host, password):
+    headers = {"Authorization": f"Bearer {password}"}  # <- session cookie
+    # 2. Trigger sync
+    url = f"{argo_cd_host}/api/v1/applications/{project_name}-{app_name}/sync"
+    payload = {"revision": chart_version, "prune": False, "dryRun": False, "strategy": {"apply": {"force": False}}}
+    response = requests.post(url, headers=headers, json=payload, verify=False)
+
+    if response.status_code == 200:
+        logger.info("✅ Sync triggered successfully!")
+        # print(json.dumps(response.json(), indent=2))
+    else:
+        logger.error(f"❌ Failed to sync app: {response.status_code}")
+        logger.error(response.text)
 
 
 def create_prometheus_values(config_folder, project_id, cluster_config_dict):
@@ -45,7 +81,7 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
 
     prometheus_values = {
         "namespace": "observability",
-        "chart_version": "45.5.0",
+        "chart_version": prometheus_chart_version,
         "repo_url": "https://prometheus-community.github.io/helm-charts",
         "chart_name": "kube-prometheus-stack",
     }  # TODO: Change this to updated values
@@ -67,6 +103,7 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
                         "enabled": True,
                         "name": "OAuth",
                         "empty_scopes": False,
+                        "tls_skip_verify_insecure": True,
                         "role_attribute_path": f"contains(groups[*], '{admin_group_id}') && 'Admin' || 'Viewer'",
                         "scopes": "openid profile email",
                         "team_ids": admin_group_id,
@@ -120,11 +157,17 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-            cluster_config_dict["traefik_resolver"]
-        )
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            prometheus_values["grafana"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
     elif cluster_config_dict["ingress_class"] == "nginx":
-        prometheus_values["grafana"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            prometheus_values["grafana"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            prometheus_values["grafana"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
         prometheus_values["grafana"]["ingress"]["tls"][0]["secretName"] = "grafana." + cluster_config_dict["domain"]
 
     Path(config_folder).joinpath(project_id, "prometheus_values").mkdir(parents=True, exist_ok=True)
@@ -161,7 +204,7 @@ def create_loki_values(config_folder, project_id):
 
     loki_values = {
         "namespace": "observability",
-        "chart_version": "2.9.9",
+        "chart_version": loki_chart_version,
         "repo_url": "https://grafana.github.io/helm-charts",
         "chart_name": "loki-stack",
     }  # TODO: Change this to updated values
@@ -207,7 +250,7 @@ def create_tempo_values(config_folder, project_id):
 
     tempo_values = {
         "namespace": "observability",
-        "chart_version": "1.0.0",
+        "chart_version": tempo_chart_version,
         "repo_url": "https://grafana.github.io/helm-charts",
         "chart_name": "tempo",
     }  # TODO: Change this to updated values
@@ -249,8 +292,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         A dictionary containing the namespace, repository URL, chart version, path to the
         values YAML file, release name, and chart name.
     """
-
-    config.load_kube_config()
+    kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
+    if kubeconfig is None:
+        kubeconfig = os.environ.get("KUBECONFIG", None)
+    config.load_kube_config(config_file=kubeconfig)
 
     # Create a CoreV1Api instance
     v1 = client.CoreV1Api()
@@ -270,20 +315,53 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
 
     core_toolkit_values = {
         "namespace": "maia-core-toolkit",
-        "chart_version": "0.1.8",
-        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", None),
-        "chart_name": "maia-core-toolkit",
+        "chart_version": core_toolkit_chart_version,
+        "admin_group_ID": os.environ["admin_group_ID"],
     }
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and core_toolkit_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
 
-    core_toolkit_values.update(
-        {
-              # Replace with https://artifacthub.io/packages/helm/metrics-server/metrics-server
-            "dashboard": {"enabled": True},
-            "default_ingress_class": cluster_config_dict["ingress_class"],
-            "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
-            "metallb": {"enabled": True, "addresses": "-".join(internal_ips)},
-        }
-    )
+    if core_toolkit_chart_type == "helm_repo":
+        core_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        core_toolkit_values["chart_name"] = "maia-core-toolkit"
+    elif core_toolkit_chart_type == "git_repo":
+        core_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        core_toolkit_values["path"] = "charts/maia-core-toolkit"
+
+    if os.environ.get("MAIA_PRIVATE_REGISTRY", None) == "":
+        if core_toolkit_chart_type == "helm_repo":
+            core_toolkit_values["repo_url"] = "https://minnelab.github.io/MAIA/"
+        elif core_toolkit_chart_type == "git_repo":
+            core_toolkit_values["repo_url"] = "https://github.com/minnelab/MAIA.git"
+    if "metallb_ip_pool" in cluster_config_dict:
+        metallb_ip_pool = cluster_config_dict["metallb_ip_pool"]
+    else:
+        metallb_ip_pool = "-".join(internal_ips)
+
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        core_toolkit_values.update(
+            {
+                "dashboard": {"enabled": True, "dashboard_domain": "dashboard." + cluster_config_dict["domain"]},
+                "default_ingress_class": cluster_config_dict["ingress_class"],
+                "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
+                "metallb": {"enabled": True, "addresses": metallb_ip_pool},
+            }
+        )
+    else:
+        core_toolkit_values.update(
+            {
+                "dashboard": {"enabled": False},
+                "default_ingress_class": cluster_config_dict["ingress_class"],
+                "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
+                "metallb": {"enabled": True, "addresses": metallb_ip_pool},
+            }
+        )
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        core_toolkit_values.update(
+            {"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}}
+        )
+    else:
+        core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 
     Path(config_folder).joinpath(project_id, "core_toolkit_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:
@@ -295,7 +373,7 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         "version": core_toolkit_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml")),
         "release": f"{project_id}-toolkit",
-        "chart": core_toolkit_values["chart_name"],
+        "chart": core_toolkit_values["chart_name"] if core_toolkit_chart_type == "helm_repo" else core_toolkit_values["path"],
     }
 
 
@@ -322,17 +400,6 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     ------
     OSError
         If there is an error creating the directory or writing the file.
-
-    Example
-    -------
-    config_folder = "/path/to/config"
-    project_id = "my_project"
-    cluster_config_dict = {
-        "traefik_resolver": "myresolver",
-        "ingress_resolver_email": "email@example.com",
-        "domain": "example.com",
-        "traefik_dashboard_password": "password"
-    create_traefik_values(config_folder, project_id, cluster_config_dict)
     """
     Path(config_folder).joinpath(project_id, "traefik_values").mkdir(parents=True, exist_ok=True)
 
@@ -341,29 +408,16 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
         "namespace": "traefik",
         "repo_url": "https://traefik.github.io/charts",
         "chart_name": "traefik",
-        "chart_version": "33.2.1",
+        "chart_version": traefik_chart_version,
     }  # TODO: Change this to updated values
 
     traefik_values.update(
         {
-            "certificatesResolvers": {
-                cluster_config_dict["traefik_resolver"]: {
-                    "acme": {
-                        "email": cluster_config_dict["ingress_resolver_email"],
-                        # "httpchallenge": "true",
-                        "httpchallenge": {"entryPoint": "web"},
-                        "caserver": "https://acme-v02.api.letsencrypt.org/directory",
-                        # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
-                        "storage": "/data/acme.json",
-                    }
-                }
-            },
             "ingressRoute": {
                 "dashboard": {
                     "enabled": True,
                     "matchRule": "Host(`{}`)".format("traefik." + cluster_config_dict["domain"]),  # && PathPrefix(`/dashboard`)
                     "entryPoints": ["websecure"],
-                    "tls": {"certResolver": cluster_config_dict["traefik_resolver"]},
                     "middlewares": [{"name": "traefik-dashboard-auth"}, {"name": "traefik-dashboard-replace-path"}],
                 }
             },
@@ -418,6 +472,23 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
         }
     )
 
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        ...
+    else:
+        traefik_values["ingressRoute"]["dashboard"]["tls"] = {"certResolver": cluster_config_dict["traefik_resolver"]}
+        traefik_values["certificatesResolvers"] = {
+            cluster_config_dict["traefik_resolver"]: {
+                "acme": {
+                    "email": cluster_config_dict["ingress_resolver_email"],
+                    # "httpchallenge": "true",
+                    "httpchallenge": {"entryPoint": "web"},
+                    "caserver": "https://acme-v02.api.letsencrypt.org/directory",
+                    # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
+                    "storage": "/data/acme.json",
+                }
+            }
+        }
+
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
 
@@ -459,7 +530,7 @@ def create_metallb_values(config_folder, project_id):
 
     metallb_values = {
         "namespace": "metallb-system",
-        "chart_version": "0.14.9",
+        "chart_version": metallb_chart_version,
         "repo_url": "https://metallb.github.io/metallb",
         "chart_name": "metallb",
     }  # TODO: Change this to updated values
@@ -497,7 +568,7 @@ def create_cert_manager_values(config_folder, project_id):
 
     cert_manager_chart_info = {
         "namespace": "cert-manager",
-        "chart_version": "1.16.2",
+        "chart_version": cert_manager_chart_version,
         "repo_url": "https://charts.jetstack.io",
         "chart_name": "cert-manager",
     }
@@ -542,25 +613,13 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
     dict
         A dictionary containing Rancher deployment details including namespace, repo URL,
         chart version, values file path, release name, and chart name.
-
-    Example
-    -------
-    config_folder = "/path/to/config"
-    project_id = "my_project"
-    cluster_config_dict = {
-        "traefik_resolver": "myresolver",
-        "ingress_resolver_email": "email@example.com",
-        "domain": "example.com",
-        "rancher_password": "password"
-    }
-    create_rancher_values(config_folder, project_id, cluster_config_dict)
     """
 
     rancher_values = {
         "namespace": "cattle-system",
         "repo_url": "https://releases.rancher.com/server-charts/latest",
         "chart_name": "rancher",
-        "chart_version": "2.10.1",
+        "chart_version": rancher_chart_version,
     }  # TODO: Change this to updated values
 
     rancher_values.update(
@@ -578,11 +637,17 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-            cluster_config_dict["traefik_resolver"]
-        )
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
     elif cluster_config_dict["ingress_class"] == "nginx":
-        rancher_values["ingress"]["extraAnnotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            rancher_values["ingress"]["extraAnnotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
 
     Path(config_folder).joinpath(project_id, "rancher_values").mkdir(parents=True, exist_ok=True)
 
@@ -620,7 +685,7 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
 
     gpu_operator_values = {
         "namespace": "gpu-operator",
-        "chart_version": "25.3.1",
+        "chart_version": gpu_operator_chart_version,
         "repo_url": "https://helm.ngc.nvidia.com/nvidia",
         "chart_name": "gpu-operator",
     }  # TODO: Change this to updated values
@@ -645,6 +710,19 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
                 {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
             ],
         }
+    elif cluster_config_dict["k8s_distribution"] == "k0s":
+        gpu_operator_values.update(
+            {
+                "operator": {"defaultRuntime": "containerd"},
+                "toolkit": {
+                    "env": [
+                        {"name": "CONTAINERD_CONFIG", "value": "/etc/k0s/containerd.d/nvidia.toml"},
+                        {"name": "CONTAINERD_SOCKET", "value": "/run/k0s/containerd.sock"},
+                        {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
+                    ]
+                },
+            }
+        )
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -688,7 +766,7 @@ def create_ingress_nginx_values(config_folder, project_id):
         "namespace": "ingress-nginx",
         "repo_url": "https://kubernetes.github.io/ingress-nginx",
         "chart_name": "ingress-nginx",
-        "chart_version": "4.11.3",
+        "chart_version": ingress_nginx_chart_version,
     }  # TODO: Change this to updated values
 
     Path(config_folder).joinpath(project_id, "ingress_nginx_values").mkdir(parents=True, exist_ok=True)
@@ -735,7 +813,7 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
         "namespace": "nfs-server-provisioner",
         "repo_url": "https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/",
         "chart_name": "nfs-subdir-external-provisioner",
-        "chart_version": "4.0.18",
+        "chart_version": nfs_server_provisioner_chart_version,
     }
 
     if "nfs_server" not in cluster_config_dict or "nfs_path" not in cluster_config_dict:
@@ -781,7 +859,7 @@ def create_metrics_server_values(config_folder, project_id):
         "namespace": "metrics-server",
         "repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
         "chart_name": "metrics-server",
-        "chart_version": "3.13.0",
+        "chart_version": metrics_server_chart_version,
     }
 
     Path(config_folder).joinpath(project_id, "metrics_server_values").mkdir(parents=True, exist_ok=True)
@@ -797,6 +875,7 @@ def create_metrics_server_values(config_folder, project_id):
         "release": f"{project_id}-metrics-server",
         "chart": metrics_server_values["chart_name"],
     }
+
 
 def create_gpu_booking_values(config_folder, project_id):
     """
@@ -835,7 +914,7 @@ def create_gpu_booking_values(config_folder, project_id):
         "namespace": "maia-webhooks",
         "repo_url": "https://minnelab.github.io/MAIA/",
         "chart_name": "gpu-booking",
-        "chart_version": "1.0.0",
+        "chart_version": gpu_booking_chart_version,
     }
 
     maia_dashboard_domain = os.environ["MAIA_DASHBOARD_DOMAIN"]
@@ -843,15 +922,14 @@ def create_gpu_booking_values(config_folder, project_id):
         {
             "image": {
                 "pod_terminator": {
-                    "repository": "minnelab/gpu-booking-pod-terminator",
+                    "repository": "ghcr.io/minnelab/gpu-booking-pod-terminator",
                     "pullPolicy": "IfNotPresent",
                     "tag": "1.4",
                 },
-                "repository": "minnelab/gpu-booking-admission-controller",
+                "repository": "ghcr.io/minnelab/gpu-booking-admission-controller",
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },
-            
             "apiUrl": f"https://{maia_dashboard_domain}/maia-api/gpu-schedulability",
             "gpuStatsUrl": f"https://{maia_dashboard_domain}/maia/resources/gpu_status_summary/",
             "apiToken": os.environ["dashboard_api_secret"],
