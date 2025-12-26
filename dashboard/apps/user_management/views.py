@@ -105,8 +105,8 @@ class CreateGroupSerializer(serializers.Serializer):
     conda = serializers.CharField(max_length=100)
     cluster = serializers.CharField(max_length=100)
     minimal_env = serializers.CharField(max_length=100)
-    user_id = serializers.EmailField(max_length=254)
-    email_list = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
+    user_id = serializers.EmailField(max_length=254, required=False, allow_blank=True)
+    email_list = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
 
     def validate_group_id(self, value):
         return group_id_validator(value)
@@ -166,6 +166,8 @@ class UserManagementAPICreateUserView(APIView):
         first_name = validated_data["first_name"]
         last_name = validated_data["last_name"]
         namespace = validated_data["namespace"]
+        if not namespace:
+            namespace = settings.USERS_GROUP
         result = create_user_service(email, username, first_name, last_name, namespace)
         return Response({"message": result["message"]}, status=result["status"])
 
@@ -220,8 +222,8 @@ class UserManagementAPICreateGroupView(APIView):
         conda = validated_data["conda"]
         cluster = validated_data["cluster"]
         minimal_env = validated_data["minimal_env"]
-        user_id = validated_data["user_id"]
-        email_list = validated_data["email_list"]
+        user_id = validated_data.get("user_id", None)
+        email_list = validated_data.get("email_list", None)
         result = create_group_service(
             group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list
         )
