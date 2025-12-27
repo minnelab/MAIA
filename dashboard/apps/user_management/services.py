@@ -418,8 +418,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             email_list = [supervisor]
         else:
             email_list = [supervisor] + email_list
-        if not user_email:
-            user_email = supervisor
+        user_email = supervisor
     sync_result = sync_list_of_users_for_group(group_id, email_list)
 
     if isinstance(sync_result, dict):

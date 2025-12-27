@@ -77,7 +77,7 @@ class RegisterProjectForm(forms.ModelForm):
 
     email = forms.EmailField(
         widget=forms.EmailInput(
-            attrs={"placeholder": "Your Email. You are registered as the Project Admin.", "class": "form-control"}
+            attrs={"placeholder": "Your Email. You are registered as the Project Admin, unless you specify a Principal Investigator.", "class": "form-control"}
         )
     )
 
@@ -122,11 +122,11 @@ class RegisterProjectForm(forms.ModelForm):
         )
     )
 
-    supervisor = forms.CharField(
+    supervisor = forms.EmailField(
         required=False,
-        widget=forms.TextInput(
+        widget=forms.EmailInput(
             attrs={
-                "placeholder": "Name of your supervisor (optional for student projects)",
+                "placeholder": "Email of the Principal Investigator (optional for student projects)",
                 "class": "form-control"
             }
         )

@@ -13,7 +13,7 @@ from MAIA.dashboard_utils import send_discord_message, verify_minio_availability
 from MAIA.kubernetes_utils import get_minio_shareable_link
 from core.settings import GITHUB_AUTH
 from django.conf import settings
-from apps.models import MAIAUser
+from apps.models import MAIAUser, MAIAProject
 import os
 
 
@@ -102,9 +102,10 @@ def register_user(request):
                         msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
                             form.cleaned_data.get("email"), form.cleaned_data.get("namespace")
                         )
-                        send_discord_message(
-                            username=form.cleaned_data.get("email"), namespace=namespace, url=settings.DISCORD_URL
-                        )
+                        if settings.DISCORD_URL is not None:
+                            send_discord_message(
+                                username=form.cleaned_data.get("email"), namespace=namespace, url=settings.DISCORD_URL
+                            )
                         success = True
                     else:
                         msg = "A user with that username already exists and has been already registered to the project {}".format(
@@ -174,6 +175,18 @@ def register_project(request):
             form.save()
             email = form.cleaned_data.get("email")
             namespace = form.cleaned_data.get("namespace")
+            supervisor = form.cleaned_data.get("supervisor")
+            project = MAIAProject.objects.filter(namespace=namespace).first()
+            if supervisor:
+                current_project_admin = MAIAUser.objects.filter(email=project.email).first()
+                if current_project_admin.exists():
+                    current_namespace = current_project_admin.namespace
+                    if namespace not in current_namespace:
+                        namespace = f"{current_namespace},{namespace}"
+                        current_project_admin.namespace = namespace
+                        current_project_admin.save()
+                project.email = supervisor
+                project.save()
 
             if not minio_available:
                 print("MinIO is not available, skipping conda env storage")
