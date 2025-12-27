@@ -20,6 +20,8 @@ from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework import status
+from MAIA.keycloak_utils import get_groups_in_keycloak
+
 
 def login_view(request):
     form = LoginForm(request.POST or None)
@@ -76,6 +78,21 @@ def register_user(request, api=False):
         if form.is_valid():
 
             namespace = form.cleaned_data.get("namespace")
+            if not namespace:
+                maia_groups = get_groups_in_keycloak(settings=settings)
+                maia_groups = [maia_group for maia_group in maia_groups.values() if maia_group not in ["admin", "users"]]
+                if not maia_groups:
+                    maia_groups = ["No projects available"]
+                msg = "Existing Project is required. Please select one of the following: " + ", ".join(maia_groups)
+                success = False
+                if api:
+                    return Response({"msg": msg, "success": success}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return render(
+                        request,
+                        "accounts/register.html",
+                        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+                    )
             if namespace.endswith(" (Pending)"):
                 namespace = namespace[: -len(" (Pending)")]
             form.instance.namespace = namespace + f",{settings.USERS_GROUP}"
@@ -100,6 +117,22 @@ def register_user(request, api=False):
         else:
             if "username" in form.errors and any("already exists" in str(e) for e in form.errors["username"]):
                 requested_namespace = form.cleaned_data.get("namespace")
+                if not requested_namespace:
+                    maia_groups = get_groups_in_keycloak(settings=settings)
+                    maia_groups = [maia_group for maia_group in maia_groups.values() if maia_group not in ["admin", "users"]]
+                    if not maia_groups:
+                        maia_groups = ["No projects available"]
+                    msg = "Existing Project is required. Please select one of the following: " + ", ".join(maia_groups)
+                    success = False
+                    if api:
+                        return Response({"msg": msg, "success": success}, status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        return render(
+                            request,
+                            "accounts/register.html",
+                            {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+                        )
+
                 user_in_db = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
                 namespace_is_already_registered = False
                 if user_in_db:
