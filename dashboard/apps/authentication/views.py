@@ -79,20 +79,7 @@ def register_user(request, api=False):
 
             namespace = form.cleaned_data.get("namespace")
             if not namespace:
-                maia_groups = get_groups_in_keycloak(settings=settings)
-                maia_groups = [maia_group for maia_group in maia_groups.values() if maia_group not in ["admin", "users"]]
-                if not maia_groups:
-                    maia_groups = ["No projects available"]
-                msg = "Existing Project is required. Please select one of the following: " + ", ".join(maia_groups)
-                success = False
-                if api:
-                    return Response({"msg": msg, "success": success}, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    return render(
-                        request,
-                        "accounts/register.html",
-                        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
-                    )
+                namespace = settings.USERS_GROUP
             if namespace.endswith(" (Pending)"):
                 namespace = namespace[: -len(" (Pending)")]
             form.instance.namespace = namespace + f",{settings.USERS_GROUP}"
@@ -118,21 +105,7 @@ def register_user(request, api=False):
             if "username" in form.errors and any("already exists" in str(e) for e in form.errors["username"]):
                 requested_namespace = form.cleaned_data.get("namespace")
                 if not requested_namespace:
-                    maia_groups = get_groups_in_keycloak(settings=settings)
-                    maia_groups = [maia_group for maia_group in maia_groups.values() if maia_group not in ["admin", "users"]]
-                    if not maia_groups:
-                        maia_groups = ["No projects available"]
-                    msg = "Existing Project is required. Please select one of the following: " + ", ".join(maia_groups)
-                    success = False
-                    if api:
-                        return Response({"msg": msg, "success": success}, status=status.HTTP_400_BAD_REQUEST)
-                    else:
-                        return render(
-                            request,
-                            "accounts/register.html",
-                            {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
-                        )
-
+                    requested_namespace = settings.USERS_GROUP
                 user_in_db = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
                 namespace_is_already_registered = False
                 if user_in_db:
@@ -145,7 +118,7 @@ def register_user(request, api=False):
                         namespace = f"{namespace},{requested_namespace}"
                         MAIAUser.objects.filter(id=user_id).update(namespace=namespace)
                         msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
-                            form.cleaned_data.get("email"), form.cleaned_data.get("namespace")
+                            form.cleaned_data.get("email"), requested_namespace
                         )
                         if settings.DISCORD_URL is not None:
                             send_discord_message(
@@ -154,7 +127,7 @@ def register_user(request, api=False):
                         success = True
                     else:
                         msg = "A user with that username already exists and has been already registered to the project {}".format(
-                            form.cleaned_data.get("namespace")
+                            requested_namespace
                         )
                         success = True
                 else:
