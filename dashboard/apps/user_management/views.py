@@ -108,7 +108,7 @@ class CreateGroupSerializer(serializers.Serializer):
     user_id = serializers.EmailField(max_length=254, required=False, allow_blank=True)
     email_list = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
-    supervisor = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
+    supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True)
 
     def validate_group_id(self, value):
         return group_id_validator(value)
