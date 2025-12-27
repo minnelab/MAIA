@@ -413,6 +413,13 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             email_list = [user_email]
         else:
             email_list = [user_email] + email_list
+    if supervisor and MAIAUser.objects.filter(email=supervisor).exists():
+        if not email_list:
+            email_list = [supervisor]
+        else:
+            email_list = [supervisor] + email_list
+        if not user_email:
+            user_email = supervisor
     sync_result = sync_list_of_users_for_group(group_id, email_list)
 
     if isinstance(sync_result, dict):
