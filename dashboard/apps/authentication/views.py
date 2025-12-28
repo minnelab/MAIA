@@ -223,10 +223,20 @@ def register_project(request, api=False):
                     current_namespace = current_project_admin.namespace
                     if namespace not in current_namespace:
                         namespace = f"{current_namespace},{namespace}"
+                        if current_namespace == "":
+                            namespace = form.cleaned_data.get("namespace")
                         current_project_admin.namespace = namespace
                         current_project_admin.save()
                     if not MAIAUser.objects.filter(email=supervisor).exists():
                         MAIAUser.objects.create(email=supervisor, namespace=namespace+f",{settings.USERS_GROUP}", username=supervisor)
+                    else:
+                        current_supervisor_namespace = MAIAUser.objects.filter(email=supervisor).first().namespace
+                        namespace = form.cleaned_data.get("namespace")
+                        if namespace not in current_supervisor_namespace:
+                            namespace = f"{namespace},{current_supervisor_namespace}"
+                            if current_supervisor_namespace == "":
+                                namespace = form.cleaned_data.get("namespace")
+                            MAIAUser.objects.filter(email=supervisor).update(namespace=namespace)
                     MAIAProject.objects.filter(namespace=form.cleaned_data.get("namespace")).update(email=supervisor)
 
             if "conda" in request.FILES and minio_available:

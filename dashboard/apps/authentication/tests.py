@@ -4,9 +4,12 @@ Copyright (c) 2019 - present AppSeed.us
 """
 
 from django.test import TestCase
-from apps.models import MAIAProject
+from apps.models import MAIAProject, MAIAUser
 from apps.authentication.forms import RegisterProjectForm
 import datetime
+from apps.authentication.views import register_project
+from django.http import HttpRequest
+from django.conf import settings
 
 
 class MAIAProjectModelTests(TestCase):
@@ -61,3 +64,81 @@ class RegisterProjectFormTests(TestCase):
 
         self.assertFalse(form.fields['description'].required)
         self.assertFalse(form.fields['supervisor'].required)
+
+
+class RegisterProjectViewTests(TestCase):
+    """Test the RegisterProjectView"""
+
+    def setUp(self):
+        self.user = MAIAUser.objects.create_user(
+            email="test@example.com",
+            username="test",
+            first_name="Test",
+            last_name="User",
+            namespace=""
+        )
+
+        self.supervisor = MAIAUser.objects.create_user(
+            email="supervisor@example.com",
+            username="supervisor",
+            first_name="Supervisor",
+            last_name="User",
+            namespace=""
+        )
+        self.non_existent_supervisor = "non-existent-supervisor@example.com"
+        self.gpu = "NO"
+        self.memory_limit = "8 Gi"
+        self.cpu_limit = "4"
+        self.namespace = "test-project"
+
+    def test_register_project_with_supervisor(self):
+        """Test registering a project with a supervisor"""
+        request = HttpRequest()
+        request.method = "POST"
+        request.data = {
+            "namespace": self.namespace,
+            "email": self.user.email,
+            "gpu": self.gpu,
+            "date": datetime.date.today(),
+            "memory_limit": self.memory_limit,
+            "cpu_limit": self.cpu_limit,
+            "description": "This is a test project for machine learning research",
+            "supervisor": self.supervisor.email
+        }
+        response = register_project(request, api=True)
+        self.assertEqual(response.data["msg"], "Request for Project Registration submitted successfully.")
+        self.assertTrue(response.data["success"], True)
+
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.supervisor.email)
+        self.assertEqual(MAIAUser.objects.filter(email=self.user.email).first().namespace, self.namespace)
+        self.assertEqual(MAIAUser.objects.filter(email=self.supervisor.email).first().namespace, self.namespace)
+
+
+    def test_register_project_without_supervisor(self):
+        """Test registering a project without a supervisor"""
+        request = HttpRequest()
+        request.method = "POST"
+        request.data = {
+            "namespace": self.namespace,
+            "email": self.user.email,
+            "gpu": self.gpu,
+            "date": datetime.date.today(),
+            "memory_limit": self.memory_limit,
+            "cpu_limit": self.cpu_limit,
+            "description": "This is a test project for machine learning research",
+            "supervisor": self.non_existent_supervisor
+        }
+        response = register_project(request, api=True)
+        self.assertEqual(response.data["msg"], "Request for Project Registration submitted successfully.")
+        self.assertTrue(response.data["success"], True)
+
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.non_existent_supervisor)
+        self.assertEqual(MAIAUser.objects.filter(email=self.user.email).first().namespace, self.namespace)
+        self.assertEqual(MAIAUser.objects.filter(email=self.non_existent_supervisor).first().namespace, f"{self.namespace},{settings.USERS_GROUP}")
+
+
+
+#1) correct behavior when supervisor exists, 
+#2) when supervisor doesn't exist, 
+#3) namespace updates are applied correctly, 
+# 4) the project email is properly updated to the supervisor.
