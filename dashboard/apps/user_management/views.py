@@ -30,6 +30,8 @@ from MAIA.keycloak_utils import (
     get_groups_for_user,
     remove_user_from_group_in_keycloak,
     get_maia_users_from_keycloak,
+    get_groups_in_keycloak,
+    get_users_in_group_in_keycloak,
 )
 import urllib3
 import yaml
@@ -132,6 +134,13 @@ class UserManagementAPIListGroupsView(APIView):
         groups = MAIAProject.objects.all().values(
             "id", "namespace", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "email", "description", "supervisor"
         )
+        keycloak_groups = {v: k for k, v in get_groups_in_keycloak(settings=settings).items()}
+        for group in groups:
+            group["group_registered_in_keycloak"] = True if group["namespace"] in keycloak_groups else False
+            if group["group_registered_in_keycloak"]:
+                group["users_in_keycloak"] = get_users_in_group_in_keycloak(group_id=keycloak_groups[group["namespace"]], settings=settings)
+            else:
+                group["users_in_keycloak"] = []
         return Response({"groups": groups}, status=200)
 
 
