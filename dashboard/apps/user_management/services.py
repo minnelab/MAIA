@@ -390,7 +390,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         user_email (str): Email of the user creating/owning the group
         email_list (list, optional): List of user emails to add to the group
         description (str, optional): Project description
-        supervisor (str, optional): Supervisor name for student projects
+        supervisor (str, optional): Supervisor email for student projects
 
     Returns:
         dict: Success message or error information

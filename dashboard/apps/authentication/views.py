@@ -16,12 +16,17 @@ from django.conf import settings
 from apps.models import MAIAUser, MAIAProject
 import os
 from rest_framework.permissions import AllowAny
-from rest_framework.decorators import api_view, permission_classes
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework import status
-from MAIA.keycloak_utils import get_groups_in_keycloak
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+
+class RegisterAnonThrottle(AnonRateThrottle):
+    scope = "post_anon"
+
+class RegisterUserThrottle(UserRateThrottle):
+    scope = "post_user"
 
 def login_view(request):
     form = LoginForm(request.POST or None)
@@ -60,7 +65,7 @@ def login_view(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@csrf_exempt
+@throttle_classes([RegisterAnonThrottle, RegisterUserThrottle])
 def register_user_api(request):
     return register_user(request, api=True)
 
@@ -186,7 +191,7 @@ def send_maia_email(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@csrf_exempt
+@throttle_classes([RegisterAnonThrottle, RegisterUserThrottle])
 def register_project_api(request):
     return register_project(request, api=True)
 
@@ -200,7 +205,7 @@ def register_project(request, api=False):
         request_files = request.FILES
         if api:
             request_data = request.data
-            request_file = None
+            request_files = None
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
 
@@ -209,19 +214,20 @@ def register_project(request, api=False):
             namespace = form.cleaned_data.get("namespace")
             supervisor = form.cleaned_data.get("supervisor")
             project = MAIAProject.objects.filter(namespace=namespace).first()
-            current_project_admin = MAIAUser.objects.filter(email=project.email).first()
-            if not current_project_admin:
-                MAIAUser.objects.create(email=project.email, namespace=namespace+f",{settings.USERS_GROUP}", username=project.email)
+            if project:
                 current_project_admin = MAIAUser.objects.filter(email=project.email).first()
-            if supervisor:
-                current_namespace = current_project_admin.namespace
-                if namespace not in current_namespace:
-                    namespace = f"{current_namespace},{namespace}"
-                    current_project_admin.namespace = namespace
-                    current_project_admin.save()
-                if not MAIAUser.objects.filter(email=supervisor).exists():
-                    MAIAUser.objects.create(email=supervisor, namespace=namespace+f",{settings.USERS_GROUP}", username=supervisor)
-                MAIAProject.objects.filter(namespace=namespace).update(email=supervisor)
+                if not current_project_admin:
+                    MAIAUser.objects.create(email=project.email, namespace=namespace+f",{settings.USERS_GROUP}", username=project.email)
+                    current_project_admin = MAIAUser.objects.filter(email=project.email).first()
+                if supervisor:
+                    current_namespace = current_project_admin.namespace
+                    if namespace not in current_namespace:
+                        namespace = f"{current_namespace},{namespace}"
+                        current_project_admin.namespace = namespace
+                        current_project_admin.save()
+                    if not MAIAUser.objects.filter(email=supervisor).exists():
+                        MAIAUser.objects.create(email=supervisor, namespace=namespace+f",{settings.USERS_GROUP}", username=supervisor)
+                    MAIAProject.objects.filter(namespace=form.cleaned_data.get("namespace")).update(email=supervisor)
 
             if "conda" in request.FILES and minio_available:
                 conda_file = request.FILES["conda"]
