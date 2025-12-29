@@ -195,6 +195,23 @@ def send_maia_email(request):
 def register_project_api(request):
     return register_project(request, api=True)
 
+def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
+    if not email or not namespace:
+        return None
+    if not MAIAUser.objects.filter(email=email).exists():
+        if namespace != settings.USERS_GROUP:
+            MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
+        else:
+            MAIAUser.objects.create(email=email, namespace=namespace, username=email)
+    else:
+        user = MAIAUser.objects.filter(email=email).first()
+        user_namespaces = user.namespace.split(",")
+        if namespace not in user_namespaces:
+            user_namespaces.append(namespace)
+            user.namespace = ",".join(user_namespaces)
+            user.save()
+        return user
+
 def register_project(request, api=False):
     msg = None
     success = False
@@ -215,36 +232,9 @@ def register_project(request, api=False):
             supervisor = form.cleaned_data.get("supervisor")
             project = MAIAProject.objects.filter(namespace=namespace).first()
             if project:
-                current_project_admin = MAIAUser.objects.filter(email=project.email).first()
-                if not current_project_admin:
-                    if settings.USERS_GROUP not in namespace.split(","):
-                        namespace_to_add = f"{namespace},{settings.USERS_GROUP}"
-                    else:
-                        namespace_to_add = namespace
-                    MAIAUser.objects.create(email=project.email, namespace=namespace_to_add, username=project.email)
-                    current_project_admin = MAIAUser.objects.filter(email=project.email).first()
+                project_admin = get_or_create_user_in_database(email=project.email, namespace=namespace)
                 if supervisor:
-                    current_namespace = current_project_admin.namespace
-                    if namespace not in current_namespace.split(","):
-                        complete_namespace = f"{current_namespace},{namespace}"
-                        if current_namespace == "":
-                            complete_namespace = form.cleaned_data.get("namespace")
-                        current_project_admin.namespace = complete_namespace
-                        current_project_admin.save()
-                    if not MAIAUser.objects.filter(email=supervisor).exists():
-                        if settings.USERS_GROUP not in namespace.split(","):
-                            namespace_to_add = f"{namespace},{settings.USERS_GROUP}"
-                        else:
-                            namespace_to_add = namespace
-                        MAIAUser.objects.create(email=supervisor, namespace=namespace_to_add, username=supervisor)
-                    else:
-                        current_supervisor_namespace = MAIAUser.objects.filter(email=supervisor).first().namespace
-                        if namespace not in current_supervisor_namespace.split(","):
-                            complete_namespace = f"{namespace},{current_supervisor_namespace}"
-                            if current_supervisor_namespace == "":
-                                complete_namespace = form.cleaned_data.get("namespace")
-                            MAIAUser.objects.filter(email=supervisor).update(namespace=complete_namespace)
-                    MAIAProject.objects.filter(namespace=form.cleaned_data.get("namespace")).update(email=supervisor)
+                    supervisor_user = get_or_create_user_in_database(email=supervisor, namespace=namespace)
 
             if "conda" in request.FILES and minio_available:
                 conda_file = request.FILES["conda"]
