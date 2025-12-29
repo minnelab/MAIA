@@ -91,6 +91,7 @@ class RegisterProjectViewTests(TestCase):
         self.cpu_limit = "4"
         self.namespace = "test-project"
         self.description = "This is a test project for machine learning research"
+    
     def test_register_project_with_supervisor(self):
         """Test registering a project with a supervisor"""
         request = HttpRequest()
