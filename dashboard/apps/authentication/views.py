@@ -235,6 +235,7 @@ def register_project(request, api=False):
             if project:
                 get_or_create_user_in_database(email=project.email, namespace=namespace)
                 if supervisor:
+                    # Once the project is approved and created also in Keycloak, the supervisor will replace the project admin as the project admin
                     get_or_create_user_in_database(email=supervisor, namespace=namespace)
 
             if "conda" in request.FILES and minio_available:
