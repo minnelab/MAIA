@@ -95,8 +95,8 @@ class CreateGroupTests(TestCase):
         self.assertEqual(MAIAUser.objects.filter(email=self.user).first().namespace, "")
 
 
-    def test_create_group_without_supervisor(self):
-        """Test creating a project without supervisor fields"""
+    def test_create_group_with_nonexistent_supervisor(self):
+        """Test creating a project with a supervisor email that does not exist as a user"""
 
         create_user(
             email=self.admin_user,

@@ -12,6 +12,24 @@ from django.http import HttpRequest
 from django.conf import settings
 
 
+class RegisterProjectFormTests(TestCase):
+    """Test the RegisterProjectForm with the new fields"""
+
+    def test_form_includes_description_and_supervisor(self):
+        """Test that the form includes the description and supervisor fields"""
+        form = RegisterProjectForm()
+
+        self.assertIn('description', form.fields)
+        self.assertIn('supervisor', form.fields)
+
+    def test_description_and_supervisor_are_optional(self):
+        """Test that description and supervisor fields are optional"""
+        form = RegisterProjectForm()
+
+        self.assertFalse(form.fields['description'].required)
+        self.assertFalse(form.fields['supervisor'].required)
+
+
 class MAIAProjectModelTests(TestCase):
     """Test the MAIAProject model with the new description and supervisor fields"""
 
@@ -117,8 +135,8 @@ class RegisterProjectViewTests(TestCase):
         self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().description, self.description)
 
 
-    def test_register_project_without_supervisor(self):
-        """Test registering a project without a supervisor"""
+    def test_register_project_with_nonexistent_supervisor(self):
+        """Test registering a project with a non-existent supervisor"""
         request = HttpRequest()
         request.method = "POST"
         request.data = {

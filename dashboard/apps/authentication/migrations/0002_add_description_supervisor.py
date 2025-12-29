@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='maiaproject',
             name='supervisor',
-            field=models.EmailField(max_length=150, null=True, verbose_name='supervisor'),
+            field=models.EmailField(max_length=150, null=True, blank=True, verbose_name='supervisor'),
         ),
     ]
