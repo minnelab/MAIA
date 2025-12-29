@@ -82,6 +82,7 @@ class CreateGroupTests(TestCase):
         self.assertEqual(project.email, self.supervisor)
         self.assertEqual(project.minimal_env, self.minimal_env)
         self.assertEqual(project.description, self.project_description)
+        self.assertEqual(project.supervisor, self.supervisor)
 
         self.assertEqual(MAIAUser.objects.filter(email=self.admin_user).first().email, self.admin_user)
         self.assertEqual(MAIAUser.objects.filter(email=self.admin_user).first().namespace, self.namespace)
@@ -141,6 +142,7 @@ class CreateGroupTests(TestCase):
         self.assertEqual(project.email, self.admin_user)
         self.assertEqual(project.minimal_env, self.minimal_env)
         self.assertEqual(project.description, self.project_description)
+        self.assertEqual(project.supervisor, self.supervisor)
 
         self.assertEqual(MAIAUser.objects.filter(email=self.admin_user).first().email, self.admin_user)
         self.assertEqual(MAIAUser.objects.filter(email=self.admin_user).first().namespace, self.namespace)

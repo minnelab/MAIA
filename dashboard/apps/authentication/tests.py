@@ -90,7 +90,7 @@ class RegisterProjectViewTests(TestCase):
         self.memory_limit = "8 Gi"
         self.cpu_limit = "4"
         self.namespace = "test-project"
-
+        self.description = "This is a test project for machine learning research"
     def test_register_project_with_supervisor(self):
         """Test registering a project with a supervisor"""
         request = HttpRequest()
@@ -102,7 +102,7 @@ class RegisterProjectViewTests(TestCase):
             "date": datetime.date.today(),
             "memory_limit": self.memory_limit,
             "cpu_limit": self.cpu_limit,
-            "description": "This is a test project for machine learning research",
+            "description": self.description,
             "supervisor": self.supervisor.email
         }
         response = register_project(request, api=True)
@@ -112,6 +112,9 @@ class RegisterProjectViewTests(TestCase):
         self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.supervisor.email)
         self.assertEqual(MAIAUser.objects.filter(email=self.user.email).first().namespace, self.namespace)
         self.assertEqual(MAIAUser.objects.filter(email=self.supervisor.email).first().namespace, self.namespace)
+
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().supervisor, self.supervisor.email)
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().description, self.description)
 
 
     def test_register_project_without_supervisor(self):
@@ -125,7 +128,7 @@ class RegisterProjectViewTests(TestCase):
             "date": datetime.date.today(),
             "memory_limit": self.memory_limit,
             "cpu_limit": self.cpu_limit,
-            "description": "This is a test project for machine learning research",
+            "description": self.description,
             "supervisor": self.non_existent_supervisor
         }
         response = register_project(request, api=True)
@@ -135,10 +138,5 @@ class RegisterProjectViewTests(TestCase):
         self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.non_existent_supervisor)
         self.assertEqual(MAIAUser.objects.filter(email=self.user.email).first().namespace, self.namespace)
         self.assertEqual(MAIAUser.objects.filter(email=self.non_existent_supervisor).first().namespace, f"{self.namespace},{settings.USERS_GROUP}")
-
-
-
-#1) correct behavior when supervisor exists, 
-#2) when supervisor doesn't exist, 
-#3) namespace updates are applied correctly, 
-# 4) the project email is properly updated to the supervisor.
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().description, self.description)
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().supervisor, self.non_existent_supervisor)
