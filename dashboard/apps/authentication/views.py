@@ -203,6 +203,7 @@ def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
             MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
         else:
             MAIAUser.objects.create(email=email, namespace=namespace, username=email)
+        return MAIAUser.objects.filter(email=email).first()
     else:
         user = MAIAUser.objects.filter(email=email).first()
         user_namespaces = user.namespace.split(",")
@@ -232,9 +233,9 @@ def register_project(request, api=False):
             supervisor = form.cleaned_data.get("supervisor")
             project = MAIAProject.objects.filter(namespace=namespace).first()
             if project:
-                project_admin = get_or_create_user_in_database(email=project.email, namespace=namespace)
+                get_or_create_user_in_database(email=project.email, namespace=namespace)
                 if supervisor:
-                    supervisor_user = get_or_create_user_in_database(email=supervisor, namespace=namespace)
+                    get_or_create_user_in_database(email=supervisor, namespace=namespace)
 
             if "conda" in request.FILES and minio_available:
                 conda_file = request.FILES["conda"]

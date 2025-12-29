@@ -92,6 +92,7 @@ class CreateGroupTests(TestCase):
 
         
         self.assertEqual(MAIAUser.objects.filter(email=self.user).first().email, self.user)
+        #Expected to be empty because the user is not listed in the email_list, nor as project admin or supervisor
         self.assertEqual(MAIAUser.objects.filter(email=self.user).first().namespace, "")
 
 
