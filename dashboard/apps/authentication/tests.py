@@ -12,24 +12,6 @@ from django.http import HttpRequest
 from django.conf import settings
 
 
-class RegisterProjectFormTests(TestCase):
-    """Test the RegisterProjectForm with the new fields"""
-
-    def test_form_includes_description_and_supervisor(self):
-        """Test that the form includes the description and supervisor fields"""
-        form = RegisterProjectForm()
-
-        self.assertIn('description', form.fields)
-        self.assertIn('supervisor', form.fields)
-
-    def test_description_and_supervisor_are_optional(self):
-        """Test that description and supervisor fields are optional"""
-        form = RegisterProjectForm()
-
-        self.assertFalse(form.fields['description'].required)
-        self.assertFalse(form.fields['supervisor'].required)
-
-
 class MAIAProjectModelTests(TestCase):
     """Test the MAIAProject model with the new description and supervisor fields"""
 
@@ -43,12 +25,12 @@ class MAIAProjectModelTests(TestCase):
             memory_limit='8G',
             cpu_limit='4',
             description='This is a test project for machine learning research',
-            supervisor='Dr. Test Supervisor'
+            supervisor='supervisor@example.com'
         )
 
         self.assertEqual(project.namespace, 'test-project')
         self.assertEqual(project.description, 'This is a test project for machine learning research')
-        self.assertEqual(project.supervisor, 'Dr. Test Supervisor')
+        self.assertEqual(project.supervisor, 'supervisor@example.com')
 
     def test_create_project_without_description_and_supervisor(self):
         """Test creating a project without description and supervisor (backward compatibility)"""

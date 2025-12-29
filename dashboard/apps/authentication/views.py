@@ -217,7 +217,7 @@ def register_project(request, api=False):
             if project:
                 current_project_admin = MAIAUser.objects.filter(email=project.email).first()
                 if not current_project_admin:
-                    if settings.USERS_GROUP not in namespace:
+                    if settings.USERS_GROUP not in namespace.split(","):
                         namespace_to_add = f"{namespace},{settings.USERS_GROUP}"
                     else:
                         namespace_to_add = namespace
@@ -225,21 +225,21 @@ def register_project(request, api=False):
                     current_project_admin = MAIAUser.objects.filter(email=project.email).first()
                 if supervisor:
                     current_namespace = current_project_admin.namespace
-                    if namespace not in current_namespace:
+                    if namespace not in current_namespace.split(","):
                         complete_namespace = f"{current_namespace},{namespace}"
                         if current_namespace == "":
                             complete_namespace = form.cleaned_data.get("namespace")
                         current_project_admin.namespace = complete_namespace
                         current_project_admin.save()
                     if not MAIAUser.objects.filter(email=supervisor).exists():
-                        if settings.USERS_GROUP not in namespace:
+                        if settings.USERS_GROUP not in namespace.split(","):
                             namespace_to_add = f"{namespace},{settings.USERS_GROUP}"
                         else:
                             namespace_to_add = namespace
                         MAIAUser.objects.create(email=supervisor, namespace=namespace_to_add, username=supervisor)
                     else:
                         current_supervisor_namespace = MAIAUser.objects.filter(email=supervisor).first().namespace
-                        if namespace not in current_supervisor_namespace:
+                        if namespace not in current_supervisor_namespace.split(","):
                             complete_namespace = f"{namespace},{current_supervisor_namespace}"
                             if current_supervisor_namespace == "":
                                 complete_namespace = form.cleaned_data.get("namespace")
