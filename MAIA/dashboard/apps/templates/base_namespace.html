@@ -1,0 +1,478 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+<section class="min-vh-100 mb-8">
+  {% if BACKEND == "compose" %}
+   <div class="page-header align-items-start min-vh-80 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png');">
+  {% else %}
+    <div class="page-header align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/maia_background.jpg');">
+  {% endif %}
+    <span class="mask bg-gradient-dark opacity-6"></span>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-5 text-center mx-auto">
+                    <h1 class="text-white mb-2 mt-5">{{ namespace|title }}</h1>
+                    <h4 class="text-white mb-2 mt-5">Allocated until: {{ allocation_date }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div>
+            <div class="card"></div>
+            <div class="card-header">
+                <div class="row">
+                    <div>
+                        <h1 style="text-align: center;">MAIA Apps</h1>
+                        <br>
+                        <br>
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.hub != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.hub }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/jupyter.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/jupyter.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.mlflow != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.mlflow }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/mlflow.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/mlflow.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.orthanc != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.orthanc }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/orthanc.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/orthanc.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.ohif != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.ohif }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/ohif.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/ohif.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.minio_console != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.minio_console }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/minio.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/minio.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.kubeflow != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.kubeflow }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/kubeflow.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/kubeflow.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.label_studio != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.label_studio }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/label-studio.svg" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/label-studio.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-4">
+                                    {% if maia_workspace_ingress.xnat != "N/A" %}
+                                    
+                                    <a href="{{ maia_workspace_ingress.xnat }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/xnat_logo.png" alt="" class="img-fluid icon-button"/>
+                                    </a>
+                                    {% else %}
+                                    <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/xnat_logo.png" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<br>
+{% if remote_desktop_dict %}
+<div class="card" style="resize: both; overflow: auto; margin: 0 auto; width: min-content; height: min-content;">
+    <div class="card-header pb-0 text-center">
+        <h3><img src='{{ ASSETS_ROOT }}/img/MAIA/MAIA_Workspace.png' alt="" width="100" style="float: left;"/>Remote Desktops</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-items-center">
+                <thead>
+                    <tr>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">User</th>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Link</th>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">SSH</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for remote_desktop in remote_desktop_dict %}
+                    <tr>
+                        <td>
+                            <div class="d-flex flex-column justify-content-center">
+                                <h6 class="text-sm">{{ remote_desktop }}</h6>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column justify-content-center">
+                                <h6 class="text-sm"><a href={{ remote_desktop_dict|get_item:remote_desktop }}>{{ remote_desktop_dict|get_item:remote_desktop }}</a></h6>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column justify-content-center">
+                                <h6 class="text-sm">maia-user@{{ssh_hostname}} -p {{ssh_ports|get_item:remote_desktop}}</h6>
+                            </div>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+<br>
+{% if monai_models %}
+<div class="card" style="resize: both; overflow: auto; margin: 0 auto; width: min-content; height: min-content;">
+    <div class="card-header pb-0 text-center">
+        <h3><img src='{{ ASSETS_ROOT }}/img/MAIA/MONAI_Workspace.png' alt="" width="100" style="float: left;"/> MONAI Label Models </h3>
+    </div>
+    <div class="card-body px-0 pb-2">
+        <div class="table-responsive">
+            <table class="table align-items-center mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">MONAI Label Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for model in monai_models %}
+                    <tr>
+                        <td>
+                            <div class="d-flex flex-column justify-content-center">
+                                <h6 class="mb-0 text-sm"><a href={{ monai_models|get_item:model|get_item:'monai_label' }}info>{{ model }}</a></h6>
+                            </div>
+                        </td>                      
+                        <td>
+                            <div class="d-flex flex-column justify-content-center">
+                                <h6 class="mb-0 text-sm"><a href={{ monai_models|get_item:model|get_item:'monai_label' }}>{{ monai_models|get_item:model|get_item:'monai_label' }}</a></h6>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+<br>
+{% if orthanc_list %}
+    <div class="card" style="resize: both; overflow: auto; margin: 0 auto; width: min-content; height: min-content;">
+        <div class="card-header pb-0 text-center">
+            <h3><img src='{{ ASSETS_ROOT }}/img/MAIA/Orthanc_workspace.png' alt="" width="100" style="float: left;"/> Orthanc DICOM Web</h3>
+        </div>
+        <div class="card-body px-0 pb-2">
+            <div class="table-responsive">
+                <table class="table align-items-center mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Orthanc Name</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">DICOM Port</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">DicomWeb</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for orthanc in orthanc_list %}
+                        <tr>
+                            <td>
+                                <div class="d-flex flex-column justify-content-center">
+                                    <h6 class="mb-0 text-sm">{{ orthanc.name }}</h6>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column justify-content-center">
+                                    <h6 class="mb-0 text-sm">{{ssh_hostname}}:{{ orthanc.dicom_port }}</h6>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column justify-content-center">
+                                    <h6 class="mb-0 text-sm"><a href="{{ orthanc.url }}" target="_blank">{{ orthanc.url }}</a></h6>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endif %}
+<br>
+{% if nvflare_dashboards %}
+    <div class="card" style="resize: both; overflow: auto; margin: 0 auto; width: min-content; height: min-content;">
+        <div class="card-header pb-0 text-center">
+            <h3><img src='{{ ASSETS_ROOT }}/img/MAIA/NVFlare.png' alt="" width="300" style="float: left;"/> NVFlare Dashboard</h3>
+        </div>
+        <div class="card-body px-0 pb-2">
+            <div class="table-responsive">
+                <table class="table align-items-center mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Dashboard Name</th>
+                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dashboard in nvflare_dashboards %}
+                        <tr>
+                            <td>
+                                <div class="d-flex flex-column justify-content-center">
+                                    <h6 class="mb-0 text-sm">{{ dashboard.name }}</h6>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column justify-content-center">
+                                    <h6 class="mb-0 text-sm"><a href="{{ dashboard.url }}" target="_blank">{{ dashboard.url }}</a></h6>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endif %}
+<br>
+<div style="display: none;"></div>
+    <div class="content">
+        <div class="card">
+            <div class="card-header pb-0">
+                <div class="row">
+                    <div class="col-lg-6 col-7">
+                        <h6>Services</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body px-0 pb-2">
+                <div class="table-responsive">
+                    <table class="table align-items-center mb-0"></table>
+                        <thead>
+                            <tr>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"></th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ports</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Ingress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for k in service %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm">
+                                            <a class="cursor-pointer" id="dropdownTable" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fa fa-ellipsis-v text-secondary"></i>
+                                            </a>
+                                            <ul class="dropdown-menu px-2 py-3 ms-sm-n4 ms-n5" aria-labelledby="dropdownTable">
+                                                {% for port in k.spec.ports %}
+                                                <li><a class="dropdown-item border-radius-md" onclick="copyToClipboardPF(event,'{{ k.metadata.namespace }}', '{{ port.port }}')" id={{ k.metadata.name }}>Port-Forward {{ port.name }}, Copy Command To Clipboard</a></li>
+                                                {% endfor %}
+                                            </ul>
+                                        </h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm">{{ k.metadata.name }}</h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <span>
+                                            {% for port in k.spec.ports %}
+                                            <li><h6 class="mb-0 text-sm">{{ port.name }} : {{ k.metadata.name }}:{{ port.port }}</h6></li>
+                                            {% endfor %}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% for port in k.spec.ports %}
+                                    {% with name=port.name %}
+                                    {% if name != "ssh" %}
+                                    {% with port_str=port.port|to_str %}
+                                    {% with svc_name=k.metadata.name|add:":"|add:port_str %}
+                                    {% if ingress|get_item:svc_name is None %}
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with svc_name=k.metadata.name|add:":"|add:name %}
+                                        {% with ingress_list=ingress|get_item:svc_name %}
+                                        {% for ing in ingress_list %}
+                                        <li><h6 class="mb-0 text-sm"><a href={{ ing }} target="_blank">{{ ing }}</a></h6></li>
+                                        {% endfor %}
+                                        {% endwith %}
+                                        {% endwith %}
+                                    </div>
+                                    {% else %}
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with ingress_list=ingress|get_item:svc_name %}
+                                        {% for ing in ingress_list %}
+                                        <li><h6 class="mb-0 text-sm"><a href={{ ing }} target="_blank">{{ ing }}</a></h6></li>
+                                        {% endfor %}
+                                        {% endwith %}
+                                    </div>
+                                    {% endif %}
+                                    {% endwith %}
+                                    {% endwith %}
+                                    {% else %}
+                                    {% if k.spec.type == "LoadBalancer" %}
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <li class="text-xs font-weight-bold">ssh maia-user@maia.cloud.cbh.kth.se -p {{ port.port }}</li>
+                                    </div>
+                                    {% elif k.spec.type == "NodePort" %}
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <li class="text-xs font-weight-bold">ssh maia-user@maia.cloud.cbh.kth.se -p {{ port.nodePort }}</li>
+                                    </div>
+                                    {% endif %}
+                                    {% endif %}
+                                    {% endwith %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+{% endblock content %}
+
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+<script src="{{ ASSETS_ROOT }}/js/plugins/chartjs.min.js"></script>
+<script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
+    }
+
+    function copyToClipboard(e, namespace) {
+        navigator.clipboard.writeText("kubectl exec -it " + e.target.id + " -n " + namespace + " -- bash");
+    }
+    function copyToClipboardToken(e, id_token) {
+        navigator.clipboard.writeText(id_token);
+    }
+
+    function copyToClipboardPF(e, namespace, port) {
+        navigator.clipboard.writeText("kubectl port-forward svc/" + e.target.id + " -n " + namespace + " :" + port);
+    }
+
+    function deleteElement(e) {
+        if (!confirm('Are you sure you want to delete?')) e.preventDefault();
+    }
+
+    function copyToClipboardPod(e, namespace, port) {
+        navigator.clipboard.writeText("kubectl port-forward " + e.target.id + " -n " + namespace + " :" + port);
+    }
+</script>
+<style>
+    #thumbs {
+        width: 1000px;
+        margin-top: 180px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: justify;
+        -ms-text-justify: distribute-all-lines;
+        text-justify: distribute-all-lines;
+    }
+
+    #thumbs a {
+        vertical-align: top;
+        display: inline-block;
+        display: inline;
+        zoom: 1;
+    }
+
+    .stretch {
+        width: 100%;
+        display: inline-block;
+        font-size: 0;
+        line-height: 0;
+    }
+
+    .collapsible {
+        background-color: #777;
+        color: white;
+        cursor: pointer;
+        padding: 12px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 10px;
+    }
+
+    .content {
+        padding: 0 12px;
+        display: none;
+        overflow: hidden;
+        background-color: #f1f1f1;
+    }
+</style>
+{% endblock javascripts %}

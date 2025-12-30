@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+
+<svg
+   width="800px"
+   height="800px"
+   viewBox="-22 0 300 300"
+   version="1.1"
+   preserveAspectRatio="xMidYMid"
+   id="svg2120"
+   sodipodi:docname="label-studio.svg"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2124" />
+  <sodipodi:namedview
+     id="namedview2122"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.534375"
+     inkscape:cx="392.04678"
+     inkscape:cy="705.49708"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2120" />
+  <g
+     id="g2104"
+     transform="matrix(3.5691552,0,0,3.5691552,277.18026,-355.26031)">
+    <rect
+       style="fill:#ffdad1;fill-opacity:1;stroke:#ff8267;stroke-width:5.29167;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2022"
+       width="49.84737"
+       height="50.36842"
+       x="-66.651833"
+       y="116.4992" />
+    <rect
+       style="fill:#ff8267;fill-opacity:1;stroke:#ff8267;stroke-width:4.21951;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect356"
+       width="16.182701"
+       height="16.356373"
+       x="-74.683022"
+       y="108.321"
+       ry="0" />
+    <rect
+       style="fill:#ff8267;fill-opacity:1;stroke:#ff8267;stroke-width:4.21951;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2093"
+       width="16.182701"
+       height="16.356373"
+       x="-24.504511"
+       y="108.32101"
+       ry="0" />
+    <rect
+       style="fill:#ff8267;fill-opacity:1;stroke:#ff8267;stroke-width:4.21951;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2095"
+       width="16.182701"
+       height="16.356373"
+       x="-75.272346"
+       y="158.44862"
+       ry="0" />
+    <rect
+       style="fill:#ff8267;fill-opacity:1;stroke:#ff8267;stroke-width:4.21951;stroke-opacity:1;paint-order:fill markers stroke"
+       id="rect2097"
+       width="16.182701"
+       height="16.356373"
+       x="-24.895813"
+       y="158.4243"
+       ry="0" />
+  </g>
+</svg>
