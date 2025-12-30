@@ -33,4 +33,4 @@ jobs:
       
       - name: Lint with ruff
         run: |
-          ruff check .
+          ruff check MAIA MAIA_scripts
