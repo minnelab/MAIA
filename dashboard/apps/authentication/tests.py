@@ -110,7 +110,7 @@ class RegisterProjectViewTests(TestCase):
         self.assertEqual(response.data["msg"], "Request for Project Registration submitted successfully.")
         self.assertTrue(response.data["success"], True)
 
-        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.supervisor.email)
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.user.email)
         self.assertEqual(MAIAUser.objects.filter(email=self.user.email).first().namespace, self.namespace)
         self.assertEqual(MAIAUser.objects.filter(email=self.supervisor.email).first().namespace, self.namespace)
 
@@ -136,7 +136,7 @@ class RegisterProjectViewTests(TestCase):
         self.assertEqual(response.data["msg"], "Request for Project Registration submitted successfully.")
         self.assertTrue(response.data["success"], True)
 
-        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.non_existent_supervisor)
+        self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().email, self.user.email)
         self.assertEqual(MAIAUser.objects.filter(email=self.user.email).first().namespace, self.namespace)
         self.assertEqual(MAIAUser.objects.filter(email=self.non_existent_supervisor).first().namespace, f"{self.namespace},{settings.USERS_GROUP}")
         self.assertEqual(MAIAProject.objects.filter(namespace=self.namespace).first().description, self.description)

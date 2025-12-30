@@ -235,8 +235,6 @@ def register_project(request, api=False):
                 get_or_create_user_in_database(email=project.email, namespace=namespace)
                 if supervisor:
                     get_or_create_user_in_database(email=supervisor, namespace=namespace)
-                    project.email = supervisor
-                    project.save()
 
             if "conda" in request.FILES and minio_available:
                 conda_file = request.FILES["conda"]
