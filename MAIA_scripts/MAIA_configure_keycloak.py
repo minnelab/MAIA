@@ -17,7 +17,9 @@ EPILOG = dedent(
 )
 
 
-def create_admin_user_and_group(server_url: str, client_secret: str, admin_email="admin@maia.se", group_id="users", admin_password="Admin"):
+def create_admin_user_and_group(
+    server_url: str, client_secret: str, admin_email="admin@maia.se", group_id="users", admin_password="Admin"
+):
     keycloak_connection = KeycloakOpenIDConnection(
         server_url=server_url,
         username="user",
@@ -83,6 +85,7 @@ def create_admin_user_and_group(server_url: str, client_secret: str, admin_email
                 client_id=client_uuid,
                 roles=client_roles,
             )
+
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
