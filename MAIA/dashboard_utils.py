@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from kubernetes import config
+from loguru import logger
 from minio import Minio
 from pyhelm3 import Client
 
@@ -165,35 +166,45 @@ def verify_gpu_booking_policy(existing_bookings, new_booking, global_existing_bo
         An error message if the booking policy is not verified, None otherwise.
     """
 
-    total_days = sum((booking.end_date - booking.start_date).days for booking in existing_bookings)
-
     ending_time = datetime.strptime(new_booking["ending_time"], "%Y-%m-%d %H:%M:%S")
     starting_time = datetime.strptime(new_booking["starting_time"], "%Y-%m-%d %H:%M:%S")
-    
+
     for booking in existing_bookings:
-        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(tz=booking.end_date.tzinfo):
+        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
             return False, "There is an active booking, you cannot book a new one while another is active."
-        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date <= datetime.now(tz=booking.end_date.tzinfo):
+        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date <= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
             # Ensure starting_time is timezone-aware to match booking.end_date
             if booking.end_date.tzinfo is not None and starting_time.tzinfo is None:
                 starting_time_tz = starting_time.replace(tzinfo=booking.end_date.tzinfo)
             else:
                 starting_time_tz = starting_time
             if (starting_time_tz - booking.end_date).days < 14:
-                return False, "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on {}.".format(booking.end_date + timedelta(days=14))
-        if booking.start_date >= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(tz=booking.end_date.tzinfo):
-            return False, "You already have a planned booking [{} - {}], you cannot book a new one.".format(booking.start_date, booking.end_date)
-
+                return (
+                    False,
+                    "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on {}.".format(
+                        booking.end_date + timedelta(days=14)
+                    ),
+                )
+        if booking.start_date >= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
+            return False, "You already have a planned booking [{} - {}], you cannot book a new one.".format(
+                booking.start_date, booking.end_date
+            )
 
     new_booking_days = (ending_time - starting_time).days
 
     if new_booking_days <= 0:
         return False, "The booking must be at least one day long."
-    
+
     if new_booking_days > 14:
         return False, "The booking cannot exceed 14 days."
     # Verify that the sum of existing bookings and the new booking does not exceed 60 days
-    #if total_days + new_booking_days > 60:
+    # if total_days + new_booking_days > 60:
     #    return False, "The total number of days for all bookings cannot exceed 60 days."
 
     overlapping_time_slots, gpu_availability_per_slot, total_replicas = verify_gpu_availability(
@@ -265,12 +276,11 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
     password = os.environ["email_password"]
 
     # Create a secure SSL context
-    #context = ssl.create_default_context()
+    # context = ssl.create_default_context()
 
-    
     with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()           # identify ourselves to SMTP server
-        server.starttls()       # encrypt the session
+        server.ehlo()  # identify ourselves to SMTP server
+        server.starttls()  # encrypt the session
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 
@@ -283,13 +293,14 @@ def verify_minio_availability(settings):
     ----------
     settings : object
         An object containing the MinIO configuration settings.
-        - settings.MINIO_URL : str
+
+        MINIO_URL : str
             The URL of the MinIO server.
-        - settings.MINIO_ACCESS_KEY : str
+        MINIO_ACCESS_KEY : str
             The access key for the MinIO server.
-        - settings.MINIO_SECRET_KEY : str
+        MINIO_SECRET_KEY : str
             The secret key for the MinIO server.
-        - settings.BUCKET_NAME : str
+        BUCKET_NAME : str
             The name of the bucket to check for existence.
 
     Returns
@@ -307,7 +318,7 @@ def verify_minio_availability(settings):
         client.bucket_exists(settings.BUCKET_NAME)
         minio_available = True
     except Exception as e:
-        print(e)
+        logger.error(f"MinIO error: {e}")
         minio_available = False
 
     return minio_available
@@ -366,12 +377,11 @@ def send_approved_registration_email(receiver_email, login_url, temp_password):
     password = os.environ["email_password"]
 
     # Create a secure SSL context
-    #context = ssl.create_default_context()
+    # context = ssl.create_default_context()
 
-    
     with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()           # identify ourselves to SMTP server
-        server.starttls()       # encrypt the session
+        server.ehlo()  # identify ourselves to SMTP server
+        server.starttls()  # encrypt the session
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 
@@ -416,9 +426,9 @@ def send_discord_message(username, namespace, url, project_registration=False):
     try:
         result.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        print(err)
+        logger.error(f"Discord webhook error: {err}")
     else:
-        print("Payload delivered successfully, code {}.".format(result.status_code))
+        logger.info(f"Payload delivered successfully, code {result.status_code}")
 
 
 def get_pending_projects(settings, maia_project_model):
@@ -480,7 +490,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -507,7 +517,10 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         minio_envs = []
 
     for maia_group in maia_groups:
-        if maia_groups[maia_group] == "users":
+        if maia_groups[maia_group] in (
+            getattr(settings, "USERS_GROUP", "users"),
+            getattr(settings, "ADMIN_GROUP", "admin"),
+        ):
             continue
         users = keycloak_admin.get_group_members(group_id=maia_group)
 
@@ -648,7 +661,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     group_id = namespace
@@ -660,7 +673,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         if maia_groups[maia_group].lower().replace("_", "-") == namespace:
             group_id = maia_groups[maia_group]
 
-    print("Registering Existing Cluster for Group: ", group_id)
+    logger.info(f"Registering Existing Cluster for Group: {group_id}")
 
     if project_model.objects.filter(namespace=group_id).exists():
         project = project_model.objects.filter(namespace=group_id).first()
@@ -793,7 +806,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     realm_name=settings.OIDC_REALM_NAME,
                     client_id=settings.OIDC_RP_CLIENT_ID,
                     client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-                    verify=False,
+                    verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
                 )
 
                 keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -841,7 +854,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     realm_name=settings.OIDC_REALM_NAME,
                     client_id=settings.OIDC_RP_CLIENT_ID,
                     client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-                    verify=False,
+                    verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
                 )
 
                 keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -937,7 +950,8 @@ async def get_list_of_deployed_projects():
     kubernetes.client.exceptions.ApiException
         If there is an error communicating with the Kubernetes API.
     """
-
+    if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
+        return [os.environ["PROJECT_NAME"]]
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
     releases = await client.list_releases(namespace="argocd")
@@ -973,11 +987,14 @@ def get_project_argo_status_and_user_table(request, settings, maia_user_model, m
     argocd_cluster_id = settings.ARGOCD_CLUSTER
 
     id_token = request.session.get("oidc_id_token")
-    kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
-    config.load_kube_config_from_dict(kubeconfig_dict)
-    with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
-        yaml.dump(kubeconfig_dict, f)
-        os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-argo"))
+    if argocd_cluster_id is None or argocd_cluster_id == "N/A":
+        ...
+    else:
+        kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
+        config.load_kube_config_from_dict(kubeconfig_dict)
+        with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
+            yaml.dump(kubeconfig_dict, f)
+            os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-argo"))
 
     to_register_in_groups, to_register_in_keycloak, maia_groups_dict, users_to_remove_from_group = get_user_table(
         settings=settings, maia_user_model=maia_user_model, maia_project_model=maia_project_model
@@ -1060,7 +1077,7 @@ def send_maia_message_email(receiver_emails, subject, message_body):
         return True
 
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logger.error(f"Error sending email: {str(e)}")
         return False
 
 
@@ -1100,7 +1117,7 @@ def generate_encryption_keys(folder_path):
             public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
         )
 
-    print("Keys generated successfully!")
+    logger.info("Keys generated successfully!")
 
 
 def encrypt_string(public_key, string):

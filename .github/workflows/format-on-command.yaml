@@ -1,0 +1,126 @@
+name: Format on Command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  format:
+    # Only run on PR comments that contain /format
+    # Only run if commenter has write permissions
+    if: |
+      github.event.issue.pull_request && 
+      contains(github.event.comment.body, '/format')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check user permissions
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+            if (!['write', 'admin'].includes(permission.permission)) {
+              core.setFailed('Only users with write or admin permissions can use /format command');
+            }
+      - name: Get PR branch
+        uses: actions/github-script@v6
+        id: get-pr
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            // Check if PR is from a fork
+            if (pr.data.head.repo.full_name !== pr.data.base.repo.full_name) {
+              core.setFailed('This workflow does not support formatting PRs from forks for security reasons.');
+              return null;
+            }
+            return {
+              ref: pr.data.head.ref,
+              sha: pr.data.head.sha,
+              repo: pr.data.head.repo.full_name
+            };
+
+      # Security note: This step checks out untrusted code from a PR.
+      # Mitigations:
+      # 1. Only users with write/admin permissions can trigger this workflow
+      # 2. PRs from forks are rejected
+      # 3. We checkout a specific SHA rather than a ref
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ fromJSON(steps.get-pr.outputs.result).sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install black
+        run: |
+          python -m pip install --upgrade pip
+          pip install black
+
+      - name: Run black formatter
+        run: |
+          black .
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if [[ -n $(git status -s) ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "Apply black formatting via /format command"
+          git push origin HEAD:${{ fromJSON(steps.get-pr.outputs.result).ref }}
+
+      - name: Add reaction to comment
+        if: steps.check-changes.outputs.changed == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Add reaction if no changes
+        if: steps.check-changes.outputs.changed == 'false'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'No formatting changes needed. The code is already formatted correctly! ✨'
+            });

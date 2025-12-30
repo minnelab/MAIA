@@ -12,9 +12,12 @@ from textwrap import dedent
 
 import click
 import yaml
+from loguru import logger
 from minio import Minio
 from omegaconf import OmegaConf
+from types import SimpleNamespace
 
+from MAIA.kubernetes_utils import get_minio_shareable_link
 import MAIA
 
 version = MAIA.__version__
@@ -42,12 +45,11 @@ def get_arg_parser():
     pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
     pars.add_argument(
-        "--form", type=str, required=True, help="YAML configuration file used to extract the namespace configuration."
+        "--form",
+        type=str,
+        required=True,
+        help="YAML configuration file used to extract the namespace configuration.",
     )
-    pars.add_argument(
-        "--maia-config-file", type=str, required=True, help="YAML configuration file used to extract the MAIA configuration."
-    )
-
     pars.add_argument(
         "--cluster-config-file",
         type=str,
@@ -62,21 +64,13 @@ def get_arg_parser():
 
 @click.command()
 @click.option("--form", type=str)
-@click.option("--maia-config-file", type=str)
 @click.option("--cluster-config-file", type=str)
 @click.option("--no-minimal", is_flag=True, default=False)
-def create_jupyterhub_config(form, maia_config_file, cluster_config_file, no_minimal):
-    create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, minimal=not no_minimal)
+def create_jupyterhub_config(form, cluster_config_file, no_minimal):
+    create_jupyterhub_config_api(form, cluster_config_file, minimal=not no_minimal)
 
 
-def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, config_folder=None, minimal=True):
-
-    if isinstance(maia_config_file, dict):
-        maia_form = maia_config_file
-    else:
-        with open(maia_config_file, "r") as f:
-            maia_form = yaml.safe_load(f)
-
+def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, minimal=True):
     if isinstance(cluster_config_file, dict):
         cluster_config = cluster_config_file
     else:
@@ -107,26 +101,45 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     hub_image = None
     hub_tag = None
-    if "hub_image" in cluster_config:
-        hub_image = cluster_config["hub_image"]
-        hub_tag = cluster_config["hub_tag"]
+    if "hub_image" in os.environ:
+        hub_image = os.environ["hub_image"]
+        hub_tag = os.environ["hub_tag"]
+    namespace = user_form["group_ID"].lower().replace("_", "-")
+    if "hub_image_" + namespace in os.environ:
+        hub_image = os.environ["hub_image_" + namespace]
+        hub_tag = os.environ["hub_tag_" + namespace]
 
     base_url = None
-    if "base_url" in cluster_config:
-        base_url = cluster_config["base_url"]
+    if "base_url" in os.environ:
+        base_url = os.environ["base_url"]
+    if "base_url_" + namespace in os.environ:
+        base_url = os.environ["base_url_" + namespace]
 
     keycloak = None
-    if "keycloak" in cluster_config:
-        keycloak = cluster_config["keycloak"]
+
+    if (
+        "keycloak_client_id" in os.environ
+        and "keycloak_client_secret" in os.environ
+        and "keycloak_authorize_url" in os.environ
+        and "keycloak_token_url" in os.environ
+        and "keycloak_userdata_url" in os.environ
+    ):
+        keycloak = {
+            "client_id": os.environ["keycloak_client_id"],
+            "client_secret": os.environ["keycloak_client_secret"],
+            "authorize_url": os.environ["keycloak_authorize_url"],
+            "token_url": os.environ["keycloak_token_url"],
+            "userdata_url": os.environ["keycloak_userdata_url"],
+        }
 
     namespace = user_form["group_ID"].lower().replace("_", "-")
     group_subdomain = user_form["group_subdomain"]
     team_id = user_form["group_ID"]
     resources_limits = user_form["resources_limits"]
 
-    gpu_request = False
+    gpu_request = 0
     if "gpu_request" in user_form:
-        gpu_request = user_form["gpu_request"]
+        gpu_request = int(user_form["gpu_request"])
 
     domain = cluster_config["domain"]
 
@@ -143,7 +156,13 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
     # Used for CIFS mount
     extra_host_volumes = []
 
-    extra_volumes = [{"name": "jupyterhub-shared", "pvc-name": "shared", "mount-path": "/home/maia-user/shared"}]
+    extra_volumes = [
+        {
+            "name": "jupyterhub-shared",
+            "pvc-name": "shared",
+            "mount-path": "/home/maia-user/shared",
+        }
+    ]
 
     jh_helm_template = {
         "resource": {
@@ -162,7 +181,12 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     jh_template = {
         "cull": {"enabled": False},
-        "ingress": {"enabled": True, "hosts": [hub_address], "annotations": {}, "tls": [{"hosts": [hub_address]}]},
+        "ingress": {
+            "enabled": True,
+            "hosts": [hub_address],
+            "annotations": {},
+            "tls": [{"hosts": [hub_address]}],
+        },
         "hub": {
             "config": {
                 "GenericOAuthenticator": {
@@ -173,9 +197,18 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                     "claim_groups_key": "groups",
                     "allowed_groups": [f"MAIA:{team_id}"],
                     "admin_groups": ["MAIA:admin"],
+                    "tls_verify": False,
+                    "tls_ca_file": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
+                    "http_request_kwargs": {"ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"},
                 },
-                "JupyterHub": {"admin_access": True, "authenticator_class": "generic-oauth"},
-                "Authenticator": {"admin_users": admins, "allowed_users": user_form["users"]},
+                "JupyterHub": {
+                    "admin_access": True,
+                    "authenticator_class": "generic-oauth",
+                },
+                "Authenticator": {
+                    "admin_users": admins,
+                    "allowed_users": user_form["users"],
+                },
             }
         },
         "singleuser": {
@@ -211,6 +244,18 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
         },
     }
 
+    jh_template["hub"]["extraVolumes"] = [
+        {"name": "kubernetes-ca", "secret": {"secretName": "kubernetes-ca"}},
+    ]
+    jh_template["hub"]["extraVolumeMounts"] = [
+        {
+            "name": "kubernetes-ca",
+            "mountPath": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
+            "subPath": "tls.crt",
+        },
+    ]
+    jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}
+
     if not minimal:
         jh_template["singleuser"]["extraEnv"]["INSTALL_QUPATH"] = "1"
         jh_template["singleuser"]["extraEnv"]["INSTALL_SLICER"] = "1"
@@ -218,6 +263,12 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
         # jh_template["singleuser"]["extraEnv"]["INSTALL_FREESURFER"] = "1"
         jh_template["singleuser"]["extraEnv"]["INSTALL_MITK"] = "1"
         jh_template["singleuser"]["extraEnv"]["INSTALL_NAPARI"] = "1"
+
+    if os.environ.get("DEV_BRANCH") is not None:
+        jh_template["singleuser"]["extraEnv"]["DEV_BRANCH"] = os.environ["DEV_BRANCH"]
+        jh_template["singleuser"]["extraEnv"]["GIT_EMAIL"] = os.environ["GIT_EMAIL"]
+        jh_template["singleuser"]["extraEnv"]["GIT_NAME"] = os.environ["GIT_NAME"]
+        jh_template["singleuser"]["extraEnv"]["GPG_KEY"] = os.environ["GPG_KEY"]
 
     # Perform base64 decoding if MINIO_ACCESS_KEY or MINIO_SECRET_KEY is not "N/A"
     if jh_template["singleuser"]["extraEnv"]["MINIO_ACCESS_KEY"] != "N/A":
@@ -246,28 +297,40 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
     if cluster_config["url_type"] == "subpath":
         jh_template["singleuser"]["extraEnv"]["MLFLOW_TRACKING_URI"] = f"https://{hub_address}/{namespace}-mlflow"
 
-    if "minio_env_name" in user_form or "minio_url" in cluster_config:
+    if "minio_env_name" in user_form or "MINIO_URL" in os.environ:
         if "minio_env_name" not in user_form:
             minio_env_name = team_id + "_env"
         else:
             minio_env_name = user_form["minio_env_name"]
         client = Minio(
-            cluster_config["minio_url"],
-            access_key=cluster_config["minio_access_key"],
-            secret_key=cluster_config["minio_secret_key"],
-            secure=cluster_config["minio_secure"],
+            os.environ["MINIO_URL"],
+            access_key=os.environ["MINIO_ACCESS_KEY"],
+            secret_key=os.environ["MINIO_SECRET_KEY"],
+            secure=os.environ["MINIO_SECURE"],
         )
         try:
-            client.fget_object(cluster_config["bucket_name"], minio_env_name, minio_env_name)
-            with open(minio_env_name, "r") as f:
-                file_string = f.read()
-                if file_string.startswith("name:"):
-                    jh_template["singleuser"]["extraEnv"]["CONDA_ENV"] = str(file_string)
-                else:
-                    jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
+            if minio_env_name.endswith(".zip"):
+                settings_dict = {
+                    "MINIO_PUBLIC_URL": os.environ["MINIO_URL"],
+                    "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
+                    "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
+                    "MINIO_PUBLIC_SECURE": os.environ["MINIO_SECURE"],
+                    "BUCKET_NAME": os.environ["BUCKET_NAME"],
+                }
+                settings = SimpleNamespace(**settings_dict)
+                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(
+                    minio_env_name, os.environ["BUCKET_NAME"], settings
+                )
+            else:
+                client.fget_object(os.environ["BUCKET_NAME"], minio_env_name, minio_env_name)
+                with open(minio_env_name, "r") as f:
+                    file_string = f.read()
+                    if file_string.startswith("name:"):
+                        jh_template["singleuser"]["extraEnv"]["CONDA_ENV"] = str(file_string)
+                    else:
+                        jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
         except Exception as e:
-            print(e)
-            print(f"Could not read {minio_env_name} from MinIO bucket {cluster_config['bucket_name']}")
+            logger.error(f"Error reading {minio_env_name} from MinIO bucket {os.environ['BUCKET_NAME']}: {e}")
     if "url_type" in cluster_config:
         if cluster_config["url_type"] == "subpath":
             jh_template["hub"]["baseUrl"] = f"/{group_subdomain}-hub"
@@ -290,10 +353,17 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                 ] = f"https://{hub_address}/{group_subdomain}-hub/oauth_callback"
 
     if "JHUB_IMAGE" in os.environ:
-        jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE"] + "/jupyterhub-ks-kaapana", "tag": "1.0"}
+        jh_template["hub"]["image"] = {"name": os.environ["JHUB_IMAGE"], "tag": "1.0"}
         jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE"].replace(".", "-").replace("/", "-")]
 
-    if not gpu_request:
+    if "JHUB_IMAGE_" + namespace in os.environ:
+        jh_template["hub"]["image"] = {
+            "name": os.environ["JHUB_IMAGE_" + namespace],
+            "tag": "1.0",
+        }
+        jh_template["hub"]["image"]["pullSecrets"] = [os.environ["JHUB_IMAGE_" + namespace].replace(".", "-").replace("/", "-")]
+
+    if gpu_request == 0:
         jh_template["singleuser"]["extraEnv"]["NVIDIA_VISIBLE_DEVICES"] = ""
 
     if "ssh_users" in user_form:
@@ -331,16 +401,29 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     if resources_limits["memory"][1].endswith(" Gi"):
         resources_limits["memory"][1] = resources_limits["memory"][1].replace(" Gi", "G")
+    elif resources_limits["memory"][1].endswith("Gi"):
+        resources_limits["memory"][1] = resources_limits["memory"][1].replace("Gi", "G")
     if resources_limits["memory"][0].endswith(" Gi"):
         resources_limits["memory"][0] = resources_limits["memory"][0].replace(" Gi", "G")
+    elif resources_limits["memory"][0].endswith("Gi"):
+        resources_limits["memory"][0] = resources_limits["memory"][0].replace("Gi", "G")
 
-    jh_template["singleuser"]["memory"] = {"limit": resources_limits["memory"][1], "guarantee": resources_limits["memory"][0]}
+    jh_template["singleuser"]["memory"] = {
+        "limit": resources_limits["memory"][1],
+        "guarantee": resources_limits["memory"][0],
+    }
 
-    jh_template["singleuser"]["cpu"] = {"limit": int(resources_limits["cpu"][1]), "guarantee": int(resources_limits["cpu"][0])}
+    jh_template["singleuser"]["cpu"] = {
+        "limit": int(resources_limits["cpu"][1]),
+        "guarantee": int(resources_limits["cpu"][0]),
+    }
 
     for extra_volume in extra_volumes:
         jh_template["singleuser"]["storage"]["extraVolumes"].append(
-            {"name": extra_volume["name"], "persistentVolumeClaim": {"claimName": extra_volume["pvc-name"]}}
+            {
+                "name": extra_volume["name"],
+                "persistentVolumeClaim": {"claimName": extra_volume["pvc-name"]},
+            }
         )
         jh_template["singleuser"]["storage"]["extraVolumeMounts"].append(
             {"name": extra_volume["name"], "mountPath": extra_volume["mount-path"]}
@@ -348,25 +431,48 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     for extra_host_volume in extra_host_volumes:
         jh_template["singleuser"]["storage"]["extraVolumes"].append(
-            {"name": extra_host_volume["name"], "hostPath": {"path": extra_host_volume["host-path"]}}
+            {
+                "name": extra_host_volume["name"],
+                "hostPath": {"path": extra_host_volume["host-path"]},
+            }
         )
         jh_template["singleuser"]["storage"]["extraVolumeMounts"].append(
-            {"name": extra_host_volume["name"], "mountPath": extra_host_volume["mount-path"]}
+            {
+                "name": extra_host_volume["name"],
+                "mountPath": extra_host_volume["mount-path"],
+            }
         )
 
-    jh_template["singleuser"]["image"] = {"name": "jupyter/datascience-notebook", "tag": "latest"}
+    jh_template["singleuser"]["image"] = {
+        "name": "jupyter/datascience-notebook",
+        "tag": "latest",
+    }
 
-    if "imagePullSecrets" in cluster_config:
-        jh_template["singleuser"]["image"]["pullSecrets"] = [cluster_config["imagePullSecrets"]]
+    if "imagePullSecrets" in os.environ:
+        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets"]]
+
+    if "imagePullSecrets_" + namespace in os.environ:
+        jh_template["singleuser"]["image"]["pullSecrets"] = [os.environ["imagePullSecrets_" + namespace]]
     if not minimal:
-        registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
+        if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+            registry_url = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
+        else:
+            registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
         jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
-    maia_workspace_version = maia_form["maia_workspace_version"]
-    maia_workspace_image = maia_form["maia_workspace_image"]
+    maia_workspace_version = os.environ["maia_workspace_version"]
+    maia_workspace_image = os.environ["maia_workspace_image"]
+    if "maia_workspace_image_" + namespace in os.environ:
+        maia_workspace_image = os.environ["maia_workspace_image_" + namespace]
+    if "maia_workspace_version_" + namespace in os.environ:
+        maia_workspace_version = os.environ["maia_workspace_version_" + namespace]
     if not minimal:
-        maia_workspace_image = maia_form["maia_workspace_pro_image"]
-        maia_workspace_version = maia_form["maia_workspace_pro_version"]
+        maia_workspace_image = os.environ["maia_workspace_pro_image"]
+        maia_workspace_version = os.environ["maia_workspace_pro_version"]
+        if "maia_workspace_pro_image_" + namespace in os.environ:
+            maia_workspace_image = os.environ["maia_workspace_pro_image_" + namespace]
+        if "maia_workspace_pro_version_" + namespace in os.environ:
+            maia_workspace_version = os.environ["maia_workspace_pro_version_" + namespace]
 
     jh_template["singleuser"]["profileList"] = [
         {
@@ -407,7 +513,12 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
     ]
 
     deploy_monai_toolkit = not minimal
-    if "maia_monai_toolkit_image" in maia_form and deploy_monai_toolkit:
+    if (
+        "maia_monai_toolkit_image" in os.environ or "maia_monai_toolkit_image_" + namespace in os.environ
+    ) and deploy_monai_toolkit:
+        image = os.environ["maia_monai_toolkit_image"]
+        if "maia_monai_toolkit_image_" + namespace in os.environ:
+            image = os.environ["maia_monai_toolkit_image_" + namespace]
         jh_template["singleuser"]["profileList"].append(
             {
                 "display_name": "MONAI Toolkit 3.0",
@@ -416,7 +527,7 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                     "Tutorial Notebooks for MONAI Core, MONAI Label and NVFlare for Federated Learning"
                 ),
                 "kubespawner_override": {
-                    "image": maia_form["maia_monai_toolkit_image"],
+                    "image": image,
                     "start_timeout": 3600,
                     "http_timeout": 3600,
                     "extra_resource_limits": {},
@@ -424,9 +535,9 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                 },
             }
         )
-        if gpu_request:
+        if gpu_request > 0:
             jh_template["singleuser"]["profileList"][-1]["kubespawner_override"]["extra_resource_limits"] = {
-                "nvidia.com/gpu": "1"
+                "nvidia.com/gpu": gpu_request
             }
 
     mount_cifs = form.get("extra_configs", {}).get("enable_cifs", False)
@@ -437,7 +548,10 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     if mount_cifs:
         jh_template["singleuser"]["storage"]["extraVolumes"].append(
-            {"name": "cifs-encryption-key", "secret": {"secretName": "cifs-encryption-public-key"}}
+            {
+                "name": "cifs-encryption-key",
+                "secret": {"secretName": "cifs-encryption-public-key"},
+            }
         )
         jh_template["singleuser"]["storage"]["extraVolumeMounts"].append(
             {"name": "cifs-encryption-key", "mountPath": "/opt/cifs-encryption-key"}
@@ -454,8 +568,14 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                     "http_timeout": 7200,
                     "extra_resource_limits": {},
                     "volumes": [
-                        {"name": "jupyter-shared", "persistentVolumeClaim": {"claimName": "shared"}},
-                        {"name": "home", "persistentVolumeClaim": {"claimName": "claim-{username}"}},
+                        {
+                            "name": "jupyter-shared",
+                            "persistentVolumeClaim": {"claimName": "shared"},
+                        },
+                        {
+                            "name": "home",
+                            "persistentVolumeClaim": {"claimName": "claim-{username}"},
+                        },
                         {"name": "shm-volume", "emptyDir": {"medium": "Memory"}},
                         {
                             "name": "cifs",
@@ -484,8 +604,14 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
                     ],
                     "volume_mounts": [
                         {"mountPath": "/home/maia-user/cifs", "name": "cifs"},
-                        {"mountPath": "/home/maia-user/cifs-shared", "name": "cifs-shared"},
-                        {"mountPath": "/home/maia-user/shared", "name": "jupyter-shared"},
+                        {
+                            "mountPath": "/home/maia-user/cifs-shared",
+                            "name": "cifs-shared",
+                        },
+                        {
+                            "mountPath": "/home/maia-user/shared",
+                            "name": "jupyter-shared",
+                        },
                         {"mountPath": "/dev/shm", "name": "shm-volume"},
                         {"mountPath": "/home/maia-user", "name": "home"},
                     ],
@@ -494,16 +620,32 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
             }
         )
 
-    if gpu_request:
-        jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["extra_resource_limits"] = {"nvidia.com/gpu": "1"}
-        jh_template["singleuser"]["profileList"][-1]["kubespawner_override"]["extra_resource_limits"] = {"nvidia.com/gpu": "1"}
-
+    if gpu_request > 0:
+        for profile in jh_template["singleuser"]["profileList"]:
+            if (
+                "environment" in profile["kubespawner_override"]
+                and "NVIDIA_VISIBLE_DEVICES" in profile["kubespawner_override"]["environment"]
+                and profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] == ""
+            ):
+                continue
+            else:
+                profile["kubespawner_override"]["extra_resource_limits"] = {"nvidia.com/gpu": gpu_request}
+    else:
+        for profile in jh_template["singleuser"]["profileList"]:
+            if "environment" not in profile["kubespawner_override"]:
+                profile["kubespawner_override"]["environment"] = {}
+            profile["kubespawner_override"]["environment"]["NVIDIA_VISIBLE_DEVICES"] = ""
+            profile["kubespawner_override"]["extra_resource_limits"] = {}
     if mount_cifs:
         for id, _ in enumerate(jh_template["singleuser"]["profileList"]):
             jh_template["singleuser"]["profileList"][id]["kubespawner_override"]["service_account"] = "secret-writer"
 
     jh_helm_template["resource"]["helm_release"]["jupyterhub"]["values"] = [yaml.dump(jh_template)]
 
+    jh_template["prePuller"] = {
+        "hook": {"enabled": False},
+        "continuous": {"enabled": False},
+    }
     chart_info = {}
     chart_info["chart_name"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["chart"]
     chart_info["chart_version"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["version"]
@@ -512,10 +654,16 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
     Path(config_folder).joinpath(team_id, "jupyterhub_values").mkdir(parents=True, exist_ok=True)
     Path(config_folder).joinpath(team_id, "jupyterhub_chart_info").mkdir(parents=True, exist_ok=True)
 
-    with open(Path(config_folder).joinpath(team_id, "jupyterhub_values", "jupyterhub_values.yaml"), "w") as f:
+    with open(
+        Path(config_folder).joinpath(team_id, "jupyterhub_values", "jupyterhub_values.yaml"),
+        "w",
+    ) as f:
         f.write(OmegaConf.to_yaml(jh_template))
 
-    with open(Path(config_folder).joinpath(team_id, "jupyterhub_chart_info", "jupyterhub_chart_info.yaml"), "w") as f:
+    with open(
+        Path(config_folder).joinpath(team_id, "jupyterhub_chart_info", "jupyterhub_chart_info.yaml"),
+        "w",
+    ) as f:
         f.write(OmegaConf.to_yaml(chart_info))
 
     return {

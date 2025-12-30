@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
+from loguru import logger
 
 
 def decrypt_string(private_key, string):
@@ -32,6 +33,6 @@ def decrypt_string(private_key, string):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: decrypt_string.py <private_key.pem> <encrypted_string>")
+        logger.error("Usage: decrypt_string.py <private_key.pem> <encrypted_string>")
         sys.exit(1)
-    print(decrypt_string(sys.argv[1], sys.argv[2]))
+    logger.info(decrypt_string(sys.argv[1], sys.argv[2]))

@@ -1,3 +1,5 @@
+{% raw %}
+```yaml
 ---
 - name: Create PV report
   hosts: all
@@ -220,3 +222,5 @@
         state: unmounted
       delegate_to: "{{ groups['all'][0] }}"
       run_once: true
+```
+{% endraw %}

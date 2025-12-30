@@ -1,0 +1,15 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ca_microk8s
+
+# Path to MicroK8s CA certificate file
+kubernetes_ca_crt_path: /var/snap/microk8s/current/certs/ca.crt
+
+# Path to MicroK8s CA private key file
+kubernetes_ca_key_path: /var/snap/microk8s/current/certs/ca.key
+
+# Namespace for cert-manager
+cert_manager_namespace: cert-manager
+
+# Name of the TLS secret to create in cert-manager namespace
+kubernetes_ca_secret_name: kubernetes-ca

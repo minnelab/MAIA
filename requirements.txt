@@ -1,5 +1,4 @@
 ruamel_yaml
-git+https://github.com/globocom/argocd-client.git
 python-keycloak
 kubernetes
 minio
@@ -15,6 +14,7 @@ click
 nltk
 hydra-core
 python-dotenv
+loguru
 flake8>=3.8.1
 flake8-bugbear<=24.2.6  # https://github.com/Project-MONAI/MONAI/issues/7690
 flake8-comprehensions
@@ -28,6 +28,11 @@ ruff
 pytype>=2020.6.1; platform_system != "Windows"
 types-setuptools
 mypy>=1.5.0, <1.12.0
+python-on-whales
+rich
+loguru
+ansible
+dotenv
 pytest>=8.0
 pytest-cov
 pytest-mock

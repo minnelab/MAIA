@@ -1,0 +1,20 @@
+{{- if .Values.jupyterhub_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-jupyterhub
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.jupyterhub_chart_info.chart_name }}
+    repoURL: {{.Values.jupyterhub_chart_info.repo_url}}
+    targetRevision: {{ .Values.jupyterhub_chart_info.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-jupyterhub
+      valuesObject:
+      {{ .Values.jupyterhub_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Release.Name }}
+{{- end }}

@@ -1,0 +1,31 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ufw
+- name: Enable UFW
+  ufw:
+    state: enabled
+  when: ufw_enabled | bool
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: "{{ ufw_ssh_port }}"
+    proto: "{{ ufw_ssh_proto }}"
+  when: ufw_enabled | bool and ufw_allow_ssh | bool
+
+- name: Allow all nodes to communicate with all nodes
+  ufw:
+    rule: allow
+    from_ip: "{{ hostvars[item].ansible_default_ipv4.address }}"
+    to_ip: "{{ ansible_default_ipv4.address }}"
+  with_items: "{{ groups['all'] }}"
+  when: ufw_enabled | bool and ufw_allow_inter_node_communication | bool
+
+- name: Allow additional ports
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    from_ip: "{{ item.from_ip | default(omit) }}"
+  loop: "{{ ufw_additional_rules }}"
+  when: ufw_enabled | bool and ufw_additional_rules | length > 0

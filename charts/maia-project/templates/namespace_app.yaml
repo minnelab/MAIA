@@ -1,0 +1,20 @@
+{{- if .Values.maia_namespace_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-namespace
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.maia_namespace_values.chart_name }}
+    repoURL: {{ .Values.maia_namespace_values.repo_url }}
+    targetRevision: {{ .Values.maia_namespace_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-namespace
+      valuesObject:
+      {{ .Values.maia_namespace_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Release.Name }}
+{{- end }}

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from loguru import logger
 
 
 # Load the iris dataset
@@ -51,10 +52,10 @@ def main():
     X_train, X_test = normalize_data(X_train, X_test)
 
     # Print the shapes of the training and testing sets
-    print('X_train shape:', X_train.shape)
-    print('y_train shape:', y_train.shape)
-    print('X_test shape:', X_test.shape)
-    print('y_test shape:', y_test.shape)
+    logger.info(f'X_train shape: {X_train.shape}')
+    logger.info(f'y_train shape: {y_train.shape}')
+    logger.info(f'X_test shape: {X_test.shape}')
+    logger.info(f'y_test shape: {y_test.shape}')
 
     # Train a Random Forest classifier
     clf = train_classifier(X_train, y_train)
@@ -63,7 +64,7 @@ def main():
     # Print the accuracy of the classifier
     accuracy = np.mean(y_pred == y_test)
 
-    print('Accuracy:', accuracy)
+    logger.info(f'Accuracy: {accuracy}')
     
 if __name__ == '__main__':
     main()

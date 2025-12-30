@@ -1,0 +1,20 @@
+{{- if .Values.mysql_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-mysql
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.mysql_values.chart_name }}
+    repoURL: {{ .Values.mysql_values.repo_url }}
+    targetRevision: {{ .Values.mysql_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-mysql
+      valuesObject:
+      {{ .Values.mysql_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Release.Name }}
+{{- end }}

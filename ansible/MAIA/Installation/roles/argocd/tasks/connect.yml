@@ -1,0 +1,24 @@
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Kill any process currently listening on port forwarding port (if exists)
+  ansible.builtin.shell: |
+    if lsof -i :{{ argocd_port_forward_port }} -t >/dev/null 2>&1; then
+      lsof -i :{{ argocd_port_forward_port }} -t | xargs kill -9
+    fi
+  ignore_errors: true
+  delegate_to: localhost
+  when: argocd_enable_port_forwarding | bool
+
+- name: Start SSH port forward to ArgoCD server service in background
+  ansible.builtin.shell: |
+    ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
+    nohup ssh -L {{ argocd_port_forward_port }}:${ARGOCD_SERVER_IP}:443 {{ inventory_hostname }} -N -o ExitOnForwardFailure=yes &
+  async: 0
+  poll: 0
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+  when: argocd_enable_port_forwarding | bool

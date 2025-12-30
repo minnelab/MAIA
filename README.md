@@ -1,32 +1,33 @@
 # MAIA Toolkit
 
+[![Article-NPJ Artificial Intelligence](https://img.shields.io/badge/NPJ_Artificial_Intelligence-black)](https://www.nature.com/articles/s44387-025-00042-6)
 [![arXiv](https://img.shields.io/badge/arXiv-2507.19489-b31b1b.svg)](https://arxiv.org/abs/2507.19489)
 
-[![Build](https://github.com/kthcloud/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/kthcloud/MAIA/actions/workflows/build.yaml)
-
+[![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
-![Version](https://img.shields.io/badge/MAIA-v1.9-blue)
+![Version](https://img.shields.io/badge/MAIA-v2.0.0-blue)
 [![License](https://img.shields.io/badge/license-GPL%203.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 ![Python](https://img.shields.io/badge/python-3.8+-orange)
+[![Ansible Collection](https://img.shields.io/badge/Ansible%20Galaxy-maia.installation-blue?logo=ansible)](https://galaxy.ansible.com/maia/installation)
 
 
-![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/kthcloud/MAIA?logo=github)
-![GitHub contributors](https://img.shields.io/github/contributors/kthcloud/MAIA?logo=github)
-![GitHub top language](https://img.shields.io/github/languages/top/kthcloud/MAIA?logo=github)
-![GitHub language count](https://img.shields.io/github/languages/count/kthcloud/MAIA?logo=github)
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/kthcloud/MAIA/publish_release.yaml?logo=github)
-![GitHub all releases](https://img.shields.io/github/downloads/kthcloud/MAIA/total?logo=github)
+![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/minnelab/MAIA?logo=github)
+![GitHub contributors](https://img.shields.io/github/contributors/minnelab/MAIA?logo=github)
+![GitHub top language](https://img.shields.io/github/languages/top/minnelab/MAIA?logo=github)
+![GitHub language count](https://img.shields.io/github/languages/count/minnelab/MAIA?logo=github)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/minnelab/MAIA/publish_release.yaml?logo=github)
+![GitHub all releases](https://img.shields.io/github/downloads/minnelab/MAIA/total?logo=github)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/maia-toolkit?logo=pypi)
-![GitHub](https://img.shields.io/github/license/kthcloud/MAIA?logo=github)
+![GitHub](https://img.shields.io/github/license/minnelab/MAIA?logo=github)
 ![PyPI - License](https://img.shields.io/pypi/l/maia-toolkit?logo=pypi)
 
 
-![GitHub repo size](https://img.shields.io/github/repo-size/kthcloud/MAIA?logo=github)
-![GitHub release (with filter)](https://img.shields.io/github/v/release/kthcloud/MAIA?logo=github)
+![GitHub repo size](https://img.shields.io/github/repo-size/minnelab/MAIA?logo=github)
+![GitHub release (with filter)](https://img.shields.io/github/v/release/minnelab/MAIA?logo=github)
 ![PyPI](https://img.shields.io/pypi/v/maia-toolkit?logo=pypi)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/MAIA.png" width="80%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/MAIA.png" width="80%" alt='MAIA'>
 </p>
 
 MAIA Toolkit is the main tool for deploying and managing MAIA, a platform for collaborative research in medical AI. 
@@ -43,23 +44,152 @@ The toolkit provides a set of scripts and tools to deploy and manage the MAIA pl
 
 ## Citation
 
-If you use the MAIA platform in your work, please cite the following [preprint](https://arxiv.org/abs/2507.19489):
+If you use the MAIA platform in your work, please cite the following [paper](https://www.nature.com/articles/s44387-025-00042-6):
 
 ```
-Bendazzoli, S., Persson, S., Astaraki, M., Pettersson, S., Grozman, V., & Moreno, R. (2025). MAIA: A Collaborative Medical AI Platform for Integrated Healthcare Innovation. arXiv preprint [arXiv:2507.19489](https://arxiv.org/abs/2507.19489).
+Bendazzoli, S., Persson, S., Astaraki, M. et al. MAIA: a collaborative medical AI platform for integrated healthcare innovation. npj Artif. Intell. 1, 45 (2025). https://doi.org/10.1038/s44387-025-00042-6
 ```
 
-## Installation
+## Quickstart: Install MAIA in 10 Minutes
 
-To install the MAIA Toolkit, run:
+MAIA ships with a **one-command installer** that sets up everything you need: Kubernetes, its configuration, the MAIA Core and Admin layers, and the MAIA Dashboard so you can start building projects immediately.
 
-```shell
-pip install maia-toolkit
+The installer is powered by the **`MAIA.Installation` Ansible collection**, which provides roles and playbooks to install and configure the MAIA platform on a Kubernetes cluster.
+
+For more details, please refer to the [MAIA.Installation](https://galaxy.ansible.com/ui/repo/published/maia/installation) documentation.
+
+To run the installer, you must prepare a **configuration folder** containing:
+
+- **Inventory**: an Ansible inventory file (or folder) defining your hosts and their roles.
+- **Configuration file**: a `config.yaml` file describing the installation steps and options.
+
+### Minimal Installation
+
+Below is a minimal example that installs a full MAIA stack on a fresh **Ubuntu 24.04** server named `maia-node-0`.
+
+#### Example `config.yaml`
+
+```yaml
+steps:
+  - prepare_hosts
+  - configure_hosts
+  - install_microk8s
+  - install_maia_core
+  - install_maia_admin
+  - configure_oidc_authentication
+  - get_kubeconfig_from_rancher_local
+  - configure_maia_dashboard
+
+prepare_hosts:
+  nvidia_drivers: true
+  ufw: true
+  nfs: false
+  cifs: false
+
+configure_hosts:
+  auto_sync: true
+
+install_microk8s:
+  install_microk8s: true
+  enable_oidc_microk8s: true
+  enable_ca_microk8s: true
+  install_argocd: true
+  connect_to_microk8s: false
+  connect_to_argocd: false
+
+install_maia_core:
+  auto_sync: true
+
+install_maia_admin:
+  auto_sync: true
+
+configure_oidc_authentication:
+  configure_rancher: true
+  configure_harbor: true
+  harbor_admin_user: admin
+  harbor_admin_pass: Harbor12345
+
+get_kubeconfig_from_rancher_local:
+  kubeconfig_file: "local-from-rancher.yaml"
+
+configure_maia_dashboard:
+  auto_sync: true
+
+env:
+  MAIA_PRIVATE_REGISTRY: ""
+  CLUSTER_DOMAIN: "example.maia.com"
+  CLUSTER_NAME: "maia-cluster"
+  INGRESS_RESOLVER_EMAIL: ""
+  K8S_DISTRIBUTION: "microk8s"
+
+cluster_config_extra_env:
+  selfsigned: true
+  shared_storage_class: microk8s-hostpath
 ```
 
-## Deploy for MicroK8s
+#### Example `inventory`
 
-To deploy and configure the MAIA platform on a MicroK8s cluster, follow the instructions in the [MAIA-MicroK8s](Installation/README.md) file.
+```ini
+[control-plane]
+maia-dev-node-0 ansible_host=127.0.0.1 ansible_connection=local ansible_user=ansible-user ansible_become_password=ansible ansible_become=true ansible_become_method=sudo
+```
+
+#### Run the installer
+
+```bash
+MAIA_Install --config-folder <CONFIG_FOLDER>
+```
+
+Replace `<CONFIG_FOLDER>` with the path to the folder containing your `config.yaml` and `inventory`.
+
+Once the installation is complete, you can access the MAIA Dashboard at `https://maia.<cluster_domain>`.
+Wait for the dashboard to be ready by checking the `maia-dashboard` namespace:
+
+```bash
+export KUBECONFIG=<CONFIG_FOLDER>/<CLUSTER_NAME>-kubeconfig.yaml
+kubectl get pod -n maia-dashboard
+```
+Output:
+```bash
+NAME                                               READY   STATUS    RESTARTS   AGE
+admin-minio-tenant-pool-0-0                        2/2     Running   0          44m
+maia-admin-maia-dashboard-b87475666-2vs77          1/1     Running   0          3m15s
+maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          3m57s
+```
+
+For first-access, you can use the following credentials:
+```bash
+username: admin@maia.se
+password [Temporary]: Admin
+```
+
+### Installation on Windows Subsystem for Linux (WSL)
+
+To install MAIA on Windows Subsystem for Linux (WSL), you can use the following one-command installer:
+```bash
+LATEST=$(curl -s https://api.github.com/repos/minnelab/MAIA/releases/latest | grep tag_name | cut -d '"' -f4)
+wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA_WSL.sh" && chmod +x install_MAIA_WSL.sh && ./install_MAIA_WSL.sh
+```
+To access all the features of MAIA, verify that all the subdomains are mapped in your Windows hosts file:
+
+
+```bash
+# Add the following lines to your Windows hosts file:
+# C:\Windows\System32\drivers\etc\hosts
+<WSL_IP> <domain>
+<WSL_IP> traefik.<domain>
+<WSL_IP> dashboard.<domain>
+<WSL_IP> grafana.<domain>
+<WSL_IP> iam.<domain>
+<WSL_IP> registry.<domain>
+<WSL_IP> mgmt.<domain>
+<WSL_IP> minio.<domain>
+<WSL_IP> argocd.<domain>
+<WSL_IP> maia.<domain>
+<WSL_IP> test.<domain>
+<WSL_IP> minio.test.<domain>
+<WSL_IP> login.<domain>
+```
 
 ## MAIA Architecture
 
@@ -69,7 +199,7 @@ MAIA is composed of three different layers, each serving a specific purpose:
 ### MAIA Core:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/dashboard/image/README/MAIA_Core.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/dashboard/image/README/MAIA_Core.png" width="70%" alt='MAIA'>
 </p>
 
 The `MAIA Core` layer includes the core components that provide the basic functionality of the platform.
@@ -92,7 +222,7 @@ The core components of MAIA include:
 
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/dashboard/image/README/MAIA-Admin.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/dashboard/image/README/MAIA-Admin.png" width="70%" alt='MAIA'>
 </p>
 
 
@@ -104,7 +234,7 @@ The admin components of MAIA include:
 - **Login App**: A Django app that allows users to log in to the MAIA API using OpenID Connect authentication.
 - **Keycloak**: An open-source identity and access management tool that allows users to manage the users and roles associated with the MAIA API.
 - **Harbor**: A container image registry that allows users to store and distribute container images.
-- [**MAIA Dashboard**](dashboard/README.md): A web-based dashboard that allows users to register projects, request resources, and access the different MAIA services deployed on the Kubernetes cluster.
+- **MAIA Dashboard**: A web-based dashboard that allows users to register projects, request resources, and access the different MAIA services deployed on the Kubernetes cluster.
 
 ### MAIA Namespaces:
 
@@ -112,12 +242,16 @@ The `MAIA Namespaces` layer is designed to be project-specific, allowing users t
 This layers is designed to provide the external interfaces for the users to interact with the platform, making the MAIA platform remotely accessible to the users.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/dashboard/image/README/MAIA_Workspace.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/dashboard/image/README/MAIA_Workspace.png" width="70%" alt='MAIA'>
 </p>
 
 
 
 The MAIA platform provides a range of applications and tools that you can use to develop your projects, grouped into a *MAIA Workspace*.
+
+#### Workspace Credentials Configuration
+
+The MAIA Workspace supports customizable user credentials. You can set your preferred username and password by creating a `.env` file in your home directory with `MAIA_USERNAME` and `MAIA_PASSWORD` variables. For detailed information, see the [Workspace Credentials Documentation](docker/MAIA-Workspace/WORKSPACE_CREDENTIALS.md).
 
 The MAIA Workspace includes:
 - **Jupyter Notebook**: A web-based interactive development environment for Python, R, and other programming languages.
@@ -144,7 +278,7 @@ Additionally, the MAIA platform provides access to a range of cloud services and
 - **MONAI Deploy [Experimental]**: An open-source platform for deploying deep learning models for medical imaging in clinical production settings.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kthcloud/maia/master/Workspace.png" width="70%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/Workspace.png" width="70%" alt='MAIA'>
 </p>
 
 ## Development and Testing
