@@ -51,6 +51,11 @@ jobs:
               repo: pr.data.head.repo.full_name
             };
 
+      # Security note: This step checks out untrusted code from a PR.
+      # Mitigations:
+      # 1. Only users with write/admin permissions can trigger this workflow
+      # 2. PRs from forks are rejected
+      # 3. We checkout a specific SHA rather than a ref
       - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
