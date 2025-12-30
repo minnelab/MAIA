@@ -13,6 +13,7 @@ import json
 import yaml
 
 from loguru import logger
+
 version = MAIA.__version__
 
 DESC = dedent(

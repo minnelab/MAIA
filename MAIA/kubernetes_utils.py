@@ -14,7 +14,6 @@ from kubernetes.client.rest import ApiException
 from loguru import logger
 
 
-
 def get_minio_shareable_link(object_name, bucket_name, settings):
     try:
         client = Minio(

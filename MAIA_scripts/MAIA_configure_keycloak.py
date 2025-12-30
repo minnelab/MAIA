@@ -7,6 +7,7 @@ from textwrap import dedent
 from pathlib import Path
 
 from loguru import logger
+
 EPILOG = dedent(
     """
     Example call:
