@@ -921,10 +921,10 @@ def create_cifs_secret_from_context(namespace, user_id, username, password, publ
             existing_secret = api_instance.read_namespaced_secret(secret.metadata.name, namespace)
             # If it exists, delete it
             if existing_secret is not None:
-                print(f"Deleting existing secret: {secret.metadata.name}")
+                logger.debug(f"Deleting existing secret: {secret.metadata.name}")
                 api_instance.delete_namespaced_secret(secret.metadata.name, namespace)
         except kubernetes.client.exceptions.ApiException as e:
-            print(f"Exception checking/deleting existing secret: {e}")
+            logger.debug(f"Exception checking/deleting existing secret: {e}")
             if e.status != 404:
                 raise
         api_instance.create_namespaced_secret(namespace, secret)

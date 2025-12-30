@@ -28,7 +28,6 @@ from MAIA.maia_admin import (
     install_maia_project,
 )
 from MAIA.maia_core import create_rancher_values
-from loguru import logger
 
 version = MAIA.__version__
 
@@ -76,7 +75,7 @@ def get_arg_parser():
 
 
 async def verify_installed_maia_admin_toolkit(project_id, namespace):
-    print(os.environ["KUBECONFIG"])
+    logger.info(f"KUBECONFIG: {os.environ['KUBECONFIG']}")
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
     try:
@@ -230,7 +229,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
                 "--values",
                 helm_command["values"],
             ]
-            print(" ".join(cmd))
+            logger.debug(f"Helm command: {' '.join(cmd)}")
 
     values = {
         "defaults": [

@@ -44,7 +44,7 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
     try:
         secret = api.read_namespaced_secret(name=secret_name, namespace=source_namespace)
     except ApiException as e:
-        print("Exception when calling CoreV1Api->read_namespaced_secret: %s\n" % e)
+        logger.error(f"Exception when calling CoreV1Api->read_namespaced_secret: {e}")
         return None
     try:
         api.create_namespaced_secret(
@@ -55,7 +55,7 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
             },
         )
     except ApiException as e:
-        print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+        logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
         return None
     return secret
 

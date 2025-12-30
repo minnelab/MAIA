@@ -301,19 +301,7 @@ def deploy_maia_toolkit_api(
                 text=True,
             )
 
-            print(
-                " ".join(
-                    [
-                        "helm",
-                        "registry",
-                        "login",
-                        original_repo,
-                        "--username",
-                        username,
-                        "--password-stdin",
-                    ]
-                )
-            )
+            logger.debug(f"Helm registry login {original_repo} --username {username} --password-stdin")
             subprocess.run(
                 [
                     "helm",
@@ -426,8 +414,8 @@ def deploy_maia_toolkit_api(
         project_version = os.environ["maia_project_version"]
         json_key_path = os.environ.get("JSON_KEY_PATH", None)
 
-        print(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
-        print(f"Using JSON key path: {json_key_path}")
+        logger.info(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
+        logger.info(f"Using JSON key path: {json_key_path}")
         msg = asyncio.run(
             install_maia_project(
                 group_id,
@@ -443,7 +431,7 @@ def deploy_maia_toolkit_api(
     else:
         argocd_host = os.environ["argocd_host"]
         password = os.environ["ARGOCD_PASSWORD"]
-        print("MAIA Workspace already installed")
+        logger.info("MAIA Workspace already installed")
         get_maia_toolkit_apps(group_id, password, argocd_host)
 
 

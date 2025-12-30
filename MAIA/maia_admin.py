@@ -656,7 +656,7 @@ def get_maia_toolkit_apps(group_id, password, argo_cd_host):
     Example
     -------
     apps = get_maia_toolkit_apps("maia-core", "password", "http://localhost:8080")
-    print(apps)
+    logger.info(f"Apps: {apps}")
 
     """
 
@@ -664,8 +664,8 @@ def get_maia_toolkit_apps(group_id, password, argo_cd_host):
     if response.status_code == 200:
         cookies = {"argocd.token": response.json()["token"]}  # <- session cookie
     else:
-        print(f"Failed to get token: {response.status_code}")
-        print(response.text)
+        logger.error(f"Failed to get token: {response.status_code}")
+        logger.error(f"Response: {response.text}")
         return
 
     apps_url = f"{argo_cd_host}/api/v1/applications?projects={group_id}"
@@ -676,9 +676,9 @@ def get_maia_toolkit_apps(group_id, password, argo_cd_host):
         data = resp.json()
         if "items" in data and data["items"] is not None:
             app_names = [app["metadata"]["name"] for app in data.get("items", [])]
-            print("✅ Applications in project:", group_id)
+            logger.info(f"✅ Applications in project: {group_id}")
             for name in app_names:
-                print(" -", name)
+                logger.info(f" - {name}")
                 item = next((item for item in data.get("items", []) if item["metadata"]["name"] == name), None)
                 apps.append(
                     {
@@ -690,8 +690,8 @@ def get_maia_toolkit_apps(group_id, password, argo_cd_host):
                 )
         return apps
     else:
-        print(f"❌ Failed to fetch apps: {resp.status_code}")
-        print(resp.text)
+        logger.error(f"❌ Failed to fetch apps: {resp.status_code}")
+        logger.error(f"Response: {resp.text}")
         return []
 
 
@@ -748,7 +748,7 @@ async def install_maia_project(
                     docker_credentials = f.read()
                     username = "_json_key"
                     password = docker_credentials
-            print("helm registry login", project_repo, "--insecure", "-u", username, "--password-stdin")
+            logger.debug(f"helm registry login {project_repo} --insecure -u {username} --password-stdin")
             result = subprocess.run(
                 ["helm", "registry", "login", project_repo, "--insecure", "-u", username, "--password-stdin"],
                 input=password.encode(),

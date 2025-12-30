@@ -113,7 +113,7 @@ def main():
     num_sent, failed = send_all_users_reminder_email(settings_dict, email_list)
     logger.info(f"Successfully sent {num_sent} emails")
     if failed:
-        print(f"Failed to send emails to: {', '.join(failed)}")
+        logger.error(f"Failed to send emails to: {', '.join(failed)}")
 
 
 if __name__ == "__main__":
