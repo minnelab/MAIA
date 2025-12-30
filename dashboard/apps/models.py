@@ -69,6 +69,8 @@ class MAIAProject(models.Model):
 
     cluster = models.TextField("cluster", default="N/A", null=True)
     minimal_env = models.TextField("minimal_env", default="Base", null=True)
+    description = models.TextField("description", blank=True, null=True)
+    supervisor = models.EmailField("supervisor", max_length=150, null=True, blank=True)
 
 
 class MAIAUser(User):

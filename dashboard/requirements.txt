@@ -30,3 +30,6 @@ python-keycloak
 omegaconf
 hydra-core
 pyhelm3
+pytest
+pytest-env
+pytest-django

@@ -82,6 +82,18 @@
                       </div>
 
                       <div class="mb-3">
+                        <label>Project Description</label>
+                        {{ form.description }}
+                        <span class="text-danger">{{ form.description.errors }}</span>
+                      </div>
+
+                      <div class="mb-3">
+                        <label>Principal Investigator</label>
+                        {{ form.supervisor }}
+                        <span class="text-danger">{{ form.supervisor.errors }}</span>
+                      </div>
+
+                      <div class="mb-3">
                         <label>GPU Request</label>
                         {{ form.gpu }}
                         <span class="text-danger">{{ form.gpu.errors }}</span>

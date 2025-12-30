@@ -1358,7 +1358,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                         "dashboard": "https://dashboard." + cluster_config_dict["domain"],
                         "traefik": "https://traefik." + cluster_config_dict["domain"],
                         "grafana": "https://grafana." + cluster_config_dict["domain"],
-                        "keycloak": "https://iam." + cluster_config_dict["domain"],
+                        "keycloak": "https://iam." + cluster_config_dict["domain"] + "/admin/maia/console/",
                         "login": "https://login." + cluster_config_dict["domain"],
                         "rancher": "https://mgmt." + cluster_config_dict["domain"],
                         "registry": "https://registry." + cluster_config_dict["domain"],

@@ -6,6 +6,41 @@ from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from typing import Any
 
 
+def get_users_in_group_in_keycloak(group_id, settings) -> list[str]:
+    """
+    Retrieve users in a group in Keycloak.
+
+    Parameters
+    ----------
+    group_id : str
+        The ID of the group to retrieve users from.
+    settings : object
+        An object containing the Keycloak server settings. It should have the following attributes:
+        - OIDC_SERVER_URL: str, the URL of the Keycloak server.
+        - OIDC_USERNAME: str, the username for Keycloak authentication.
+        - OIDC_REALM_NAME: str, the realm name in Keycloak.
+        - OIDC_RP_CLIENT_ID: str, the client ID for Keycloak.
+        - OIDC_RP_CLIENT_SECRET: str, the client secret for Keycloak.
+
+    Returns
+    -------
+    list[str]
+        A list of email addresses of users in the group.
+    """
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=settings.OIDC_SERVER_URL,
+        username=settings.OIDC_USERNAME,
+        password="",
+        realm_name=settings.OIDC_REALM_NAME,
+        client_id=settings.OIDC_RP_CLIENT_ID,
+        client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    users = keycloak_admin.get_group_members(group_id=group_id)
+    return [user["email"] for user in users if "email" in user]
+
+
 def get_user_ids(settings):
     """
     Retrieve user IDs and their associated MAIA groups from Keycloak.

@@ -40,6 +40,7 @@ class SignUpForm(UserCreationForm):
 
         self.fields["namespace"] = forms.ChoiceField(
             choices=[(maia_group, maia_group) for maia_group in maia_groups.values() if maia_group not in ["admin", "users"]],
+            required=False,
             widget=forms.Select(
                 attrs={
                     "class": "form-select text-center fw-bold",
@@ -77,7 +78,7 @@ class RegisterProjectForm(forms.ModelForm):
 
     email = forms.EmailField(
         widget=forms.EmailInput(
-            attrs={"placeholder": "Your Email. You are registered as the Project Admin.", "class": "form-control"}
+            attrs={"placeholder": "Your Email. If you specify a Principal Investigator below, they will be registered as the Project Admin instead.", "class": "form-control"}
         )
     )
 
@@ -111,6 +112,27 @@ class RegisterProjectForm(forms.ModelForm):
         choices=cpu_limit,
     )
 
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "placeholder": "Brief description of your project",
+                "class": "form-control",
+                "rows": 3
+            }
+        )
+    )
+
+    supervisor = forms.EmailField(
+        required=False,
+        widget=forms.EmailInput(
+            attrs={
+                "placeholder": "Email of the Principal Investigator (optional for student projects)",
+                "class": "form-control"
+            }
+        )
+    )
+
     class Meta:
         model = MAIAProject
-        fields = ("id", "namespace", "gpu", "conda", "date", "email", "memory_limit", "cpu_limit")
+        fields = ("id", "namespace", "gpu", "conda", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
