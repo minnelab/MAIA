@@ -25,6 +25,11 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number
             });
+            // Check if PR is from a fork
+            if (pr.data.head.repo.full_name !== pr.data.base.repo.full_name) {
+              core.setFailed('This workflow does not support formatting PRs from forks for security reasons.');
+              return null;
+            }
             return {
               ref: pr.data.head.ref,
               sha: pr.data.head.sha,
