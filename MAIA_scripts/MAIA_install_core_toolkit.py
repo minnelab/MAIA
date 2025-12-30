@@ -39,7 +39,6 @@ from MAIA.maia_core import (
     create_traefik_values,
     create_metrics_server_values,
 )
-from loguru import logger
 
 version = MAIA.__version__
 
