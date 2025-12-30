@@ -191,6 +191,46 @@ To access all the features of MAIA, verify that all the subdomains are mapped in
 <WSL_IP> login.<domain>
 ```
 
+## MAIA Dashboard Toolkit
+
+The MAIA dashboard is now integrated into the `maia-toolkit` Python package, allowing you to run it locally for development and testing purposes.
+
+### Installing the Dashboard
+
+The dashboard is automatically included when you install `maia-toolkit`:
+
+```bash
+pip install maia-toolkit
+```
+
+### Running the Dashboard
+
+To set up and run the dashboard locally:
+
+```bash
+MAIA_setup_dashboard
+```
+
+This command will:
+- Create necessary database migrations
+- Apply migrations to the database
+- Start the development server on `http://0.0.0.0:8000`
+
+### Dashboard Options
+
+```bash
+# Run on a specific host and port
+MAIA_setup_dashboard --host 127.0.0.1 --port 8080
+
+# Only run migrations without starting the server
+MAIA_setup_dashboard --no-server
+
+# Run the server in background mode
+MAIA_setup_dashboard --background
+```
+
+For detailed documentation on the dashboard integration, see [Dashboard Integration Guide](docs/dashboard_integration.md).
+
 ## MAIA Architecture
 
 MAIA is built on top of Kubernetes, a popular open-source container orchestration platform. The platform is designed to be modular and extensible, allowing users to customize and extend its functionality to suit their needs. 
