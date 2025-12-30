@@ -33,3 +33,4 @@ pyhelm3
 pytest
 pytest-env
 pytest-django
+loguru

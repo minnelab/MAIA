@@ -50,6 +50,7 @@ from .services import (
     delete_group as delete_group_service,
 )
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from loguru import logger
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 
@@ -394,9 +395,9 @@ def index(request):
         )
     )
 
-    print("Users to Register in Keycloak: ", to_register_in_keycloak)
-    print("Users to Register in Groups: ", to_register_in_groups)
-    print("Users to Remove from Group: ", users_to_remove_from_group)
+    logger.info("Users to Register in Keycloak: ", to_register_in_keycloak)
+    logger.info("Users to Register in Groups: ", to_register_in_groups)
+    logger.info("Users to Remove from Group: ", users_to_remove_from_group)
 
     if request.method == "POST":
 

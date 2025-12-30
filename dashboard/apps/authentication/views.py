@@ -20,6 +20,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from loguru import logger
 
 
 class RegisterAnonThrottle(AnonRateThrottle):
@@ -178,7 +179,7 @@ def send_maia_email(request):
             # return redirect("/login/")
 
         else:
-            print(form.errors)
+            logger.error(form.errors)
             msg = "Form is not valid"
     else:
         form = MAIAInfoForm()
@@ -253,16 +254,16 @@ def register_project(request, api=False):
                     with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
                         for chunk in request.FILES["conda"].chunks():
                             destination.write(chunk)
-                    print(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
+                    logger.info(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
                     client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.zip", f"/tmp/{namespace}_env.zip")
-                    print(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
+                    logger.info(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
                 else:
                     with open(f"/tmp/{namespace}_env", "wb+") as destination:
                         for chunk in request.FILES["conda"].chunks():
                             destination.write(chunk)
-                    print(f"Storing {namespace}_env in MinIO, in bucket {settings.BUCKET_NAME}")
+                    logger.info(f"Storing {namespace}_env in MinIO, in bucket {settings.BUCKET_NAME}")
                     client.fput_object(settings.BUCKET_NAME, f"{namespace}_env", f"/tmp/{namespace}_env")
-                    print(get_minio_shareable_link(f"{namespace}_env", settings.BUCKET_NAME, settings))
+                    logger.info(get_minio_shareable_link(f"{namespace}_env", settings.BUCKET_NAME, settings))
 
             if settings.DISCORD_URL is not None:
                 send_discord_message(username=email, namespace=namespace, url=settings.DISCORD_URL, project_registration=True)

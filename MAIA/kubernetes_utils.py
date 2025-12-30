@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import json
-import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -14,8 +13,6 @@ from kubernetes import config
 from kubernetes.client.rest import ApiException
 from loguru import logger
 
-# Disable standard logging to avoid duplication with loguru
-logging.disable(logging.CRITICAL)
 
 
 def get_minio_shareable_link(object_name, bucket_name, settings):

@@ -1,4 +1,4 @@
-import logging
+
 from django.conf import settings
 from django.db import IntegrityError
 from keycloak.exceptions import KeycloakPostError, KeycloakDeleteError
@@ -14,8 +14,7 @@ from MAIA.keycloak_utils import (
     delete_user_in_keycloak,
 )
 from django.db import transaction
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 RESERVED_GROUPS = []
 if getattr(settings, "ADMIN_GROUP", None):

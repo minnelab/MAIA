@@ -6,9 +6,7 @@ import time
 from django.conf import settings
 from apps.models import MAIAUser, User
 import threading
-import logging
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 _jwks_cache = None
 _jwks_cache_timestamp = 0
