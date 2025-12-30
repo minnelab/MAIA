@@ -11,10 +11,25 @@ permissions:
 jobs:
   format:
     # Only run on PR comments that contain /format
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/format')
+    # Only run if commenter has write permissions
+    if: |
+      github.event.issue.pull_request && 
+      contains(github.event.comment.body, '/format')
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check user permissions
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+            if (!['write', 'admin'].includes(permission.permission)) {
+              core.setFailed('Only users with write or admin permissions can use /format command');
+            }
       - name: Get PR branch
         uses: actions/github-script@v6
         id: get-pr
@@ -39,8 +54,9 @@ jobs:
       - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
-          ref: ${{ fromJSON(steps.get-pr.outputs.result).ref }}
+          ref: ${{ fromJSON(steps.get-pr.outputs.result).sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
@@ -72,7 +88,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m "Apply black formatting via /format command"
-          git push
+          git push origin HEAD:${{ fromJSON(steps.get-pr.outputs.result).ref }}
 
       - name: Add reaction to comment
         if: steps.check-changes.outputs.changed == 'true'
