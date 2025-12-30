@@ -1,0 +1,20 @@
+{{- if .Values.mlflow_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-mlflow
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.mlflow_values.chart_name }}
+    repoURL: {{ .Values.mlflow_values.repo_url }}
+    targetRevision: {{ .Values.mlflow_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-mlflow
+      valuesObject:
+      {{ .Values.mlflow_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Release.Name }}
+{{- end }}

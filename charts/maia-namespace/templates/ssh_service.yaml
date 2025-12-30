@@ -1,0 +1,46 @@
+{{- range .Values.users }}
+apiVersion: v1
+kind: Service
+metadata:
+    name: jupyter-{{ .jupyterhub_username }}-ssh
+    namespace: {{ $.Values.namespace }}
+    {{- if and $.Values.metallbSharedIp $.Values.metallbIpPool }}
+    annotations:
+        metallb.universe.tf/allow-shared-ip: {{ $.Values.metallbSharedIp }}
+        metallb.universe.tf/ip-allocated-from-pool: {{ $.Values.metallbIpPool }}
+    {{- end }}
+spec:
+    {{- if $.Values.loadBalancerIp }}
+  loadBalancerIP: {{ $.Values.loadBalancerIp }}
+    {{- end }}
+  ports:
+  - port: {{ .sshPort }}
+    targetPort: 2022
+    name: ssh
+    protocol: TCP
+    {{- if eq $.Values.serviceType "NodePort" }}
+    nodePort: {{ .sshPort }}
+    {{- end }}
+  selector:
+    hub.jupyter.org/username: {{ .jupyterhub_username }}
+  type: {{ $.Values.serviceType }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: jupyter-{{ .jupyterhub_username }}
+    namespace: {{ $.Values.namespace }}
+spec:
+  ports:
+  - name: remote-desktop-port
+    protocol: TCP
+    port: 80
+    targetPort: 80
+  - name: jupyter-port
+    protocol: TCP
+    port: 8888
+    targetPort: 8888
+  selector:
+    hub.jupyter.org/username: {{ .jupyterhub_username }}
+---
+{{- end }}

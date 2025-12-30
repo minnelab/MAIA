@@ -36,7 +36,8 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
     except Exception as e:
         logger.error(f"Error connecting to MinIO: {e}")
         return None
-    
+
+
 def label_pod_for_deletion(namespace, pod_name):
     """
     Label a Kubernetes pod for deletion by adding a 'terminate-at' annotation.
@@ -338,7 +339,9 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
                                 "expiration": pod["metadata"]["annotations"].get("terminate-at", "N/A"),
                             }
                             if "terminate-at" in pod["metadata"]["annotations"]:
-                                expiry_time = datetime.strptime(pod["metadata"]["annotations"].get("terminate-at"), "%Y-%m-%dT%H:%M:%SZ")
+                                expiry_time = datetime.strptime(
+                                    pod["metadata"]["annotations"].get("terminate-at"), "%Y-%m-%dT%H:%M:%SZ"
+                                )
                                 if datetime.utcnow() > expiry_time:
                                     gpu_allocations[pod_name + ", " + pod["metadata"]["namespace"]]["is_expired"] = True
 
@@ -653,11 +656,17 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                             "url": "https://" + rule["host"] + path["path"] + "/dicom-web/",
                                         }
                                     )
-                            if "app.kubernetes.io/name" in ingress["metadata"]["labels"] and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard":
-                                nvflare_dashboards.append({
-                                    "name": ingress["metadata"]["name"][:-len("-maia-nvflare-dashboard")],
-                                    "url": "https://" + rule["host"] + path["path"],
-                                })
+                            if (
+                                "labels" in ingress["metadata"]
+                                and "app.kubernetes.io/name" in ingress["metadata"]["labels"]
+                                and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard"
+                            ):
+                                nvflare_dashboards.append(
+                                    {
+                                        "name": ingress["metadata"]["name"][: -len("-maia-nvflare-dashboard")],
+                                        "url": "https://" + rule["host"] + path["path"],
+                                    }
+                                )
                             if path["backend"]["service"]["name"] == namespace + "-mlflow-mkg" and path["path"].endswith(
                                 "mlflow"
                             ):
@@ -790,9 +799,9 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
     else:
         for remote_desktop in remote_desktop_dict:
             if remote_desktop_dict[remote_desktop].startswith("KUBEFLOW"):
-                remote_desktop_dict[remote_desktop] = maia_workspace_apps["kubeflow"] + remote_desktop_dict[remote_desktop][
-                    len("KUBEFLOW") :
-                ] 
+                remote_desktop_dict[remote_desktop] = (
+                    maia_workspace_apps["kubeflow"] + remote_desktop_dict[remote_desktop][len("KUBEFLOW") :]
+                )
     if "mlflow" not in maia_workspace_apps:
         maia_workspace_apps["mlflow"] = "N/A"
     if "minio_console" not in maia_workspace_apps:
@@ -907,12 +916,18 @@ def create_cifs_secret_from_context(namespace, user_id, username, password, publ
             "username": base64.b64encode(encrypted_username.encode()).decode(),
             "password": base64.b64encode(encrypted_password.encode()).decode(),
         }
-
         try:
-            api_response = api_instance.create_namespaced_secret(namespace, secret)
-            logger.debug(f"CIFS secret created: {api_response}")
-        except ApiException as e:
-            logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
+            # Check if the secret already exists
+            existing_secret = api_instance.read_namespaced_secret(secret.metadata.name, namespace)
+            # If it exists, delete it
+            if existing_secret is not None:
+                print(f"Deleting existing secret: {secret.metadata.name}")
+                api_instance.delete_namespaced_secret(secret.metadata.name, namespace)
+        except kubernetes.client.exceptions.ApiException as e:
+            print(f"Exception checking/deleting existing secret: {e}")
+            if e.status != 404:
+                raise
+        api_instance.create_namespaced_secret(namespace, secret)
 
 
 def create_cifs_secret(request, cluster_id, settings, namespace, user_id, username, password, public_key):
@@ -993,6 +1008,20 @@ def create_helm_repo_secret_from_context(repo_name, helm_repo_config, argocd_nam
     name = helm_repo_config["name"]
     enable_oci = helm_repo_config["enableOCI"]
 
+    kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
+    if kubeconfig is None:
+        kubeconfig = os.environ.get("KUBECONFIG", None)
+    config.load_kube_config(config_file=kubeconfig)
+    # If secret already exists, delete it before creating a new one
+    with kubernetes.client.ApiClient() as api_client:
+        api_instance = kubernetes.client.CoreV1Api(api_client)
+        try:
+            api_instance.delete_namespaced_secret(name=f"repo-{repo_name}", namespace=argocd_namespace)
+        except kubernetes.client.exceptions.ApiException as e:
+            # If the error is 404 (Not Found), we can ignore it;
+            # otherwise, raise the exception
+            if e.status != 404:
+                raise
     with kubernetes.client.ApiClient() as api_client:
         api_instance = kubernetes.client.CoreV1Api(api_client)
         secret = kubernetes.client.V1Secret()
@@ -1034,13 +1063,13 @@ def create_docker_registry_secret_from_context(docker_credentials, namespace, se
     Parameters
     ----------
     docker_credentials : dict
-        A dictionary containing Docker registry credentials with the following keys:
-        - "registry" : str
-            The Docker registry URL (e.g., "https://index.docker.io/v1/").
-        - "username" : str
-            The username for the Docker registry.
-        - "password" : str
-            The password for the Docker registry.
+    A dictionary containing Docker registry credentials with the following keys:
+    - "registry" : str
+        The Docker registry URL (e.g., "https://index.docker.io/v1/").
+    - "username" : str
+        The username for the Docker registry.
+    - "password" : str
+        The password for the Docker registry.
     namespace : str
         The Kubernetes namespace where the secret will be created.
     secret_name : str

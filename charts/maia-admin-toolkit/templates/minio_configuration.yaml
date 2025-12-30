@@ -1,0 +1,31 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-minio-credentials
+  namespace: {{ .Values.minio.namespace }}
+type: Opaque
+data:
+  CONSOLE_ACCESS_KEY: "{{ .Values.minio.adminAccessKey | b64enc }}"
+  CONSOLE_SECRET_KEY: "{{ .Values.minio.adminSecretKey | b64enc }}"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-minio-storage-configuration
+  namespace: {{ .Values.minio.namespace }}
+type: Opaque
+stringData:
+  config.env: |-
+    export MINIO_ROOT_USER="{{ .Values.minio.rootAccessKey }}"
+    export MINIO_IDENTITY_OPENID_CLIENT_SECRET="{{ .Values.minio.openIdClientSecret }}"
+    export MINIO_IDENTITY_OPENID_CLAIM_NAME="groups"
+    export MINIO_IDENTITY_OPENID_SCOPES="email,openid,profile"
+    export MINIO_BROWSER="on"
+    export MINIO_IDENTITY_OPENID_CONFIG_URL="{{ .Values.minio.openIdConfigUrl }}" 
+    export MINIO_IDENTITY_OPENID_CLIENT_ID="{{ .Values.minio.openIdClientId }}"
+    export MINIO_BROWSER_SESSION_DURATION=7d
+    export MINIO_ROOT_PASSWORD="{{ .Values.minio.rootSecretKey }}"
+    export MINIO_STORAGE_CLASS_STANDARD="EC:0"
+    export MINIO_IDENTITY_OPENID_DISPLAY_NAME=MAIA
+{{- end }}

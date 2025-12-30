@@ -1,0 +1,14 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for lvm
+
+# Required: List of physical volumes (devices) to use for the volume group
+# Example: ['/dev/sda1', '/dev/sdb1']
+device_list: []
+
+# Local storage size (can be size like '300g' or percentage like '100%FREE')
+local_storage_size: 100%FREE
+
+# NFS storage size (can be size like '1.8t' or percentage like '100%FREE')
+# Only used when host is in nfs_server group
+nfs_storage_size: 100%FREE

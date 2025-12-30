@@ -1,0 +1,72 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  roles:
+    - name: admin
+      description: Admin privileges 
+      policies:
+        - p, proj:{{ .Release.Name }}:admin, applications, get, {{ .Release.Name }}/*, allow
+      groups:
+        - {{ .Values.admin_group_ID}}
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: Namespace
+    - group: '*'
+      kind: ClusterRoleBinding
+    - group: '*'
+      kind: ClusterRole
+    - group: '*'
+      kind: CustomResourceDefinition
+    - group: '*'
+      kind: MutatingWebhookConfiguration
+    - group: '*'
+      kind: ValidatingWebhookConfiguration
+    - group: '*'
+      kind: IngressClass
+    - group: '*'
+      kind: APIService
+    - group: '*'
+      kind: PriorityClass
+    - group: '*'
+      kind: ClusterPolicy
+    - group: '*'
+      kind: ClusterIssuer
+    - group: '*'
+      kind: StorageClass
+  destinations:
+    - namespace: {{ .Release.Name }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.prometheus_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: kube-system
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.core_toolkit_values.namespace }}
+      server: {{ .Values.destination_server }}
+    {{- if .Values.traefik_values }}
+    - namespace: {{ .Values.traefik_values.namespace }}
+      server: {{ .Values.destination_server }}
+    {{- end }}
+    - namespace: {{ .Values.cert_manager_chart_info.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.metallb_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.gpu_operator_values.namespace }}
+      server: {{ .Values.destination_server }}
+    {{- if .Values.ingress_nginx_values }}
+    - namespace: {{ .Values.ingress_nginx_values.namespace }}
+      server: {{ .Values.destination_server }}
+    {{- end }}
+    - namespace: {{ .Values.nfs_provisioner_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.loginapp_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.minio_operator_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.gpu_booking_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.metrics_server_values.namespace }}
+      server: {{ .Values.destination_server }}
+  sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}

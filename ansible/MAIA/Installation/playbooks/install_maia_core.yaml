@@ -1,0 +1,4 @@
+- name: Run MAIA Core Installation
+  hosts: localhost
+  roles:
+    - maia.installation.maia_core_layer

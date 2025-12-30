@@ -1,0 +1,48 @@
+# Default values for maia-namespace.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+pvc:
+  pvc_type: "standard"
+  access_mode: "ReadWriteOnce"
+  size: "1Gi"
+
+namespace: "maia"
+
+users:
+- jupyterhub_username: "jovyan"
+  sshPort: 3022
+- jupyterhub_username: "jovyan2"
+  sshPort: 3023
+
+serviceType: "NodePort"
+
+metallbSharedIp: False
+metallbIpPool: False
+loadBalancerIp: False
+
+dockerRegistrySecret:
+  enabled: False
+  dockerRegistrySecretName: ""
+  dockerRegistrySecret: ""
+
+minio:
+  enabled: False
+  namespace: "minio"
+  consoleDomain: "https://maia.se/minio-console"
+  storageSize: "1Gi"
+  storageClassName: "standard"
+  accessKey: ""
+  secretKey: ""
+  clientId: ""
+  clientSecret: ""
+  openIdConfigUrl: "https://maia.se/realms/maia/.well-known/openid-configuration"
+  consoleAccessKey: ""
+  consoleSecretKey: ""
+
+mlflow:
+  enabled: False
+  user: "mlflow"
+  password: "mlflow"
+
+cifs:
+  enabled: False

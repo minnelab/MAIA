@@ -1,0 +1,12 @@
+AllowAgentForwarding            yes
+AllowTcpForwarding              yes
+AuthorizedKeysFile              .ssh/authorized_keys
+ChallengeResponseAuthentication yes
+PermitRootLogin                 no
+PrintMotd                       yes
+PubkeyAuthentication            yes
+UseDNS                          yes
+UsePAM                          yes
+X11Forwarding yes
+AcceptEnv LANG LC_*
+Subsystem	sftp	/usr/lib/openssh/sftp-server

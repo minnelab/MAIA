@@ -1,0 +1,29 @@
+- name: Install MicroK8s, enable OIDC and CA, and install ArgoCD
+  hosts: control-plane
+  become: false
+
+  roles:
+    - role: maia.installation.microk8s
+      when: install_microk8s | default(true) | bool
+    - role: maia.installation.oidc_microk8s
+      when: enable_oidc_microk8s | default(true) | bool
+    - role: maia.installation.ca_microk8s
+      when: enable_ca_microk8s | default(true) | bool
+    - role: maia.installation.argocd
+      when: install_argocd | default(true) | bool
+
+  tasks:
+  - name: Only connect to MicroK8s if connect_to_microk8s is true and install_microk8s is false
+    import_role:
+      name: maia.installation.microk8s
+      tasks_from: connect.yml
+    when:
+      - not (install_microk8s | default(true) | bool)
+      - connect_to_microk8s | default(false) | bool
+  - name: Only connect to ArgoCD if connect_to_argocd is true and install_argocd is false
+    import_role:
+      name: maia.installation.argocd
+      tasks_from: connect.yml
+    when:
+      - not (install_argocd | default(true) | bool)
+      - connect_to_argocd | default(false) | bool

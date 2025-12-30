@@ -1,0 +1,17 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for maia_admin_layer
+
+# Namespaces required by MAIA Admin layer components
+maia_admin_namespaces:
+  - harbor
+  - keycloak
+  - maia-admin-toolkit
+  - maia-dashboard
+  - cattle-system
+
+# Enable automatic ArgoCD application synchronization and post-install steps
+auto_sync: true
+
+# ArgoCD port for CLI login
+argocd_port: 8080

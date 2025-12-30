@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  roles:
+    - name: admin
+      description: Admin privileges 
+      policies:
+        - p, {{ .Values.admin_group_ID }}, applications, get, {{ .Release.Name }}/*, allow
+      groups:
+        - {{ .Values.admin_group_ID }}
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: Namespace
+    - group: '*'
+      kind: ClusterRoleBinding
+    - group: '*'
+      kind: ClusterRole
+    - group: '*'
+      kind: CustomResourceDefinition
+    - group: '*'
+      kind: PriorityClass
+  destinations:
+    - namespace: {{ .Release.Name }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.harbor_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.keycloak_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.rancher_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: kube-system
+      server: {{ .Values.destination_server }}
+    - namespace: argocd
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.maia_admin_toolkit_values.namespace }}
+      server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.maia_dashboard_values.namespace }}
+      server: {{ .Values.destination_server }}
+  sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}

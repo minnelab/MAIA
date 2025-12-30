@@ -1,0 +1,184 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+<section class="min-vh-100 mb-8">
+  {% if BACKEND == "compose" %}
+   <div class="page-header align-items-start min-vh-80 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png');">
+  {% else %}
+    <div class="page-header align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/maia_background.jpg');">
+  {% endif %}
+    <span class="mask bg-gradient-dark opacity-6"></span>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-5 text-center mx-auto">
+                    <h1 class="text-white mb-2 mt-5">GPU Bookings</h1>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div>
+            <div class="card"></div>
+            <div class="card-header">
+                <div class="row">
+                    <div>
+                        <h1 style="text-align: center;">Your GPU Bookings:</h1>
+                        <h4 class="mb-2 mt-5">Total Number of Booked Days: {{ total_days }}</h4>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col">GPU</th>
+                                                        <th scope="col">Email</th>
+                                                        <th scope="col">Start Time</th>
+                                                        <th scope="col">End Time</th>
+                                                        <th scope="col">Project</th>
+                                                        <th scope="col">Status</th>
+                                                        <th scope="col">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for booking in bookings %}
+                                                    <tr>
+                                                        <td>{{ booking.gpu }}</td>
+                                                        <td>{{ booking.email }}</td>
+                                                        <td>{{ booking.start_date }}</td>
+                                                        <td>{{ booking.end_date }}</td>
+                                                        <td><a href="/maia/namespaces/{{ booking.namespace|lower|to_hyphen }}">{{ booking.namespace }}</a></td>
+                                                        <td>
+                                                            
+                                                            {% if booking.status == 'Active' %}
+                                                                <input type="checkbox" checked style="background-color: green;">
+                                                            {% elif booking.status == 'Expired' %}
+                                                                
+                                                                <i class="fa fa-hourglass-end"></i>
+                                                            {% else %}
+                                                                <i class="fa fa-clock"></i>
+                                                            {% endif %}
+                                                            {{ booking.status }}
+                                                        </td>
+                                                        <td>
+                                                            {% if booking.status != 'Expired' %}
+                                                            <form method="POST" action="{% url 'delete_booking' booking.id %}" onsubmit="deleteElement(event);" {% if not booking.id %}style="display:none;"{% endif %}>
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                                            </form>
+                                                            {% endif %}
+                                                            {% if user and "admin" in user %}
+                                                            <form method="POST" action="{% url 'admin_delete_booking' booking.id %}" onsubmit="deleteElement(event);" {% if not booking.id %}style="display:none;"{% endif %}>
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="btn btn-danger btn-sm">Remove Booking from DB</button>
+                                                            </form>
+                                                            {% endif %}
+                                                        </td>
+
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                        
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+<script src="{{ ASSETS_ROOT }}/js/plugins/chartjs.min.js"></script>
+<script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
+    }
+
+    function copyToClipboard(e, namespace) {
+        navigator.clipboard.writeText("kubectl exec -it " + e.target.id + " -n " + namespace + " -- bash");
+    }
+
+    function copyToClipboardPF(e, namespace, port) {
+        navigator.clipboard.writeText("kubectl port-forward svc/" + e.target.id + " -n " + namespace + " :" + port);
+    }
+
+    function deleteElement(e) {
+        if (!confirm('Are you sure you want to delete?')) e.preventDefault();
+    }
+
+    function copyToClipboardPod(e, namespace, port) {
+        navigator.clipboard.writeText("kubectl port-forward " + e.target.id + " -n " + namespace + " :" + port);
+    }
+</script>
+<style>
+    #thumbs {
+        width: 1000px;
+        margin-top: 180px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: justify;
+        -ms-text-justify: distribute-all-lines;
+        text-justify: distribute-all-lines;
+    }
+
+    #thumbs a {
+        vertical-align: top;
+        display: inline-block;
+        display: inline;
+        zoom: 1;
+    }
+
+    .stretch {
+        width: 100%;
+        display: inline-block;
+        font-size: 0;
+        line-height: 0;
+    }
+
+    .collapsible {
+        background-color: #777;
+        color: white;
+        cursor: pointer;
+        padding: 12px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 10px;
+    }
+
+    .content {
+        padding: 0 12px;
+        display: none;
+        overflow: hidden;
+        background-color: #f1f1f1;
+    }
+</style>
+{% endblock javascripts %}

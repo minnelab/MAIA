@@ -1,0 +1,435 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+<section class="min-vh-100 mb-8">
+  {% if BACKEND == "compose" %}
+   <div class="page-header align-items-start min-vh-80 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png');">
+  {% else %}
+    <div class="page-header align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/maia_background.jpg');">
+  {% endif %}
+    <span class="mask bg-gradient-dark opacity-6"></span>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-5 text-center mx-auto">
+                    <h1 class="text-white mb-2 mt-5">{{ "MAIA Users and Projects"|title }}</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br>
+
+    <form method="POST" name="user-form" id="user-form" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="card">
+            <div class="card-header pb-0">
+                <div class="row">
+                    <div class="col-lg-6 col-7">
+                        <h6>Namespaces</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body px-0 pb-2">
+                <div class="table-responsive">
+                    <table class="table align-items-center mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Register </th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Deploy </th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Users</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Memory Limit</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">CPU Limit</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Requested GPU</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Allocation Date Expiration</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Conda</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Assigned Cluster</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Workspace Type</th>
+                                
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for namespace in maia_groups_dict %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <a href="/maia/namespaces/{{ namespace|lower|to_hyphen }}">
+                                            <h6 class="mb-0 text-sm ">{{ namespace }}</h6>
+                                        </a>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% if maia_groups_dict|get_item:namespace|get_item:"pending" == True %}
+                                        <h6 class="mb-0 text-sm ">
+                                        <p data-bs-placement="left" data-bs-toggle="tooltip-register-group" title="Register the group in Keycloak">
+                                        <a href="/maia/user-management/register-group/{{ namespace }}" class="fa fa-users"></a>
+                                        </p>
+                                        </h6>
+                                        {% endif %}
+                                        <h6 class="mb-0 text-sm ">
+                                        <p data-bs-placement="left" data-bs-toggle="tooltip-delete-group" title="Delete the group in Keycloak">
+                                        <a href="/maia/user-management/delete-group-view/{{ namespace }}" class="fa fa-trash"></a>
+                                        </p>
+                                        </h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% if project_argo_status|get_item:namespace == -1 %}
+                                        <p data-bs-placement="left" data-bs-toggle="tooltip-deploy-group" title="Create the Project in MAIA, deploying the MAIA Namespace">
+                                        <a href="/maia/user-management/deploy/{{ namespace }}" class="fa fa-play"></a>
+                                        </p>
+                                        {% elif project_argo_status|get_item:namespace == 0 %}
+                                        {%else%}
+                                        <p data-bs-placement="left" data-bs-toggle="tooltip-redeploy-group" title="The MAIA Project is already deployed, click to redeploy and update the MAIA Namespace">
+                                        <a class="fa fa-sync-alt" href="/maia/user-management/deploy/{{ namespace }}">
+                                        <!--href="{{argocd_url}}/applications?proj={{namespace|lower|to_hyphen}}"-->
+                                        </a>
+                                        </p>
+                                        {% endif %}
+                                        {% if project_argo_status|get_item:namespace == 1 %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center" id="users_{{ namespace }}">
+                                        {% for user in maia_groups_dict|get_item:namespace|get_item:"users" %}
+                                        <li>{{ user }}</li>
+                                        {% endfor %}
+                                        <h6 class="mb-0 text-sm "></h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="memory_limit_"|add:namespace %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="cpu_limit_"|add:namespace %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="gpu_"|add:namespace %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="date_"|add:namespace %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% for conda_env in maia_groups_dict|get_item:namespace|get_item:"conda" %}
+                                        {% if conda_env != "N/A" %}
+                                        <a href="{{ minio_console_url }}/{{ conda_env }}_env">
+                                            <li>{{ conda_env }}</li>
+                                        </a>
+                                        {% else %}
+                                        <li>N/A</li>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="cluster_"|add:namespace %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="minimal_environment_"|add:namespace %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-header pb-0">
+                <div class="row">
+                    <div class="col-lg-6 col-7">
+                        <h6>Users</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body px-0 pb-2">
+                <div class="table-responsive">
+                    <table class="table align-items-center mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Registration</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Username</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Email</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Admin</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Active</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Date Joined</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Requested Namespace</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in user_table %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm ">
+                                            {% if user.is_registered_in_keycloak == 1 %}
+                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-registration" title="User is registered in Keycloak">
+                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
+                                            </p>
+                                            {% else %}
+                                            <p class="text-sm mb-0"  data-bs-placement="left" data-bs-toggle="tooltip-user-registration" title="Click to register user in Keycloak">
+                                                <a class="fa fa-address-card" href="/maia/user-management/register-user/{{ user.email }}"></a>
+                                            </p>
+                                            {% endif %}
+                                        </h6>
+                                        <h6 class="mb-0 text-sm ">
+                                            {% if user.is_registered_in_groups == 1 %}
+                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-registration" title="The User is linked to all the requested groups">
+                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
+                                            </p>
+                                            {% else %}
+                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-registration" title="Register user in the requested groups: {{ user.is_registered_in_groups|join:", " }}">
+                                                <a class="fa fa-users" aria-hidden="true" href="/maia/user-management/register-user-in-group/{{ user.email }}"></a>
+                                            </p>
+                                            {% endif %}
+                                        </h6>
+                                        <h6 class="mb-0 text-sm ">
+                                            {% if user.remove_from_group == 0 %}
+                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-deletion" title="The User is linked to all the requested groups">
+                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
+                                            </p>
+                                            {% else %}
+                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-deletion" title="The User is currently registered to groups which are not requested. Click to remove the user from the groups: {{ user.remove_from_group|join:", " }}">
+                                                <a class="fa fa-trash" aria-hidden="true" href="/maia/user-management/remove-user-from-group/{{ user.email }}"></a>
+                                            </p>
+                                            {% endif %}
+                                        </h6>
+                                    </div>  
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm ">{{ user.username }}</h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm ">{{ user.email }}</h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm ">
+                                            {% if user.is_superuser == 1 %}
+                                            <p class="text-sm mb-0">
+                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
+                                            </p>
+                                            {% else %}
+                                            <p class="text-sm mb-0">
+                                                <i class="fa fa-times text-danger" aria-hidden="true"></i>
+                                            </p>
+                                            {% endif %}
+                                        </h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm ">
+                                            {% if user.is_active == 1 %}
+                                            <p class="text-sm mb-0">
+                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
+                                            </p>
+                                            {% else %}
+                                            <p class="text-sm mb-0">
+                                                <i class="fa fa-times text-danger" aria-hidden="true"></i>
+                                            </p>
+                                            {% endif %}
+                                        </h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        <h6 class="mb-0 text-sm ">{{ user.date_joined }}</h6>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column justify-content-center">
+                                        {% with form_key="namespace_"|add:user.username %}
+                                        {{ form|index:form_key }}
+                                        {% endwith %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-primary" type="submit" name="Submit" value="Submit">Update Table</button>
+    </form>
+</section>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+<script src="{{ ASSETS_ROOT }}/js/plugins/chartjs.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-user-registration"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-user-group-registration"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-user-group-deletion"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-delete-group"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-register-group"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-deploy-group"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-redeploy-group"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
+    }
+
+    function copyToClipboard(e, namespace) {
+        navigator.clipboard.writeText("kubectl exec -it " + e.target.id + " -n " + namespace + " -- bash");
+    }
+
+    function copyToClipboardPF(e, namespace, port) {
+        navigator.clipboard.writeText("kubectl port-forward svc/" + e.target.id + " -n " + namespace + " :" + port);
+    }
+
+    function deleteElement(e) {
+        if (!confirm('Are you sure you want to delete?')) e.preventDefault();
+    }
+
+    function copyToClipboardPod(e, namespace, port) {
+        navigator.clipboard.writeText("kubectl port-forward " + e.target.id + " -n " + namespace + " :" + port);
+    }
+</script>
+<style>
+    #thumbs {
+        width: 1000px;
+        margin-top: 180px;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: justify;
+        -ms-text-justify: distribute-all-lines;
+        text-justify: distribute-all-lines;
+    }
+
+    #thumbs a {
+        vertical-align: top;
+        display: inline-block;
+        *display: inline;
+        zoom: 1;
+    }
+
+    .stretch {
+        width: 100%;
+        display: inline-block;
+        font-size: 0;
+        line-height: 0
+    }
+
+    .collapsible {
+        background-color: #777;
+        color: white;
+        cursor: pointer;
+        padding: 12px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 10px;
+    }
+
+    .content {
+        padding: 0 12px;
+        display: none;
+        overflow: hidden;
+        background-color: #f1f1f1;
+    }
+</style>
+{% endblock javascripts %}

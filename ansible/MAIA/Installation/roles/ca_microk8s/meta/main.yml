@@ -1,0 +1,62 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Configure Kubernetes CA (Certificate Authority) certificate and key from MicroK8s for use with cert-manager. Creates a TLS secret in the cert-manager namespace containing the MicroK8s CA certificate and private key.
+  company: MAIA Project
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  # Choose a valid license ID from https://spdx.org - some suggested licenses:
+  # - BSD-3-Clause (default)
+  # - MIT
+  # - GPL-2.0-or-later
+  # - GPL-3.0-only
+  # - Apache-2.0
+  # - CC-BY-4.0
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.1
+
+  # If this a Container Enabled role, provide the minimum Ansible Container version.
+  # min_ansible_container_version:
+
+  galaxy_tags: [ca, microk8s, kubernetes, cert-manager, certificate, tls]
+    # List tags for your role here, one per line. A tag is a keyword that describes
+    # and categorizes the role. Users find roles by searching for tags. Be sure to
+    # remove the '[]' above, if you add tags to this list.
+    #
+    # NOTE: A tag is limited to a single word comprised of alphanumeric characters.
+    #       Maximum 20 tags per role.
+
+dependencies: []
+  # List your role dependencies here, one per line. Be sure to remove the '[]' above,
+  # if you add dependencies to this list.
+
+
+argument_specs:
+  main:
+    description: Configure Kubernetes CA (Certificate Authority) certificate and key from MicroK8s for use with cert-manager. Creates a TLS secret in the cert-manager namespace containing the MicroK8s CA certificate and private key.
+    short_description: Configure Kubernetes CA (Certificate Authority) certificate and key from MicroK8s for use with cert-manager
+    options:
+        kubernetes_ca_crt_path:
+          type: str
+          required: false
+          default: /var/snap/microk8s/current/certs/ca.crt
+          description: "Path to MicroK8s CA certificate file (optional)"
+        kubernetes_ca_key_path:
+          type: str
+          required: false
+          default: /var/snap/microk8s/current/certs/ca.key
+          description: "Path to MicroK8s CA private key file (optional)"
+        cert_manager_namespace:
+          type: str
+          required: false
+          default: cert-manager
+          description: "Namespace for cert-manager (optional)"
+        kubernetes_ca_secret_name:
+          type: str
+          required: false
+          default: kubernetes-ca
+          description: "Name of the TLS secret to create in cert-manager namespace (optional)"
