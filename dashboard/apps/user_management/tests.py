@@ -6,9 +6,6 @@ from django.test import TestCase
 from apps.user_management.services import create_group, create_user
 import datetime
 from apps.models import MAIAProject, MAIAUser
-import logging
-
-logger = logging.getLogger(__name__)
 
 class CreateGroupTests(TestCase):
     """Test the MAIAProject model with the new description and supervisor fields"""

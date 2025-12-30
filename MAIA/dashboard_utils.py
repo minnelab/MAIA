@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from kubernetes import config
+from loguru import logger
 from minio import Minio
 from pyhelm3 import Client
 
@@ -317,7 +318,7 @@ def verify_minio_availability(settings):
         client.bucket_exists(settings.BUCKET_NAME)
         minio_available = True
     except Exception as e:
-        print(e)
+        logger.error(f"MinIO error: {e}")
         minio_available = False
 
     return minio_available
@@ -425,9 +426,9 @@ def send_discord_message(username, namespace, url, project_registration=False):
     try:
         result.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        print(err)
+        logger.error(f"Discord webhook error: {err}")
     else:
-        print("Payload delivered successfully, code {}.".format(result.status_code))
+        logger.info(f"Payload delivered successfully, code {result.status_code}")
 
 
 def get_pending_projects(settings, maia_project_model):
@@ -672,7 +673,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         if maia_groups[maia_group].lower().replace("_", "-") == namespace:
             group_id = maia_groups[maia_group]
 
-    print("Registering Existing Cluster for Group: ", group_id)
+    logger.info(f"Registering Existing Cluster for Group: {group_id}")
 
     if project_model.objects.filter(namespace=group_id).exists():
         project = project_model.objects.filter(namespace=group_id).first()
@@ -1076,7 +1077,7 @@ def send_maia_message_email(receiver_emails, subject, message_body):
         return True
 
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logger.error(f"Error sending email: {str(e)}")
         return False
 
 
@@ -1116,7 +1117,7 @@ def generate_encryption_keys(folder_path):
             public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
         )
 
-    print("Keys generated successfully!")
+    logger.info("Keys generated successfully!")
 
 
 def encrypt_string(public_key, string):

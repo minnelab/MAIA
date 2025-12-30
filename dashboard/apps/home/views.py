@@ -13,24 +13,22 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import requests
 import json
-import logging
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 @register.filter
 def global_env(key):
-    print(f"INFO: checking {key} in settings and os.environ")
+    logger.info(f"INFO: checking {key} in settings and os.environ")
     if hasattr(settings, key):
-        print(f"INFO: {key} found in settings")
+        logger.info(f"INFO: {key} found in settings")
         return True
     if key in os.environ:
-        print(f"INFO: {key} found in os.environ")
+        logger.info(f"INFO: {key} found in os.environ")
         return True
 
-    print(f"INFO: {key} not found in settings or os.environ")
+    logger.info(f"INFO: {key} not found in settings or os.environ")
     return False
 
 

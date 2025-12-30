@@ -16,6 +16,7 @@ import hydra
 import yaml
 from hydra import compose as hydra_compose
 from hydra import initialize_config_dir
+from loguru import logger
 from omegaconf import OmegaConf
 from pyhelm3 import Client
 
@@ -105,18 +106,15 @@ async def verify_installed_maia_toolkit(project_id, namespace, get_chart_metadat
     try:
         revision = await client.get_current_revision(project_id, namespace=namespace)
     except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Project not found")
+        logger.error(f"An error occurred: {e}")
+        logger.warning("Project not found")
         return -1
     if get_chart_metadata:
         chart_metadata = await revision.chart_metadata()
-        print(
-            revision.release.name,
-            revision.release.namespace,
-            revision.revision,
-            str(revision.status),
-            chart_metadata.name,
-            chart_metadata.version,
+        logger.info(
+            f"Release: {revision.release.name}, Namespace: {revision.release.namespace}, "
+            f"Revision: {revision.revision}, Status: {revision.status}, "
+            f"Chart: {chart_metadata.name}, Version: {chart_metadata.version}"
         )
         return revision.revision
     return {
@@ -207,11 +205,11 @@ def deploy_maia_toolkit_api(
         project_form_dict["minio_access_key"] = "N/A"
         project_form_dict["minio_secret_key"] = "N/A"
 
-    print("Creating MAIA Project Namespace")
+    logger.info("Creating MAIA Project Namespace")
     if no_argocd:
-        print("No ArgoCD deployment")
+        logger.info("No ArgoCD deployment")
     else:
-        print("ArgoCD deployment")
+        logger.info("ArgoCD deployment")
 
     helm_commands.append(
         create_maia_namespace_values(
@@ -303,19 +301,7 @@ def deploy_maia_toolkit_api(
                 text=True,
             )
 
-            print(
-                " ".join(
-                    [
-                        "helm",
-                        "registry",
-                        "login",
-                        original_repo,
-                        "--username",
-                        username,
-                        "--password-stdin",
-                    ]
-                )
-            )
+            logger.debug(f"Helm registry login {original_repo} --username {username} --password-stdin")
             subprocess.run(
                 [
                     "helm",
@@ -327,18 +313,9 @@ def deploy_maia_toolkit_api(
                     "/tmp",
                 ]
             )
-            print(
-                " ".join(
-                    [
-                        "helm",
-                        "pull",
-                        helm_command["repo"] + "/" + helm_command["chart"],
-                        "--version",
-                        helm_command["version"],
-                        "--destination",
-                        "/tmp",
-                    ]
-                )
+            logger.debug(
+                f"Helm pull command: helm pull {helm_command['repo']}/{helm_command['chart']} "
+                f"--version {helm_command['version']} --destination /tmp"
             )
 
             cmd = [
@@ -353,7 +330,7 @@ def deploy_maia_toolkit_api(
                 "--values",
                 helm_command["values"],
             ]
-            print(" ".join(cmd))
+            logger.debug(f"Helm command: {' '.join(cmd)}")
         else:
             cmd = [
                 "helm",
@@ -371,7 +348,7 @@ def deploy_maia_toolkit_api(
                 "--values",
                 helm_command["values"],
             ]
-            print(" ".join(cmd))
+            logger.debug(f"Helm command: {' '.join(cmd)}")
         if no_argocd and not return_values_only:
             subprocess.Popen(cmd)
 
@@ -409,7 +386,7 @@ def deploy_maia_toolkit_api(
     try:
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
         hydra.core.global_hydra.GlobalHydra.instance().clear()
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     cfg = hydra_compose("values.yaml")
@@ -430,15 +407,15 @@ def deploy_maia_toolkit_api(
     revision = asyncio.run(verify_installed_maia_toolkit(project_id, os.environ["argocd_namespace"]))
 
     if revision == -1 or redeploy_enabled:
-        print("Installing MAIA Workspace")
+        logger.info("Installing MAIA Workspace")
 
         project_chart = os.environ["maia_project_chart"]
         project_repo = os.environ["maia_project_repo"]
         project_version = os.environ["maia_project_version"]
         json_key_path = os.environ.get("JSON_KEY_PATH", None)
 
-        print(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
-        print(f"Using JSON key path: {json_key_path}")
+        logger.info(f"Installing MAIA Project Toolkit {project_chart} from {project_repo} version {project_version}")
+        logger.info(f"Using JSON key path: {json_key_path}")
         msg = asyncio.run(
             install_maia_project(
                 group_id,
@@ -454,7 +431,7 @@ def deploy_maia_toolkit_api(
     else:
         argocd_host = os.environ["argocd_host"]
         password = os.environ["ARGOCD_PASSWORD"]
-        print("MAIA Workspace already installed")
+        logger.info("MAIA Workspace already installed")
         get_maia_toolkit_apps(group_id, password, argocd_host)
 
 

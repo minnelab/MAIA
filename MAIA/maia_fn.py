@@ -6,7 +6,6 @@ import os
 import random
 import string
 from pathlib import Path
-from pprint import pprint
 from secrets import token_urlsafe
 from typing import Dict
 
@@ -16,6 +15,7 @@ import toml
 import yaml
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+from loguru import logger
 from nltk.corpus import words
 from omegaconf import OmegaConf
 
@@ -44,7 +44,7 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
     try:
         secret = api.read_namespaced_secret(name=secret_name, namespace=source_namespace)
     except ApiException as e:
-        print("Exception when calling CoreV1Api->read_namespaced_secret: %s\n" % e)
+        logger.error(f"Exception when calling CoreV1Api->read_namespaced_secret: {e}")
         return None
     try:
         api.create_namespaced_secret(
@@ -55,7 +55,7 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
             },
         )
     except ApiException as e:
-        print("Exception when calling CoreV1Api->create_namespaced_secret: %s\n" % e)
+        logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
         return None
     return secret
 
@@ -95,9 +95,9 @@ def create_config_map_from_data(
         pretty = "true"
         try:
             api_response = api_instance.create_namespaced_config_map(namespace, configmap, pretty=pretty)
-            pprint(api_response)
+            logger.debug(f"ConfigMap created: {api_response}")
         except ApiException as e:
-            print("Exception when calling CoreV1Api->delete_namespaced_config_map: %s\n" % e)
+            logger.error(f"Exception when calling CoreV1Api->delete_namespaced_config_map: {e}")
 
 
 def get_ssh_port_dict(port_type, namespace, port_range, maia_metallb_ip=None):
@@ -161,10 +161,10 @@ def get_ssh_port_dict(port_type, namespace, port_range, maia_metallb_ip=None):
                             else:
                                 used_port.append({svc.metadata.name: int(port.node_port)})
 
-        print("Used ports: ", used_port)
+        logger.debug(f"Used ports: {used_port}")
         return used_port
     except ApiException:
-        print("Exception when calling CoreV1Api->list_service_for_all_namespaces: \n")
+        logger.error("Exception when calling CoreV1Api->list_service_for_all_namespaces")
         return None
 
 
@@ -216,7 +216,7 @@ def get_ssh_ports(n_requested_ports, port_type, ip_range, maia_metallb_ip=None):
                         if port.node_port is None:
                             continue
                         used_port.append(int(port.node_port))
-        print("Used ports: ", used_port)
+        logger.debug(f"Used ports: {used_port}")
         ports = []
 
         for _ in range(n_requested_ports):
@@ -228,7 +228,7 @@ def get_ssh_ports(n_requested_ports, port_type, ip_range, maia_metallb_ip=None):
 
         return ports
     except ApiException:
-        print("Exception when calling CoreV1Api->list_service_for_all_namespaces:\n")
+        logger.error("Exception when calling CoreV1Api->list_service_for_all_namespaces")
         return None
 
 

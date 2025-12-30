@@ -20,6 +20,7 @@ from pathlib import Path
 import os
 import yaml
 from apps.models import MAIAProject
+from loguru import logger
 
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
@@ -204,7 +205,7 @@ def book_gpu(request):
             success = True
             return redirect("/maia/gpu-booking/my-bookings/")
         else:
-            print(form.errors)
+            logger.error(form.errors)
             msg = "Form is not valid"
     else:
         form = GPUBookingForm(request.POST or None, request.FILES or None, initial=initial_data)

@@ -6,6 +6,8 @@ from argparse import RawTextHelpFormatter
 from textwrap import dedent
 from pathlib import Path
 
+from loguru import logger
+
 EPILOG = dedent(
     """
     Example call:
@@ -46,7 +48,7 @@ def create_admin_user_and_group(
             }
         )
     except Exception as e:
-        print(f"Error creating admin user: {e}")
+        logger.error(f"Error creating admin user: {e}")
         pass
 
     payload = {
@@ -61,7 +63,7 @@ def create_admin_user_and_group(
     try:
         keycloak_admin.create_group(payload)
     except Exception as e:
-        print(f"Error creating group: {e}")
+        logger.error(f"Error creating group: {e}")
         pass
 
     groups = keycloak_admin.get_groups()

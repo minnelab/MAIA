@@ -12,6 +12,8 @@ import MAIA
 import json
 import yaml
 
+from loguru import logger
+
 version = MAIA.__version__
 
 DESC = dedent(
@@ -82,7 +84,7 @@ def get_arg_parser():
 
 def run_command(cmd, check=True, shell=False):
     """Run a shell command and print output."""
-    print(f"Running: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
+    logger.debug(f"Running: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
     if isinstance(cmd, str):
         result = subprocess.run(cmd, shell=True, check=check)
     else:
@@ -111,7 +113,7 @@ def main():
     playbooks_dir = "maia.installation"
 
     # Step 1: Install Ansible collection
-    print("\n=== Step 1: Installing Ansible collection ===")
+    logger.info("\n=== Step 1: Installing Ansible collection ===")
     ansible_galaxy_cmd = [
         "ansible-galaxy",
         "collection",
@@ -121,20 +123,20 @@ def main():
     try:
         run_command(ansible_galaxy_cmd)
     except subprocess.CalledProcessError as e:
-        print(f"Error installing Ansible collection: {e}")
+        logger.error(f"Error installing Ansible collection: {e}")
         sys.exit(1)
 
     inventory_path = args.inventory_path if args.inventory_path else config_folder / "inventory"
     # Step 2: Run MAIA_Configure_Installation.sh
     if not args.skip_configure:
-        print("\n=== Step 2: Running MAIA_Configure_Installation.sh ===")
+        logger.info("\n=== Step 2: Running MAIA_Configure_Installation.sh ===")
         configure_script = "MAIA_Configure_Installation.sh"
 
         # Check if env.json exists for no-prompt mode
         env_json = config_folder / "env.json"
         if args.configure_no_prompt:
             if not env_json.exists():
-                print(f"Error: --configure-no-prompt requires env.json to exist at {env_json}")
+                logger.error(f"Error: --configure-no-prompt requires env.json to exist at {env_json}")
                 sys.exit(1)
             configure_cmd = [str(configure_script), str(env_json)]
         else:
@@ -147,10 +149,10 @@ def main():
             # Run the script interactively (allows prompts)
             subprocess.run(configure_cmd, check=True)
         except subprocess.CalledProcessError as e:
-            print(f"Error running configuration script: {e}")
+            logger.error(f"Error running configuration script: {e}")
             sys.exit(1)
     else:
-        print("\n=== Step 2: Skipping MAIA_Configure_Installation.sh ===")
+        logger.info("\n=== Step 2: Skipping MAIA_Configure_Installation.sh ===")
 
     # Verify config_folder is set (from environment or config)
     if "CONFIG_FOLDER" not in os.environ:
@@ -176,7 +178,7 @@ def main():
         with open(Path(config_folder_env).joinpath(f"{cluster_name}.yaml"), "w") as f:
             yaml.dump(existing_data, f)
     # Step 3: Run prepare_hosts.yaml
-    print("\n=== Step 3: Running prepare_hosts.yaml ===")
+    logger.info("\n=== Step 3: Running prepare_hosts.yaml ===")
     prepare_hosts_cmd = [
         "ansible-playbook",
         "-i",
@@ -197,15 +199,15 @@ def main():
         try:
             run_command(prepare_hosts_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running prepare_hosts.yaml: {e}")
+            logger.error(f"Error running prepare_hosts.yaml: {e}")
             sys.exit(1)
     else:
-        print("\n=== Step 3: Skipping prepare_hosts.yaml ===")
+        logger.info("\n=== Step 3: Skipping prepare_hosts.yaml ===")
 
     if "selfsigned" in config_dict["cluster_config_extra_env"] and "configure_hosts" in config_dict["steps"]:
         cluster_domain = config_dict["env"]["CLUSTER_DOMAIN"]
         if args.configure_local_host:
-            print("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
+            logger.info("\n=== Step 3.1: Running configure_host_linux.yaml for localhost ===")
             target_hosts = "localhost"
             host_ip = "127.0.0.1"
             configure_host_linux_cmd = [
@@ -224,11 +226,11 @@ def main():
             try:
                 run_command(configure_host_linux_cmd)
             except subprocess.CalledProcessError as e:
-                print(f"Error running configure_host_linux.yaml: {e}")
+                logger.error(f"Error running configure_host_linux.yaml: {e}")
                 sys.exit(1)
             else:
-                print("\n=== Step 3.1: Skipping configure_host_linux.yaml for localhost ===")
-        print("\n=== Step 3.2: Running configure_host_linux.yaml for all hosts ===")
+                logger.info("\n=== Step 3.1: Skipping configure_host_linux.yaml for localhost ===")
+        logger.info("\n=== Step 3.2: Running configure_host_linux.yaml for all hosts ===")
         target_hosts = "all"
         configure_host_cmd = [
             "ansible-playbook",
@@ -243,12 +245,12 @@ def main():
         try:
             run_command(configure_host_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running configure_host.yaml: {e}")
+            logger.error(f"Error running configure_host.yaml: {e}")
             sys.exit(1)
         else:
-            print("\n=== Step 3.2: Skipping configure_host.yaml for all hosts ===")
+            logger.info("\n=== Step 3.2: Skipping configure_host.yaml for all hosts ===")
     # Step 4: Run install_microk8s.yaml
-    print("\n=== Step 4: Running install_microk8s.yaml ===")
+    logger.info("\n=== Step 4: Running install_microk8s.yaml ===")
     install_microk8s_cmd = [
         "ansible-playbook",
         "-i",
@@ -269,12 +271,12 @@ def main():
         try:
             run_command(install_microk8s_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running install_microk8s.yaml: {e}")
+            logger.error(f"Error running install_microk8s.yaml: {e}")
             sys.exit(1)
     else:
-        print("\n=== Step 4: Skipping install_microk8s.yaml ===")
+        logger.info("\n=== Step 4: Skipping install_microk8s.yaml ===")
     # Step 5: Run install_maia_core.yaml
-    print("\n=== Step 5: Running install_maia_core.yaml ===")
+    logger.info("\n=== Step 5: Running install_maia_core.yaml ===")
     install_maia_core_cmd = [
         "ansible-playbook",
         "-i",
@@ -295,13 +297,13 @@ def main():
         try:
             run_command(install_maia_core_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running install_maia_core.yaml: {e}")
+            logger.error(f"Error running install_maia_core.yaml: {e}")
             sys.exit(1)
     else:
-        print("\n=== Step 5: Skipping install_maia_core.yaml ===")
+        logger.info("\n=== Step 5: Skipping install_maia_core.yaml ===")
 
     # Step 6: Run install_maia_admin.yaml
-    print("\n=== Step 6: Running install_maia_admin.yaml ===")
+    logger.info("\n=== Step 6: Running install_maia_admin.yaml ===")
     install_maia_admin_cmd = [
         "ansible-playbook",
         "-i",
@@ -322,13 +324,13 @@ def main():
         try:
             run_command(install_maia_admin_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running install_maia_admin.yaml: {e}")
+            logger.error(f"Error running install_maia_admin.yaml: {e}")
             sys.exit(1)
     else:
-        print("\n=== Step 6: Skipping install_maia_admin.yaml ===")
+        logger.info("\n=== Step 6: Skipping install_maia_admin.yaml ===")
 
     # Step 7: Run configure_oidc_authentication.yaml
-    print("\n=== Step 7: Running configure_oidc_authentication.yaml ===")
+    logger.info("\n=== Step 7: Running configure_oidc_authentication.yaml ===")
     configure_oidc_authentication_cmd = [
         "ansible-playbook",
         "-i",
@@ -350,13 +352,13 @@ def main():
             run_command(configure_oidc_authentication_cmd)
 
         except subprocess.CalledProcessError as e:
-            print(f"Error running configure_oidc_authentication.yaml: {e}")
+            logger.error(f"Error running configure_oidc_authentication.yaml: {e}")
             sys.exit(1)
     else:
-        print("\n=== Step 7: Skipping configure_oidc_authentication.yaml ===")
+        logger.info("\n=== Step 7: Skipping configure_oidc_authentication.yaml ===")
 
     # Step 8: Run get_kubeconfig_from_rancher_local.yaml
-    print("\n=== Step 8: Running get_kubeconfig_from_rancher_local.yaml ===")
+    logger.info("\n=== Step 8: Running get_kubeconfig_from_rancher_local.yaml ===")
     get_kubeconfig_from_rancher_local_cmd = [
         "ansible-playbook",
         "-i",
@@ -377,15 +379,15 @@ def main():
         try:
             run_command(get_kubeconfig_from_rancher_local_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running get_kubeconfig_from_rancher_local.yaml: {e}")
+            logger.error(f"Error running get_kubeconfig_from_rancher_local.yaml: {e}")
             sys.exit(1)
         else:
-            print("\n=== Step 8: Skipping get_kubeconfig_from_rancher_local.yaml ===")
+            logger.info("\n=== Step 8: Skipping get_kubeconfig_from_rancher_local.yaml ===")
     else:
-        print("\n=== Step 8: Skipping get_kubeconfig_from_rancher_local.yaml ===")
+        logger.info("\n=== Step 8: Skipping get_kubeconfig_from_rancher_local.yaml ===")
 
     # Step 9: Run configure_maia_dashboard.yaml
-    print("\n=== Step 9: Running configure_maia_dashboard.yaml ===")
+    logger.info("\n=== Step 9: Running configure_maia_dashboard.yaml ===")
     configure_maia_dashboard_cmd = [
         "ansible-playbook",
         "-i",
@@ -406,14 +408,14 @@ def main():
         try:
             run_command(configure_maia_dashboard_cmd)
         except subprocess.CalledProcessError as e:
-            print(f"Error running configure_maia_dashboard.yaml: {e}")
+            logger.error(f"Error running configure_maia_dashboard.yaml: {e}")
             sys.exit(1)
         else:
-            print("\n=== Step 9: Skipping configure_maia_dashboard.yaml ===")
+            logger.info("\n=== Step 9: Skipping configure_maia_dashboard.yaml ===")
     else:
-        print("\n=== Step 9: Skipping configure_maia_dashboard.yaml ===")
+        logger.info("\n=== Step 9: Skipping configure_maia_dashboard.yaml ===")
 
-    print("\n=== MAIA Installation Complete ===")
+    logger.info("\n=== MAIA Installation Complete ===")
 
 
 if __name__ == "__main__":

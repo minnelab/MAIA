@@ -14,6 +14,7 @@ import click
 import yaml
 from hydra import compose as hydra_compose
 from hydra import initialize_config_dir
+from loguru import logger
 from omegaconf import OmegaConf
 from pyhelm3 import Client
 
@@ -38,7 +39,6 @@ from MAIA.maia_core import (
     create_traefik_values,
     create_metrics_server_values,
 )
-from loguru import logger
 
 version = MAIA.__version__
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from textwrap import dedent
 
 import yaml
+from loguru import logger
 
 import MAIA
 from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
@@ -93,7 +94,7 @@ def main():
     helm_dict = read_config_dict_and_generate_helm_values_dict(config_dict, kubeconfig)
 
     if arguments["print_helm_values_only"]:
-        print(helm_dict)
+        logger.info(f"Helm values: {helm_dict}")
         with open(arguments["print_helm_values_only"], "w") as f:
             yaml.dump(helm_dict, f)
         return
@@ -114,7 +115,7 @@ def main():
     for line in ssh_process.stdout:
         if line == "END\n":
             break
-        print(line, end="")
+        logger.info(line.rstrip())
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from textwrap import dedent
 
 # load env variables
 from dotenv import load_dotenv
+from loguru import logger
 
 from MAIA.dashboard_utils import send_maia_message_email
 from MAIA.keycloak_utils import get_maia_users_from_keycloak
@@ -82,10 +83,10 @@ def send_all_users_reminder_email(settings_dict, email_list=None):
     )
 
     if success:
-        print("Email sent successfully")
+        logger.info("Email sent successfully")
         return len(user_emails), []
     else:
-        print("Email failed to send")
+        logger.error("Email failed to send")
         return 0, user_emails
 
 
@@ -110,9 +111,9 @@ def main():
     email_list = args.email_list
     settings_dict = get_settings()
     num_sent, failed = send_all_users_reminder_email(settings_dict, email_list)
-    print(f"Successfully sent {num_sent} emails")
+    logger.info(f"Successfully sent {num_sent} emails")
     if failed:
-        print(f"Failed to send emails to: {', '.join(failed)}")
+        logger.error(f"Failed to send emails to: {', '.join(failed)}")
 
 
 if __name__ == "__main__":
