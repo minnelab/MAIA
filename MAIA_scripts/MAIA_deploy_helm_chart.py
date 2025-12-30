@@ -82,7 +82,13 @@ def main():
 
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG"]).read_text())
 
-    ssh_process = subprocess.Popen(["sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True, bufsize=0)
+    ssh_process = subprocess.Popen(
+        ["sh"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=0,
+    )
 
     helm_dict = read_config_dict_and_generate_helm_values_dict(config_dict, kubeconfig)
 
@@ -98,7 +104,9 @@ def main():
 
     ssh_process.stdin.write(
         "helm upgrade --install {} --namespace={} maia/mkg --values ./{}_values.yaml\n".format(
-            config_dict["chart_name"], config_dict["namespace"], config_dict["chart_name"]
+            config_dict["chart_name"],
+            config_dict["namespace"],
+            config_dict["chart_name"],
         )
     )
 

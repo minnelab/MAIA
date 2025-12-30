@@ -38,7 +38,9 @@ EPILOG = dedent(
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Send welcome email to new MAIA users", epilog=EPILOG, formatter_class=RawTextHelpFormatter
+        description="Send welcome email to new MAIA users",
+        epilog=EPILOG,
+        formatter_class=RawTextHelpFormatter,
     )
     parser.add_argument("--email", required=True, help="Recipient email address")
     parser.add_argument("--url", required=True, help="MAIA platform URL")
@@ -121,7 +123,6 @@ def send_welcome_user_email(receiver_email, maia_url):
 
 
 def main():
-
     args = get_arg_parser().parse_args()
     try:
         send_welcome_user_email(args.email, args.url)

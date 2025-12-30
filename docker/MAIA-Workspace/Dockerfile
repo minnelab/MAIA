@@ -9,8 +9,10 @@ RUN mv -f /usr/bin/sudo-root /usr/bin/sudo && \
 
 COPY supervisord.conf   /etc/supervisord.conf
 COPY entrypoint.sh /etc/entrypoint.sh
+COPY update_user_credentials.sh /etc/update_user_credentials.sh
 RUN chmod 755 /etc/supervisord.conf && \
-    chmod 755 /etc/entrypoint.sh
+    chmod 755 /etc/entrypoint.sh && \
+    chmod 755 /etc/update_user_credentials.sh
 
 COPY MAIA.png /etc/MAIA.png
 

@@ -4,6 +4,9 @@ import json
 import os
 import sys
 from pathlib import Path
+import argparse
+from argparse import RawTextHelpFormatter
+from textwrap import dedent
 
 # load env variables
 from dotenv import load_dotenv
@@ -16,6 +19,16 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 
 load_dotenv()
+
+EPILOG = dedent(
+    """
+    Example call:
+    ::
+        {filename} --email-list <email_list>
+    """.format(  # noqa: E501
+        filename=Path(__file__).stem
+    )
+)
 
 
 class Settings:
@@ -62,7 +75,11 @@ def send_all_users_reminder_email(settings_dict, email_list=None):
     except FileNotFoundError:
         raise FileNotFoundError(f"Email template not found at {email_template_path}") from FileNotFoundError
     # Send the email to all users
-    success = send_maia_message_email(receiver_emails=user_emails, subject="MAIA Platform Updates", message_body=email_content)
+    success = send_maia_message_email(
+        receiver_emails=user_emails,
+        subject="MAIA Platform Updates",
+        message_body=email_content,
+    )
 
     if success:
         print("Email sent successfully")
@@ -72,14 +89,31 @@ def send_all_users_reminder_email(settings_dict, email_list=None):
         return 0, user_emails
 
 
-if __name__ == "__main__":
-    # This allows the script to be run directly for testing
-    # load settings
+def get_arg_parser():
+    parser = argparse.ArgumentParser(
+        description="Send reminder email to all MAIA users",
+        epilog=EPILOG,
+        formatter_class=RawTextHelpFormatter,
+    )
+    parser.add_argument("--email-list", required=False, help="List of emails to send the reminder email to")
+    return parser
+
+
+def get_settings():
     with open("settings.json") as f:
         settings_dict = json.load(f)
+    return settings_dict
 
-    email_list = ["xxx@live.com"]
+
+def main():
+    args = get_arg_parser().parse_args()
+    email_list = args.email_list
+    settings_dict = get_settings()
     num_sent, failed = send_all_users_reminder_email(settings_dict, email_list)
     print(f"Successfully sent {num_sent} emails")
     if failed:
         print(f"Failed to send emails to: {', '.join(failed)}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,13 +1,13 @@
 # Deploy an Application in MAIA Namespace
 
-The script to deploy custom applications uses Helm charts to deploy the applications, and it is available as a Helm chart: [MAIA](https://github.com/kthcloud/MAIA).
+The script to deploy custom applications uses Helm charts to deploy the applications, and it is available as a Helm chart: [MAIA](https://github.com/minnelab/MAIA).
 
 With the **MAIA** chart it is possible to deploy any *Docker Image* as a Pod, expose the required ports as services, mount persistent volumes on the specified locations and optionally create Ingress resources to expose the application to the external traffic using the HTTPS protocol.
 
 To add the chart to Helm, run:
 
 ```
-helm repo add maia https://kthcloud.github.io/MAIA/
+helm repo add maia https://minnelab.github.io/MAIA/
 helm repo update
 ```
 

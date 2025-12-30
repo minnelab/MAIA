@@ -1,0 +1,81 @@
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+
+- name: Extract cluster_name from cluster config
+  set_fact:
+    cluster_name: "{{ (cluster_config_content.content | b64decode | from_yaml).cluster_name }}"
+
+- name: Extract domain from cluster config
+  set_fact:
+    domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+
+- name: Run MAIA Admin Toolkit installer
+  ansible.builtin.command: >
+    MAIA_install_admin_toolkit
+    --cluster-config {{ config_folder }}/{{ cluster_name }}.yaml
+    --config-folder {{ config_folder }}
+  environment:
+    argocd_namespace: "{{ argocd_namespace }}"
+    admin_group_ID: "{{ admin_group_ID }}"
+    admin_project_chart: "{{ admin_project_chart }}"
+    admin_project_repo: "{{ admin_project_repo }}"
+    admin_project_version: "{{ admin_project_version }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    keycloak_client_secret: "{{ keycloak_client_secret }}"
+    minio_admin_password: "{{ minio_admin_password }}"
+    minio_root_password: "{{ minio_root_password }}"
+    dashboard_api_secret: "{{ dashboard_api_secret }}"
+    mysql_dashboard_password: "{{ mysql_dashboard_password }}"
+  register: maia_configure_dashboard_output
+  delegate_to: localhost
+
+- name: Show MAIA Admin Toolkit installer output
+  ansible.builtin.debug:
+    var: maia_configure_dashboard_output.stdout
+
+- name: Login to ArgoCD using CLI (with fallback)
+  ansible.builtin.shell: |
+    export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
+    argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+  environment:
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  register: argocd_cli_login
+  changed_when: false
+  delegate_to: localhost
+  when: auto_sync | bool
+  
+
+- name: Show ArgoCD CLI login output
+  ansible.builtin.debug:
+    var: argocd_cli_login.stdout
+  when: auto_sync | bool
+- name: Sync maia-admin-maia-dashboard ArgoCD application
+  ansible.builtin.shell: |
+    argocd app sync maia-admin-maia-dashboard
+  register: argocd_sync_maia_dashboard
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync | bool
+
+- name: Rollout restart maia-dashboard deployment
+  ansible.builtin.shell: |
+    kubectl rollout restart deployment/maia-admin-maia-dashboard -n maia-dashboard
+  register: maia_dashboard_rollout
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync | bool
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"

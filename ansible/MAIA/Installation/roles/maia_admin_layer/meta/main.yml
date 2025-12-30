@@ -1,0 +1,38 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Install and configure the MAIA Admin layer components on Kubernetes, including identity, registries, dashboards, and supporting services.
+  company: MAIA Project
+
+  license: GPL-3.0-only
+  min_ansible_version: 2.1
+
+  galaxy_tags: [maia, kubernetes, admin, argocd, keycloak, harbor]
+
+dependencies: []
+
+argument_specs:
+  main:
+    description: Install and configure the MAIA Admin layer components on Kubernetes, including identity, registries, dashboards, and supporting services.
+    short_description: Install and configure the MAIA Admin layer components on Kubernetes
+    options:
+      config_folder:
+        type: str
+        required: true
+        description: "Path to the configuration folder containing env.json and cluster config YAML."
+      maia_admin_namespaces:
+        type: list
+        elements: str
+        required: false
+        default: [harbor, keycloak, maia-admin-toolkit, maia-dashboard, cattle-system]
+        description: "List of namespaces to create for MAIA Admin components."
+      auto_sync:
+        type: bool
+        required: false
+        default: true
+        description: "Enable ArgoCD application synchronization and post-install tasks."
+      argocd_port:
+        type: int
+        required: false
+        default: 8080
+        description: "ArgoCD port for CLI login."

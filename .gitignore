@@ -133,6 +133,4 @@ dmypy.json
 /tutorials/
 .vscode/
 configs/
-configs_dev/
-maia-medium_config/
-playground/
+maia-dev-config/

@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-lb
+  annotations:
+    metallb.universe.tf/allow-shared-ip: default
+    metallb.universe.tf/ip-allocated-from-pool: default-addresspool
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: kubernetes-ca-issuer
+spec:
+  ca:
+    secretName: kubernetes-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-domain-tls
+  namespace: default
+spec:
+  secretName: test-domain-tls
+  dnsNames:
+    - "test.maia.se"
+    - "*.test.maia.se"
+  issuerRef:
+    name: kubernetes-ca-issuer
+    kind: ClusterIssuer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-storage
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: nginx-storage
+          persistentVolumeClaim:
+            claimName: nginx-pvc
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+spec:
+  tls:
+    - hosts:
+        - "test.maia.se"
+        - "*.test.maia.se"
+      secretName: test-domain-tls
+  rules:
+    - host: test.maia.se
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-lb
+                port:
+                  number: 80
+

@@ -3,6 +3,42 @@ from __future__ import annotations
 import os
 
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
+from typing import Any
+
+
+def get_users_in_group_in_keycloak(group_id, settings) -> list[str]:
+    """
+    Retrieve users in a group in Keycloak.
+
+    Parameters
+    ----------
+    group_id : str
+        The ID of the group to retrieve users from.
+    settings : object
+        An object containing the Keycloak server settings. It should have the following attributes:
+        - OIDC_SERVER_URL: str, the URL of the Keycloak server.
+        - OIDC_USERNAME: str, the username for Keycloak authentication.
+        - OIDC_REALM_NAME: str, the realm name in Keycloak.
+        - OIDC_RP_CLIENT_ID: str, the client ID for Keycloak.
+        - OIDC_RP_CLIENT_SECRET: str, the client secret for Keycloak.
+
+    Returns
+    -------
+    list[str]
+        A list of email addresses of users in the group.
+    """
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=settings.OIDC_SERVER_URL,
+        username=settings.OIDC_USERNAME,
+        password="",
+        realm_name=settings.OIDC_REALM_NAME,
+        client_id=settings.OIDC_RP_CLIENT_ID,
+        client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    users = keycloak_admin.get_group_members(group_id=group_id)
+    return [user["email"] for user in users if "email" in user]
 
 
 def get_user_ids(settings):
@@ -32,7 +68,7 @@ def get_user_ids(settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -85,7 +121,7 @@ def get_groups_for_user(email, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     groups = keycloak_admin.get_groups()
@@ -101,7 +137,7 @@ def get_groups_for_user(email, settings):
     return user_groups
 
 
-def remove_user_from_group_in_keycloak(email, group_id, settings):
+def remove_user_from_group_in_keycloak(email, group_id, settings) -> None:
     """
     Remove a user from a group in Keycloak.
 
@@ -131,7 +167,7 @@ def remove_user_from_group_in_keycloak(email, group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     groups = keycloak_admin.get_groups()
@@ -147,7 +183,42 @@ def remove_user_from_group_in_keycloak(email, group_id, settings):
     return None
 
 
-def delete_group_in_keycloak(group_id, settings):
+def delete_user_in_keycloak(email, settings) -> None:
+    """
+    Delete a user in Keycloak
+
+    Parameters
+    ----------
+    email : str
+        The email address of the user to be deleted.
+    settings : object
+        An object containing the Keycloak server settings. It should have the following attributes:
+        - OIDC_SERVER_URL: str, the URL of the Keycloak server.
+        - OIDC_USERNAME: str, the username for Keycloak authentication.
+        - OIDC_REALM_NAME: str, the realm name in Keycloak.
+        - OIDC_RP_CLIENT_ID: str, the client ID for Keycloak.
+        - OIDC_RP_CLIENT_SECRET: str, the client secret for Keycloak.
+
+    Returns
+    -------
+    None
+    """
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=settings.OIDC_SERVER_URL,
+        username=settings.OIDC_USERNAME,
+        password="",
+        realm_name=settings.OIDC_REALM_NAME,
+        client_id=settings.OIDC_RP_CLIENT_ID,
+        client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    users = keycloak_admin.get_users(query={"email": email})
+    if users:
+        keycloak_admin.delete_user(users[0]["id"])
+
+
+def delete_group_in_keycloak(group_id, settings) -> None:
     """
     Delete a group in Keycloak
 
@@ -175,7 +246,7 @@ def delete_group_in_keycloak(group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
     groups = keycloak_admin.get_groups()
@@ -188,25 +259,25 @@ def delete_group_in_keycloak(group_id, settings):
     return None
 
 
-def get_groups_in_keycloak(settings):
+def get_groups_in_keycloak(settings) -> dict[str, str]:
     """
     Retrieve groups from Keycloak that start with "MAIA:" and return them in a dictionary.
 
     Parameters
     ----------
     settings : object
-        An object containing the Keycloak connection settings.
-        It should have the following attributes:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The name of the Keycloak realm.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing the Keycloak connection settings.
+    It should have the following attributes:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The name of the Keycloak realm.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -221,7 +292,7 @@ def get_groups_in_keycloak(settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -233,7 +304,7 @@ def get_groups_in_keycloak(settings):
     return maia_groups
 
 
-def register_user_in_keycloak(email, settings):
+def register_user_in_keycloak(email, settings) -> None:
     """
     Registers a user in Keycloak and sends an approved registration email.
 
@@ -270,7 +341,7 @@ def register_user_in_keycloak(email, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -296,7 +367,7 @@ def register_user_in_keycloak(email, settings):
         send_approved_registration_email(email, maia_login_url, temp_password)
 
 
-def register_group_in_keycloak(group_id, settings):
+def register_group_in_keycloak(group_id, settings) -> None:
     """
     Registers a group in Keycloak with the specified group ID and settings.
 
@@ -305,17 +376,17 @@ def register_group_in_keycloak(group_id, settings):
     group_id : str
         The ID of the group to be registered.
     settings : object
-        An object containing the Keycloak server settings, including:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The name of the Keycloak realm.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing the Keycloak server settings, including:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The name of the Keycloak realm.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -328,7 +399,7 @@ def register_group_in_keycloak(group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -345,7 +416,7 @@ def register_group_in_keycloak(group_id, settings):
     keycloak_admin.create_group(payload)
 
 
-def register_users_in_group_in_keycloak(emails, group_id, settings):
+def register_users_in_group_in_keycloak(emails, group_id, settings) -> None:
     """
     Registers users in a specified Keycloak group.
 
@@ -356,17 +427,17 @@ def register_users_in_group_in_keycloak(emails, group_id, settings):
     group_id : str
         The ID of the group to which users should be added.
     settings : object
-        An object containing Keycloak server settings, including:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The realm name in Keycloak.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing Keycloak server settings, including:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The realm name in Keycloak.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -379,7 +450,7 @@ def register_users_in_group_in_keycloak(emails, group_id, settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -402,7 +473,7 @@ def register_users_in_group_in_keycloak(emails, group_id, settings):
                         ...
 
 
-def get_list_of_groups_requesting_a_user(email, user_model):
+def get_list_of_groups_requesting_a_user(email, user_model) -> list[str]:
     """
     Retrieves a list of groups (namespaces) that have requested a specific user based on their email.
 
@@ -432,7 +503,7 @@ def get_list_of_groups_requesting_a_user(email, user_model):
         return []
 
 
-def get_list_of_users_requesting_a_group(maia_user_model, group_id):
+def get_list_of_users_requesting_a_group(maia_user_model, group_id) -> list[str]:
     """
     Retrieves a list of email addresses of users who have requested access to a specific group.
 
@@ -470,24 +541,24 @@ def get_list_of_users_requesting_a_group(maia_user_model, group_id):
     return users
 
 
-def get_maia_users_from_keycloak(settings):
+def get_maia_users_from_keycloak(settings) -> list[dict[str, Any]]:
     """
     Retrieves all users from Keycloak who are members of any MAIA group.
 
     Parameters
     ----------
     settings : object
-        An object containing Keycloak connection settings, including:
-        - OIDC_SERVER_URL : str
-            The URL of the Keycloak server.
-        - OIDC_USERNAME : str
-            The username for Keycloak authentication.
-        - OIDC_REALM_NAME : str
-            The realm name in Keycloak.
-        - OIDC_RP_CLIENT_ID : str
-            The client ID for Keycloak.
-        - OIDC_RP_CLIENT_SECRET : str
-            The client secret for Keycloak.
+    An object containing Keycloak connection settings, including:
+    - OIDC_SERVER_URL : str
+        The URL of the Keycloak server.
+    - OIDC_USERNAME : str
+        The username for Keycloak authentication.
+    - OIDC_REALM_NAME : str
+        The realm name in Keycloak.
+    - OIDC_RP_CLIENT_ID : str
+        The client ID for Keycloak.
+    - OIDC_RP_CLIENT_SECRET : str
+        The client secret for Keycloak.
 
     Returns
     -------
@@ -502,7 +573,7 @@ def get_maia_users_from_keycloak(settings):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", None) or True,
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
