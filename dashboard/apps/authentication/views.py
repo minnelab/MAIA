@@ -200,7 +200,10 @@ def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
         return None
     if not MAIAUser.objects.filter(email=email).exists():
         if namespace != settings.USERS_GROUP:
-            MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
+            if namespace!= "":
+                MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
+            else:
+                MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=email)
         else:
             MAIAUser.objects.create(email=email, namespace=namespace, username=email)
         return MAIAUser.objects.filter(email=email).first()
@@ -209,6 +212,8 @@ def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
         user_namespaces = user.namespace.split(",")
         if namespace not in user_namespaces:
             user_namespaces.append(namespace)
+            if "" in user_namespaces:
+                user_namespaces.remove("")
             user.namespace = ",".join(user_namespaces)
             user.save()
         return user
