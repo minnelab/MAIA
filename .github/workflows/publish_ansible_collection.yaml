@@ -27,9 +27,12 @@ jobs:
           pip install ansible-core
           pip install pypandoc
       - name: Install Pandoc
-        run: |
-          apt-get update
-          apt-get install -y pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: "3.1.12"  # optional, omit for latest
+
+      - name: Verify
+        run: pandoc --version
       - name: Extract version from tag
         id: extract_version
         run: |
