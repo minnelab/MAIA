@@ -8,6 +8,8 @@ permissions:
 
 jobs:
   build-test-pypi:
+    # Skip if the commit message indicates an Ansible collection release
+    if: ${{ !startsWith(github.event.head_commit.message, 'Ansible MAIA.Installation v') }}
     name: Build, Test and publish Python 🐍 distributions 📦 to Test PyPI
     runs-on: ubuntu-latest
     steps:
