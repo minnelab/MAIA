@@ -12,6 +12,8 @@ jobs:
     if: startsWith(github.event.head_commit.message, 'Ansible MAIA.Installation v')
     name: Build and publish Ansible collection to Galaxy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout
