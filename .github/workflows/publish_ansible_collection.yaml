@@ -2,15 +2,11 @@ name: Publish Ansible Collection
 
 on:
   push:
-    branches:
-      - main
-      - master
+    tags:
+      - 'ansible-maia.installation-v*'
 
 jobs:
   publish-ansible-collection:
-    # Only run if commit message matches pattern "Ansible MAIA.Installation v<VERSION>"
-    # with a valid version number
-    if: startsWith(github.event.head_commit.message, 'Ansible MAIA.Installation v') && contains(github.event.head_commit.message, '.')
     name: Build and publish Ansible collection to Galaxy
     runs-on: ubuntu-latest
     permissions:
@@ -33,22 +29,10 @@ jobs:
       - name: Extract version from commit message
         id: extract_version
         run: |
-          # Extract version from commit message format: "Ansible MAIA.Installation v<VERSION>"
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          echo "Commit message: $COMMIT_MSG"
-          
-          # Use regex to extract version (remove 'v' prefix)
-          # Pattern ensures valid semantic versioning (e.g., 1.2.3, 1.0, 2.0.0)
-          # Allows optional suffix (e.g., -beta) but extracts only version number
-          # Using POSIX-compliant regex for portability
-          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9][0-9]*\(\.[0-9][0-9]*\)*\)\(-.*\)\{0,1\}[[:space:]]*$/\1/p')
-          
-          if [ -z "$VERSION" ]; then
-            echo "ERROR: Could not extract version from commit message"
-            exit 1
-          fi
-          
-          echo "Extracted version: $VERSION"
+          # Extract version from tag
+          VERSION="${{ github.ref_name }}"
+          VERSION="${{ VERSION#ansible-maia.installation-v }}"
+          echo "Tag: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Update galaxy.yml version
