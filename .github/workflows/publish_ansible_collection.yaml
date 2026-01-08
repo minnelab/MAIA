@@ -9,7 +9,8 @@ on:
 jobs:
   publish-ansible-collection:
     # Only run if commit message matches pattern "Ansible MAIA.Installation v<VERSION>"
-    if: startsWith(github.event.head_commit.message, 'Ansible MAIA.Installation v')
+    # with a valid version number
+    if: startsWith(github.event.head_commit.message, 'Ansible MAIA.Installation v') && contains(github.event.head_commit.message, '.')
     name: Build and publish Ansible collection to Galaxy
     runs-on: ubuntu-latest
     permissions:
@@ -39,11 +40,12 @@ jobs:
           # Use regex to extract version (remove 'v' prefix)
           # Pattern ensures valid semantic versioning (e.g., 1.2.3, 1.0, 2.0.0)
           # Only allows whitespace or end of string after version
-          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)[[:space:]]*$/\1/p')
+          # Using POSIX-compliant regex for portability
+          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9][0-9]*\(\.[0-9][0-9]*\)*\)[[:space:]]*$/\1/p')
           
           # Fallback: Allow optional dash and suffix (e.g., -beta) but extract only version number
           if [ -z "$VERSION" ]; then
-            VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)\(-.*\|\)[[:space:]]*$/\1/p')
+            VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9][0-9]*\(\.[0-9][0-9]*\)*\)\(-.*\)\{0,1\}[[:space:]]*$/\1/p')
           fi
           
           if [ -z "$VERSION" ]; then
@@ -84,10 +86,12 @@ jobs:
           VERSION="${{ steps.extract_version.outputs.version }}"
           cd ansible/MAIA/Installation/
           
-          # Publish the collection using the token from secrets
+          # Publish the collection using the token from environment variable
           ansible-galaxy collection publish \
             maia-installation-${VERSION}.tar.gz \
-            --token ${{ secrets.ANSIBLE_GALAXY_API_TOKEN }}
+            --token $ANSIBLE_GALAXY_API_TOKEN
+        env:
+          ANSIBLE_GALAXY_API_TOKEN: ${{ secrets.ANSIBLE_GALAXY_API_TOKEN }}
       
       - name: Upload collection artifact
         uses: actions/upload-artifact@v4
