@@ -3,7 +3,9 @@
 sudo apt update
 sudo apt install -y python3-pip ufw curl
 sudo apt install -y jq yq apache2-utils
-pip install maia-toolkit==2.4.3 ansible jmespath --break-system-packages
+pip install maia-toolkit==2.4.3 --break-system-packages
+#pip install git+https://github.com/minnelab/MAIA.git@master
+pip install ansible jmespath --break-system-packages
 
 
 
