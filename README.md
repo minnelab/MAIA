@@ -278,10 +278,6 @@ Additionally, the MAIA platform provides access to a range of cloud services and
 - **KubeFlow**: An open-source platform for deploying machine learning workflows on Kubernetes.
 - **MONAI Deploy [Experimental]**: An open-source platform for deploying deep learning models for medical imaging in clinical production settings.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/minnelab/maia/master/Workspace.png" width="70%" alt='MAIA'>
-</p>
-
 
 
 
