@@ -15,10 +15,10 @@ jobs:
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.x"
       
@@ -35,7 +35,13 @@ jobs:
           echo "Commit message: $COMMIT_MSG"
           
           # Use regex to extract version (remove 'v' prefix)
-          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9.]*\).*/\1/p')
+          # Pattern ensures valid semantic versioning (e.g., 1.2.3, 1.0, 2.0.0)
+          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)[^0-9]*.*/\1/p')
+          
+          # Fallback for version at end of line without trailing characters
+          if [ -z "$VERSION" ]; then
+            VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)$/\1/p')
+          fi
           
           if [ -z "$VERSION" ]; then
             echo "ERROR: Could not extract version from commit message"
