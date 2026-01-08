@@ -26,12 +26,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install ansible-core
       
-      - name: Extract version from commit message
+      - name: Extract version from tag
         id: extract_version
         run: |
           # Extract version from tag
-          VERSION="${{ github.ref_name#ansible-maia.installation-v }}"
-          echo "Tag: $VERSION"
+          VERSION="${{ github.ref_name }}"
+          VERSION="${{ VERSION#ansible-maia.installation-v }}"
+          echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Update galaxy.yml version
