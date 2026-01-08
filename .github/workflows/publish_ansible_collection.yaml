@@ -36,11 +36,12 @@ jobs:
           
           # Use regex to extract version (remove 'v' prefix)
           # Pattern ensures valid semantic versioning (e.g., 1.2.3, 1.0, 2.0.0)
-          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)[^0-9]*.*/\1/p')
+          # Only allows whitespace or end of string after version
+          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)[[:space:]]*$/\1/p')
           
-          # Fallback for version at end of line without trailing characters
+          # Fallback: Allow optional dash and suffix (e.g., -beta) but extract only version number
           if [ -z "$VERSION" ]; then
-            VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)$/\1/p')
+            VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9]\+\(\.[0-9]\+\)*\)\(-.*\|\)[[:space:]]*$/\1/p')
           fi
           
           if [ -z "$VERSION" ]; then
@@ -63,10 +64,6 @@ jobs:
           echo "Updated galaxy.yml version:"
           grep "^version:" ansible/MAIA/Installation/galaxy.yml
       
-      - name: Install Ansible collection
-        run: |
-          ansible-galaxy collection install ansible/MAIA/Installation/
-      
       - name: Build Ansible collection
         run: |
           cd ansible/MAIA/Installation/
@@ -84,8 +81,6 @@ jobs:
           ansible-galaxy collection publish \
             maia-installation-${VERSION}.tar.gz \
             --token ${{ secrets.ANSIBLE_GALAXY_API_TOKEN }}
-        env:
-          ANSIBLE_GALAXY_API_TOKEN: ${{ secrets.ANSIBLE_GALAXY_API_TOKEN }}
       
       - name: Upload collection artifact
         uses: actions/upload-artifact@v4
