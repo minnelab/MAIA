@@ -191,3 +191,10 @@ To access all the features of MAIA, verify that all the subdomains are mapped in
 <WSL_IP> minio.test.<domain>
 <WSL_IP> login.<domain>
 ```
+
+<!-- DOCS-START -->
+<!-- DOCS-END -->
+
+<!-- DOCS-EXAMPLE-START -->
+
+<!-- DOCS-EXAMPLE-END -->

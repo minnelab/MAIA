@@ -1,5 +1,5 @@
-Complete Inventory Example
---------------------------
+Example: Complete Cluster Setup – Components and Roles
+======================================================
 
 .. code-block:: ini
 
@@ -42,7 +42,7 @@ With corresponding host variable files:
     local_storage_size: 500g
 
 Usage
-=====
+-----
 
 The MAIA installation with MicroK8s consists of three main playbooks that should be executed in sequence:
 
