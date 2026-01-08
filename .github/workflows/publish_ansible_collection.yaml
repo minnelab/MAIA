@@ -39,14 +39,9 @@ jobs:
           
           # Use regex to extract version (remove 'v' prefix)
           # Pattern ensures valid semantic versioning (e.g., 1.2.3, 1.0, 2.0.0)
-          # Only allows whitespace or end of string after version
+          # Allows optional suffix (e.g., -beta) but extracts only version number
           # Using POSIX-compliant regex for portability
-          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9][0-9]*\(\.[0-9][0-9]*\)*\)[[:space:]]*$/\1/p')
-          
-          # Fallback: Allow optional dash and suffix (e.g., -beta) but extract only version number
-          if [ -z "$VERSION" ]; then
-            VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9][0-9]*\(\.[0-9][0-9]*\)*\)\(-.*\)\{0,1\}[[:space:]]*$/\1/p')
-          fi
+          VERSION=$(echo "$COMMIT_MSG" | sed -n 's/^Ansible MAIA\.Installation v\([0-9][0-9]*\(\.[0-9][0-9]*\)*\)\(-.*\)\{0,1\}[[:space:]]*$/\1/p')
           
           if [ -z "$VERSION" ]; then
             echo "ERROR: Could not extract version from commit message"
