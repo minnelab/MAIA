@@ -30,8 +30,7 @@ jobs:
         id: extract_version
         run: |
           # Extract version from tag
-          VERSION="${{ github.ref_name }}"
-          VERSION="${{ VERSION#ansible-maia.installation-v }}"
+          VERSION="${{ github.ref_name#ansible-maia.installation-v }}"
           echo "Tag: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       
