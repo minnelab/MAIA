@@ -66,6 +66,11 @@ jobs:
           echo "Updated galaxy.yml version:"
           grep "^version:" ansible/MAIA/Installation/galaxy.yml
       
+      - name: Install Ansible collection
+        run: |
+          # Install collection from local directory to validate structure and dependencies
+          ansible-galaxy collection install ansible/MAIA/Installation/
+      
       - name: Build Ansible collection
         run: |
           cd ansible/MAIA/Installation/
