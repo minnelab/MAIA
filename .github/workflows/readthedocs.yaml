@@ -13,12 +13,18 @@ jobs:
 
     steps:
       - name: Trigger Read the Docs webhook
-        run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-ReadTheDocs-Webhook-Signature: $RTD_WEBHOOK_SECRET" \
-            -d '{}' \
-            "$RTD_WEBHOOK_URL"
         env:
           RTD_WEBHOOK_URL: ${{ secrets.RTD_WEBHOOK_URL }}
           RTD_WEBHOOK_SECRET: ${{ secrets.RTD_WEBHOOK_SECRET }}
+        run: |
+          BODY='{}'
+
+          SIGNATURE=$(printf "%s" "$BODY" | \
+            openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | \
+            sed 's/^.* //')
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-ReadTheDocs-Webhook-Signature: sha256=$SIGNATURE" \
+            -d "$BODY" \
+            "$RTD_WEBHOOK_URL"
