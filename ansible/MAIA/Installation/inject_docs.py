@@ -38,6 +38,13 @@ new_readme = re.sub(
     readme,
     flags=re.S,
 )
+# Replace all occurrences of [{.title-ref}] (e.g. [-e nvidia_drivers=false]{.title-ref}) with just **[content]**.
+new_readme = re.sub(
+    r"(\[[^\[\]]+\])\{\.title-ref\}",
+    lambda m: f"**{m.group(1)[1:-1]}**",
+    new_readme
+)
+
 
 README.write_text(new_readme)
 print("Injected RST docs into README.md")
