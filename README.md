@@ -5,10 +5,11 @@
 
 [![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
-![Version](https://img.shields.io/badge/MAIA-v2.0.0-blue)
+![Version](https://img.shields.io/github/v/tag/minnelab/MAIA?label=MAIA&color=blue&sort=semver&include_prereleases&filter=v*)
 [![License](https://img.shields.io/badge/license-GPL%203.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 ![Python](https://img.shields.io/badge/python-3.8+-orange)
 [![Ansible Collection](https://img.shields.io/badge/Ansible%20Galaxy-maia.installation-blue?logo=ansible)](https://galaxy.ansible.com/maia/installation)
+![Ansible Collection Version](https://img.shields.io/github/v/tag/minnelab/MAIA?label=maia.installation&color=blue&sort=semver&include_prereleases&filter=ansible-maia.installation-v*)
 
 
 ![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/minnelab/MAIA?logo=github)
