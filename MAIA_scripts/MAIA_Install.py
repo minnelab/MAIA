@@ -77,6 +77,13 @@ def get_arg_parser():
         help="Run MAIA_Configure_Installation.sh without prompts (requires env.json to exist).",
     )
 
+    pars.add_argument(
+        "--steps",
+        nargs="+",
+        default=None,
+        help="Steps to run. Default: None. If provided, only the specified steps will be run, overriding the steps in the config.yaml file.",
+    )
+
     pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
@@ -110,6 +117,8 @@ def main():
     else:
         config_dict = {}
 
+    if args.steps:
+        config_dict["steps"] = args.steps
     playbooks_dir = "maia.installation"
 
     # Step 1: Install Ansible collection
