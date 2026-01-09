@@ -1,12 +1,13 @@
 #!/bin/bash
 
+VERSION=0.0.0
+
 sudo apt update
 sudo apt install -y python3-pip ufw curl
 sudo apt install -y jq yq apache2-utils
 if [ "$1" == "--dev" ]; then
     pip install git+https://github.com/minnelab/MAIA.git@master --break-system-packages
 else
-    VERSION=$(curl -s https://pypi.org/pypi/maia-toolkit/json | jq -r .info.version)
     pip install maia-toolkit==${VERSION} --break-system-packages
 fi
 
