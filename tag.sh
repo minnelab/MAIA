@@ -10,109 +10,72 @@ fi
 echo "Latest tag: $LATEST"
 
 VERSION=${LATEST#v}
-# Allow versions with/without prerelease: <MAJOR>.<MINOR>.<PATCH> or <MAJOR>.<MINOR>.<PATCH>-<tag>.<n>
+# Regex for semver and prerelease: <MAJOR>.<MINOR>.<PATCH> or <MAJOR>.<MINOR>.<PATCH>-<PRERELEASE>.<N>
 VERSION_RE="^([0-9]+)\.([0-9]+)\.([0-9]+)(-([a-zA-Z]+)\.([0-9]+))?$"
-if [[ "$VERSION" =~ $VERSION_RE ]]; then
+
+if [[ $VERSION =~ $VERSION_RE ]]; then
   MAJOR="${BASH_REMATCH[1]}"
   MINOR="${BASH_REMATCH[2]}"
   PATCH="${BASH_REMATCH[3]}"
-  PRERELEASE_FULL="${BASH_REMATCH[4]}"      # (e.g. -alpha.1 or empty)
-  PRERELEASE_TAG="${BASH_REMATCH[5]}"      # (e.g. alpha or empty)
-  PRERELEASE_NUM="${BASH_REMATCH[6]}"      # (e.g. 1 or empty)
+  LATEST_PRERELEASE="${BASH_REMATCH[5]}"
+  LATEST_PRERELEASE_N="${BASH_REMATCH[6]}"
 else
-  echo "Version format not recognized: $VERSION"
+  echo "Could not parse version: $VERSION"
   exit 1
 fi
 
 BUMP_TYPE="$2"
-PRERELEASE_TYPE="$3"
+PRERELEASE="$3"
 
+# Default to current values
 NEXT_MAJOR=$MAJOR
 NEXT_MINOR=$MINOR
 NEXT_PATCH=$PATCH
-NEXT_PRERELEASE_TAG=""
-NEXT_PRERELEASE_NUM=""
+NEXT_PRERELEASE=""
+NEXT_PRERELEASE_N=""
 
-if [[ -n "$PRERELEASE_TYPE" ]]; then
-  # If prerelease type is provided, do not bump version numbers, unless this is the very first prerelease for this version (alpha.1, etc)
-  # If current tag is not the same version and not already a prerelease, we allow the increment as usual (first alpha.1)
-  if [[ -z "$PRERELEASE_TAG" ]]; then
-    # Not a prerelease tag yet; do a normal version bump for first pre-release
-    case "$BUMP_TYPE" in
-      patch)
-        NEXT_PATCH=$((PATCH+1))
-        NEXT_MINOR=$MINOR
-        NEXT_MAJOR=$MAJOR
-        ;;
-      minor)
-        NEXT_PATCH=0
-        NEXT_MINOR=$((MINOR+1))
-        NEXT_MAJOR=$MAJOR
-        ;;
-      major)
-        NEXT_PATCH=0
-        NEXT_MINOR=0
-        NEXT_MAJOR=$((MAJOR+1))
-        ;;
-      *)
-        echo "Invalid bump type; use: patch, minor, major."
-        exit 1
-        ;;
-    esac
-  else
-    # Already a prerelease, don't bump base version -- alpha.2/beta.1/etc:
-    NEXT_PATCH=$PATCH
-    NEXT_MINOR=$MINOR
-    NEXT_MAJOR=$MAJOR
-  fi
-else
-  # No prerelease type
-  if [[ -n "$PRERELEASE_TAG" ]]; then
-    # Latest is a pre-release, no new pre-release requested: keep base version!
-    NEXT_MAJOR=$MAJOR
-    NEXT_MINOR=$MINOR
-    NEXT_PATCH=$PATCH
-  else
-    # No prerelease present; normal version bump
-    case "$BUMP_TYPE" in
-      patch)
-        NEXT_PATCH=$((PATCH+1))
-        NEXT_MINOR=$MINOR
-        NEXT_MAJOR=$MAJOR
-        ;;
-      minor)
-        NEXT_PATCH=0
-        NEXT_MINOR=$((MINOR+1))
-        NEXT_MAJOR=$MAJOR
-        ;;
-      major)
-        NEXT_PATCH=0
-        NEXT_MINOR=0
-        NEXT_MAJOR=$((MAJOR+1))
-        ;;
-      *)
-        echo "Invalid bump type; use: patch, minor, major."
-        exit 1
-        ;;
-    esac
+if [[ -z "$PRERELEASE" && -z "$LATEST_PRERELEASE" ]]; then
+  if [[ "$BUMP_TYPE" == "major" ]]; then
+    NEXT_MAJOR=$((MAJOR + 1))
+    NEXT_MINOR=0
+    NEXT_PATCH=0
+  elif [[ "$BUMP_TYPE" == "minor" ]]; then
+    NEXT_MINOR=$((MINOR + 1))
+    NEXT_PATCH=0
+  elif [[ "$BUMP_TYPE" == "patch" ]]; then
+    NEXT_PATCH=$((PATCH + 1))
   fi
 fi
 
-if [[ -n "$PRERELEASE_TYPE" ]]; then
-  # Want alpha/beta/rc bump
-  if [[ "$PRERELEASE_TAG" == "$PRERELEASE_TYPE" ]]; then
-    # Already a pre-release of this type; increment
-    NEXT_PRERELEASE_NUM=$((PRERELEASE_NUM + 1))
+if [[ -n "$PRERELEASE" ]]; then
+  if [[ "$LATEST_PRERELEASE" == "$PRERELEASE" ]] && \
+     [[ "$MAJOR" -eq "$NEXT_MAJOR" ]] && \
+     [[ "$MINOR" -eq "$NEXT_MINOR" ]] && \
+     [[ "$PATCH" -eq "$NEXT_PATCH" ]]; then
+    # Same prerelease, just bump number
+    if [[ -n "$LATEST_PRERELEASE_N" ]]; then
+      NEXT_PRERELEASE_N=$((LATEST_PRERELEASE_N + 1))
+    else
+      NEXT_PRERELEASE_N=1
+    fi
   else
-    # Not a pre-release of this type (or not a pre-release): start from 1
-    NEXT_PRERELEASE_NUM=1
+    # New prerelease, start from 1
+    NEXT_PRERELEASE_N=1
   fi
-  NEXT_PRERELEASE_TAG=$PRERELEASE_TYPE
-  NEXT_VER="v$NEXT_MAJOR.$NEXT_MINOR.$NEXT_PATCH-$NEXT_PRERELEASE_TAG.$NEXT_PRERELEASE_NUM"
+  NEXT_VER="v$NEXT_MAJOR.$NEXT_MINOR.$NEXT_PATCH-$PRERELEASE.$NEXT_PRERELEASE_N"
 else
-  # No pre-release
-  NEXT_VER="v$NEXT_MAJOR.$NEXT_MINOR.$NEXT_PATCH"
+  # No prerelease requested
+  if [[ -n "$LATEST_PRERELEASE" ]] && \
+     [[ "$MAJOR" -eq "$NEXT_MAJOR" ]] && \
+     [[ "$MINOR" -eq "$NEXT_MINOR" ]] && \
+     [[ "$PATCH" -eq "$NEXT_PATCH" ]]; then
+    # Was prerelease but no longer requested, keep as-is (do not bump anything)
+    NEXT_VER="v$MAJOR.$MINOR.$PATCH"
+  else
+    NEXT_VER="v$NEXT_MAJOR.$NEXT_MINOR.$NEXT_PATCH"
+  fi
 fi
+
 
 if [ "$1" == "ansible" ]; then
   NEXT_VER="ansible-maia.installation-$NEXT_VER"

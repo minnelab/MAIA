@@ -129,3 +129,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Extract tag name
+        id: tag
+        run: |
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Trigger Read the Docs build for tag
+        run: |
+          curl -X POST \
+            -H "Authorization: Token ${{ secrets.RTD_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://readthedocs.org/api/v3/projects/maia-toolkit/versions/${{ steps.tag.outputs.tag }}/builds/
