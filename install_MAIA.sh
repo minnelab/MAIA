@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VERSION=0.0.0
-
+MAIA_INSTALLATION_VERSION=0.0.0
 sudo apt update
 sudo apt install -y python3-pip ufw curl
 sudo apt install -y jq yq apache2-utils
@@ -251,6 +251,6 @@ if [[ " $@ " =~ " --dry-run " ]]; then
     :
 else
     export PATH=$HOME/.local/bin:$PATH
-    MAIA_Install --config-folder $CONFIG_FOLDER
+    MAIA_Install --config-folder $CONFIG_FOLDER --ansible-collection-path maia.installation==${MAIA_INSTALLATION_VERSION}
 fi
 

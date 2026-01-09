@@ -86,7 +86,15 @@ jobs:
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
           sed -i "s/VERSION=.*/VERSION=${VERSION}/" install_MAIA.sh
-
+          MAIA_INSTALLATION_VERSION=$(git ls-remote --tags https://github.com/minnelab/MAIA.git \
+                                    | awk '{print $2}' \
+                                    | sed 's|refs/tags/||' \
+                                    | grep '^ansible-maia.installation-v' \
+                                    | sort -V \
+                                    | tail -n 1 \
+                                    | sed 's/\^{}$//' \
+                                    | sed 's/^ansible-maia.installation-v//')
+          sed -i "s/MAIA_INSTALLATION_VERSION=.*/MAIA_INSTALLATION_VERSION=${MAIA_INSTALLATION_VERSION}/" install_MAIA.sh
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
