@@ -140,3 +140,9 @@ jobs:
             -H "Authorization: Token ${{ secrets.RTD_TOKEN }}" \
             -H "Content-Type: application/json" \
             https://readthedocs.org/api/v3/projects/maia-toolkit/versions/${{ steps.tag.outputs.tag }}/builds/
+
+      - name: Trigger Read the Docs to make the documentation available
+        run: |
+          curl -X PATCH -H "Authorization: Token ${{ secrets.RTD_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          https://readthedocs.org/api/v3/projects/maia-toolkit/versions/${{ steps.tag.outputs.tag }}/ -d '{"active": true}'
