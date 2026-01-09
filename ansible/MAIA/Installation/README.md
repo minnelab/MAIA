@@ -198,3 +198,16 @@ To access all the features of MAIA, verify that all the subdomains are mapped in
 <!-- DOCS-EXAMPLE-START -->
 
 <!-- DOCS-EXAMPLE-END -->
+
+## MAIA Dashboard and MAIA Workspace Dev Environment
+
+To deploy the dev environment for the MAIA Dashboard and MAIA Workspace, you can set the following environment variables before running the installer:
+```bash
+export DEV_BRANCH=<branch_name>
+export GIT_EMAIL=<email>
+export GIT_NAME=<name>
+export GPG_KEY=<path/to/gpg.key>
+```
+The DEV_BRANCH is the branch that will be used to deploy the MAIA Dashboard and install the `maia-toolkit` package.
+The GIT_EMAIL and GIT_NAME are the email and name of the user that will be used to commit the changes to the repository.
+The GPG_KEY is the path to the GPG key that will be used to sign the commits.
