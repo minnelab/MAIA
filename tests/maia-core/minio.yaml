@@ -97,10 +97,6 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "traefik"
 spec:
-  tls:
-    - hosts:
-        - "minio-api.test.$DOMAIN"
-      secretName: test-domain-tls
   rules:
     - host: minio-api.test.$DOMAIN
       http:
