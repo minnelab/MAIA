@@ -20,7 +20,13 @@ EPILOG = dedent(
 
 
 def create_admin_user_and_group(
-    server_url: str, client_secret: str, admin_email="admin@maia.se", group_id="users", admin_password="Admin", is_admin=True, admin_group_id="admin"
+    server_url: str,
+    client_secret: str,
+    admin_email="admin@maia.se",
+    group_id="users",
+    admin_password="Admin",
+    is_admin=True,
+    admin_group_id="admin",
 ):
     keycloak_connection = KeycloakOpenIDConnection(
         server_url=server_url,
