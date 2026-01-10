@@ -45,8 +45,8 @@ spec:
 ---
 apiVersion: v1
 data:
-  CONSOLE_ACCESS_KEY: dGVzdAo=
-  CONSOLE_SECRET_KEY: dGVzdHRlc3QK
+  CONSOLE_ACCESS_KEY: $MINIO_ACCESS_KEY
+  CONSOLE_SECRET_KEY: $MINIO_SECRET_KEY
 kind: Secret
 metadata:
   name: storage-user
@@ -61,8 +61,8 @@ metadata:
 stringData:
   config.env: |
     export MINIO_BROWSER=on
-    export MINIO_ROOT_USER=root
-    export MINIO_ROOT_PASSWORD=rootroot
+    export MINIO_ROOT_USER=$MINIO_ROOT_USER
+    export MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD
 type: Opaque
 ---
 apiVersion: networking.k8s.io/v1
