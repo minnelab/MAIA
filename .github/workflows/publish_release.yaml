@@ -102,7 +102,6 @@ jobs:
           generate_release_notes: True
           files: |
             install_MAIA.sh
-            install_MAIA_WSL.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

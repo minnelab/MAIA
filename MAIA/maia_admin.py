@@ -36,6 +36,7 @@ loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
 minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
 maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_chart_version"]
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
+maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
 maia_dashboard_chart_type = define_maia_admin_versions()["maia_dashboard_chart_type"]
 
 
@@ -1474,6 +1475,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     # BACKEND
     # MAIA_PRIVATE_REGISTRY registry.maia-cloud.com/maia-private needed when deploying PRO projects
     # ARGOCD_DISABLED
+    # email_account:  <SMTP email address>
+    # email_smtp_server: <SMTP server address>
+    # email_password: <SMTP server password>
     domain = cluster_config_dict["domain"]
     maia_dashboard_values["env"].extend(
         [
@@ -1576,7 +1580,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         )
         with open(os.environ["GPG_KEY"], "r") as f:
             maia_dashboard_values["gpg_key"] = f.read()
-        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + "-dev"
+        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:

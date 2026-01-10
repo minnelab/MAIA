@@ -140,6 +140,11 @@ def define_maia_admin_versions():
     else:
         maia_dashboard_image_version = "2.4.0"
 
+    if os.environ.get("MAIA_DASHBOARD_DEV_TAG_SUFFIX") is not None:
+        maia_dashboard_dev_tag_suffix = os.environ.get("MAIA_DASHBOARD_DEV_TAG_SUFFIX")
+    else:
+        maia_dashboard_dev_tag_suffix = "-dev.1"
+
     if os.environ.get("MAIA_DASHBOARD_CHART_TYPE") is not None:
         maia_dashboard_chart_type = os.environ.get("MAIA_DASHBOARD_CHART_TYPE")
     else:
@@ -158,6 +163,7 @@ def define_maia_admin_versions():
         "admin_toolkit_chart_type": admin_toolkit_chart_type,
         "maia_dashboard_chart_version": maia_dashboard_chart_version,
         "maia_dashboard_image_version": maia_dashboard_image_version,
+        "maia_dashboard_dev_tag_suffix": maia_dashboard_dev_tag_suffix,
         "maia_dashboard_chart_type": maia_dashboard_chart_type,
         "admin_project_chart_version": admin_project_chart_version,
     }
