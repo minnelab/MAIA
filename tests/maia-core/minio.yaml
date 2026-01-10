@@ -15,7 +15,7 @@ spec:
     minio: true
   features:
     domains:
-      console: https://minio.test.DOMAIN
+      console: https://minio.test.$DOMAIN
   image: quay.io/minio/minio:RELEASE.2024-08-03T04-33-23Z
   imagePullSecret: {}
   mountPath: /export
@@ -75,10 +75,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - "minio.test.DOMAIN"
+        - "minio.test.$DOMAIN"
       secretName: test-domain-tls
   rules:
-    - host: minio.test.DOMAIN
+    - host: minio.test.$DOMAIN
       http:
         paths:
           - path: /
