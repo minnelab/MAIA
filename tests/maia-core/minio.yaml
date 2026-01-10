@@ -88,3 +88,27 @@ spec:
                 name: test-minio-tenant-console
                 port:
                   number: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-api-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+spec:
+  tls:
+    - hosts:
+        - "minio-api.test.$DOMAIN"
+      secretName: test-domain-tls
+  rules:
+    - host: minio-api.test.$DOMAIN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 80
