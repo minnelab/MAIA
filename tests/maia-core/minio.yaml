@@ -111,4 +111,4 @@ spec:
               service:
                 name: minio
                 port:
-                  number: 443
+                  number: 80
