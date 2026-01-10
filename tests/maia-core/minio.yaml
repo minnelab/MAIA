@@ -10,9 +10,6 @@ spec:
     name: storage-configuration
   #credsSecret:
   #  name: storage-user
-  certificates:
-    customCertificates:
-      - name: test-domain-tls
   exposeServices:
     console: true
     minio: true
