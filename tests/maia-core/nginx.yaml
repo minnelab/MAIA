@@ -44,8 +44,8 @@ metadata:
 spec:
   secretName: test-domain-tls
   dnsNames:
-    - "test.maia.se"
-    - "*.test.maia.se"
+    - "test.DOMAIN"
+    - "*.test.DOMAIN"
   issuerRef:
     name: kubernetes-ca-issuer
     kind: ClusterIssuer
@@ -87,11 +87,11 @@ metadata:
 spec:
   tls:
     - hosts:
-        - "test.maia.se"
-        - "*.test.maia.se"
+        - "test.DOMAIN"
+        - "*.test.DOMAIN"
       secretName: test-domain-tls
   rules:
-    - host: test.maia.se
+    - host: test.DOMAIN
       http:
         paths:
           - path: /
