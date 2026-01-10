@@ -20,7 +20,7 @@ EPILOG = dedent(
 
 
 def create_admin_user_and_group(
-    server_url: str, client_secret: str, admin_email="admin@maia.se", group_id="users", admin_password="Admin"
+    server_url: str, client_secret: str, admin_email="admin@maia.se", group_id="users", admin_password="Admin", is_admin=True, admin_group_id="admin"
 ):
     keycloak_connection = KeycloakOpenIDConnection(
         server_url=server_url,
@@ -76,11 +76,15 @@ def create_admin_user_and_group(
                 if group["name"] == f"MAIA:{group_id}":
                     gid = group["id"]
                     keycloak_admin.group_user_add(uid, gid)
+                if is_admin:
+                    if group["name"] == f"MAIA:{admin_group_id}":
+                        gid = group["id"]
+                        keycloak_admin.group_user_add(uid, gid)
 
     client_uuid = keycloak_admin.get_client_id("realm-management")
     client_roles = keycloak_admin.get_client_roles(client_uuid)
     for group in groups:
-        if group["name"] == "MAIA:admin":
+        if group["name"] == f"MAIA:{admin_group_id}":
             gid = group["id"]
             keycloak_admin.assign_group_client_roles(
                 group_id=gid,
