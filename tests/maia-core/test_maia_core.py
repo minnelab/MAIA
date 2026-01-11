@@ -19,6 +19,7 @@ from types import SimpleNamespace
 logger.remove()
 logger.add(lambda msg: print(msg, end=""), level="INFO")
 
+
 @pytest.mark.unit
 class TestMAIACore:
     """
@@ -44,7 +45,7 @@ class TestMAIACore:
             "client_secret": client_secret,
             "username": username,
             "password": password,
-            "scope": "openid"
+            "scope": "openid",
         }
         r = requests.post(url, data=data, verify=False)
         r.raise_for_status()
@@ -75,8 +76,7 @@ class TestMAIACore:
             CLUSTER_NAMES={
                 f"https://{self.domain}:16443": "maia",
             },
-            PRIVATE_CLUSTERS={
-            }
+            PRIVATE_CLUSTERS={},
         )
         self.kube_apiserver = f"https://{self.domain}:16443"
         if self.rancher_token is not None:
@@ -101,7 +101,7 @@ class TestMAIACore:
         configuration = k8s.client.Configuration()
         configuration.verify_ssl = False
         # Ensure DOMAIN env var is set (required for most tests)
-        
+
         if not self.domain:
             raise ValueError("The DOMAIN environment variable must be set before running tests.")
 
@@ -210,7 +210,6 @@ class TestMAIACore:
         nginx_content_after_restart = response_after_restart.text
         assert expected_content == nginx_content_after_restart
 
-
     def test_minio_tenant(self):
         """
         Validate that the MinIO operator and tenant are deployed correctly and object operations succeed.
@@ -293,7 +292,6 @@ class TestMAIACore:
         retrieved_json = json.loads(retrieved_object.read())
         assert retrieved_json == test_json
 
-
     def test_grafana(self):
         """
         Validate Grafana accessibility and API usage.
@@ -331,14 +329,9 @@ class TestMAIACore:
         if api_token is None:
             timestamp = time.time()
             key_name = f"cli-generated-token-{timestamp}"
-            create_payload = {
-                "name": key_name,
-                "role": "Admin"
-            }
+            create_payload = {"name": key_name, "role": "Admin"}
             create_key_resp = session.post(
-                f"{grafana_url_root}/api/auth/keys",
-                headers={"Content-Type": "application/json"},
-                data=json.dumps(create_payload)
+                f"{grafana_url_root}/api/auth/keys", headers={"Content-Type": "application/json"}, data=json.dumps(create_payload)
             )
             create_key_resp.raise_for_status()
             api_token = create_key_resp.json()["key"]
@@ -358,10 +351,7 @@ class TestMAIACore:
 
         import_resp = requests.post(
             f"{grafana_url_root}/api/dashboards/db",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_token}"
-            },
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_token}"},
             data=json.dumps(dashboard_import_payload),
             verify=False,
         )
@@ -370,9 +360,7 @@ class TestMAIACore:
         # Step 4: Search for the imported dashboard and generate a snapshot
         search_dashboards_resp = requests.get(
             f"{grafana_url_root}/api/search",
-            headers={
-                "Authorization": f"Bearer {api_token}"
-            },
+            headers={"Authorization": f"Bearer {api_token}"},
             verify=False,
         )
         search_dashboards_resp.raise_for_status()
@@ -423,7 +411,6 @@ class TestMAIACore:
                 snapshot_json = snapshot_result.json()
                 assert snapshot_json["url"].startswith(f"https://grafana.{self.domain}/dashboard/snapshot/")
                 logger.info("Grafana Snapshot API response: " + json.dumps(snapshot_json))
-    
 
     def test_metrics_server(self):
         """
@@ -464,7 +451,6 @@ class TestMAIACore:
         assert has_dashboard, "No pod starting with 'maia-admin-maia-dashboard' found in maia-dashboard namespace"
         assert has_mysql, "No pod starting with 'maia-admin-maia-dashboard-mysql' found in maia-dashboard namespace"
         assert has_minio, "No pod starting with 'admin-minio-tenant' found in maia-dashboard namespace"
-    
 
     def test_gpu_node_annotations(self):
         """
@@ -474,12 +460,9 @@ class TestMAIACore:
         """
         # k8s.config.load_kube_config() # Already loaded in setup_method
         # Retrieve node list directly from Kubernetes API via HTTPS request
-        
+
         token = self.id_token
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         # Disable SSL verification for test environments
         response = requests.get(
             f"{self.kube_apiserver}/api/v1/nodes",
@@ -487,8 +470,9 @@ class TestMAIACore:
             verify=False,
         )
         response.raise_for_status()
-        nodes = type('Nodes', (), {})()
+        nodes = type("Nodes", (), {})()
         import types
+
         items = []
         for item in response.json()["items"]:
             node = types.SimpleNamespace()
