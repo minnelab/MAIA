@@ -11,11 +11,13 @@ import io
 import requests
 import json
 from loguru import logger
+import yaml
+from MAIA.kubernetes_utils import generate_kubeconfig
+from types import SimpleNamespace
 
 # Configure logger to use only INFO level and above, printing to stdout
 logger.remove()
 logger.add(lambda msg: print(msg, end=""), level="INFO")
-
 
 @pytest.mark.unit
 class TestMAIACore:
@@ -31,6 +33,81 @@ class TestMAIACore:
       - Presence and correctness of platform certificates.
     """
 
+    def get_id_token(self, username, password, client_secret):
+        """
+        Get an ID token for the test user.
+        """
+        url = "https://iam.maia.io/realms/maia/protocol/openid-connect/token"
+        data = {
+            "grant_type": "password",
+            "client_id": "maia",
+            "client_secret": client_secret,
+            "username": username,
+            "password": password,
+            "scope": "openid"
+        }
+        r = requests.post(url, data=data, verify=False)
+        r.raise_for_status()
+        return r.json()["id_token"]
+
+    def setup_method(self, method):
+        """
+        Setup to be executed at the beginning of each test.
+        Loads Kubernetes config and ensures essential environment variables are present.
+        """
+        # Load K8s config for all tests
+        self.rancher_token = os.environ.get("RANCHER_TOKEN")
+        self.domain = os.environ.get("DOMAIN")
+        self.keycloak_client_secret = os.environ.get("KEYCLOAK_CLIENT_SECRET")
+        self.keycloak_username = os.environ.get("KEYCLOAK_USERNAME")
+        self.keycloak_password = os.environ.get("KEYCLOAK_PASSWORD")
+        self.rancher_token = os.environ.get("RANCHER_TOKEN")
+
+        if self.rancher_token is not None:
+            self.id_token = self.rancher_token
+        else:
+            self.id_token = self.get_id_token(self.keycloak_username, self.keycloak_password, self.keycloak_client_secret)
+
+        self.settings = SimpleNamespace(
+            OIDC_ISSUER_URL=f"https://iam.{self.domain}/realms/maia",
+            OIDC_RP_CLIENT_ID="maia",
+            OIDC_RP_CLIENT_SECRET=self.keycloak_client_secret,
+            CLUSTER_NAMES={
+                f"https://{self.domain}:16443": "maia",
+            },
+            PRIVATE_CLUSTERS={
+            }
+        )
+        self.kube_apiserver = f"https://{self.domain}:16443"
+        if self.rancher_token is not None:
+            self.settings.PRIVATE_CLUSTERS = {
+                f"https://mgmt.{self.domain}/k8s/clusters/local": self.rancher_token,
+            }
+            self.settings.CLUSTER_NAMES = {
+                f"https://mgmt.{self.domain}/k8s/clusters/local": "maia",
+            }
+            self.kube_apiserver = f"https://mgmt.{self.domain}/k8s/clusters/local"
+        self.kubeconfig = generate_kubeconfig(self.id_token, "test", "default", "maia", self.settings)
+        with open("kubeconfig.yaml", "w") as f:
+            yaml.dump(self.kubeconfig, f)
+
+        os.environ["KUBECONFIG"] = "kubeconfig.yaml"
+
+        try:
+            k8s.config.load_kube_config()
+        except Exception as e:
+            logger.error(f"Failed to load kube config: {e}")
+
+        configuration = k8s.client.Configuration()
+        configuration.verify_ssl = False
+        # Ensure DOMAIN env var is set (required for most tests)
+        
+        if not self.domain:
+            raise ValueError("The DOMAIN environment variable must be set before running tests.")
+
+        # Set some test-wide defaults or reload values if needed in the future
+        self.storage_class = "microk8s-hostpath"
+
     def test_nginx_deployment(self):
         """
         Deploy an nginx application and validate deployment, persistence, and attached storage.
@@ -40,10 +117,11 @@ class TestMAIACore:
           - Configurations for storage class and proper ingress certificate handling.
           - The persistent volume claim for the deployment remains intact after a rollout restart.
         """
-        self.domain = os.environ.get("DOMAIN")
-        self.storage_class = "microk8s-hostpath"
+        # self.domain and self.storage_class are set in setup_method
+        # self.domain = os.environ.get("DOMAIN")
+        # self.storage_class = "microk8s-hostpath"
 
-        k8s.config.load_kube_config()
+        # k8s.config.load_kube_config() # Already loaded in setup_method
 
         # Deploy nginx using the appropriate storage class
         nginx_yaml_url = "https://raw.githubusercontent.com/minnelab/MAIA/refs/heads/master/tests/maia-core/nginx.yaml"
@@ -102,19 +180,15 @@ class TestMAIACore:
         ]
         subprocess.run(update_index_cmd, check=True)
 
-        # Retrieve the page from the nginx service over HTTPS
-        response = subprocess.run(["curl", "-k", f"https://test.{self.domain}"], capture_output=True)
-        nginx_content = response.stdout.decode("utf-8")
+        # Retrieve the page from the nginx service over HTTPS using requests
+        nginx_url = f"https://test.{self.domain}"
+        response = requests.get(nginx_url, verify=False)
+        nginx_content = response.text
 
-        # Build the expected content
-        raw_index = subprocess.run(
-            [
-                "curl",
-                "-fsSL",
-                "https://raw.githubusercontent.com/minnelab/MAIA/refs/heads/master/tests/maia-core/index.html",
-            ],
-            capture_output=True,
-        ).stdout.decode("utf-8")
+        # Build the expected content using requests instead of curl
+        raw_index_url = "https://raw.githubusercontent.com/minnelab/MAIA/refs/heads/master/tests/maia-core/index.html"
+        raw_index_resp = requests.get(raw_index_url)
+        raw_index = raw_index_resp.text
         expected_content = raw_index.replace("My MAIA Page", index_header).replace("Hello from MAIA!", index_body)
         assert expected_content == nginx_content
 
@@ -131,9 +205,11 @@ class TestMAIACore:
             check=True,
         )
 
-        response_after_restart = subprocess.run(["curl", "-k", f"https://test.{self.domain}"], capture_output=True)
-        nginx_content_after_restart = response_after_restart.stdout.decode("utf-8")
+        # Retrieve again after restart using requests
+        response_after_restart = requests.get(nginx_url, verify=False)
+        nginx_content_after_restart = response_after_restart.text
         assert expected_content == nginx_content_after_restart
+
 
     def test_minio_tenant(self):
         """
@@ -144,9 +220,10 @@ class TestMAIACore:
           - The resulting MinIO pod becomes ready.
           - Object storage operations (PUT, GET) using Minio Python SDK work as intended.
         """
-        self.domain = os.environ.get("DOMAIN")
+        # self.domain is set in setup_method
+        # self.domain = os.environ.get("DOMAIN")
 
-        k8s.config.load_kube_config()
+        # k8s.config.load_kube_config() # Already loaded in setup_method
         # Use base64-encoded credentials to mimic what's expected by MinIO for secrets
         os.environ["MINIO_ACCESS_KEY"] = base64.b64encode("maia-user".encode()).decode()
         os.environ["MINIO_SECRET_KEY"] = base64.b64encode("maia-user-password".encode()).decode()
@@ -216,6 +293,7 @@ class TestMAIACore:
         retrieved_json = json.loads(retrieved_object.read())
         assert retrieved_json == test_json
 
+
     def test_grafana(self):
         """
         Validate Grafana accessibility and API usage.
@@ -225,54 +303,45 @@ class TestMAIACore:
           - Importing a sample dashboard via API.
           - Searching for the imported dashboard, retrieving its content, and creating a snapshot.
         """
-        self.domain = os.environ.get("DOMAIN")
+        # self.domain is set in setup_method
+        # self.domain = os.environ.get("DOMAIN")
 
         os.environ["GRAFANA_ADMIN_USER"] = "admin"
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "prom-operator"
 
         # Step 1: Remove any previously generated API keys for a clean state
-        list_keys_cmd = [
-            "curl",
-            "-k",
-            "-u",
-            f"{os.environ['GRAFANA_ADMIN_USER']}:{os.environ['GRAFANA_ADMIN_PASSWORD']}",
-            f"https://grafana.{self.domain}/api/auth/keys",
-        ]
-        key_listing_result = subprocess.run(list_keys_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        api_keys = json.loads(key_listing_result.stdout.decode("utf-8"))
+        grafana_url_root = f"https://grafana.{self.domain}"
+        grafana_auth = (os.environ["GRAFANA_ADMIN_USER"], os.environ["GRAFANA_ADMIN_PASSWORD"])
+        session = requests.Session()
+        session.auth = grafana_auth
+        session.verify = False
+
+        key_listing_resp = session.get(f"{grafana_url_root}/api/auth/keys")
+        key_listing_resp.raise_for_status()
+        api_keys = key_listing_resp.json()
         api_token = None
 
         for api_key in api_keys:
             if api_key["name"].startswith("cli-generated-token-"):
-                delete_key_cmd = [
-                    "curl",
-                    "-k",
-                    "-X",
-                    "DELETE",
-                    "-u",
-                    f"{os.environ['GRAFANA_ADMIN_USER']}:{os.environ['GRAFANA_ADMIN_PASSWORD']}",
-                    f"https://grafana.{self.domain}/api/auth/keys/{api_key['id']}",
-                ]
-                subprocess.run(delete_key_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                delete_url = f"{grafana_url_root}/api/auth/keys/{api_key['id']}"
+                del_resp = session.delete(delete_url)
+                del_resp.raise_for_status()
 
         # Step 2: Create a new API key for this test
         if api_token is None:
             timestamp = time.time()
             key_name = f"cli-generated-token-{timestamp}"
-            create_key_cmd = [
-                "curl",
-                "-kX",
-                "POST",
-                f"https://grafana.{self.domain}/api/auth/keys",
-                "-H",
-                "Content-Type: application/json",
-                "-d",
-                f'{{"name":"{key_name}","role":"Admin"}}',
-                "-u",
-                f"{os.environ['GRAFANA_ADMIN_USER']}:{os.environ['GRAFANA_ADMIN_PASSWORD']}",
-            ]
-            create_result = subprocess.run(create_key_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-            api_token = json.loads(create_result.stdout.decode("utf-8"))["key"]
+            create_payload = {
+                "name": key_name,
+                "role": "Admin"
+            }
+            create_key_resp = session.post(
+                f"{grafana_url_root}/api/auth/keys",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(create_payload)
+            )
+            create_key_resp.raise_for_status()
+            api_token = create_key_resp.json()["key"]
 
         # Step 3: Import the NVIDIA DCGM Exporter dashboard using the Grafana API
         dashboard_path = "tests/maia-core/NVIDIA-DCGM-Exporter-Dashboard.json"
@@ -287,47 +356,40 @@ class TestMAIACore:
             "overwrite": True,
         }
 
-        import_dashboard_cmd = [
-            "curl",
-            "-k",
-            "-X",
-            "POST",
-            f"https://grafana.{self.domain}/api/dashboards/db",
-            "-H",
-            "Content-Type: application/json",
-            "-H",
-            f"Authorization: Bearer {api_token}",
-            "-d",
-            json.dumps(dashboard_import_payload),
-        ]
-        subprocess.run(import_dashboard_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        import_resp = requests.post(
+            f"{grafana_url_root}/api/dashboards/db",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_token}"
+            },
+            data=json.dumps(dashboard_import_payload),
+            verify=False,
+        )
+        import_resp.raise_for_status()
 
         # Step 4: Search for the imported dashboard and generate a snapshot
-        search_dashboards_cmd = [
-            "curl",
-            "-k",
-            "-H",
-            f"Authorization: Bearer {api_token}",
-            f"https://grafana.{self.domain}/api/search",
-        ]
-        search_result = subprocess.run(search_dashboards_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        dashboards = json.loads(search_result.stdout.decode("utf-8"))
+        search_dashboards_resp = requests.get(
+            f"{grafana_url_root}/api/search",
+            headers={
+                "Authorization": f"Bearer {api_token}"
+            },
+            verify=False,
+        )
+        search_dashboards_resp.raise_for_status()
+        dashboards = search_dashboards_resp.json()
 
         dashboard_title = "NVIDIA DCGM Exporter Dashboard"
         for search_result in dashboards:
             if search_result["title"] == dashboard_title:
                 dashboard_uid = search_result["uid"]
-                dashboard_url = f"https://grafana.{self.domain}/api/dashboards/uid/{dashboard_uid}"
-                get_dashboard_cmd = [
-                    "curl",
-                    "-k",
-                    "-s",
-                    "-H",
-                    f"Authorization: Bearer {api_token}",
+                dashboard_url = f"{grafana_url_root}/api/dashboards/uid/{dashboard_uid}"
+                dashboard_result = requests.get(
                     dashboard_url,
-                ]
-                dashboard_result = subprocess.run(get_dashboard_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-                dashboard_data = json.loads(dashboard_result.stdout.decode("utf-8"))
+                    headers={"Authorization": f"Bearer {api_token}"},
+                    verify=False,
+                )
+                dashboard_result.raise_for_status()
+                dashboard_data = dashboard_result.json()
                 # Update dashboard templating variables for snapshot
                 templating = dashboard_data["dashboard"]["templating"]["list"]
                 for variable in templating:
@@ -348,22 +410,20 @@ class TestMAIACore:
                     "name": f"Snapshot of {dashboard_data['dashboard']['title']}",
                     "expires": 3600,
                 }
-                create_snapshot_cmd = [
-                    "curl",
-                    "-kX",
-                    "POST",
-                    f"https://grafana.{self.domain}/api/snapshots",
-                    "-H",
-                    f"Authorization: Bearer {api_token}",
-                    "-H",
-                    "Content-Type: application/json",
-                    "-d",
-                    json.dumps(snapshot_payload),
-                ]
-                snapshot_result = subprocess.run(create_snapshot_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-                snapshot_json = json.loads(snapshot_result.stdout.decode("utf-8"))
+                snapshot_result = requests.post(
+                    f"{grafana_url_root}/api/snapshots",
+                    headers={
+                        "Authorization": f"Bearer {api_token}",
+                        "Content-Type": "application/json",
+                    },
+                    data=json.dumps(snapshot_payload),
+                    verify=False,
+                )
+                snapshot_result.raise_for_status()
+                snapshot_json = snapshot_result.json()
                 assert snapshot_json["url"].startswith(f"https://grafana.{self.domain}/dashboard/snapshot/")
-                logger.info("Grafana Snapshot API response: " + snapshot_result.stdout.decode("utf-8"))
+                logger.info("Grafana Snapshot API response: " + json.dumps(snapshot_json))
+    
 
     def test_metrics_server(self):
         """
@@ -371,10 +431,22 @@ class TestMAIACore:
 
         This test retrieves all metrics for pods and logs relevant metric entries in the 'maia-dashboard' namespace.
         """
-        k8s.config.load_kube_config()
-        custom_api = k8s.client.CustomObjectsApi()
+        # k8s.config.load_kube_config() # Already loaded in setup_method
+        # Instead of using the Kubernetes Python client, get pod metrics from metrics server via direct API request
 
-        pod_metrics = custom_api.list_cluster_custom_object(group="metrics.k8s.io", version="v1beta1", plural="pods")
+        token = self.id_token  # Assumed available from setup_method
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        }
+        # Disable SSL verification for test environments (otherwise, use proper CA bundles)
+        response = requests.get(
+            f"{self.kube_apiserver}/apis/metrics.k8s.io/v1beta1/pods",
+            headers=headers,
+            verify=False,
+        )
+        response.raise_for_status()
+        pod_metrics = response.json()
 
         pods = []
         for metric in pod_metrics["items"]:
@@ -392,18 +464,40 @@ class TestMAIACore:
         assert has_dashboard, "No pod starting with 'maia-admin-maia-dashboard' found in maia-dashboard namespace"
         assert has_mysql, "No pod starting with 'maia-admin-maia-dashboard-mysql' found in maia-dashboard namespace"
         assert has_minio, "No pod starting with 'admin-minio-tenant' found in maia-dashboard namespace"
-        
-
     
+
     def test_gpu_node_annotations(self):
         """
         Verify that GPU node annotations are correctly set.
 
         For each node, logs the values of standard NVIDIA GPU labels if present. This validates expected provisioning of GPU resources in the cluster.
         """
-        k8s.config.load_kube_config()
-        v1_api = k8s.client.CoreV1Api()
-        nodes = v1_api.list_node(watch=False)
+        # k8s.config.load_kube_config() # Already loaded in setup_method
+        # Retrieve node list directly from Kubernetes API via HTTPS request
+        
+        token = self.id_token
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json"
+        }
+        # Disable SSL verification for test environments
+        response = requests.get(
+            f"{self.kube_apiserver}/api/v1/nodes",
+            headers=headers,
+            verify=False,
+        )
+        response.raise_for_status()
+        nodes = type('Nodes', (), {})()
+        import types
+        items = []
+        for item in response.json()["items"]:
+            node = types.SimpleNamespace()
+            meta = types.SimpleNamespace()
+            meta.name = item["metadata"]["name"]
+            meta.labels = item["metadata"].get("labels", {})
+            node.metadata = meta
+            items.append(node)
+        nodes.items = items
         gpu_labels = [
             "nvidia.com/gpu.product",
             "nvidia.com/gpu.count",
@@ -426,7 +520,7 @@ class TestMAIACore:
         This test connects to each commonly configured subdomain with openssl, parses certificate alternative names,
         and asserts a DNS SAN is present for the exact subdomain or its wildcard/base domain.
         """
-        self.domain = os.environ.get("DOMAIN")
+        # self.domain is set in setup_method
         cluster_domain = self.domain
 
         # List of expected subdomains to validate
