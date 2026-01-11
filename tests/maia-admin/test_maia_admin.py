@@ -4,10 +4,6 @@ import os
 import kubernetes as k8s
 import subprocess
 import base64
-from minio import Minio
-import urllib3
-import time
-import io
 import json
 import datetime
 import requests
@@ -18,6 +14,7 @@ import tempfile
 import yaml
 from MAIA.kubernetes_utils import generate_kubeconfig
 from requests.auth import HTTPBasicAuth
+
 # Configure logger to use only INFO level and above, printing to stdout
 logger.remove()
 logger.add(lambda msg: print(msg, end=""), level="INFO")
@@ -25,9 +22,8 @@ logger.add(lambda msg: print(msg, end=""), level="INFO")
 
 @pytest.mark.unit
 class TestMAIAAdmin:
-    """
+    """ """
 
-    """
     def get_id_token(self, username, password, client_secret, domain):
         """
         Get an ID token for the test user.
@@ -105,23 +101,27 @@ class TestMAIAAdmin:
         if not self.domain:
             raise ValueError("The DOMAIN environment variable must be set before running tests.")
 
-
     def test_argocd(self):
-        response = requests.post(f"https://argocd.{self.domain}/api/v1/session", json={"username": "admin", "password": self.argocd_password}, verify=False)
-        
+        response = requests.post(
+            f"https://argocd.{self.domain}/api/v1/session",
+            json={"username": "admin", "password": self.argocd_password},
+            verify=False,
+        )
+
         assert response.status_code == 200
         assert response.json()["token"] is not None
-        
+
         token = response.json()["token"]
 
-        response = requests.get(f"https://argocd.{self.domain}/api/v1/projects", headers={"Authorization": f"Bearer {token}"}, verify=False)
+        response = requests.get(
+            f"https://argocd.{self.domain}/api/v1/projects", headers={"Authorization": f"Bearer {token}"}, verify=False
+        )
         assert response.status_code == 200
         assert response.json()["items"] is not None
-        projects = [item['metadata']['name'] for item in response.json()['items']]
+        projects = [item["metadata"]["name"] for item in response.json()["items"]]
         logger.info(f"Projects: {projects}")
         assert "maia-core" in projects
         assert "maia-admin" in projects
-
 
         get_secret_cmd = [
             "kubectl",
@@ -133,7 +133,7 @@ class TestMAIAAdmin:
             "--namespace",
             "harbor",
             "-o",
-            "json"
+            "json",
         ]
         result = subprocess.run(get_secret_cmd, stdout=subprocess.PIPE, check=True)
         secret_data = json.loads(result.stdout.decode())
@@ -155,33 +155,30 @@ class TestMAIAAdmin:
         # Construct the payload for the ArgoCD API to add a certificate
         cert_payload = {
             "items": [
-            {
-            "serverName": harbor_registry,
-            'certType': "https",
-            "certData": base64.b64encode(ca_crt).decode("utf-8"),
-            #"certInfo": "SHA256:ROQFvPThGrW4RuWLoL9tq9I9zJ42fK4XywyRtbOz/EQ"#ca_crt.decode("utf-8"),
-            }
+                {
+                    "serverName": harbor_registry,
+                    "certType": "https",
+                    "certData": base64.b64encode(ca_crt).decode("utf-8"),
+                    # "certInfo": "SHA256:ROQFvPThGrW4RuWLoL9tq9I9zJ42fK4XywyRtbOz/EQ"#ca_crt.decode("utf-8"),
+                }
             ]
         }
         # The ArgoCD JWT token obtained earlier
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         resp = requests.post(argocd_api_url, json=cert_payload, headers=headers, verify=False)
         assert resp.status_code == 200, f"Failed to add CA cert to ArgoCD: {resp.text}"
         logger.info(f"Successfully added Harbor CA certificate to ArgoCD for {harbor_registry}")
-
 
         result = subprocess.run(
             [
                 "curl",
                 "-k",
                 f"https://argocd.{self.domain}/api/v1/certificates",
-                "-H", f"Authorization: Bearer {token}",
+                "-H",
+                f"Authorization: Bearer {token}",
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
         )
         cert_data = json.loads(result.stdout.decode())
         for cert in cert_data["items"]:
@@ -192,7 +189,6 @@ class TestMAIAAdmin:
                 break
         else:
             raise ValueError(f"No certificate found for {harbor_registry} in ArgoCD")
-
 
     def test_dashboard_minio(self):
         minio_access_key = "maia-admin"
@@ -208,21 +204,19 @@ class TestMAIAAdmin:
         # Find the first pod in the maia-dashboard namespace that belongs to the 'maia-admin-maia-dashboard' deployment
         v1 = k8s.client.CoreV1Api()
         pods = v1.list_namespaced_pod(
-            namespace="maia-dashboard",
-            label_selector="app.kubernetes.io/name=maia-admin-maia-dashboard"
+            namespace="maia-dashboard", label_selector="app.kubernetes.io/name=maia-admin-maia-dashboard"
         )
         if not pods.items:
             # Fallback, match by name prefix if labels are not set as expected
-            pods = v1.list_namespaced_pod(
-                namespace="maia-dashboard"
+            pods = v1.list_namespaced_pod(namespace="maia-dashboard")
+            pod_name = next(
+                (p.metadata.name for p in pods.items if p.metadata.name.startswith("maia-admin-maia-dashboard")), None
             )
-            pod_name = next((p.metadata.name for p in pods.items if p.metadata.name.startswith("maia-admin-maia-dashboard")), None)
         else:
             pod_name = pods.items[0].metadata.name
         assert pod_name, "No pod found for deployment maia-admin-maia-dashboard in maia-dashboard namespace"
         kubeconfig = os.environ.get("KUBECONFIG")
-        kubectl_cmd = (
-            f"""kubectl exec --kubeconfig {kubeconfig} -n maia-dashboard -it {pod_name} -- python3 -c "
+        kubectl_cmd = f"""kubectl exec --kubeconfig {kubeconfig} -n maia-dashboard -it {pod_name} -- python3 -c "
 import os, base64
 from minio import Minio
 import urllib3
@@ -275,7 +269,6 @@ shareable_link = get_minio_shareable_link('test_env', 'maia-envs', settings)
 
 print('Shareable link:', shareable_link)
 " """
-        )
         result = subprocess.run(kubectl_cmd, shell=True, capture_output=True, text=True)
         assert result.returncode == 0, f"kubectl exec failed: {result.stderr}"
         logger.info(f"Buckets listed in pod:\n{result.stdout}")
@@ -296,27 +289,18 @@ print('Shareable link:', shareable_link)
         assert response.text == "torch\nscikit-learn\nscipy\nnumpy\nmonai\n"
         logger.info(f"Response: {response.text}")
 
-
     def test_harbor(self):
 
         url = f"https://registry.{self.domain}/api/v2.0/projects"
 
-        payload = {
-            "project_name": "maia",
-            "public": False
-        }
+        payload = {"project_name": "maia", "public": False}
 
         r = requests.post(
-            url,
-            json=payload,
-            auth=HTTPBasicAuth("admin", self.harbor_admin_password),
-            verify=False  # only if self-signed cert
+            url, json=payload, auth=HTTPBasicAuth("admin", self.harbor_admin_password), verify=False  # only if self-signed cert
         )
-        
+
         assert r.status_code == 200 or r.status_code == 409
         logger.info(f"Harbor project created: {r.json()}")
-
-
 
         payload = {
             "name": "maia-ci",
@@ -326,30 +310,21 @@ print('Shareable link:', shareable_link)
             "disable": False,
             "permissions": [
                 {
-                "kind": "project",
-                "namespace": "maia",
-                "access": [
-                    {
-                    "resource": "repository",
-                    "action": "push",
-                    "effect": "allow"
-                    },
-                    {
-                    "resource": "repository",
-                    "action": "pull",
-                    "effect": "allow"
-                    }
-                ]
+                    "kind": "project",
+                    "namespace": "maia",
+                    "access": [
+                        {"resource": "repository", "action": "push", "effect": "allow"},
+                        {"resource": "repository", "action": "pull", "effect": "allow"},
+                    ],
                 }
-            ]
-            }
+            ],
+        }
 
         r = requests.post(
             f"https://registry.{self.domain}/api/v2.0/robots",
-            
             json=payload,
             auth=HTTPBasicAuth("admin", self.harbor_admin_password),
-            verify=False
+            verify=False,
         )
         assert r.status_code == 200 or r.status_code == 201 or r.status_code == 409
         logger.info(f"Harbor robot created: {r.json()}")
@@ -359,22 +334,17 @@ print('Shareable link:', shareable_link)
         logger.info(f"Username: {username}")
         logger.info(f"Password: {password}")
 
-
-      
         requests.delete(
             f"https://registry.{self.domain}/api/v2.0/robots/{id}",
             auth=HTTPBasicAuth("admin", self.harbor_admin_password),
-            verify=False
+            verify=False,
         )
-        #assert r.status_code == 200
+        # assert r.status_code == 200
         logger.info(f"Harbor robot deleted: {r.json()}")
-
 
     def test_maia_dashboard(self):
         url = f"https://maia.{self.domain}/maia/user-management/create-user/"
-        id_token = self.get_id_token(
-                self.keycloak_username, self.keycloak_password, self.keycloak_client_secret, self.domain
-            )
+        id_token = self.get_id_token(self.keycloak_username, self.keycloak_password, self.keycloak_client_secret, self.domain)
         ca_cert = False
         data = {
             "email": f"user@{self.domain}",
@@ -407,7 +377,7 @@ print('Shareable link:', shareable_link)
             "user_id": f"user@{self.domain}",
             "supervisor": f"user@{self.domain}",
             "description": "Test group",
-            "email_list": [f"user@{self.domain}"]
+            "email_list": [f"user@{self.domain}"],
         }
 
         headers = {
