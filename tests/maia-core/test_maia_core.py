@@ -14,6 +14,7 @@ from loguru import logger
 import yaml
 from MAIA.kubernetes_utils import generate_kubeconfig
 from types import SimpleNamespace
+import tempfile
 
 # Configure logger to use only INFO level and above, printing to stdout
 logger.remove()
@@ -34,11 +35,11 @@ class TestMAIACore:
       - Presence and correctness of platform certificates.
     """
 
-    def get_id_token(self, username, password, client_secret):
+    def get_id_token(self, username, password, client_secret, domain):
         """
         Get an ID token for the test user.
         """
-        url = "https://iam.maia.io/realms/maia/protocol/openid-connect/token"
+        url = f"https://iam.{domain}/realms/maia/protocol/openid-connect/token"
         data = {
             "grant_type": "password",
             "client_id": "maia",
@@ -67,7 +68,9 @@ class TestMAIACore:
         if self.rancher_token is not None:
             self.id_token = self.rancher_token
         else:
-            self.id_token = self.get_id_token(self.keycloak_username, self.keycloak_password, self.keycloak_client_secret)
+            self.id_token = self.get_id_token(
+                self.keycloak_username, self.keycloak_password, self.keycloak_client_secret, self.domain
+            )
 
         self.settings = SimpleNamespace(
             OIDC_ISSUER_URL=f"https://iam.{self.domain}/realms/maia",
@@ -88,10 +91,12 @@ class TestMAIACore:
             }
             self.kube_apiserver = f"https://mgmt.{self.domain}/k8s/clusters/local"
         self.kubeconfig = generate_kubeconfig(self.id_token, "test", "default", "maia", self.settings)
-        with open("kubeconfig.yaml", "w") as f:
+
+        tmp_kubeconfig = tempfile.NamedTemporaryFile(delete=False, suffix=".yaml")
+        with open(tmp_kubeconfig.name, "w") as f:
             yaml.dump(self.kubeconfig, f)
 
-        os.environ["KUBECONFIG"] = "kubeconfig.yaml"
+        os.environ["KUBECONFIG"] = tmp_kubeconfig.name
 
         try:
             k8s.config.load_kube_config()
