@@ -64,6 +64,12 @@ class TestMAIACore:
         self.keycloak_username = os.environ.get("KEYCLOAK_USERNAME")
         self.keycloak_password = os.environ.get("KEYCLOAK_PASSWORD")
         self.rancher_token = os.environ.get("RANCHER_TOKEN")
+        os.environ["MINIO_ACCESS_KEY"] = base64.b64encode("maia-user".encode()).decode()
+        os.environ["MINIO_SECRET_KEY"] = base64.b64encode("maia-user-password".encode()).decode()
+        os.environ["MINIO_ROOT_USER"] = "root"
+        os.environ["MINIO_ROOT_PASSWORD"] = "maiaadmin2026"
+        os.environ["GRAFANA_ADMIN_USER"] = "admin"
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "prom-operator"
 
         if self.rancher_token is not None:
             self.id_token = self.rancher_token
@@ -99,7 +105,7 @@ class TestMAIACore:
         os.environ["KUBECONFIG"] = tmp_kubeconfig.name
 
         try:
-            k8s.config.load_kube_config()
+            k8s.config.load_kube_config(tmp_kubeconfig.name)
         except Exception as e:
             logger.error(f"Failed to load kube config: {e}")
 
@@ -229,10 +235,6 @@ class TestMAIACore:
 
         # k8s.config.load_kube_config() # Already loaded in setup_method
         # Use base64-encoded credentials to mimic what's expected by MinIO for secrets
-        os.environ["MINIO_ACCESS_KEY"] = base64.b64encode("maia-user".encode()).decode()
-        os.environ["MINIO_SECRET_KEY"] = base64.b64encode("maia-user-password".encode()).decode()
-        os.environ["MINIO_ROOT_USER"] = "root"
-        os.environ["MINIO_ROOT_PASSWORD"] = "maiaadmin2026"
 
         # Apply the minio tenant manifest with relevant variable substitution
         minio_yaml_url = "https://raw.githubusercontent.com/minnelab/MAIA/refs/heads/master/tests/maia-core/minio.yaml"
@@ -308,9 +310,6 @@ class TestMAIACore:
         """
         # self.domain is set in setup_method
         # self.domain = os.environ.get("DOMAIN")
-
-        os.environ["GRAFANA_ADMIN_USER"] = "admin"
-        os.environ["GRAFANA_ADMIN_PASSWORD"] = "prom-operator"
 
         # Step 1: Remove any previously generated API keys for a clean state
         grafana_url_root = f"https://grafana.{self.domain}"
