@@ -27,7 +27,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 12239,
   "graphTooltip": 0,
-  "id": 52,
+  "id": 80,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -92,7 +92,7 @@
           "expr": "DCGM_FI_DEV_GPU_TEMP{Hostname=~\"${instance}\", gpu=~\"${gpu}\"}",
           "instant": false,
           "interval": "",
-          "legendFormat": "GPU {{Hostname}} - {{gpu}}",
+          "legendFormat": "GPU {{Hostname}} - {{modelName}} - {{gpu}}",
           "refId": "A"
         }
       ],
@@ -257,7 +257,7 @@
           "editorMode": "code",
           "expr": "DCGM_FI_DEV_POWER_USAGE{Hostname=~\"${instance}\", gpu=~\"${gpu}\"}",
           "interval": "",
-          "legendFormat": "GPU {{Hostname}} - {{gpu}}",
+          "legendFormat": "GPU {{Hostname}} - {{modelName}} - {{gpu}}",
           "range": true,
           "refId": "A"
         }
@@ -427,7 +427,7 @@
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "GPU {{Hostname}} - {{gpu}}",
+          "legendFormat": "GPU {{Hostname}} - {{modelName}} - {{gpu}}",
           "range": true,
           "refId": "A"
         }
@@ -523,7 +523,7 @@
           "editorMode": "code",
           "expr": "DCGM_FI_DEV_GPU_UTIL{Hostname=~\"${instance}\", gpu=~\"${gpu}\"}",
           "interval": "",
-          "legendFormat": "GPU {{Hostname}} - {{gpu}}",
+          "legendFormat": "GPU {{Hostname}} - {{modelName}} - {{gpu}}",
           "range": true,
           "refId": "A"
         }
@@ -620,7 +620,7 @@
           "editorMode": "code",
           "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{instance=~\"${instance}\", gpu=~\"${gpu}\"}",
           "interval": "",
-          "legendFormat": "GPU {{Hostname}} - {{gpu}}",
+          "legendFormat": "GPU {{Hostname}} - {{modelName}} - {{gpu}}",
           "range": true,
           "refId": "A"
         }
@@ -716,7 +716,7 @@
           "editorMode": "code",
           "expr": "DCGM_FI_DEV_FB_USED{Hostname=~\"${instance}\", gpu=~\"${gpu}\"}",
           "interval": "",
-          "legendFormat": "GPU {{Hostname}} - {{gpu}}",
+          "legendFormat": "GPU {{Hostname}} - {{modelName}} - {{gpu}}",
           "range": true,
           "refId": "A"
         }
@@ -760,17 +760,9 @@
     "list": [
       {
         "current": {
-          "selected": true,
-          "text": [
-            "maia-medium-2",
-            "maia-medium-1",
-            "maia-medium-0"
-          ],
-          "value": [
-            "maia-medium-2",
-            "maia-medium-1",
-            "maia-medium-0"
-          ]
+          "selected": false,
+          "text": "maia-dev-node-0",
+          "value": "maia-dev-node-0"
         },
         "datasource": {
           "type": "prometheus",
@@ -850,7 +842,7 @@
   },
   "timezone": "",
   "title": "NVIDIA DCGM Exporter Dashboard",
-  "uid": "Oxed_c6Wz",
-  "version": 3,
+  "uid": "HeBDhsVvk",
+  "version": 7,
   "weekStart": ""
 }
