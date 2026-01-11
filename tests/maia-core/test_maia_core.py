@@ -8,6 +8,7 @@ from minio import Minio
 import urllib3
 import time
 import io
+import requests
 import json
 from loguru import logger
 
@@ -360,6 +361,8 @@ class TestMAIACore:
                     json.dumps(snapshot_payload),
                 ]
                 snapshot_result = subprocess.run(create_snapshot_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                snapshot_json = json.loads(snapshot_result.stdout.decode("utf-8"))
+                assert snapshot_json["url"].startswith(f"https://grafana.{self.domain}/dashboard/snapshot/")
                 logger.info("Grafana Snapshot API response: " + snapshot_result.stdout.decode("utf-8"))
 
     def test_metrics_server(self):
@@ -373,13 +376,25 @@ class TestMAIACore:
 
         pod_metrics = custom_api.list_cluster_custom_object(group="metrics.k8s.io", version="v1beta1", plural="pods")
 
+        pods = []
         for metric in pod_metrics["items"]:
             namespace = metric["metadata"].get("namespace")
             if namespace == "maia-dashboard":
                 pod_name = metric["metadata"].get("name")
                 containers = metric.get("containers")
                 logger.info(f"Pod: {pod_name}: {containers}")
+                pods.append(pod_name)
+        assert len(pods) > 0
+        # Verify pod presence by prefix for key MAIA components in maia-dashboard namespace
+        has_dashboard = any(pod.startswith("maia-admin-maia-dashboard") for pod in pods)
+        has_mysql = any(pod.startswith("maia-admin-maia-dashboard-mysql") for pod in pods)
+        has_minio = any(pod.startswith("admin-minio-tenant") for pod in pods)
+        assert has_dashboard, "No pod starting with 'maia-admin-maia-dashboard' found in maia-dashboard namespace"
+        assert has_mysql, "No pod starting with 'maia-admin-maia-dashboard-mysql' found in maia-dashboard namespace"
+        assert has_minio, "No pod starting with 'admin-minio-tenant' found in maia-dashboard namespace"
+        
 
+    
     def test_gpu_node_annotations(self):
         """
         Verify that GPU node annotations are correctly set.
@@ -395,11 +410,14 @@ class TestMAIACore:
             "nvidia.com/gpu.memory",
             "nvidia.com/gpu.replicas",
         ]
+        gpu_nodes = []
         for node in nodes.items:
             node_name = node.metadata.name
             for label in gpu_labels:
                 if label in node.metadata.labels:
                     logger.info(f"{node_name}: {label} - {node.metadata.labels[label]}")
+                    gpu_nodes.append(node_name)
+        assert len(gpu_nodes) > 0
 
     def test_check_certificates(self):
         """
