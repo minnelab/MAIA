@@ -31,8 +31,6 @@ The build_images role requires the following variables:
 Optional Variables
 ------------------
 
-## Optional Variables
-
 - **auto_sync**: Enable automatic ArgoCD application synchronization (optional)
   - Default: `false`
   - Description: Enable automatic ArgoCD application synchronization. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.
