@@ -62,13 +62,13 @@ class TestMAIAAdmin:
         and checks for required environment variables.
         """
         # Gather required environment variables
-        self.domain = os.environ.get("DOMAIN")
-        self.keycloak_client_secret = os.environ.get("KEYCLOAK_CLIENT_SECRET")
+        self.domain = os.environ.get("domain")
+        self.rancher_token = os.environ.get("rancher_token")
+        self.keycloak_client_secret = os.environ.get("keycloak_client_secret")
         self.keycloak_username = os.environ.get("KEYCLOAK_USERNAME")
         self.keycloak_password = os.environ.get("KEYCLOAK_PASSWORD")
-        self.rancher_token = os.environ.get("RANCHER_TOKEN")
         self.argocd_password = os.environ.get("ARGOCD_PASSWORD")
-        self.minio_admin_password = os.environ.get("MINIO_ADMIN_PASSWORD")
+        self.minio_admin_password = os.environ.get("minio_admin_password")
         self.harbor_admin_password = "Harbor12345"  # fallback or default, should be updated if needed
 
         if not self.domain:

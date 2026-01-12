@@ -58,12 +58,11 @@ class TestMAIACore:
         Loads Kubernetes config and ensures essential environment variables are present.
         """
         # Load K8s config for all tests
-        self.rancher_token = os.environ.get("RANCHER_TOKEN")
-        self.domain = os.environ.get("DOMAIN")
-        self.keycloak_client_secret = os.environ.get("KEYCLOAK_CLIENT_SECRET")
+        self.rancher_token = os.environ.get("rancher_token")
+        self.domain = os.environ.get("domain")
+        self.keycloak_client_secret = os.environ.get("keycloak_client_secret")
         self.keycloak_username = os.environ.get("KEYCLOAK_USERNAME")
         self.keycloak_password = os.environ.get("KEYCLOAK_PASSWORD")
-        self.rancher_token = os.environ.get("RANCHER_TOKEN")
         os.environ["MINIO_ACCESS_KEY"] = base64.b64encode("maia-user".encode()).decode()
         os.environ["MINIO_SECRET_KEY"] = base64.b64encode("maia-user-password".encode()).decode()
         os.environ["MINIO_ROOT_USER"] = "root"
@@ -341,10 +340,9 @@ class TestMAIACore:
             api_token = create_key_resp.json()["key"]
 
         # Step 3: Import the NVIDIA DCGM Exporter dashboard using the Grafana API
-        dashboard_path = "tests/maia-core/NVIDIA-DCGM-Exporter-Dashboard.json"
-        with open(dashboard_path, "r") as json_file:
-            dashboard_json = json.load(json_file)
-
+        dashboard_json = requests.get(
+            "https://raw.githubusercontent.com/minnelab/MAIA/refs/heads/master/tests/maia-core/NVIDIA-DCGM-Exporter-Dashboard.json"
+        ).json()
         dashboard_json.pop("id", None)
         dashboard_json.pop("uid", None)
         dashboard_import_payload = {
