@@ -7,7 +7,12 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.monai_toolkit_values.chart_name }}
     chart: {{ .Values.monai_toolkit_values.chart_name }}
+    {{- end }}
+    {{- if .Values.monai_toolkit_values.path }}
+    path: {{ .Values.monai_toolkit_values.path }}
+    {{- end }}
     repoURL: {{ .Values.monai_toolkit_values.repo_url }}
     targetRevision: {{ .Values.monai_toolkit_values.chart_version }}
     helm:

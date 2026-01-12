@@ -7,7 +7,12 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.maia_workspace_base_notebook_ssh_values.chart_name }}
     chart: {{ .Values.maia_workspace_base_notebook_ssh_values.chart_name }}
+    {{- end }}
+    {{- if .Values.maia_workspace_base_notebook_ssh_values.path }}
+    path: {{ .Values.maia_workspace_base_notebook_ssh_values.path }}
+    {{- end }}
     repoURL: {{ .Values.maia_workspace_base_notebook_ssh_values.repo_url }}
     targetRevision: {{ .Values.maia_workspace_base_notebook_ssh_values.chart_version }}
     helm:
