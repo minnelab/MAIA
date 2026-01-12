@@ -269,9 +269,9 @@ def encode_docker_registry_secret(registry_server, registry_username, registry_p
     """
     auth = base64.b64encode(f"{registry_username}:{registry_password}".encode("utf-8")).decode("utf-8")
     return base64.b64encode(
-        json.dumps({"auths": {registry_server: {"username": registry_username, "password": registry_password, "auth": auth}}}).encode(
-            "utf-8"
-        )
+        json.dumps(
+            {"auths": {registry_server: {"username": registry_username, "password": registry_password, "auth": auth}}}
+        ).encode("utf-8")
     ).decode("utf-8")
 
 
