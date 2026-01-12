@@ -30,14 +30,14 @@ MAIA image building has been tested on Ubuntu 22.04 and 24.04 LTS.
 
 To install the MAIA.Build_Images collection, run the following command:
 ```bash
-ansible-galaxy collection install MAIA.Build_Images
+ansible-galaxy collection install maia.build_images
 ```
 
 Or install from source:
 ```bash
 cd ansible/MAIA/Build-Images
 ansible-galaxy collection build
-ansible-galaxy collection install maia-build_images-1.0.0.tar.gz
+ansible-galaxy collection install maia-build_images-<version>.tar.gz
 ```
 
 ## Quick Start
@@ -72,7 +72,7 @@ For GitHub Container Registry (`github-registry-credentials.json`):
 
 **For Docker Hub:**
 ```bash
-ansible-playbook playbooks/build_images.yaml \
+ansible-playbook -i inventory maia.build_images.build_images \
   -e config_folder=/path/to/config \
   -e cluster_name=maia-cluster \
   -e GIT_USERNAME=your-git-username \
@@ -85,7 +85,7 @@ ansible-playbook playbooks/build_images.yaml \
 
 **For GitHub Container Registry:**
 ```bash
-ansible-playbook playbooks/build_images.yaml \
+ansible-playbook -i inventory maia.build_images.build_images \
   -e config_folder=/path/to/config \
   -e cluster_name=maia-cluster \
   -e GIT_USERNAME=your-git-username \
@@ -170,7 +170,7 @@ Instead of passing credentials on the command line, you can use environment vari
 export GIT_USERNAME=your-username
 export GIT_TOKEN=your-token
 
-ansible-playbook playbooks/build_images.yaml \
+ansible-playbook -i inventory maia.build_images.build_images \
   -e config_folder=/path/to/config \
   -e cluster_name=maia-cluster \
   -e GIT_USERNAME="{{ lookup('env', 'GIT_USERNAME') }}" \

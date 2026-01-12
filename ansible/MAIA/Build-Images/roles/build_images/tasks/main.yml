@@ -74,6 +74,17 @@
   ansible.builtin.debug:
     var: build_images_result.stdout
 
+- name: Ensure MAIA Build Images related namespaces exist
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+    state: present
+  loop: "{{ maia_build_images_namespaces }}"
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
 - name: Login to ArgoCD using CLI (with fallback)
   ansible.builtin.shell: |
     export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')

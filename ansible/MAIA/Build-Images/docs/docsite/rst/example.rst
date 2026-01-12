@@ -10,7 +10,7 @@ The simplest way to build images is to use the provided playbook with all requir
 
 .. code-block:: bash
 
-    ansible-playbook playbooks/build_images.yaml \
+    ansible-playbook -i inventory maia.build_images.build_images \
       -e config_folder=/path/to/config \
       -e cluster_name=maia-dev \
       -e GIT_USERNAME=myuser \
@@ -27,7 +27,7 @@ To build and push images to Docker Hub:
 
 .. code-block:: bash
 
-    ansible-playbook playbooks/build_images.yaml \
+    ansible-playbook -i inventory maia.build_images.build_images \
       -e config_folder=/opt/maia/config \
       -e cluster_name=maia-prod \
       -e GIT_USERNAME=johndoe \
@@ -57,7 +57,7 @@ To build and push images to GitHub Container Registry (ghcr.io):
 
 .. code-block:: bash
 
-    ansible-playbook playbooks/build_images.yaml \
+    ansible-playbook -i inventory maia.build_images.build_images \
       -e config_folder=/opt/maia/config \
       -e cluster_name=maia-dev \
       -e GIT_USERNAME=janedoe \
@@ -88,7 +88,7 @@ To build and push images to a private Harbor or other registry:
 
 .. code-block:: bash
 
-    ansible-playbook playbooks/build_images.yaml \
+    ansible-playbook -i inventory maia.build_images.build_images \
       -e config_folder=/opt/maia/config \
       -e cluster_name=maia-prod \
       -e GIT_USERNAME=admin \
@@ -128,7 +128,7 @@ You can also create an inventory file for more complex setups:
 
 .. code-block:: bash
 
-    ansible-playbook -i inventory.ini playbooks/build_images.yaml \
+    ansible-playbook -i inventory.ini maia.build_images.build_images \
       -e config_folder=/opt/maia/config \
       -e cluster_name=maia-dev \
       -e GIT_USERNAME=myuser \
@@ -169,7 +169,7 @@ Instead of passing credentials as command-line arguments, you can set them as en
     export GIT_USERNAME=myuser
     export GIT_TOKEN=mytoken
     
-    ansible-playbook playbooks/build_images.yaml \
+    ansible-playbook -i inventory maia.build_images.build_images \
       -e config_folder=/opt/maia/config \
       -e cluster_name=maia-dev \
       -e GIT_USERNAME="{{ lookup('env', 'GIT_USERNAME') }}" \
@@ -212,7 +212,7 @@ For detailed output during the build process, run with verbose mode:
 
 .. code-block:: bash
 
-    ansible-playbook -vvv playbooks/build_images.yaml \
+    ansible-playbook -vvv -i inventory maia.build_images.build_images \
       -e config_folder=/opt/maia/config \
       -e cluster_name=maia-dev \
       (... other variables ...)

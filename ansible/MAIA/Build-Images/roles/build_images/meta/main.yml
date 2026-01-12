@@ -132,3 +132,9 @@ argument_specs:
           required: false
           default: false
           description: "Enable automatic ArgoCD application synchronization (optional)"
+        maia_build_images_namespaces:
+          type: list
+          elements: str
+          required: false
+          default: ["mkg-kaniko"]
+          description: "List of namespaces to create for MAIA Build Images (optional)"
