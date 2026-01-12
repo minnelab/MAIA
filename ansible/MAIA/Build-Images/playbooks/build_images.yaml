@@ -1,0 +1,8 @@
+- name: Build MAIA images
+  hosts: localhost
+  vars_files:
+    - "{{ config_folder }}/env.json"
+    - "{{ config_folder }}/{{ cluster_name }}.yaml"
+  roles:
+    - maia.build_images.build_images
+

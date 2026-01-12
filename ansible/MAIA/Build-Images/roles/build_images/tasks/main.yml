@@ -1,0 +1,120 @@
+---
+- name: "Fail if required variables are missing"
+  ansible.builtin.fail:
+    msg: "You must provide config_folder, cluster_name, GIT_USERNAME and GIT_TOKEN"
+  when: >
+    (config_folder is not defined) or
+    (config_folder | length == 0) or
+    (GIT_USERNAME is not defined) or
+    (GIT_USERNAME | length == 0) or
+    (GIT_TOKEN is not defined) or
+    (GIT_TOKEN | length == 0)
+
+- name: "Load env.json when present"
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: "Read cluster config"
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+
+- name: "Set cluster facts from config"
+  ansible.builtin.set_fact:
+    ingress_resolver_email: "{{ (cluster_config_content.content | b64decode | from_yaml).ingress_resolver_email }}"
+
+- name: "Load registry credentials"
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ credentials_json_filename }}"
+  register: registry_credentials_raw
+
+- name: "Parse registry credentials"
+  ansible.builtin.set_fact:
+    registry_credentials: "{{ registry_credentials_raw.content | b64decode | from_json }}"
+
+- name: "Fail if registry credentials are missing"
+  ansible.builtin.fail:
+    msg: "Registry credentials username/password cannot be empty"
+  when:
+    - (registry_credentials.username | default('')) | length == 0
+    - or (registry_credentials.password | default('')) | length == 0
+
+- name: "Run MAIA_build_images"
+  ansible.builtin.command: >
+    MAIA_build_images
+    --cluster-config {{ config_folder }}/{{ cluster_name }}.yaml
+    --config-folder {{ config_folder }}
+    --registry-path {{ registry_path }}
+    --cluster-address {{ cluster_address }}
+    --project-id {{ maia_project_id }}
+  environment:
+    config_folder: "{{ config_folder }}"
+    cluster_name: "{{ cluster_name }}"
+    ingress_resolver_email: "{{ ingress_resolver_email }}"
+    MAIA_GIT_REPO_URL: "{{ maia_git_repo_url }}"
+    GIT_USERNAME: "{{ GIT_USERNAME }}"
+    GIT_TOKEN: "{{ GIT_TOKEN }}"
+    docker_build_project_chart: "{{ docker_build_project_chart }}"
+    docker_build_project_repo: "{{ docker_build_project_repo }}"
+    docker_build_project_version: "{{ docker_build_project_version }}"
+    KUBECONFIG: "{{ kubeconfig_path }}"
+    admin_group_ID: "{{ admin_group_ID }}"
+    CLUSTER_ADDRESS: "{{ cluster_address }}"
+    registry_path: "{{ registry_path }}"
+    argocd_namespace: "{{ argocd_namespace }}"
+    JSON_KEY_PATH: "{{ config_folder }}/{{ credentials_json_filename }}"
+    registry_username: "{{ registry_credentials.username }}"
+    registry_password: "{{ registry_credentials.password }}"
+    registry_server: "{{ registry_base }}"
+  register: build_images_result
+  changed_when: build_images_result.rc == 0
+
+- name: "Show build output"
+  ansible.builtin.debug:
+    var: build_images_result.stdout
+
+- name: Login to ArgoCD using CLI (with fallback)
+  ansible.builtin.shell: |
+    export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
+    argocd login "argocd.{{ domain }}" --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login localhost:{{ argocd_port }} --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure || \
+    yes y | argocd login ${ARGOCD_SERVER_IP}:443 --username admin --password "$ARGOCD_PASSWORD" --insecure
+  environment:
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  register: argocd_cli_login
+  changed_when: false
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+
+- name: Show ArgoCD CLI login output
+  ansible.builtin.debug:
+    var: argocd_cli_login.stdout
+  when: auto_sync is defined and auto_sync == true
+- name: Sync maia-kube ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-kube && argocd app wait {{ maia_project_id }}-maia-kube
+  register: argocd_sync_maia_kube
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Sync maia-dashboard ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-dashboard && argocd app wait {{ maia_project_id }}-maia-dashboard
+  register: argocd_sync_maia_dashboard
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Mount Sync maia-filebrowser ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-filebrowser && argocd app wait {{ maia_project_id }}-maia-filebrowser
+  register: argocd_sync_maia_filebrowser
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true

@@ -1,0 +1,21 @@
+---
+# Source control settings
+maia_git_repo_url: "git://github.com/minnelab/MAIA.git" #git://github.com/acme/myproject.git#refs/heads/mybranch#<desired-commit-id>
+
+# Build chart details
+docker_build_project_chart: "maia-docker-build-project"
+docker_build_project_repo: "https://minnelab.github.io/MAIA/"
+docker_build_project_version: "1.2.0"
+maia_project_id: "maia-image"
+
+# Cluster / registry defaults
+cluster_address: "https://kubernetes.default.svc"
+registry_base: "https://index.docker.io/v1/"
+registry_path: "maiacloudai"
+credentials_json_filename: "maia-registry-credentials.json"
+
+# Paths
+kubeconfig_path: "{{ config_folder }}/{{ cluster_name }}-kubeconfig.yaml"
+
+auto_sync: false
+

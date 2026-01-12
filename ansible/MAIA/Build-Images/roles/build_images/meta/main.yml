@@ -1,0 +1,134 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Build MAIA Docker images using Kaniko on Kubernetes. Automates the build process for MAIA components (maia-kube, maia-dashboard, maia-filebrowser) and synchronizes them via ArgoCD for deployment.
+  company: MAIA Project
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  # Choose a valid license ID from https://spdx.org - some suggested licenses:
+  # - BSD-3-Clause (default)
+  # - MIT
+  # - GPL-2.0-or-later
+  # - GPL-3.0-only
+  # - Apache-2.0
+  # - CC-BY-4.0
+  license: GPL-3.0-only
+
+  min_ansible_version: "2.1"
+
+  # If this a Container Enabled role, provide the minimum Ansible Container version.
+  # min_ansible_container_version:
+
+  galaxy_tags: [maia, docker, kaniko, kubernetes, build, gitops, argocd]
+    # List tags for your role here, one per line. A tag is a keyword that describes
+    # and categorizes the role. Users find roles by searching for tags. Be sure to
+    # remove the '[]' above, if you add tags to this list.
+    #
+    # NOTE: A tag is limited to a single word comprised of alphanumeric characters.
+    #       Maximum 20 tags per role.
+
+dependencies: []
+  # List your role dependencies here, one per line. Be sure to remove the '[]' above,
+  # if you add dependencies to this list.
+
+
+argument_specs:
+  main:
+    description: Build MAIA Docker images using Kaniko on Kubernetes. Automates the build process for MAIA components (maia-kube, maia-dashboard, maia-filebrowser) and synchronizes them via ArgoCD for deployment.
+    short_description: Build MAIA Docker images using Kaniko
+    options:
+        config_folder:
+          type: str
+          required: true
+          description: "Path to the configuration folder containing env.json, cluster config YAML, and registry credentials (required)"
+        cluster_name:
+          type: str
+          required: true
+          description: "Name of the cluster configuration file (without .yaml extension) (required)"
+        GIT_USERNAME:
+          type: str
+          required: true
+          description: "Git username for accessing the MAIA repository (required)"
+        GIT_TOKEN:
+          type: str
+          required: true
+          description: "Git token for accessing the MAIA repository (required)"
+        maia_git_repo_url:
+          type: str
+          required: false
+          default: "git://github.com/minnelab/MAIA.git"
+          description: "MAIA git repository URL (optional)"
+        docker_build_project_chart:
+          type: str
+          required: false
+          default: "maia-docker-build-project"
+          description: "Helm chart name for Docker build project (optional)"
+        docker_build_project_repo:
+          type: str
+          required: false
+          default: "https://minnelab.github.io/MAIA/"
+          description: "Helm chart repository URL for Docker build project (optional)"
+        docker_build_project_version:
+          type: str
+          required: false
+          default: "1.2.0"
+          description: "Helm chart version for Docker build project (optional)"
+        maia_project_id:
+          type: str
+          required: false
+          default: "maia-image"
+          description: "MAIA project identifier used for ArgoCD application names (optional)"
+        cluster_address:
+          type: str
+          required: false
+          default: "https://kubernetes.default.svc"
+          description: "Kubernetes cluster API address (optional)"
+        registry_base:
+          type: str
+          required: false
+          default: "https://index.docker.io/v1/"
+          description: "Container registry base URL (optional)"
+        registry_path:
+          type: str
+          required: false
+          default: "maiacloudai"
+          description: "Container registry path/namespace (optional)"
+        credentials_json_filename:
+          type: str
+          required: false
+          default: "maia-registry-credentials.json"
+          description: "Name of the registry credentials JSON file in config_folder (optional)"
+        argocd_namespace:
+          type: str
+          required: false
+          default: "argocd"
+          description: "Namespace where ArgoCD is installed (optional)"
+        argocd_port:
+          type: int
+          required: false
+          default: 8080
+          description: "Local port for ArgoCD CLI access (optional)"
+        domain:
+          type: str
+          required: false
+          description: "Domain name for ArgoCD access (optional)"
+        DEPLOY_KUBECONFIG:
+          type: str
+          required: false
+          description: "Path to kubeconfig file for deployment (optional)"
+        ARGOCD_PASSWORD:
+          type: str
+          required: false
+          description: "ArgoCD admin password for CLI login (optional)"
+        admin_group_ID:
+          type: str
+          required: false
+          description: "Admin group identifier for MAIA access control (optional)"
+        auto_sync:
+          type: bool
+          required: false
+          default: false
+          description: "Enable automatic ArgoCD application synchronization (optional)"
