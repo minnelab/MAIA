@@ -43,13 +43,13 @@ if [ -n "$JSON_KEY_PATH" ] && [ -f "$JSON_KEY_PATH" ]; then
     echo "Error: 'jq' is required but not installed."
     exit 1
   fi
-  export HARBOR_USERNAME=$(jq -r '.harbor_username // empty' "$JSON_KEY_PATH")
-  export HARBOR_PASSWORD=$(jq -r '.harbor_password // empty' "$JSON_KEY_PATH")
-  if [ -n "$HARBOR_USERNAME" ]; then
-    echo "Exported HARBOR_USERNAME from $JSON_KEY_PATH"
+  export REGISTRY_USERNAME=$(jq -r '.username // empty' "$JSON_KEY_PATH")
+  export REGISTRY_PASSWORD=$(jq -r '.password // empty' "$JSON_KEY_PATH")
+  if [ -n "$REGISTRY_USERNAME" ]; then
+    echo "Exported REGISTRY_USERNAME from $JSON_KEY_PATH"
   fi
-  if [ -n "$HARBOR_PASSWORD" ]; then
-    echo "Exported HARBOR_PASSWORD from $JSON_KEY_PATH"
+  if [ -n "$REGISTRY_PASSWORD" ]; then
+    echo "Exported REGISTRY_PASSWORD from $JSON_KEY_PATH"
   fi
 fi
 
@@ -92,8 +92,8 @@ fi
 # Verify required environment variables are set
 # List of required environment variables with short descriptions:
 # MAIA_PRIVATE_REGISTRY   - The URL of the private MAIA Docker/Helm registry.
-# HARBOR_USERNAME        - Username for authenticating with the MAIA Harbor registry.
-# HARBOR_PASSWORD        - Password for authenticating with the MAIA Harbor registry.
+# REGISTRY_USERNAME        - Username for authenticating with the MAIA Harbor registry.
+# REGISTRY_PASSWORD        - Password for authenticating with the MAIA Harbor registry.
 # KUBECONFIG             - Path to the kubeconfig file for the Kubernetes cluster.
 # CLUSTER_DOMAIN         - The public domain or base domain for the MAIA cluster.
 # CONFIG_FOLDER          - Directory path to store MAIA/cluster configuration files.
@@ -102,8 +102,8 @@ fi
 # K8S_DISTRIBUTION       - Chosen Kubernetes distribution (e.g., "microk8s", "rke2").
 required_vars=(
   "MAIA_PRIVATE_REGISTRY"
-  "HARBOR_USERNAME"
-  "HARBOR_PASSWORD"
+  "REGISTRY_USERNAME"
+  "REGISTRY_PASSWORD"
   "CLUSTER_DOMAIN"
   "CLUSTER_NAME"
   "CONFIG_FOLDER"
@@ -120,9 +120,9 @@ for var in "${required_vars[@]}"; do
     if [ "$var" = "INGRESS_RESOLVER_EMAIL" ] && [ -v INGRESS_RESOLVER_EMAIL ]; then
       continue
     fi
-    # If PUBLIC_REGISTRY=1, skip prompting for HARBOR_USERNAME and HARBOR_PASSWORD
+    # If PUBLIC_REGISTRY=1, skip prompting for REGISTRY_USERNAME and REGISTRY_PASSWORD
     if [ "$PUBLIC_REGISTRY" = "1" ]; then
-      if [ "$var" = "HARBOR_USERNAME" ] || [ "$var" = "HARBOR_PASSWORD" ] || [ "$var" = "MAIA_PRIVATE_REGISTRY" ]; then
+      if [ "$var" = "REGISTRY_USERNAME" ] || [ "$var" = "REGISTRY_PASSWORD" ] || [ "$var" = "MAIA_PRIVATE_REGISTRY" ]; then
         continue
       fi
     fi
@@ -131,8 +131,8 @@ for var in "${required_vars[@]}"; do
     # Dictionary containing short descriptions of each required variable
     declare -A var_descriptions=(
       ["MAIA_PRIVATE_REGISTRY"]="The URL of the private MAIA Docker/Helm registry."
-      ["HARBOR_USERNAME"]="Username for authenticating with the MAIA Harbor registry."
-      ["HARBOR_PASSWORD"]="Password for authenticating with the MAIA Harbor registry."
+      ["REGISTRY_USERNAME"]="Username for authenticating with the MAIA Harbor registry."
+      ["REGISTRY_PASSWORD"]="Password for authenticating with the MAIA Harbor registry."
       ["CLUSTER_DOMAIN"]="The public domain or base domain for the MAIA cluster."
       ["CONFIG_FOLDER"]="Directory path to store MAIA/cluster configuration files."
       ["CLUSTER_NAME"]="Name to assign to the MAIA Kubernetes cluster."
@@ -277,8 +277,8 @@ EOF
 JSON_KEY_PATH=$CONFIG_FOLDER/maia-registry-credentials.json
 cat <<EOF > $JSON_KEY_PATH
 {
-  "harbor_username": "$HARBOR_USERNAME",
-  "harbor_password": "$HARBOR_PASSWORD"
+  "username": "$REGISTRY_USERNAME",
+  "password": "$REGISTRY_PASSWORD"
 }
 EOF
 

@@ -133,8 +133,8 @@ def build_maia_images(
         else:
             cluster_config_dict["storage_class"] = "local-path"
     # Docker Registry configuration where the images will be pushed
-    registry_username = os.environ["docker_username"]
-    registry_password = os.environ["docker_password"]
+    registry_username = os.environ["registry_username"]
+    registry_password = os.environ["registry_password"]
     registry_email = cluster_config_dict["ingress_resolver_email"]
     if "registry_server" in os.environ:
         registry_server = os.environ["registry_server"]
@@ -188,8 +188,8 @@ def build_maia_images(
         try:
             with open(json_key_path, "r") as f:
                 docker_credentials = json.load(f)
-                username = docker_credentials.get("harbor_username")
-                password = docker_credentials.get("harbor_password")
+                username = docker_credentials.get("username")
+                password = docker_credentials.get("password")
         except Exception:
             with open(json_key_path, "r") as f:
                 docker_credentials = f.read()

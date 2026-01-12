@@ -394,7 +394,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "enabled": True,
             "dockerRegistrySecretName": os.environ["imagePullSecrets"],
             "dockerRegistrySecret": encode_docker_registry_secret(
-                os.environ["docker_server"], os.environ["docker_username"], os.environ["docker_password"]
+                os.environ["registry_server"], os.environ["registry_username"], os.environ["registry_password"]
             ),
         }
     if "imagePullSecrets_" + namespace in os.environ:
@@ -402,9 +402,9 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "enabled": True,
             "dockerRegistrySecretName": os.environ["imagePullSecrets_" + namespace],
             "dockerRegistrySecret": encode_docker_registry_secret(
-                os.environ["docker_server" + namespace],
-                os.environ["docker_username" + namespace],
-                os.environ["docker_password" + namespace],
+                os.environ["registry_server" + namespace],
+                os.environ["registry_username" + namespace],
+                os.environ["registry_password" + namespace],
             ),
         }
 
@@ -750,8 +750,8 @@ async def install_maia_project(
             try:
                 with open(json_key_path, "r") as f:
                     docker_credentials = json.load(f)
-                    username = docker_credentials.get("harbor_username")
-                    password = docker_credentials.get("harbor_password")
+                    username = docker_credentials.get("username")
+                    password = docker_credentials.get("password")
             except Exception:
                 with open(json_key_path, "r") as f:
                     docker_credentials = f.read()
@@ -1382,16 +1382,16 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     )
     if (
         "MAIA_PRIVATE_REGISTRY" in os.environ
-        and "docker_username" in os.environ
-        and "docker_password" in os.environ
-        and "docker_email" in os.environ
+        and "registry_username" in os.environ
+        and "registry_password" in os.environ
+        and "registry_email" in os.environ
     ):
         maia_dashboard_values["image"]["repository"] = os.environ["MAIA_PRIVATE_REGISTRY"] + "/maia-dashboard"
         maia_dashboard_values["imagePullSecrets"] = [{"name": os.environ["MAIA_PRIVATE_REGISTRY"].replace("/", "-")}]
         maia_dashboard_values["dockerRegistrySecretName"] = os.environ["MAIA_PRIVATE_REGISTRY"].replace("/", "-")
-        maia_dashboard_values["dockerRegistryUsername"] = os.environ["docker_username"]
-        maia_dashboard_values["dockerRegistryPassword"] = os.environ["docker_password"]
-        maia_dashboard_values["dockerRegistryEmail"] = os.environ["docker_email"]
+        maia_dashboard_values["dockerRegistryUsername"] = os.environ["registry_username"]
+        maia_dashboard_values["dockerRegistryPassword"] = os.environ["registry_password"]
+        maia_dashboard_values["dockerRegistryEmail"] = os.environ["registry_email"]
         maia_dashboard_values["dockerRegistryServer"] = os.environ["MAIA_PRIVATE_REGISTRY"]
     else:
         maia_dashboard_values["image"]["repository"] = "ghcr.io/minnelab/maia-dashboard"
@@ -1426,7 +1426,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     maia_dashboard_values["clusters"][0]["domain"] = cluster_config_dict["domain"]
     maia_dashboard_values["clusters"][0]["url_type"] = cluster_config_dict["url_type"]
     maia_dashboard_values["clusters"][0]["bucket_name"] = cluster_config_dict["bucket_name"]
-    maia_dashboard_values["clusters"][0]["docker_server"] = "ghcr.io/minnelab"
+    maia_dashboard_values["clusters"][0]["registry_server"] = "ghcr.io/minnelab"
     maia_dashboard_values["clusters"][0]["argocd_destination_cluster_address"] = (
         cluster_config_dict["argocd_destination_cluster_address"]
         if "argocd_destination_cluster_address" in cluster_config_dict
@@ -1584,9 +1584,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             raise RuntimeError(f"Unable to load root CA certificate from '{root_ca_path}'") from e
     if (
         "MAIA_PRIVATE_REGISTRY" in os.environ
-        and "docker_username" in os.environ
-        and "docker_password" in os.environ
-        and "docker_email" in os.environ
+        and "registry_username" in os.environ
+        and "registry_password" in os.environ
+        and "registry_email" in os.environ
     ):
         maia_dashboard_values["env"].extend(
             [

@@ -249,17 +249,17 @@ def convert_username_to_jupyterhub_username(username):
     return username.replace("-", "-2d").replace("@", "-40").replace(".", "-2e")
 
 
-def encode_docker_registry_secret(docker_server, docker_username, docker_password):
+def encode_docker_registry_secret(registry_server, registry_username, registry_password):
     """
     Encode Docker registry credentials into a base64-encoded string.
 
     Parameters
     ----------
-    docker_server : str
+    registry_server : str
         The Docker registry server.
-    docker_username : str
+    registry_username : str
         The Docker registry username.
-    docker_password : str
+    registry_password : str
         The Docker registry password.
 
     Returns
@@ -267,9 +267,9 @@ def encode_docker_registry_secret(docker_server, docker_username, docker_passwor
     str
         The base64-encoded Docker registry credentials.
     """
-    auth = base64.b64encode(f"{docker_username}:{docker_password}".encode("utf-8")).decode("utf-8")
+    auth = base64.b64encode(f"{registry_username}:{registry_password}".encode("utf-8")).decode("utf-8")
     return base64.b64encode(
-        json.dumps({"auths": {docker_server: {"username": docker_username, "password": docker_password, "auth": auth}}}).encode(
+        json.dumps({"auths": {registry_server: {"username": registry_username, "password": registry_password, "auth": auth}}}).encode(
             "utf-8"
         )
     ).decode("utf-8")

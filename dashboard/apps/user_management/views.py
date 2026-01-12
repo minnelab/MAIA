@@ -331,8 +331,8 @@ class ProjectChartValuesAPIView(APIView):
                     try:
                         with open(credentials_file, "r") as f:
                             docker_credentials = json.load(f)
-                            r_username = docker_credentials.get("harbor_username")
-                            password = docker_credentials.get("harbor_password")
+                            r_username = docker_credentials.get("username")
+                            password = docker_credentials.get("password")
                     except Exception:
                         with open(credentials_file, "r") as f:
                             docker_credentials = f.read()
@@ -634,8 +634,8 @@ def deploy_view(request, group_id):
             try:
                 with open(credentials_file, "r") as f:
                     docker_credentials = json.load(f)
-                    username = docker_credentials.get("harbor_username")
-                    password = docker_credentials.get("harbor_password")
+                    username = docker_credentials.get("username")
+                    password = docker_credentials.get("password")
             except Exception:
                 with open(credentials_file, "r") as f:
                     docker_credentials = f.read()
