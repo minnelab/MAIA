@@ -311,6 +311,11 @@ def define_docker_image_versions():
     else:
         maia_workspace_notebook_ssh_addons_image_name = "maia-workspace-notebook-ssh-addons"
 
+    if os.environ.get("MAIA_LAB_PRO_IMAGE_VERSION") is not None:
+        maia_lab_pro_image_version = os.environ.get("MAIA_LAB_PRO_IMAGE_VERSION")
+    else:
+        maia_lab_pro_image_version = maia_workspace_base_image_version
+
     return {
         "maia-kube": maia_kube_image_version,
         "maia-dashboard": maia_dashboard_image_version,
@@ -330,4 +335,5 @@ def define_docker_image_versions():
         "maia-workspace-notebook-ssh": maia_workspace_notebook_ssh_image_version,
         "maia-workspace-notebook-ssh-addons": maia_workspace_notebook_ssh_addons_image_version,
         "maia-workspace-notebook-ssh-addons-image-name": maia_workspace_notebook_ssh_addons_image_name,
+        "maia-lab-pro": maia_lab_pro_image_version,
     }
