@@ -204,7 +204,7 @@ def define_maia_docker_versions():
     if os.environ.get("KANIKO_CHART_VERSION") is not None:
         kaniko_chart_version = os.environ.get("KANIKO_CHART_VERSION")
     else:
-        kaniko_chart_version = "1.0.4"
+        kaniko_chart_version = "master"  # "1.0.4"
 
     if os.environ.get("KANIKO_CHART_TYPE") is not None:
         kaniko_chart_type = os.environ.get("KANIKO_CHART_TYPE")
