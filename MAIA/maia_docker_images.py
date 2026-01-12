@@ -140,7 +140,7 @@ def deploy_maia_kaniko(
     return {
         "namespace": namespace,
         "release": f"{project_id}-{release_name}",
-        "chart": kaniko_values["chart_name"],
+        "chart": (kaniko_values["chart_name"] if kaniko_chart_type == "helm_repo" else kaniko_values["path"]),
         "repo": kaniko_values["repo_url"],
         "version": kaniko_values["chart_version"],
         "values": str(
