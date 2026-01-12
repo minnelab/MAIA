@@ -7,7 +7,7 @@ import random
 import string
 from pathlib import Path
 from secrets import token_urlsafe
-from typing import Dict
+from typing import Dict, List
 
 import kubernetes
 import nltk
@@ -61,7 +61,7 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
 
 
 def create_config_map_from_data(
-    data: str, config_map_name: str, namespace: str, kubeconfig_dict: Dict, data_key: str = "values.yaml"
+    data: str | List[str], config_map_name: str, namespace: str, kubeconfig_dict: Dict, data_key: str | List[str] = "values.yaml"
 ):
     """
     Create a ConfigMap on a Kubernetes Cluster.

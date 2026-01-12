@@ -22,10 +22,13 @@ from MAIA.maia_fn import (
     get_ssh_ports,
 )
 
-from MAIA.versions import define_maia_admin_versions, define_maia_core_versions, define_maia_project_versions
+from MAIA.versions import define_maia_admin_versions, define_maia_core_versions, define_maia_project_versions, define_docker_image_versions
 
 maia_namespace_chart_version = define_maia_project_versions()["maia_namespace_chart_version"]
-maia_workspace_image_version = define_maia_project_versions()["maia_workspace_image_version"]
+maia_workspace_notebook_ssh_addons_image_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
+maia_workspace_notebook_ssh_addons_image_name = define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
+maia_workspace_base_notebook_ssh_image_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
+maia_workspace_base_notebook_ssh_image_name = define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
 maia_project_chart_version = define_maia_project_versions()["maia_project_chart_version"]
 maia_filebrowser_chart_version = define_maia_project_versions()["maia_filebrowser_chart_version"]
 admin_toolkit_chart_version = define_maia_admin_versions()["admin_toolkit_chart_version"]
@@ -882,6 +885,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
                 "storageSize": "10Gi",
                 "storageClassName": cluster_config_dict["storage_class"],
                 "consoleDomain": "minio." + cluster_config_dict["domain"],
+                "apiDomain": "minio-api." + cluster_config_dict["domain"],
                 "rootAccessKey": "root",
                 "rootSecretKey": os.environ["minio_root_password"],
                 "openIdClientId": "maia",
@@ -915,6 +919,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
         else:
             admin_toolkit_values["minio"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
         admin_toolkit_values["minio"]["ingress"]["tlsSecretName"] = f"{project_id}-tls"
+        admin_toolkit_values["minio"]["ingress"]["tlsSecretNameApi"] = f"{project_id}-tls-api"
 
     Path(config_folder).joinpath(project_id, "maia_admin_toolkit_values").mkdir(parents=True, exist_ok=True)
 
@@ -1534,11 +1539,13 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 "name": "keycloak_userdata_url",
                 "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
             },
-            {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", maia_workspace_image_version)},
+            {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", maia_workspace_base_notebook_ssh_image_version)},
             {
                 "name": "maia_workspace_image",
-                "value": os.environ.get("maia_workspace_image", "ghcr.io/minnelab/maia-workspace-base-notebook-ssh"),
+                "value": os.environ.get("maia_workspace_image", "ghcr.io/minnelab/"+maia_workspace_base_notebook_ssh_image_name),
             },
+            {"name": "maia_workspace_pro_version", "value": os.environ.get("maia_workspace_pro_version", maia_workspace_notebook_ssh_addons_image_version)},
+            {"name": "maia_workspace_pro_image", "value": os.environ.get("maia_workspace_pro_image", "ghcr.io/minnelab/"+maia_workspace_notebook_ssh_addons_image_name)},
             {"name": "argocd_namespace", "value": "argocd"},
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
             {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},

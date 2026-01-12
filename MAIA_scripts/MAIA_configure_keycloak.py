@@ -88,6 +88,8 @@ def create_admin_user_and_group(
                         keycloak_admin.group_user_add(uid, gid)
 
     client_uuid = keycloak_admin.get_client_id("realm-management")
+    if client_uuid is None:
+        raise ValueError("Client UUID not found in Keycloak")
     client_roles = keycloak_admin.get_client_roles(client_uuid)
     for group in groups:
         if group["name"] == f"MAIA:{admin_group_id}":

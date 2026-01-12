@@ -24,7 +24,7 @@ ingress_nginx_chart_version = define_maia_core_versions()["ingress_nginx_chart_v
 nfs_server_provisioner_chart_version = define_maia_core_versions()["nfs_server_provisioner_chart_version"]
 metrics_server_chart_version = define_maia_core_versions()["metrics_server_chart_version"]
 gpu_booking_chart_version = define_maia_core_versions()["gpu_booking_chart_version"]
-
+gpu_booking_chart_type = define_maia_core_versions()["gpu_booking_chart_type"]
 logger = loguru.logger
 
 
@@ -912,10 +912,18 @@ def create_gpu_booking_values(config_folder, project_id):
     """
     gpu_booking_values = {
         "namespace": "maia-webhooks",
-        "repo_url": "https://minnelab.github.io/MAIA/",
-        "chart_name": "gpu-booking",
         "chart_version": gpu_booking_chart_version,
     }
+    
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and gpu_booking_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and gpu_booking_chart_type is set to git_repo, which is not allowed")
+
+    if gpu_booking_chart_type == "git_repo":
+        gpu_booking_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        gpu_booking_values["path"] = "charts/gpu-booking"
+    elif gpu_booking_chart_type == "helm_repo":
+        gpu_booking_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        gpu_booking_values["chart_name"] = "gpu-booking"
 
     maia_dashboard_domain = os.environ["MAIA_DASHBOARD_DOMAIN"]
     gpu_booking_values.update(

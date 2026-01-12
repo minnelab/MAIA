@@ -24,7 +24,7 @@ def read_config_dict_and_generate_helm_values_dict(
     """
     from MAIA.maia_fn import create_config_map_from_data
 
-    value_dict = {}
+    value_dict: Dict[str, Any] = {}
     value_dict["image"] = {}
     value_dict["image"]["repository"] = config_dict["docker_image"]
 
@@ -37,17 +37,17 @@ def read_config_dict_and_generate_helm_values_dict(
     value_dict["extraVolumeMounts"] = [{"name": "dshm", "mountPath": "/dev/shm"}]
 
     if "memory_request" in config_dict:
-        value_dict["resources"] = {}
-        value_dict["resources"]["requests"] = {}
-        value_dict["resources"]["limits"] = {}
+        value_dict["resources"] = {}  # type: ignore
+        value_dict["resources"]["requests"] = {}  # type: ignore
+        value_dict["resources"]["limits"] = {}  # type: ignore
         value_dict["resources"]["requests"]["memory"] = config_dict["memory_request"]
         value_dict["resources"]["limits"]["memory"] = config_dict["memory_request"]
 
     if "cpu_request" in config_dict:
         if "resources" not in value_dict:
-            value_dict["resources"] = {}
-            value_dict["resources"]["requests"] = {}
-            value_dict["resources"]["limits"] = {}
+            value_dict["resources"] = {}  # type: ignore
+            value_dict["resources"]["requests"] = {}  # type: ignore
+            value_dict["resources"]["limits"] = {}  # type: ignore
 
         value_dict["resources"]["requests"]["cpu"] = config_dict["cpu_request"]
         value_dict["resources"]["limits"]["cpu"] = config_dict["cpu_request"]

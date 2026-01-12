@@ -5,6 +5,11 @@ from pathlib import Path
 
 import yaml
 
+from MAIA.versions import define_maia_docker_versions
+
+kaniko_chart_version = define_maia_docker_versions()["kaniko_chart_version"]
+kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
+
 
 def deploy_maia_kaniko(
     namespace,
@@ -57,17 +62,21 @@ def deploy_maia_kaniko(
         chart name, repo URL, chart version, and values file path.
     """
 
-    if "MAIA_HELM_REPO_URL" not in os.environ:
-        raise ValueError(
-            "MAIA_HELM_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Helm repository. Example: https://minnelab.github.io/MAIA/"  # noqa: B950
-        )
-
     kaniko_values = {
-        "chart_name": "mkg-kaniko",
-        "repo_url": os.environ["MAIA_HELM_REPO_URL"],
-        "chart_version": "1.0.4",
+        "chart_version": kaniko_chart_version,
         "namespace": "mkg-kaniko",
     }
+    
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and kaniko_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
+
+    if kaniko_chart_type == "helm_repo":
+        kaniko_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        kaniko_values["chart_name"] = "mkg-kaniko"
+    elif kaniko_chart_type == "git_repo":
+        kaniko_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        kaniko_values["path"] = "charts/maiakubegate-kaniko"
+
 
     if "MAIA_GIT_REPO_URL" not in os.environ:
         raise ValueError(

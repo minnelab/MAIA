@@ -12,6 +12,7 @@ import yaml
 from kubernetes import config
 from kubernetes.client.rest import ApiException
 from loguru import logger
+import urllib3
 
 
 def get_minio_shareable_link(object_name, bucket_name, settings):
@@ -29,9 +30,22 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
             expires=timedelta(hours=168),  # Link valid for 7 days
         )
         return url
-    except Exception as e:
-        logger.error(f"Error connecting to MinIO: {e}")
-        return None
+
+    except Exception:
+        client = Minio(
+            settings.MINIO_PUBLIC_URL,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_PUBLIC_SECURE,
+            http_client=urllib3.PoolManager(cert_reqs="CERT_NONE"),
+        )
+        client.bucket_exists(settings.BUCKET_NAME)
+        url = client.presigned_get_object(
+            bucket_name,
+            object_name,
+            expires=timedelta(hours=168),  # Link valid for 7 days
+        )
+        return url
 
 
 def label_pod_for_deletion(namespace, pod_name):
@@ -533,6 +547,7 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
                                 "client-id": settings.OIDC_RP_CLIENT_ID,
                                 "id-token": id_token,
                                 "client-secret": settings.OIDC_RP_CLIENT_SECRET,
+                                "refresh-token": "",
                             },
                             "name": "oidc",
                         }
