@@ -40,6 +40,17 @@
     - (registry_credentials.username | default('')) | length == 0
     - or (registry_credentials.password | default('')) | length == 0
 
+- name: Ensure MAIA Build Images related namespaces exist
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+    state: present
+  loop: "{{ maia_build_images_namespaces }}"
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
 - name: "Run MAIA_build_images"
   ansible.builtin.command: >
     MAIA_build_images
@@ -73,17 +84,6 @@
 - name: "Show build output"
   ansible.builtin.debug:
     var: build_images_result.stdout
-
-- name: Ensure MAIA Build Images related namespaces exist
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Namespace
-    name: "{{ item }}"
-    state: present
-  loop: "{{ maia_build_images_namespaces }}"
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
 - name: Login to ArgoCD using CLI (with fallback)
   ansible.builtin.shell: |
