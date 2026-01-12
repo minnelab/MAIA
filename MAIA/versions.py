@@ -57,11 +57,11 @@ def define_maia_core_versions():
         gpu_booking_chart_version = os.environ.get("GPU_BOOKING_CHART_VERSION")
     else:
         gpu_booking_chart_version = "1.0.0"
-        
+
     if os.environ.get("GPU_BOOKING_CHART_TYPE") is not None:
         gpu_booking_chart_type = os.environ.get("GPU_BOOKING_CHART_TYPE")
     else:
-        gpu_booking_chart_type = "git_repo" # or "helm_repo"
+        gpu_booking_chart_type = "git_repo"  # or "helm_repo"
 
     if os.environ.get("CORE_TOOLKIT_CHART_VERSION") is not None:
         core_toolkit_chart_version = os.environ.get("CORE_TOOLKIT_CHART_VERSION")
@@ -195,7 +195,7 @@ def define_maia_project_versions():
     return {
         "maia_namespace_chart_version": maia_namespace_chart_version,
         "maia_filebrowser_chart_version": maia_filebrowser_chart_version,
-        "maia_project_chart_version": maia_project_chart_version
+        "maia_project_chart_version": maia_project_chart_version,
     }
 
 
@@ -205,112 +205,112 @@ def define_maia_docker_versions():
         kaniko_chart_version = os.environ.get("KANIKO_CHART_VERSION")
     else:
         kaniko_chart_version = "1.0.4"
-        
+
     if os.environ.get("KANIKO_CHART_TYPE") is not None:
         kaniko_chart_type = os.environ.get("KANIKO_CHART_TYPE")
     else:
-        kaniko_chart_type = "git_repo" # or "helm_repo"
+        kaniko_chart_type = "git_repo"  # or "helm_repo"
 
     return {
         "kaniko_chart_version": kaniko_chart_version,
         "kaniko_chart_type": kaniko_chart_type,
     }
-    
+
+
 def define_docker_image_versions():
-   
+
     if os.environ.get("MAIA_KUBE_IMAGE_VERSION") is not None:
         maia_kube_image_version = os.environ.get("MAIA_KUBE_IMAGE_VERSION")
     else:
         maia_kube_image_version = "1.0"
-        
+
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
     else:
         maia_dashboard_image_version = "2.4.0"
-        
+
     if os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION") is not None:
         monai_toolkit_image_version = os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION")
     else:
         monai_toolkit_image_version = "3.0"
-        
+
     if os.environ.get("MAIA_XNAT_IMAGE_VERSION") is not None:
         maia_xnat_image_version = os.environ.get("MAIA_XNAT_IMAGE_VERSION")
     else:
         maia_xnat_image_version = "1.0"
-        
+
     if os.environ.get("MAIA_ORTHANC_IMAGE_VERSION") is not None:
         maia_orthanc_image_version = os.environ.get("MAIA_ORTHANC_IMAGE_VERSION")
     else:
         maia_orthanc_image_version = "1.3"
-        
+
     if os.environ.get("MAIA_MLFLOW_IMAGE_VERSION") is not None:
         maia_mlflow_image_version = os.environ.get("MAIA_MLFLOW_IMAGE_VERSION")
     else:
         maia_mlflow_image_version = "1.0"
-        
+
     if os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION") is not None:
         maia_filebrowser_image_version = os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION")
     else:
         maia_filebrowser_image_version = "1.0"
-        
+
     if os.environ.get("MAIA_GPU_BOOKING_ADMISSION_CONTROLLER_IMAGE_VERSION") is not None:
-        maia_gpu_booking_admission_controller_image_version = os.environ.get("MAIA_GPU_BOOKING_ADMISSION_CONTROLLER_IMAGE_VERSION")
+        maia_gpu_booking_admission_controller_image_version = os.environ.get(
+            "MAIA_GPU_BOOKING_ADMISSION_CONTROLLER_IMAGE_VERSION"
+        )
     else:
         maia_gpu_booking_admission_controller_image_version = "1.0"
-        
+
     if os.environ.get("MAIA_GPU_BOOKING_POD_TERMINATOR_IMAGE_VERSION") is not None:
         maia_gpu_booking_pod_terminator_image_version = os.environ.get("MAIA_GPU_BOOKING_POD_TERMINATOR_IMAGE_VERSION")
     else:
         maia_gpu_booking_pod_terminator_image_version = "1.0"
-        
+
     if os.environ.get("MAIA_WORKSPACE_BASE_IMAGE_VERSION") is not None:
         maia_workspace_base_image_version = os.environ.get("MAIA_WORKSPACE_BASE_IMAGE_VERSION")
     else:
         maia_workspace_base_image_version = "1.8.0"
-        
+
     if os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_IMAGE_VERSION") is not None:
         maia_workspace_base_notebook_image_version = os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_IMAGE_VERSION")
     else:
         maia_workspace_base_notebook_image_version = maia_workspace_base_image_version
-        
+
     if os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_SSH_IMAGE_VERSION") is not None:
         maia_workspace_base_notebook_ssh_image_version = os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_SSH_IMAGE_VERSION")
     else:
         maia_workspace_base_notebook_ssh_image_version = maia_workspace_base_image_version
-        
-    
-        
+
     if os.environ.get("MAIA_WORKSPACE_IMAGE_VERSION") is not None:
         maia_workspace_image_version = os.environ.get("MAIA_WORKSPACE_IMAGE_VERSION")
     else:
         maia_workspace_image_version = maia_workspace_base_image_version
-        
+
     if os.environ.get("MAIA_WORKSPACE_NOTEBOOK_IMAGE_VERSION") is not None:
         maia_workspace_notebook_image_version = os.environ.get("MAIA_WORKSPACE_NOTEBOOK_IMAGE_VERSION")
     else:
         maia_workspace_notebook_image_version = maia_workspace_base_image_version
-        
+
     if os.environ.get("MAIA_WORKSPACE_NOTEBOOK_SSH_IMAGE_VERSION") is not None:
         maia_workspace_notebook_ssh_image_version = os.environ.get("MAIA_WORKSPACE_NOTEBOOK_SSH_IMAGE_VERSION")
     else:
         maia_workspace_notebook_ssh_image_version = maia_workspace_base_image_version
-        
+
     if os.environ.get("MAIA_WORKSPACE_NOTEBOOK_SSH_ADDONS_IMAGE_VERSION") is not None:
         maia_workspace_notebook_ssh_addons_image_version = os.environ.get("MAIA_WORKSPACE_NOTEBOOK_SSH_ADDONS_IMAGE_VERSION")
     else:
         maia_workspace_notebook_ssh_addons_image_version = maia_workspace_base_image_version
-        
+
     if os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_SSH_IMAGE_NAME") is not None:
         maia_workspace_base_notebook_ssh_image_name = os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_SSH_IMAGE_NAME")
     else:
         maia_workspace_base_notebook_ssh_image_name = "maia-workspace-base-notebook-ssh"
-        
-    
+
     if os.environ.get("MAIA_WORKSPACE_NOTEBOOK_SSH_ADDONS_IMAGE_NAME") is not None:
         maia_workspace_notebook_ssh_addons_image_name = os.environ.get("MAIA_WORKSPACE_NOTEBOOK_SSH_ADDONS_IMAGE_NAME")
     else:
         maia_workspace_notebook_ssh_addons_image_name = "maia-workspace-notebook-ssh-addons"
-        
+
     return {
         "maia-kube": maia_kube_image_version,
         "maia-dashboard": maia_dashboard_image_version,

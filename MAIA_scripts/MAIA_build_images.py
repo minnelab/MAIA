@@ -11,7 +11,6 @@ from pathlib import Path
 from textwrap import dedent
 
 import click
-import requests
 import yaml
 from hydra import compose as hydra_compose
 from hydra import initialize_config_dir
@@ -23,7 +22,11 @@ import MAIA
 from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import install_maia_project
 from MAIA.maia_docker_images import deploy_maia_kaniko
+from MAIA.versions import define_maia_docker_versions, define_docker_image_versions
 
+
+kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
+build_versions = define_docker_image_versions()
 version = MAIA.__version__
 
 
@@ -77,13 +80,6 @@ def get_arg_parser():
         help="Project ID to use for ArgoCD. This is used to identify the project in the cluster.",
     )
     pars.add_argument(
-        "--build-version-file",
-        type=str,
-        required=False,
-        default="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
-        help="Optional file containing the version of the Docker Images to build. If not provided, the default version is 1.0",
-    )
-    pars.add_argument(
         "--cluster-address",
         type=str,
         required=False,
@@ -102,16 +98,10 @@ def get_arg_parser():
 @click.option("--registry-path", type=str, default="")
 @click.option("--project-id", required=True, type=str)
 @click.option("--cluster-address", type=str, default="https://kubernetes.default.svc")
-@click.option(
-    "--build-version-file",
-    type=str,
-    default="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
-)
 def main(
     cluster_config,
     config_folder,
     project_id,
-    build_version_file,
     registry_path,
     cluster_address,
 ):
@@ -119,7 +109,6 @@ def main(
         cluster_config,
         config_folder,
         project_id,
-        build_version_file,
         registry_path,
         cluster_address,
     )
@@ -129,7 +118,6 @@ def build_maia_images(
     cluster_config,
     config_folder,
     project_id,
-    build_version_file="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
     registry_path="",
     cluster_address="https://kubernetes.default.svc",
 ):
@@ -157,14 +145,6 @@ def build_maia_images(
     docker_secret_name = f"{registry_server}{registry_path}".replace(".", "-").replace("/", "-").replace(":", "-")
     if docker_secret_name.endswith("-"):
         docker_secret_name = docker_secret_name[:-1]
-
-    if build_version_file is not None:
-        if build_version_file.startswith("https"):
-            build_versions = yaml.safe_load(requests.get(build_version_file).text)
-        else:
-            build_versions = yaml.safe_load(Path(build_version_file).read_text())
-    else:
-        build_versions = {}
 
     xnat_env_vars = [
         "XNAT_VERSION=1.8.10",
@@ -199,7 +179,12 @@ def build_maia_images(
     }
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
 
-    if json_key_path is not None and "minnelab.github.io/MAIA" not in os.environ["MAIA_HELM_REPO_URL"]:
+    if kaniko_chart_type == "git_repo":
+        kaniko_repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+    else:
+        kaniko_repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+
+    if json_key_path is not None and "minnelab.github.io/MAIA" not in kaniko_repo_url:
         try:
             with open(json_key_path, "r") as f:
                 docker_credentials = json.load(f)
@@ -219,7 +204,7 @@ def build_maia_images(
                 "username": username,
                 "password": password,
                 "project": project_id,
-                "url": os.environ["MAIA_HELM_REPO_URL"],
+                "url": kaniko_repo_url,
                 "type": "helm",
                 "name": f"maia-registry-{project_id}",
                 "enableOCI": "true",
@@ -269,7 +254,7 @@ def build_maia_images(
             docker_secret_name,
             "maia-workspace",
             build_versions["maia-workspace"],
-            "docker/MAIA-Workspace",
+            "docker/Pro/MAIA-Workspace",
             [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
             registry_credentials=registry_credentials,
         )
@@ -285,7 +270,7 @@ def build_maia_images(
             docker_secret_name,
             "maia-workspace-notebook",
             build_versions["maia-workspace-notebook"],
-            "docker/Notebooks/Base",
+            "docker/Pro/Notebooks/Base",
             [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace:{build_versions['maia-workspace']}"],
             registry_credentials=registry_credentials,
         )
@@ -301,7 +286,7 @@ def build_maia_images(
             docker_secret_name,
             "maia-workspace-notebook-ssh",
             build_versions["maia-workspace-notebook-ssh"],
-            "docker/Notebooks/SSH",
+            "docker/Pro/Notebooks/SSH",
             [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"],
             registry_credentials=registry_credentials,
         )
@@ -317,7 +302,7 @@ def build_maia_images(
             docker_secret_name,
             "maia-lab-pro",
             build_versions["maia-lab-pro"],
-            "docker/Notebooks/Lab",
+            "docker/Pro/Notebooks/Lab",
             [
                 f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh-addons:{build_versions['maia-workspace-notebook-ssh-addons']}"
             ],
@@ -329,13 +314,13 @@ def build_maia_images(
             "mkg-kaniko",
             config_folder,
             cluster_config_dict,
-            "maia-workspace-notebook-ssh-addons",
+            build_versions["maia-workspace-notebook-ssh-addons-image-name"],
             project_id,
             registry_server + registry_path,
             docker_secret_name,
-            "maia-workspace-notebook-ssh-addons",
+            build_versions["maia-workspace-notebook-ssh-addons-image-name"],
             build_versions["maia-workspace-notebook-ssh-addons"],
-            "docker/Notebooks/Addons",
+            "docker/Pro/Notebooks/Addons",
             [
                 f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh:{build_versions['maia-workspace-notebook-ssh']}"
             ],
@@ -353,7 +338,7 @@ def build_maia_images(
             docker_secret_name,
             "monai-toolkit",
             build_versions["monai-toolkit"],
-            "docker/Notebooks/MONAI-Toolkit",
+            "docker/Pro/Notebooks/MONAI-Toolkit",
             registry_credentials=registry_credentials,
         )
     )
@@ -487,11 +472,11 @@ def build_maia_images(
             "mkg-kaniko",
             config_folder,
             cluster_config_dict,
-            "maia-workspace-base-notebook-ssh",
+            build_versions["maia-workspace-base-notebook-ssh-image-name"],
             project_id,
             registry_server + registry_path,
             docker_secret_name,
-            "maia-workspace-base-notebook-ssh",
+            build_versions["maia-workspace-base-notebook-ssh-image-name"],
             build_versions["maia-workspace-base-notebook-ssh"],
             "docker/Notebooks/SSH",
             [
@@ -520,18 +505,13 @@ def build_maia_images(
         ]
         logger.debug(f"Helm command: {' '.join(cmd)}")
 
-    if "MAIA_HELM_REPO_URL" not in os.environ:
-        raise ValueError(
-            "MAIA_HELM_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Helm repository for mkg-kaniko. Example: https://minnelab.github.io/MAIA/"  # noqa: B950
-        )
-
     values = {
         "defaults": ["_self_"],
         "argo_namespace": os.environ["argocd_namespace"],
         "namespace": "mkg-kaniko",
         "admin_group_ID": admin_group_id,
         "destination_server": f"{cluster_address}",
-        "sourceRepos": [os.environ["MAIA_HELM_REPO_URL"]],
+        "sourceRepos": [kaniko_repo_url],
         "dockerRegistryServer": "https://" + registry_server if "registry_server" not in os.environ else registry_server,
         "dockerRegistryUsername": registry_username,
         "dockerRegistryPassword": registry_password,

@@ -66,7 +66,7 @@ def deploy_maia_kaniko(
         "chart_version": kaniko_chart_version,
         "namespace": "mkg-kaniko",
     }
-    
+
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and kaniko_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
 
@@ -76,7 +76,6 @@ def deploy_maia_kaniko(
     elif kaniko_chart_type == "git_repo":
         kaniko_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
         kaniko_values["path"] = "charts/maiakubegate-kaniko"
-
 
     if "MAIA_GIT_REPO_URL" not in os.environ:
         raise ValueError(

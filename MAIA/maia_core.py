@@ -914,7 +914,7 @@ def create_gpu_booking_values(config_folder, project_id):
         "namespace": "maia-webhooks",
         "chart_version": gpu_booking_chart_version,
     }
-    
+
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and gpu_booking_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and gpu_booking_chart_type is set to git_repo, which is not allowed")
 

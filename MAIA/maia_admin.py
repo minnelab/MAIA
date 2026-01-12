@@ -22,7 +22,12 @@ from MAIA.maia_fn import (
     get_ssh_ports,
 )
 
-from MAIA.versions import define_maia_admin_versions, define_maia_core_versions, define_maia_project_versions, define_docker_image_versions
+from MAIA.versions import (
+    define_maia_admin_versions,
+    define_maia_core_versions,
+    define_maia_project_versions,
+    define_docker_image_versions,
+)
 
 maia_namespace_chart_version = define_maia_project_versions()["maia_namespace_chart_version"]
 maia_workspace_notebook_ssh_addons_image_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
@@ -1539,13 +1544,26 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 "name": "keycloak_userdata_url",
                 "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
             },
-            {"name": "maia_workspace_version", "value": os.environ.get("maia_workspace_version", maia_workspace_base_notebook_ssh_image_version)},
+            {
+                "name": "maia_workspace_version",
+                "value": os.environ.get("maia_workspace_version", maia_workspace_base_notebook_ssh_image_version),
+            },
             {
                 "name": "maia_workspace_image",
-                "value": os.environ.get("maia_workspace_image", "ghcr.io/minnelab/"+maia_workspace_base_notebook_ssh_image_name),
+                "value": os.environ.get(
+                    "maia_workspace_image", "ghcr.io/minnelab/" + maia_workspace_base_notebook_ssh_image_name
+                ),
             },
-            {"name": "maia_workspace_pro_version", "value": os.environ.get("maia_workspace_pro_version", maia_workspace_notebook_ssh_addons_image_version)},
-            {"name": "maia_workspace_pro_image", "value": os.environ.get("maia_workspace_pro_image", "ghcr.io/minnelab/"+maia_workspace_notebook_ssh_addons_image_name)},
+            {
+                "name": "maia_workspace_pro_version",
+                "value": os.environ.get("maia_workspace_pro_version", maia_workspace_notebook_ssh_addons_image_version),
+            },
+            {
+                "name": "maia_workspace_pro_image",
+                "value": os.environ.get(
+                    "maia_workspace_pro_image", "ghcr.io/minnelab/" + maia_workspace_notebook_ssh_addons_image_name
+                ),
+            },
             {"name": "argocd_namespace", "value": "argocd"},
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
             {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
