@@ -1,0 +1,20 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=matlab
+GenericName[en_US]=Matlab
+GenericName=Matlab
+Icon=/etc/Matlab_Logo.png
+MimeType=
+Name[en_US]=Matlab
+Name=Matlab
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

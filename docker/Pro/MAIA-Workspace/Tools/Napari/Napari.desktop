@@ -1,0 +1,20 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=/home/maia-user/.conda/envs/napari-env/bin/napari
+GenericName[en_US]=
+GenericName=
+Icon=/etc/Napari.png
+MimeType=
+Name[en_US]=Napari
+Name=Napari
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=
