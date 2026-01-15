@@ -99,12 +99,12 @@
   register: argocd_cli_login
   changed_when: false
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 
 - name: Show ArgoCD CLI login output
   ansible.builtin.debug:
     var: argocd_cli_login.stdout
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-kube ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-kube && argocd app wait {{ maia_project_id }}-maia-kube
@@ -112,7 +112,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-dashboard ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-dashboard && argocd app wait {{ maia_project_id }}-maia-dashboard
@@ -120,7 +120,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-filebrowser ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-filebrowser && argocd app wait {{ maia_project_id }}-maia-filebrowser
@@ -128,7 +128,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-workspace-base ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-workspace-base && argocd app wait {{ maia_project_id }}-maia-workspace-base
@@ -136,7 +136,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-workspace ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-workspace && argocd app wait {{ maia_project_id }}-maia-workspace
@@ -144,7 +144,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-workspace-notebook ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-workspace-notebook && argocd app wait {{ maia_project_id }}-maia-workspace-notebook
@@ -152,7 +152,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Sync maia-workspace-notebook-ssh ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-workspace-notebook-ssh && argocd app wait {{ maia_project_id }}-maia-workspace-notebook-ssh
@@ -160,12 +160,12 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
 - name: Get current maia-workspace-notebook-ssh-addons image name
   ansible.builtin.set_fact:
     maia_workspace_notebook_ssh_addons_image_name: "{{ lookup('pipe', 'python3 -c \"from MAIA.versions import define_docker_image_versions; print(define_docker_image_versions()[\\'maia-workspace-notebook-ssh-addons-image-name\\'])\"') }}"
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
   register: maia_workspace_notebook_ssh_addons_image_name
 
 - name: Sync maia-workspace-notebook-ssh-addons ArgoCD application and wait for it to complete
@@ -175,4 +175,4 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync is defined and auto_sync == true
+  when: auto_sync | default(false) | bool
