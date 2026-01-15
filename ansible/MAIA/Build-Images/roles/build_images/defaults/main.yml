@@ -19,5 +19,10 @@ kubeconfig_path: "{{ config_folder }}/{{ cluster_name }}-kubeconfig.yaml"
 
 auto_sync: false
 
+argocd_port: 8080
+
+apps_to_sync:
+- "all"
+maia_workspace_notebook_ssh_addons_image_name: "maia-workspace-notebook-ssh-addons"
 maia_build_images_namespaces:
   - "mkg-kaniko"
