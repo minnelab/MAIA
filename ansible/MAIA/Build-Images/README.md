@@ -121,6 +121,18 @@ The following variables must be provided when running the build_images playbook:
   - Default: `false`
   - Description: Enable automatic ArgoCD application synchronization. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.
   - Example: `auto_sync: true`
+- **apps_to_sync**: List of ArgoCD applications to synchronize (optional)
+  - Default: `["all"]`
+  - Description: List of ArgoCD applications to synchronize. When set to `["all"]`, all applications will be synchronized. Otherwise, only the specified applications will be synchronized.
+  - Example: `apps_to_sync: ["maia-kube", "maia-dashboard", "maia-filebrowser"]`
+- **maia_workspace_notebook_ssh_addons_image_name**: Name of the MAIA workspace notebook SSH addons image (optional)
+  - Default: `maia-workspace-notebook-ssh-addons`
+  - Description: Name of the MAIA workspace notebook SSH addons image. This is used to synchronize the ArgoCD application for the workspace notebook SSH addons.
+  - Example: `maia_workspace_notebook_ssh_addons_image_name: "maia-workspace-notebook-ssh-addons-image"`
+- **argocd_port**: Local port for ArgoCD CLI access (optional)
+  - Default: `8080`
+  - Description: Local port for ArgoCD CLI access. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.
+  - Example: `argocd_port: 8080`
 - **maia_git_repo_url**: MAIA git repository URL (optional)
   - Default: `git://github.com/minnelab/MAIA.git`
   - Description: MAIA git repository URL. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.

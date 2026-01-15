@@ -214,6 +214,18 @@ All other variables are optional and can be overridden when using the role:
 
 **Note**: If set to `false`, you will need to manually sync the applications in ArgoCD after the build completes.
 
+### `apps_to_sync`
+- **Type**: `list`
+- **Default**: `["all"]`
+- **Description**: List of ArgoCD applications to synchronize. When set to `["all"]`, all applications will be synchronized. Otherwise, only the specified applications will be synchronized.
+- **Example**: `apps_to_sync: ["maia-kube", "maia-dashboard", "maia-filebrowser"]`
+
+### `maia_workspace_notebook_ssh_addons_image_name`
+- **Type**: `string`
+- **Default**: `maia-workspace-notebook-ssh-addons`
+- **Description**: Name of the MAIA workspace notebook SSH addons image. This is used to synchronize the ArgoCD application for the workspace notebook SSH addons.
+- **Example**: `maia_workspace_notebook_ssh_addons_image_name: "maia-workspace-notebook-ssh-addons-image"`
+
 ## Usage
 
 ### Basic Usage
