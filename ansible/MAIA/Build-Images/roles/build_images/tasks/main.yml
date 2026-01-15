@@ -121,10 +121,57 @@
   ignore_errors: true
   delegate_to: localhost
   when: auto_sync is defined and auto_sync == true
-- name: Mount Sync maia-filebrowser ArgoCD application and wait for it to complete
+- name: Sync maia-filebrowser ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
     argocd app sync {{ maia_project_id }}-maia-filebrowser && argocd app wait {{ maia_project_id }}-maia-filebrowser
   register: argocd_sync_maia_filebrowser
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Sync maia-workspace-base ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-workspace-base && argocd app wait {{ maia_project_id }}-maia-workspace-base
+  register: argocd_sync_maia_workspace_base
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Sync maia-workspace ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-workspace && argocd app wait {{ maia_project_id }}-maia-workspace
+  register: argocd_sync_maia_workspace
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Sync maia-workspace-notebook ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-workspace-notebook && argocd app wait {{ maia_project_id }}-maia-workspace-notebook
+  register: argocd_sync_maia_workspace_notebook
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Sync maia-workspace-notebook-ssh ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-maia-workspace-notebook-ssh && argocd app wait {{ maia_project_id }}-maia-workspace-notebook-ssh
+  register: argocd_sync_maia_workspace_notebook_ssh
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+- name: Get current maia-workspace-notebook-ssh-addons image name
+  ansible.builtin.set_fact:
+    maia_workspace_notebook_ssh_addons_image_name: "{{ lookup('pipe', 'python3 -c \"from MAIA.versions import define_docker_image_versions; print(define_docker_image_versions()[\\'maia-workspace-notebook-ssh-addons-image-name\\'])\"') }}"
+  delegate_to: localhost
+  when: auto_sync is defined and auto_sync == true
+  register: maia_workspace_notebook_ssh_addons_image_name
+
+- name: Sync maia-workspace-notebook-ssh-addons ArgoCD application and wait for it to complete
+  ansible.builtin.shell: |
+    argocd app sync {{ maia_project_id }}-{{ maia_workspace_notebook_ssh_addons_image_name }} && argocd app wait {{ maia_project_id }}-{{ maia_workspace_notebook_ssh_addons_image_name }}
+  register: argocd_sync_maia_workspace_notebook_ssh_addons
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
