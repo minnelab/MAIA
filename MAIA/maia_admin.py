@@ -815,7 +815,7 @@ async def install_maia_project(
                 "helm",
                 "upgrade",
                 "--install",
-                group_id.lower().replace("_", "-"),
+                chart_name,
                 project_repo,
                 "--namespace",
                 argo_cd_namespace,
@@ -827,7 +827,7 @@ async def install_maia_project(
         )
     else:
         revision = await client.install_or_upgrade_release(
-            group_id.lower().replace("_", "-"), chart, values, namespace=argo_cd_namespace, wait=True
+            chart_name, chart, values, namespace=argo_cd_namespace, wait=True
         )
         logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
 
