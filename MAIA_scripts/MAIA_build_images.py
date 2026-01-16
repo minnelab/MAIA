@@ -583,8 +583,9 @@ def build_maia_images(
             custom_images = yaml.safe_load(f)
             custom_app_defaults = []
             for custom_image in custom_images:
-                custom_app_defaults.append({f"{custom_image['release_name']}_values": f"{custom_image['release_name']}_values"})
-            values["defaults"].append({"custom_build_apps": custom_app_defaults})
+                custom_app_defaults.append(f"{custom_image['release_name']}_values")
+            values["custom_app_values"] = custom_app_defaults
+            values["defaults"].append({f"{custom_image['release_name']}_values": f"{custom_image['release_name']}_values"})
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
 
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:
