@@ -826,9 +826,7 @@ async def install_maia_project(
             check=True,
         )
     else:
-        revision = await client.install_or_upgrade_release(
-            chart_name, chart, values, namespace=argo_cd_namespace, wait=True
-        )
+        revision = await client.install_or_upgrade_release(chart_name, chart, values, namespace=argo_cd_namespace, wait=True)
         logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
 
     return ""
