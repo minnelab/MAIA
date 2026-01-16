@@ -1,25 +1,25 @@
 {{- if .Values.custom_app_values }}
-{{- range .Values.custom_app_values }}
+{{- range .Values.custom_app_values as custom_app_value }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ $.Release.Name }}-{{ .release_name }}
+  name: {{ $.Release.Name }}-{{ $Values.custom_app_value.release_name }}
   namespace: {{ $.Values.argo_namespace }}
 spec:
   project: {{ $.Release.Name }}
   source:
-    {{- if .chart_name }}
-    chart: {{ .chart_name }}
+    {{- if $Values.custom_app_value.chart_name }}
+    chart: {{ $Values.custom_app_value.chart_name }}
     {{- end }}
-    {{- if .path }}
-    path: {{ .path }}
+    {{- if $Values.custom_app_value.path }}
+    path: {{ $Values.custom_app_value.path }}
     {{- end }}
-    repoURL: {{ .repo_url }}
-    targetRevision: {{ .chart_version }}
+    repoURL: {{ $Values.custom_app_value.repo_url }}
+    targetRevision: {{ $Values.custom_app_value.chart_version }}
     helm:
-      releaseName: {{ $.Release.Name }}-{{ .release_name }}
+      releaseName: {{ $.Release.Name }}-{{ $Values.custom_app_value.release_name }}
       valuesObject:
-      {{ . | toYaml | nindent 8 }}
+      {{ $Values.custom_app_value | toYaml | nindent 8 }}
   destination:
     server: {{ $.Values.destination_server }}
     namespace: {{ $.Values.namespace }}
