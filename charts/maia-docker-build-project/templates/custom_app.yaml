@@ -1,0 +1,27 @@
+{{- if .Values.custom_app_values }}
+{{- range .Values.custom_app_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-{{ .release_name }}
+  namespace: {{ $.Values.argo_namespace }}
+spec:
+  project: {{ $.Release.Name }}
+  source:
+    {{- if .chart_name }}
+    chart: {{ .chart_name }}
+    {{- end }}
+    {{- if .path }}
+    path: {{ .path }}
+    {{- end }}
+    repoURL: {{ .repo_url }}
+    targetRevision: {{ .chart_version }}
+    helm:
+      releaseName: {{ $.Release.Name }}-{{ .release_name }}
+      valuesObject:
+      {{ . | toYaml | nindent 8 }}
+  destination:
+    server: {{ $.Values.destination_server }}
+    namespace: {{ $.Values.namespace }}
+{{- end }}
+{{- end }}
