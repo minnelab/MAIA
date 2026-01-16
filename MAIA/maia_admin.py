@@ -741,6 +741,11 @@ async def install_maia_project(
         If there is an error during the installation or upgrade process.
     """
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
+    chart_name = group_id.lower().replace("_", "-")
+    if chart_name[-1] == "-":
+        chart_name = chart_name[:-1]
+    if chart_name[0] == "-":
+        chart_name = chart_name[1:]
 
     if not project_repo.startswith("http") and not Path(project_repo).exists() and not project_repo.startswith("git+"):
         chart = str("/tmp/" + project_chart + "-" + project_version + ".tgz")
@@ -776,11 +781,6 @@ async def install_maia_project(
         subprocess.run(
             ["helm", "pull", project_chart, "-d", "/tmp", "--insecure-skip-tls-verify", "--version", project_version], check=True
         )
-        chart_name = group_id.lower().replace("_", "-")
-        if chart_name[-1] == "-":
-            chart_name = chart_name[:-1]
-        if chart_name[0] == "-":
-            chart_name = chart_name[1:]
         subprocess.run(
             [
                 "helm",
