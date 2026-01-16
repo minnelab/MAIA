@@ -60,7 +60,7 @@
     --registry-path {{ registry_path }}
     --cluster-address {{ cluster_address }}
     --project-id {{ maia_project_id }}
-    {% if lookup('env','build_custom_images') | default('', true) | length > 0 %}
+    {% if build_custom_images is defined and build_custom_images | bool %}
     --build-custom-images {{ config_folder }}/custom_images.yaml
     {% endif %}
   environment:
