@@ -24,6 +24,7 @@ def deploy_maia_kaniko(
     subpath,
     build_args=None,
     registry_credentials=None,
+    git_repo_url=None,
 ):
     """
     Deploys a Kaniko job for building and pushing Docker images to a specified registry.
@@ -54,7 +55,8 @@ def deploy_maia_kaniko(
         A list of build arguments to be passed to the Kaniko job.
     registry_credentials : dict, optional
         A dictionary containing registry credentials with keys 'username', 'password', 'server', and 'email'.
-
+    custom_git_repo_url : str, optional
+        The URL of the Git repository where the Dockerfile is located.
     Returns
     -------
     dict
@@ -115,7 +117,7 @@ def deploy_maia_kaniko(
             "git_token": os.environ.get("GIT_TOKEN"),
             "args": [
                 "--dockerfile=Dockerfile",
-                f"--context={os.environ['MAIA_GIT_REPO_URL']}",  # git://github.com/acme/myproject.git#refs/heads/mybranch#<desired-commit-id>
+                f"--context={git_repo_url if git_repo_url is not None else os.environ['MAIA_GIT_REPO_URL']}",  # git://github.com/acme/myproject.git#refs/heads/mybranch#<desired-commit-id>
                 "--context-sub-path=" + subpath,
                 "--destination={}/{}:{}".format(registry_complete_url, image_name, image_tag),
                 "--cache=true",

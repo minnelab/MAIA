@@ -222,6 +222,8 @@ def build_maia_images(
         )
     helm_commands = []
     if build_custom_images is None:
+    #MAIA-Lab
+    #dashboard-devel
         helm_commands.append(
             deploy_maia_kaniko(
                 "mkg-kaniko",
@@ -513,6 +515,7 @@ def build_maia_images(
                     custom_image["subpath"],
                     custom_image["build_args"],
                     registry_credentials=registry_credentials,
+                    git_repo_url=custom_image["git_repo_url"],
                 )
             )
     for helm_command in helm_commands:
