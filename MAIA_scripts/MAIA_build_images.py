@@ -86,7 +86,7 @@ def get_arg_parser():
         default="https://kubernetes.default.svc",
         help="Optional address of the cluster. If not provided, the default is https://kubernetes.default.svc",
     )
-    
+
     pars.add_argument(
         "--build-custom-images",
         required=False,
@@ -222,8 +222,8 @@ def build_maia_images(
         )
     helm_commands = []
     if build_custom_images is None:
-    #MAIA-Lab
-    #dashboard-devel
+        # MAIA-Lab
+        # dashboard-devel
         helm_commands.append(
             deploy_maia_kaniko(
                 "mkg-kaniko",
@@ -299,7 +299,9 @@ def build_maia_images(
                 "maia-workspace-notebook-ssh",
                 build_versions["maia-workspace-notebook-ssh"],
                 "docker/Pro/Notebooks/SSH",
-                [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"],
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"
+                ],
                 registry_credentials=registry_credentials,
             )
         )
@@ -579,12 +581,10 @@ def build_maia_images(
     else:
         with open(build_custom_images, "r") as f:
             custom_images = yaml.safe_load(f)
+            custom_app_defaults = []
             for custom_image in custom_images:
-                values["defaults"].append(
-                    {
-                        f"{custom_image['release_name']}_values": f"{custom_image['release_name']}_values",
-                    }
-                )
+                custom_app_defaults.append({f"{custom_image['release_name']}_values": f"{custom_image['release_name']}_values"})
+            values["defaults"].append({"custom_build_apps": custom_app_defaults})
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
 
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:
