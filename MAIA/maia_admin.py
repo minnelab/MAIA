@@ -776,13 +776,17 @@ async def install_maia_project(
         subprocess.run(
             ["helm", "pull", project_chart, "-d", "/tmp", "--insecure-skip-tls-verify", "--version", project_version], check=True
         )
-
+        chart_name = group_id.lower().replace("_", "-")
+        if chart_name[-1] == "-":
+            chart_name = chart_name[:-1]
+        if chart_name[0] == "-":
+            chart_name = chart_name[1:]
         subprocess.run(
             [
                 "helm",
                 "upgrade",
                 "--install",
-                group_id.lower().replace("_", "-"),
+                chart_name,
                 chart,
                 "--namespace",
                 argo_cd_namespace,
