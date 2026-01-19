@@ -217,6 +217,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "uid": 1000,
             "networkPolicy": {"enabled": False},
             "defaultUrl": "/lab/tree/Welcome.ipynb",
+            "extraPodConfig": {
+                "restartPolicy": "OnFailure",
+            },
             "extraEnv": {
                 "GRANT_SUDO": "yes",
                 "SHELL": "/usr/bin/zsh",
