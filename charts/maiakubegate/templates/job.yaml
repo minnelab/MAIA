@@ -8,7 +8,7 @@ metadata:
 spec:
   {{- if not .Values.autoscaling.enabled }}
   ttlSecondsAfterFinished: 0
-  backoffLimit: 0
+  backoffLimit: {{ .Values.backoffLimit | default 3 }}
   activeDeadlineSeconds: {{.Values.allocatedTime}}
   {{- end }}
   #selector:
@@ -22,7 +22,7 @@ spec:
       labels:
     {{- include "hive.selectorLabels" . | nindent 8 }}
     spec:
-      restartPolicy: Never
+      restartPolicy: {{ .Values.restartPolicy | default "OnFailure" }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
       {{- toYaml . | nindent 8 }}
