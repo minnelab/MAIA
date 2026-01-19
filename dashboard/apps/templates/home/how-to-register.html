@@ -147,7 +147,7 @@
                     </div>
 
                     <div class="screenshot-container">
-                      <img src="{{ ASSETS_ROOT }}/img/MAIA/registration-user-step1.png" alt="User Registration Step 1" onerror="this.src='{{ ASSETS_ROOT }}/img/maia_background.jpg';">
+                      <img src="{{ ASSETS_ROOT }}/img/MAIA/registration-user-step1.png" alt="User Registration Step 1">
                       <p class="screenshot-caption">User registration page showing the registration form</p>
                     </div>
 
@@ -175,7 +175,7 @@
                     </div>
 
                     <div class="text-center btn-register">
-                      <a href="/maia/register/" class="btn bg-gradient-dark btn-lg">
+                      <a href="{% url 'register' %}" class="btn bg-gradient-dark btn-lg">
                         <i class="fas fa-user-plus me-2"></i>Register as User
                       </a>
                     </div>
@@ -195,12 +195,12 @@
                       <h4><span class="step-number">1</span>Access Project Registration</h4>
                       <ul class="instruction-list">
                         <li>Navigate to the MAIA dashboard</li>
-                        <li>Click on "Register Project" or access directly at <code>/maia/register-project/</code></li>
+                        <li>Click on "Register Project" or access directly at <code>{% url 'register_project' %}</code></li>
                       </ul>
                     </div>
 
                     <div class="screenshot-container">
-                      <img src="{{ ASSETS_ROOT }}/img/MAIA/registration-project-step1.png" alt="Project Registration Step 1" onerror="this.src='{{ ASSETS_ROOT }}/img/maia_background.jpg';">
+                      <img src="{{ ASSETS_ROOT }}/img/MAIA/registration-project-step1.png" alt="Project Registration Step 1">
                       <p class="screenshot-caption">Project registration form with all required fields</p>
                     </div>
 
@@ -242,7 +242,7 @@
                     </div>
 
                     <div class="text-center btn-register">
-                      <a href="/maia/register-project/" class="btn bg-gradient-dark btn-lg">
+                      <a href="{% url 'register_project' %}" class="btn bg-gradient-dark btn-lg">
                         <i class="fas fa-project-diagram me-2"></i>Register New Project
                       </a>
                     </div>
@@ -258,7 +258,7 @@
                       <h4>Need Help?</h4>
                       <ul class="instruction-list">
                         <li>For technical support, contact your system administrator</li>
-                        <li>Check the <a href="/maia/info">MAIA Documentation</a> for more information</li>
+                        <li>Check the <a href="{% url 'maia_docs' %}">MAIA Documentation</a> for more information</li>
                         <li>Review project quotas and resource limits before registration</li>
                       </ul>
                     </div>
