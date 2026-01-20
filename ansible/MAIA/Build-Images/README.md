@@ -68,7 +68,27 @@ For GitHub Container Registry (`github-registry-credentials.json`):
 }
 ```
 
-### 2. Run the Build Playbook
+### 2. Configure Custom Images to Build
+
+To build custom images, you need to create a YAML file with the images to build, and save the file in the config folder with the name `custom_images.yaml`.
+
+```yaml
+- release_name: custom-image-1
+  image_name: custom-image-1
+  image_tag: latest
+  subpath: ./custom-image-1
+  build_args:
+    - BUILD_ARG=value
+```
+Where:
+- **release_name**: The name of the release. This is used to create the ArgoCD application name.
+- **image_name**: The name of the image. This is used to create the image name.
+- **image_tag**: The tag of the image. This is used to create the image tag.
+- **git_repo_url**: The Git repository URL. This is used to clone the repository and access the Dockerfile.
+- **subpath**: The subpath of the repository where the Dockerfile is located.
+- **build_args**: The list of build arguments for the image. This is used to create the image build arguments.
+
+### 3. Run the Build Playbook
 
 **For Docker Hub:**
 ```bash
