@@ -164,19 +164,21 @@ username: admin@maia.se
 password [Temporary]: Admin
 ```
 
-### Installation on Windows Subsystem for Linux (WSL)
+### Installation on Linux and Windows Subsystem for Linux (WSL)
 
-To install MAIA on Windows Subsystem for Linux (WSL), you can use the following one-command installer:
+To install MAIA on Linux and Windows Subsystem for Linux (WSL), you can use the following one-command installer:
 ```bash
 LATEST=$(curl -s https://api.github.com/repos/minnelab/MAIA/releases/latest | grep tag_name | cut -d '"' -f4)
-wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA_WSL.sh" && chmod +x install_MAIA_WSL.sh && ./install_MAIA_WSL.sh
+wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA.sh" && chmod +x install_MAIA.sh && ./install_MAIA.sh
 ```
-To access all the features of MAIA, verify that all the subdomains are mapped in your Windows hosts file:
+To access all the features of MAIA, verify that all the subdomains are mapped in your Windows or Linux hosts files:
 
 
 ```bash
 # Add the following lines to your Windows hosts file:
 # C:\Windows\System32\drivers\etc\hosts
+# Add the following lines to your Linux hosts file:
+# /etc/hosts
 <WSL_IP> <domain>
 <WSL_IP> traefik.<domain>
 <WSL_IP> dashboard.<domain>
