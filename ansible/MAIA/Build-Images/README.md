@@ -137,6 +137,10 @@ The following variables must be provided when running the build_images playbook:
   - Default: `git://github.com/minnelab/MAIA.git`
   - Description: MAIA git repository URL. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.
   - Example: `maia_git_repo_url: git://github.com/minnelab/MAIA.git`
+- **build_custom_images**: Enable building custom images from the given YAML file (optional)
+  - Default: `false`
+  - Description: Enable building custom images from the given YAML file. When enabled, the role will build the custom images from the given YAML file.
+  - Example: `build_custom_images: true`
 - **docker_build_project_chart**: Helm chart name for Docker build project (optional)
   - Default: `maia-docker-build-project`
   - Description: Helm chart name for Docker build project. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.

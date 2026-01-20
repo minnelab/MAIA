@@ -61,6 +61,7 @@ The following variables are set by default in `defaults/main.yml`:
 | `argocd_namespace` | `argocd` | string | Namespace where ArgoCD is installed |
 | `argocd_port` | `8080` | integer | Local port for ArgoCD CLI access |
 | `auto_sync` | `false` | boolean | Enable automatic ArgoCD application synchronization |
+| `build_custom_images` | `false` | boolean | Enable building custom images |
 
 ## Required Values
 
@@ -108,6 +109,12 @@ All other variables are optional and can be overridden when using the role:
 - **Default**: `git://github.com/minnelab/MAIA.git`
 - **Description**: URL of the MAIA git repository. You can specify a different branch or commit by appending `#refs/heads/mybranch#<commit-id>`.
 - **Example**: `maia_git_repo_url: git://github.com/myorg/MAIA.git#refs/heads/develop`
+
+### `build_custom_images`
+- **Type**: `string`
+- **Default**: `false`
+- **Description**: Enable building custom images from the given YAML file.
+- **Example**: `build_custom_images: true`
 
 ### `docker_build_project_chart`
 - **Type**: `string`
