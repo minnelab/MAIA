@@ -1,6 +1,8 @@
 # Get latest tag (descending, semver)
-if [ "$1" == "ansible" ]; then
+if [ "$1" == "ansible-maia.installation" ]; then
 LATEST=v$(git tag -l 'ansible-maia.installation-v*' --sort=-v:refname | head -n 1 | sed 's/^ansible-maia.installation-v//')
+elif [ "$1" == "ansible-maia.build-images" ]; then
+LATEST=v$(git tag -l 'ansible-maia.build-images-v*' --sort=-v:refname | head -n 1 | sed 's/^ansible-maia.build-images-v//')
 else
 LATEST=$(git tag --sort=-v:refname | head -n 1)
 fi
@@ -8,6 +10,12 @@ fi
 #LATEST=v0.0.0
 
 echo "Latest tag: $LATEST"
+
+if [ -z "$LATEST" ] || [ "$LATEST" = "v" ]; then
+  echo "No tags found"
+  LATEST="v1.0.0"
+  echo "Using default tag: $LATEST"
+fi
 
 VERSION=${LATEST#v}
 # Regex for semver and prerelease: <MAJOR>.<MINOR>.<PATCH> or <MAJOR>.<MINOR>.<PATCH>-<PRERELEASE>.<N>
@@ -77,8 +85,10 @@ else
 fi
 
 
-if [ "$1" == "ansible" ]; then
+if [ "$1" == "ansible-maia.installation" ]; then
   NEXT_VER="ansible-maia.installation-$NEXT_VER"
+elif [ "$1" == "ansible-maia.build-images" ]; then
+  NEXT_VER="ansible-maia.build-images-$NEXT_VER"
 fi
 echo "Tagging $NEXT_VER"
 
