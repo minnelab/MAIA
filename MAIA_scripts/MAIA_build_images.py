@@ -24,7 +24,6 @@ from MAIA.maia_admin import install_maia_project
 from MAIA.maia_docker_images import deploy_maia_kaniko
 from MAIA.versions import define_maia_docker_versions, define_docker_image_versions
 
-
 kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
 build_versions = define_docker_image_versions()
 version = MAIA.__version__
@@ -32,22 +31,16 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to Build MAIA Docker Images using Kaniko. The specific MAIA configuration is specified
     by setting the corresponding ``--maia-config-file``, and the cluster configuration is specified by setting
     the corresponding ``--cluster-config``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --cluster-config /PATH/TO/cluster_config.yaml --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():

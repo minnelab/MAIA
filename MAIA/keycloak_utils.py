@@ -4,6 +4,85 @@ import os
 
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from typing import Any
+import requests
+
+
+def get_access_token(keycloak_url, keycloak_client_secret, ca_cert):
+    """
+    Get an access token from Keycloak.
+
+    Parameters
+    ----------
+    keycloak_url : str
+        The URL of the Keycloak server.
+    keycloak_client_secret : str
+        The client secret for the Keycloak client.
+    ca_cert : str
+        The path to the CA certificate.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the access token.
+
+    Raises
+    ------
+    requests.exceptions.RequestException
+        If the request to Keycloak fails.
+    """
+    url = f"{keycloak_url}/realms/maia/protocol/openid-connect/token"
+
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": "maia",
+        "client_secret": keycloak_client_secret,
+    }
+
+    r = requests.post(url, data=data, verify=ca_cert)
+    r.raise_for_status()
+
+    return r.json()
+
+
+def get_id_token(keycloak_url, keycloak_client_secret, username, password, ca_cert):
+    """
+    Get an ID token from Keycloak.
+
+    Parameters
+    ----------
+    keycloak_url : str
+        The URL of the Keycloak server.
+    keycloak_client_secret : str
+        The client secret for the Keycloak client.
+    username : str
+        The username for the Keycloak user.
+    password : str
+        The password for the Keycloak user.
+    ca_cert : str
+        The path to the CA certificate.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the ID token.
+
+    Raises
+    ------
+    requests.exceptions.RequestException
+        If the request to Keycloak fails.
+    """
+    url = f"{keycloak_url}/realms/maia/protocol/openid-connect/token"
+    data = {
+        "grant_type": "password",
+        "client_id": "maia",
+        "client_secret": keycloak_client_secret,
+        "username": username,
+        "password": password,
+        "scope": "openid",
+    }
+    r = requests.post(url, data=data, verify=ca_cert)
+    r.raise_for_status()
+    return r.json()
 
 
 def get_users_in_group_in_keycloak(group_id, settings) -> list[str]:

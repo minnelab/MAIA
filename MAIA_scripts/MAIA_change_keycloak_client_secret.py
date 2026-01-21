@@ -7,15 +7,11 @@ from argparse import RawTextHelpFormatter
 from textwrap import dedent
 from pathlib import Path
 
-EPILOG = dedent(
-    """
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --client_secret <client_secret> --realm_file <realm_file>
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def create_admin_user_and_group(server_url: str, client_secret: str):

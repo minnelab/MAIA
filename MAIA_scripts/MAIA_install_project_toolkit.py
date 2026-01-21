@@ -43,23 +43,17 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to deploy a MAIA Project Toolkit to a Kubernetes cluster. The target cluster is specified by setting
     the corresponding ``--cluster-config``, while the project-related configuration is specified with
     ``--project-config-file``. The necessary MAIA Configuration files should be found in ``--config-folder``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --project-config-file /PATH/TO/form.yaml --cluster-config /PATH/TO/cluster.yaml
         --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():

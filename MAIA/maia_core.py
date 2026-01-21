@@ -9,7 +9,6 @@ from omegaconf import OmegaConf
 import loguru
 from MAIA.versions import define_maia_core_versions, define_maia_admin_versions
 
-
 prometheus_chart_version = define_maia_core_versions()["prometheus_chart_version"]
 loki_chart_version = define_maia_core_versions()["loki_chart_version"]
 tempo_chart_version = define_maia_core_versions()["tempo_chart_version"]

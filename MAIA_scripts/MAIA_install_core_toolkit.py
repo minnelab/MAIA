@@ -45,22 +45,16 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to Install MAIA Core Toolkit to a Kubernetes cluster from ArgoCD. The specific MAIA configuration
     is specified by setting the corresponding ``--maia-config-file``, and the cluster configuration is specified
     by setting the corresponding ``--cluster-config``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --cluster-config /PATH/TO/cluster_config.yaml --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
