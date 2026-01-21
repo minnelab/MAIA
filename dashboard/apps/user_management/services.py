@@ -443,6 +443,17 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
         )
     except IntegrityError:
         logger.warning(f"Group {group_id} already exists in the database")
+        MAIAProject.objects.filter(namespace=group_id).update(
+            gpu=gpu,
+            date=date,
+            memory_limit=memory_limit,
+            cpu_limit=cpu_limit,
+            conda=conda,
+            cluster=cluster,
+            minimal_env=minimal_env,
+            description=description,
+            supervisor=supervisor,
+        )
 
 
     return {
