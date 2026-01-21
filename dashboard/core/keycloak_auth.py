@@ -140,7 +140,7 @@ class KeycloakAuthentication(BaseAuthentication):
                     "namespace": ",".join(namespaces),
                     "is_staff": settings.ADMIN_GROUP in namespaces,
                     "is_superuser": settings.ADMIN_GROUP in namespaces,
-                }
+                },
             )
 
         return (user, None)
