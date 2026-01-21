@@ -26,8 +26,10 @@ from loguru import logger
 class RegisterAnonThrottle(AnonRateThrottle):
     scope = "post_anon"
 
+
 class RegisterUserThrottle(UserRateThrottle):
     scope = "post_user"
+
 
 def login_view(request):
     form = LoginForm(request.POST or None)
@@ -64,11 +66,12 @@ def login_view(request):
     )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterAnonThrottle, RegisterUserThrottle])
 def register_user_api(request):
     return register_user(request, api=True)
+
 
 def register_user(request, api=False):
     msg = None
@@ -149,10 +152,10 @@ def register_user(request, api=False):
         return Response({"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
     else:
         return render(
-        request,
-        "accounts/register.html",
-        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
-    )
+            request,
+            "accounts/register.html",
+            {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+        )
 
 
 @login_required(login_url="/maia/login/")
@@ -190,18 +193,20 @@ def send_maia_email(request):
         {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
     )
 
-@api_view(['POST'])
+
+@api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterAnonThrottle, RegisterUserThrottle])
 def register_project_api(request):
     return register_project(request, api=True)
+
 
 def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
     if not email or not namespace:
         return None
     if not MAIAUser.objects.filter(email=email).exists():
         if namespace != settings.USERS_GROUP:
-            if namespace!= "":
+            if namespace != "":
                 MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
             else:
                 MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=email)
@@ -218,6 +223,7 @@ def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
             user.namespace = ",".join(user_namespaces)
             user.save()
         return user
+
 
 def register_project(request, api=False):
     msg = None

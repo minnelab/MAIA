@@ -2,14 +2,15 @@
 """
 Copyright (c) 2019 - present AppSeed.us
 """
+
 from django.test import TestCase
 from apps.user_management.services import create_group, create_user
 import datetime
 from apps.models import MAIAProject, MAIAUser
 
+
 class CreateGroupTests(TestCase):
     """Test the MAIAProject model with the new description and supervisor fields"""
-
 
     def setUp(self):
         self.admin_user = "admin@example.com"
@@ -28,29 +29,11 @@ class CreateGroupTests(TestCase):
     def test_create_group_with_supervisor(self):
         """Test creating a project with description and supervisor fields"""
 
-        create_user(
-            email=self.admin_user,
-            username=self.admin_user,
-            first_name="Admin",
-            last_name="User",
-            namespace=""
-        )
+        create_user(email=self.admin_user, username=self.admin_user, first_name="Admin", last_name="User", namespace="")
 
-        create_user(
-            email=self.supervisor,
-            username=self.supervisor,
-            first_name="Supervisor",
-            last_name="User",
-            namespace=""
-        )
+        create_user(email=self.supervisor, username=self.supervisor, first_name="Supervisor", last_name="User", namespace="")
 
-        create_user(
-            email=self.user,
-            username=self.user,
-            first_name="User",
-            last_name="User",
-            namespace=self.namespace
-        )
+        create_user(email=self.user, username=self.user, first_name="User", last_name="User", namespace=self.namespace)
 
         email_list = [self.admin_user, self.supervisor]
         create_group(
@@ -65,7 +48,7 @@ class CreateGroupTests(TestCase):
             user_email=self.admin_user,
             supervisor=self.supervisor,
             description=self.project_description,
-            email_list=email_list
+            email_list=email_list,
         )
         project = MAIAProject.objects.filter(namespace=self.namespace).first()
 
@@ -87,30 +70,16 @@ class CreateGroupTests(TestCase):
         self.assertEqual(MAIAUser.objects.filter(email=self.supervisor).first().email, self.supervisor)
         self.assertEqual(MAIAUser.objects.filter(email=self.supervisor).first().namespace, self.namespace)
 
-        
         self.assertEqual(MAIAUser.objects.filter(email=self.user).first().email, self.user)
-        #Expected to be empty because the user is not listed in the email_list, nor as project admin or supervisor
+        # Expected to be empty because the user is not listed in the email_list, nor as project admin or supervisor
         self.assertEqual(MAIAUser.objects.filter(email=self.user).first().namespace, "")
-
 
     def test_create_group_with_nonexistent_supervisor(self):
         """Test creating a project with a supervisor email that does not exist as a user"""
 
-        create_user(
-            email=self.admin_user,
-            username=self.admin_user,
-            first_name="Admin",
-            last_name="User",
-            namespace=""
-        )
+        create_user(email=self.admin_user, username=self.admin_user, first_name="Admin", last_name="User", namespace="")
 
-        create_user(
-            email=self.user,
-            username=self.user,
-            first_name="User",
-            last_name="User",
-            namespace=self.namespace
-        )
+        create_user(email=self.user, username=self.user, first_name="User", last_name="User", namespace=self.namespace)
 
         email_list = [self.admin_user]
         create_group(
@@ -125,7 +94,7 @@ class CreateGroupTests(TestCase):
             user_email=self.admin_user,
             email_list=email_list,
             description=self.project_description,
-            supervisor=self.supervisor
+            supervisor=self.supervisor,
         )
 
         project = MAIAProject.objects.filter(namespace=self.namespace).first()

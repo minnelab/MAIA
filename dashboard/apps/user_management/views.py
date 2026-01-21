@@ -31,7 +31,6 @@ from MAIA.keycloak_utils import (
     remove_user_from_group_in_keycloak,
     get_maia_users_from_keycloak,
     get_groups_in_keycloak,
-    get_users_in_group_in_keycloak,
 )
 import urllib3
 import yaml
@@ -51,6 +50,7 @@ from .services import (
 )
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from loguru import logger
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 
@@ -134,20 +134,31 @@ class UserManagementAPIListGroupsView(APIView):
 
     def get(self, request, *args, **kwargs):
         groups = MAIAProject.objects.all().values(
-            "id", "namespace", "gpu", "date", "memory_limit", "cpu_limit", "conda", "cluster", "minimal_env", "email", "description", "supervisor"
+            "id",
+            "namespace",
+            "gpu",
+            "date",
+            "memory_limit",
+            "cpu_limit",
+            "conda",
+            "cluster",
+            "minimal_env",
+            "email",
+            "description",
+            "supervisor",
         )
         keycloak_groups = {v: k for k, v in get_groups_in_keycloak(settings=settings).items()}
-        # Fetch all Keycloak users once and build a mapping from group_id to users  
-        keycloak_users = get_maia_users_from_keycloak(settings=settings)  
-        group_users = {}  
+        # Fetch all Keycloak users once and build a mapping from group_id to users
+        keycloak_users = get_maia_users_from_keycloak(settings=settings)
+        group_users = {}
         for user in keycloak_users:
-            for group_id in user.get("groups", []):  
-                group_users.setdefault(group_id, []).append(user)  
-        for group in groups:  
-            namespace = group["namespace"]  
-            group["group_registered_in_keycloak"] = namespace in keycloak_groups  
-            if group["group_registered_in_keycloak"]:  
-                group["users_in_keycloak"] = [user["email"] for user in group_users.get("MAIA:" + namespace, [])]  
+            for group_id in user.get("groups", []):
+                group_users.setdefault(group_id, []).append(user)
+        for group in groups:
+            namespace = group["namespace"]
+            group["group_registered_in_keycloak"] = namespace in keycloak_groups
+            if group["group_registered_in_keycloak"]:
+                group["users_in_keycloak"] = [user["email"] for user in group_users.get("MAIA:" + namespace, [])]
             else:
                 group["users_in_keycloak"] = []
         return Response({"groups": groups}, status=200)
@@ -156,6 +167,7 @@ class UserManagementAPIListGroupsView(APIView):
 class UserManagementAPIListUsersView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
+
     def get(self, request, *args, **kwargs):
         users_queryset = MAIAUser.objects.all().values("id", "email", "username", "namespace")
         users = list(users_queryset)
@@ -175,6 +187,7 @@ class UserManagementAPIListUsersView(APIView):
 class UserManagementAPICreateUserView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = CreateUserSerializer(data=request.data)
         if not serializer.is_valid():
@@ -195,6 +208,7 @@ class UserManagementAPICreateUserView(APIView):
 class UserManagementAPIUpdateUserView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
+
     def patch(self, request, *args, **kwargs):
         serializer = UpdateUserSerializer(data=request.data)
         if not serializer.is_valid():
@@ -210,6 +224,7 @@ class UserManagementAPIUpdateUserView(APIView):
 class UserManagementAPIDeleteUserView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
+
     def delete(self, request, *args, **kwargs):
         email = request.query_params.get("email")
         if email is None:
@@ -228,6 +243,7 @@ class UserManagementAPIDeleteUserView(APIView):
 class UserManagementAPICreateGroupView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
+
     def post(self, request, *args, **kwargs):
         serializer = CreateGroupSerializer(data=request.data)
         if not serializer.is_valid():
@@ -247,7 +263,18 @@ class UserManagementAPICreateGroupView(APIView):
         description = validated_data.get("description", None)
         supervisor = validated_data.get("supervisor", None)
         result = create_group_service(
-            group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_id, email_list, description, supervisor
+            group_id,
+            gpu,
+            date,
+            memory_limit,
+            cpu_limit,
+            conda,
+            cluster,
+            minimal_env,
+            user_id,
+            email_list,
+            description,
+            supervisor,
         )
         return Response({"message": result["message"]}, status=result["status"])
 
@@ -255,6 +282,7 @@ class UserManagementAPICreateGroupView(APIView):
 class UserManagementAPIDeleteGroupView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
+
     def delete(self, request, group_id, *args, **kwargs):
         serializer = DeleteGroupSerializer(data={"group_id": group_id})
         if not serializer.is_valid():
@@ -270,6 +298,7 @@ class UserManagementAPIDeleteGroupView(APIView):
 class ProjectChartValuesAPIView(APIView):
     permission_classes = [AllowAny]  # 🚀 Allow requests without authentication or CSRF
     throttle_classes = [AnonRateThrottle]
+
     def post(self, request, *args, **kwargs):
         try:
             project_form_dict = request.data.get("project_form_dict")

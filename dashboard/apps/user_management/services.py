@@ -1,4 +1,3 @@
-
 from django.conf import settings
 from django.db import IntegrityError
 from keycloak.exceptions import KeycloakPostError, KeycloakDeleteError
@@ -219,6 +218,7 @@ def update_user(email, namespace):
                     raise
     return {"message": "User updated successfully", "status": 200}
 
+
 @transaction.atomic
 def delete_user(email, force=False):
     """
@@ -373,7 +373,20 @@ def sync_list_of_users_for_group(group_id, email_list):
 
 
 @transaction.atomic
-def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, minimal_env, user_email, email_list=None, description=None, supervisor=None):
+def create_group(
+    group_id,
+    gpu,
+    date,
+    memory_limit,
+    cpu_limit,
+    conda,
+    cluster,
+    minimal_env,
+    user_email,
+    email_list=None,
+    description=None,
+    supervisor=None,
+):
     """
     Create a new MAIA group/project and register it in Keycloak.
 
@@ -423,9 +436,7 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
     if isinstance(sync_result, dict):
         status = sync_result.get("status")
         if status is not None and status != 200:
-            raise RuntimeError(
-                f"Failed to sync users for group {group_id}: {sync_result}"
-            )
+            raise RuntimeError(f"Failed to sync users for group {group_id}: {sync_result}")
     # Create or update the project
     try:
         MAIAProject.objects.create(
@@ -454,7 +465,6 @@ def create_group(group_id, gpu, date, memory_limit, cpu_limit, conda, cluster, m
             description=description,
             supervisor=supervisor,
         )
-
 
     return {
         "message": "Group already exists in Keycloak" if group_already_exists else "Group created successfully",

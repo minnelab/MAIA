@@ -78,7 +78,10 @@ class RegisterProjectForm(forms.ModelForm):
 
     email = forms.EmailField(
         widget=forms.EmailInput(
-            attrs={"placeholder": "Your Email. If you specify a Principal Investigator below, they will be registered as the Project Admin instead.", "class": "form-control"}
+            attrs={
+                "placeholder": "Your Email. If you specify a Principal Investigator below, they will be registered as the Project Admin instead.",
+                "class": "form-control",
+            }
         )
     )
 
@@ -114,23 +117,14 @@ class RegisterProjectForm(forms.ModelForm):
 
     description = forms.CharField(
         required=False,
-        widget=forms.Textarea(
-            attrs={
-                "placeholder": "Brief description of your project",
-                "class": "form-control",
-                "rows": 3
-            }
-        )
+        widget=forms.Textarea(attrs={"placeholder": "Brief description of your project", "class": "form-control", "rows": 3}),
     )
 
     supervisor = forms.EmailField(
         required=False,
         widget=forms.EmailInput(
-            attrs={
-                "placeholder": "Email of the Principal Investigator (optional for student projects)",
-                "class": "form-control"
-            }
-        )
+            attrs={"placeholder": "Email of the Principal Investigator (optional for student projects)", "class": "form-control"}
+        ),
     )
 
     class Meta:
