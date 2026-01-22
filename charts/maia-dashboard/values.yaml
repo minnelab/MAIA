@@ -74,7 +74,7 @@ mysql:
   mysqlPassword: ""
   mysqlDatabase: ""
 
-storage_class: ""
+storageClass: ""
 
 autoscaling:
   enabled: false
