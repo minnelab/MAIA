@@ -345,7 +345,7 @@ def build_maia_images(
                 build_versions["maia-lab"],
                 "docker/Pro/Notebooks/Lab",
                 [
-                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh-addons:{build_versions['maia-base-workspace-notebook-ssh']}"
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base-notebook-ssh:{build_versions['maia-workspace-base-notebook-ssh']}"
                 ],
                 registry_credentials=registry_credentials,
             )
