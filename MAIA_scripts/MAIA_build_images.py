@@ -589,6 +589,8 @@ def build_maia_images(
                 {"maia_workspace_notebook_ssh_values": "maia_workspace_notebook_ssh_values"},
                 {"maia_workspace_notebook_ssh_addons_values": "maia_workspace_notebook_ssh_addons_values"},
                 {"maia_lab_pro_values": "maia_lab_pro_values"},
+                {"maia_dashboard_dev_values": "maia_dashboard_dev_values"},
+                {"maia_lab_values": "maia_lab_values"},
                 {"monai_toolkit_values": "monai_toolkit_values"},
                 {"maia_xnat_values": "maia_xnat_values"},
                 {"maia_orthanc_values": "maia_orthanc_values"},
