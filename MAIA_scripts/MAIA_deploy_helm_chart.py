@@ -21,15 +21,21 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent("""
+DESC = dedent(
+    """
     Script to deploy the MAIAKubeGate helm chart to a Kubernetes cluster. The target cluster is specified by setting ``KUBECONFIG``
     as an environment variable, while the configuration file for the chart is specified with ``config_file``.
-    """)  # noqa: E501
-EPILOG = dedent("""
+    """
+)  # noqa: E501
+EPILOG = dedent(
+    """
     Example call:
     ::
         {filename}  --config-file /PATH/TO/config_file.json
-    """.format(filename=Path(__file__).stem))  # noqa: E501
+    """.format(
+        filename=Path(__file__).stem
+    )
+)  # noqa: E501
 
 
 def str2bool(v):

@@ -8,11 +8,15 @@ from pathlib import Path
 
 from loguru import logger
 
-EPILOG = dedent("""
+EPILOG = dedent(
+    """
     Example call:
     ::
         {filename} --client_secret <client_secret> --server_url <server_url>
-    """.format(filename=Path(__file__).stem))  # noqa: E501
+    """.format(
+        filename=Path(__file__).stem
+    )
+)  # noqa: E501
 
 
 def create_admin_user_and_group(

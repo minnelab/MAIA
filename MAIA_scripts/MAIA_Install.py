@@ -16,17 +16,23 @@ from loguru import logger
 
 version = MAIA.__version__
 
-DESC = dedent("""
+DESC = dedent(
+    """
     Script to install MAIA on a Kubernetes cluster. This script:
     1. Installs the MAIA Ansible collection
     2. Runs MAIA_Configure_Installation.sh to configure the installation
     3. Executes the MAIA installation playbooks in sequence
-    """)
-EPILOG = dedent("""
+    """
+)
+EPILOG = dedent(
+    """
     Example call:
     ::
         {filename} --config-folder /path/to/config
-    """.format(filename=Path(__file__).stem))
+    """.format(
+        filename=Path(__file__).stem
+    )
+)
 
 
 def get_arg_parser():

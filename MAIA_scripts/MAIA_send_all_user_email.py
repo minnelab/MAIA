@@ -21,11 +21,15 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 load_dotenv()
 
-EPILOG = dedent("""
+EPILOG = dedent(
+    """
     Example call:
     ::
         {filename} --email-list <email_list>
-    """.format(filename=Path(__file__).stem))  # noqa: E501
+    """.format(
+        filename=Path(__file__).stem
+    )
+)  # noqa: E501
 
 
 class Settings:

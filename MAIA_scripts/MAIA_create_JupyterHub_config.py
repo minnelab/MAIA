@@ -24,15 +24,21 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent("""
+DESC = dedent(
+    """
     Script to deploy the JupyterHub helm chart to a Kubernetes cluster. The target cluster is specified by setting the correspondin
     ``--cluster--config-file``, while the namespace-related configuration is specified with ``--form``.
-    """)  # noqa: E501
-EPILOG = dedent("""
+    """
+)  # noqa: E501
+EPILOG = dedent(
+    """
     Example call:
     ::
         {filename}  --form /PATH/TO/form.yaml --cluster-config-file /PATH/TO/cluster.yaml
-    """.format(filename=Path(__file__).stem))  # noqa: E501
+    """.format(
+        filename=Path(__file__).stem
+    )
+)  # noqa: E501
 
 
 def get_arg_parser():
