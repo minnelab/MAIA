@@ -253,6 +253,22 @@ def build_maia_images(
                 "mkg-kaniko",
                 config_folder,
                 cluster_config_dict,
+                "maia-dashboard-dev",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-dashboard-dev",
+                build_versions["maia-dashboard"] + "-dev",
+                "dashboard",
+                [f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}", "DEVEL=1"],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
                 "maia-workspace",
                 project_id,
                 registry_server + registry_path,
@@ -308,10 +324,28 @@ def build_maia_images(
                 registry_server + registry_path,
                 docker_secret_name,
                 "maia-lab-pro",
-                build_versions["maia-lab-pro"],
+                build_versions["maia-lab"],
                 "docker/Pro/Notebooks/Lab",
                 [
                     f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh-addons:{build_versions['maia-workspace-notebook-ssh-addons']}"
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-lab",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-lab",
+                build_versions["maia-lab"],
+                "docker/Pro/Notebooks/Lab",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh-addons:{build_versions['maia-base-workspace-notebook-ssh']}"
                 ],
                 registry_credentials=registry_credentials,
             )
