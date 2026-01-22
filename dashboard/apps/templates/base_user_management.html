@@ -74,7 +74,7 @@
                                         </h6>
                                         {% endif %}
                                         <h6 class="mb-0 text-sm ">
-                                        <p data-bs-placement="left" data-bs-toggle="tooltip-delete-group" title="Delete the group in Keycloak">
+                                        <p data-bs-placement="left" data-bs-toggle="tooltip-delete-group" title="Delete the group">
                                         <a href="/maia/user-management/delete-group-view/{{ namespace }}" class="fa fa-trash"></a>
                                         </p>
                                         </h6>
@@ -231,6 +231,11 @@
                                             </p>
                                             {% endif %}
                                         </h6>
+                                        <h6 class="mb-0 text-sm ">
+                                        <p data-bs-placement="left" data-bs-toggle="tooltip-delete-user" title="Delete the user">
+                                        <a href="/maia/user-management/delete-user-view/{{ user.email }}" class="fa fa-trash"></a>
+                                        </p>
+                                        </h6>
                                     </div>  
                                 </td>
                                 <td>
@@ -320,6 +325,14 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-user-group-deletion"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-delete-user"]'))
     tooltipTriggerList.map(function (tooltipTriggerEl) {
       return new bootstrap.Tooltip(tooltipTriggerEl)
     })

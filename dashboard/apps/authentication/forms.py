@@ -54,9 +54,11 @@ class SignUpForm(UserCreationForm):
         )
         self.fields["password1"] = forms.CharField(
             initial="maiaPassword",
+            required=False,
         )
         self.fields["password2"] = forms.CharField(
             initial="maiaPassword",
+            required=False,
         )
 
     class Meta:

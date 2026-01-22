@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.db import IntegrityError
 from keycloak.exceptions import KeycloakPostError, KeycloakDeleteError
 from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import (
@@ -439,32 +438,25 @@ def create_group(
             raise RuntimeError(f"Failed to sync users for group {group_id}: {sync_result}")
     # Create or update the project
     try:
-        MAIAProject.objects.create(
+        # "Create or update" logic: update an existing MAIAProject with this namespace, or create it if not present.
+        MAIAProject.objects.update_or_create(
             namespace=group_id,
-            email=user_email,
-            gpu=gpu,
-            date=date,
-            memory_limit=memory_limit,
-            cpu_limit=cpu_limit,
-            conda=conda,
-            cluster=cluster,
-            minimal_env=minimal_env,
-            description=description,
-            supervisor=supervisor,
+            defaults={
+                "email": user_email,
+                "gpu": gpu,
+                "date": date,
+                "memory_limit": memory_limit,
+                "cpu_limit": cpu_limit,
+                "conda": conda,
+                "cluster": cluster,
+                "minimal_env": minimal_env,
+                "description": description,
+                "supervisor": supervisor,
+            },
         )
-    except IntegrityError:
-        logger.warning(f"Group {group_id} already exists in the database")
-        MAIAProject.objects.filter(namespace=group_id).update(
-            gpu=gpu,
-            date=date,
-            memory_limit=memory_limit,
-            cpu_limit=cpu_limit,
-            conda=conda,
-            cluster=cluster,
-            minimal_env=minimal_env,
-            description=description,
-            supervisor=supervisor,
-        )
+    except Exception as e:
+        logger.exception(f"Error creating or updating group {group_id} in the database: {e}")
+        raise
 
     return {
         "message": "Group already exists in Keycloak" if group_already_exists else "Group created successfully",

@@ -16,17 +16,14 @@ from MAIA.kubernetes_utils import (
     create_helm_repo_secret_from_context,
     create_docker_registry_secret_from_context,
 )
-from MAIA.dashboard_utils import update_user_table, get_project, get_project_argo_status_and_user_table
+from MAIA.dashboard_utils import update_user_table, get_project, get_project_argo_status_and_user_table, get_pending_projects
 from MAIA.kubernetes_utils import create_namespace
 from rest_framework.response import Response
 from MAIA.keycloak_utils import (
     get_user_ids,
-    register_user_in_keycloak,
-    register_group_in_keycloak,
     register_users_in_group_in_keycloak,
     get_list_of_groups_requesting_a_user,
     get_list_of_users_requesting_a_group,
-    delete_group_in_keycloak,
     get_groups_for_user,
     remove_user_from_group_in_keycloak,
     get_maia_users_from_keycloak,
@@ -126,6 +123,15 @@ class DeleteGroupSerializer(serializers.Serializer):
 
 class EmailPathSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class UserManagementAPIListPendingGroupsView(APIView):
+    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        pending_groups = get_pending_projects(settings=settings, maia_project_model=MAIAProject)
+        return Response({"pending_groups": pending_groups}, status=200)
 
 
 class UserManagementAPIListGroupsView(APIView):
@@ -542,6 +548,11 @@ def remove_user_from_group_view(request, email):
     for keycloak_group in keycloak_groups:
         if keycloak_group not in desired_groups:
             remove_user_from_group_in_keycloak(email=email, group_id=keycloak_group, settings=settings)
+            if keycloak_group == settings.ADMIN_GROUP:
+                user = MAIAUser.objects.filter(email=email).first()
+                user.is_superuser = False
+                user.is_staff = False
+                user.save()
 
     return redirect("/maia/user-management/")
 
@@ -552,11 +563,13 @@ def delete_group_view(request, group_id):
         html_template = loader.get_template("home/page-500.html")
         return HttpResponse(html_template.render({}, request))
 
-    delete_group_in_keycloak(group_id=group_id, settings=settings)
+    result = delete_group_service(group_id)
 
-    MAIAProject.objects.filter(namespace=group_id).delete()
-
-    return redirect("/maia/user-management/")
+    if result["status"] == 200:
+        return redirect("/maia/user-management/")
+    else:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({"message": result["message"]}, request))
 
 
 @login_required(login_url="/maia/login/")
@@ -565,9 +578,37 @@ def register_user_view(request, email):
         html_template = loader.get_template("home/page-500.html")
         return HttpResponse(html_template.render({}, request))
 
-    register_user_in_keycloak(email=email, settings=settings)
+    user = MAIAUser.objects.filter(email=email).first()
+    if not user:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({"message": "User not found"}, request))
+    namespace = user.namespace
+    username = user.username
+    first_name = user.first_name
+    last_name = user.last_name
+    if not namespace:
+        namespace = settings.USERS_GROUP
+    result = create_user_service(email, username, first_name, last_name, namespace)
+    if result["status"] == 200:
+        return redirect("/maia/user-management/")
+    else:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({"message": result["message"]}, request))
 
-    return redirect("/maia/user-management/")
+
+@login_required(login_url="/maia/login/")
+def delete_user_view(request, email):
+    if not request.user.is_superuser:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({}, request))
+
+    result = delete_user_service(email, force=True)
+    logger.info(f"Result: {result}")
+    if result["status"] == 200:
+        return redirect("/maia/user-management/")
+    else:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({"message": result["message"]}, request))
 
 
 @login_required(login_url="/maia/login/")
@@ -580,6 +621,11 @@ def register_user_in_group_view(request, email):
 
     for group_id in groups:
         register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=settings)
+        if group_id == settings.ADMIN_GROUP:
+            user = MAIAUser.objects.filter(email=email).first()
+            user.is_superuser = True
+            user.is_staff = True
+            user.save()
 
     return redirect("/maia/user-management/")
 
@@ -590,12 +636,51 @@ def register_group_view(request, group_id):
         html_template = loader.get_template("home/page-500.html")
         return HttpResponse(html_template.render({}, request))
 
-    register_group_in_keycloak(group_id=group_id, settings=settings)
-    emails = get_list_of_users_requesting_a_group(maia_user_model=MAIAUser, group_id=group_id)
+    project = MAIAProject.objects.filter(namespace=group_id).first()
+    if project:
+        gpu = project.gpu
+        date = project.date
+        memory_limit = project.memory_limit
+        cpu_limit = project.cpu_limit
+        conda = project.conda
+        cluster = project.cluster
+        minimal_env = project.minimal_env
+        user_id = project.email
+        description = project.description
+        supervisor = project.supervisor
+    else:
+        gpu = None
+        date = None
+        memory_limit = None
+        cpu_limit = None
+        conda = None
+        cluster = None
+        minimal_env = None
+        user_id = None
+        email_list = None
+        description = None
+        supervisor = None
+    email_list = get_list_of_users_requesting_a_group(maia_user_model=MAIAUser, group_id=group_id)
+    result = create_group_service(
+        group_id,
+        gpu,
+        date,
+        memory_limit,
+        cpu_limit,
+        conda,
+        cluster,
+        minimal_env,
+        user_id,
+        email_list,
+        description,
+        supervisor,
+    )
 
-    register_users_in_group_in_keycloak(group_id=group_id, emails=emails, settings=settings)
-
-    return redirect("/maia/user-management/")
+    if result["status"] == 200:
+        return redirect("/maia/user-management/")
+    else:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({"message": result["message"]}, request))
 
 
 @login_required(login_url="/maia/login/")

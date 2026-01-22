@@ -91,7 +91,8 @@ def register_user(request, api=False):
                 namespace = settings.USERS_GROUP
             if namespace.endswith(" (Pending)"):
                 namespace = namespace[: -len(" (Pending)")]
-            form.instance.namespace = namespace + f",{settings.USERS_GROUP}"
+            if settings.USERS_GROUP not in namespace:
+                form.instance.namespace = f"{namespace},{settings.USERS_GROUP}"
             form.save()
             username = form.cleaned_data.get("username")
             raw_password = form.cleaned_data.get("password1")
@@ -247,6 +248,11 @@ def register_project(request, api=False):
                 get_or_create_user_in_database(email=project.email, namespace=namespace)
                 if supervisor:
                     get_or_create_user_in_database(email=supervisor, namespace=namespace)
+                if "email_list" in request_data:
+                    email_list = request_data.get("email_list")
+                    if email_list:
+                        for email in email_list.split(","):
+                            get_or_create_user_in_database(email=email, namespace=namespace)
 
             if "conda" in request.FILES and minio_available:
                 conda_file = request.FILES["conda"]
