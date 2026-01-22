@@ -26,15 +26,11 @@ TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
 dotenv.load_dotenv()
 
-EPILOG = dedent(
-    """
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --email <recipient_email> --url <maia_platform_url>
-    """.format(
-        filename=Path(__file__).stem
-    )
-)  # noqa: E501
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
@@ -105,9 +101,7 @@ def send_welcome_user_email(receiver_email, maia_url):
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(
-        maia_url, maia_url
-    )  # noqa: E501, B950
+    """.format(maia_url, maia_url)  # noqa: E501, B950
 
     part1 = MIMEText(html, "html")
     message.attach(part1)

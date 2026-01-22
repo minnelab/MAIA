@@ -263,9 +263,7 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(
-        register_project_url, register_user_url, discord_support_link
-    )  # noqa: B950
+    """.format(register_project_url, register_user_url, discord_support_link)  # noqa: B950
 
     # Turn these into plain/html MIMEText objects
     part1 = MIMEText(html, "html")
@@ -364,9 +362,7 @@ def send_approved_registration_email(receiver_email, login_url, temp_password):
             <p>MAIA Admin Team</p>
         </body>
     </html>
-    """.format(
-        login_url, temp_password
-    )
+    """.format(login_url, temp_password)
 
     # Turn these into plain/html MIMEText objects
     part1 = MIMEText(html, "html")
