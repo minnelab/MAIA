@@ -417,13 +417,27 @@ def index(request):
     keycloak_users = get_user_ids(settings=settings)
 
     for keycloak_user in keycloak_users:
-        if User.objects.filter(email=keycloak_user).exists():
+        if MAIAUser.objects.filter(email=keycloak_user).exists():
             ...  # do nothing
         else:
-            MAIAUser.objects.create(
-                email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user])
-            )
-
+            logger.info(f"Creating user: {keycloak_user}")
+            try:
+                admin = False
+                if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
+                    admin = True
+                MAIAUser.objects.create(
+                            email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
+                        )
+            except Exception as e:
+                User.objects.filter(email=keycloak_user).delete()
+                admin = False
+                if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
+                    admin = True
+                logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
+                MAIAUser.objects.create(
+                            email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
+                        )
+                logger.info(f"User created: {keycloak_user}")
     to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
         get_project_argo_status_and_user_table(
             settings=settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
