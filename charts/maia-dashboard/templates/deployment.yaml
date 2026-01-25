@@ -20,6 +20,10 @@ spec:
       labels:
         {{- include "maia-dashboard.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml .Values.hostAliases | nindent 8 }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
