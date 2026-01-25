@@ -443,6 +443,21 @@ def index(request):
             settings=settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
         )
     )
+    for maia_group in maia_groups_dict:
+        logger.info(f"MAIA group: {maia_group} {maia_groups_dict[maia_group]}")
+        if not MAIAProject.objects.filter(namespace=maia_group).exists():
+            users = maia_groups_dict[maia_group]["users"]
+            if len(users) == 1:
+                email = users[0]
+                supervisor = email
+            else:
+                supervisor = None
+                email = None
+            MAIAProject.objects.create(
+                namespace=maia_group,
+                email=email,
+                supervisor=supervisor,
+            )
 
     logger.info("Users to Register in Keycloak: ", to_register_in_keycloak)
     logger.info("Users to Register in Groups: ", to_register_in_groups)

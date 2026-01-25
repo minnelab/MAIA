@@ -62,7 +62,7 @@ class MAIAProject(models.Model):
     gpu = models.CharField("gpu", max_length=150, blank=True, null=True)
     date = models.DateField("date", default=datetime.date.today)
 
-    memory_limit = models.TextField("memory_limit", default="2G", null=True)
+    memory_limit = models.TextField("memory_limit", default="2 Gi", null=True)
     cpu_limit = models.TextField("memory_limit", default="2", null=True)
 
     conda = models.TextField("conda", default="N/A", null=True)

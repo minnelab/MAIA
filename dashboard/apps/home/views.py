@@ -107,7 +107,7 @@ def index_view(request):
             id_token, api_urls=settings.API_URL, cluster_names=settings.CLUSTER_NAMES, private_clusters=settings.PRIVATE_CLUSTERS
         )
     except Exception:
-        return redirect("/login/")
+        return redirect("/maia/login/")
     context = {
         "segment": "index",
         "status": status,

@@ -532,7 +532,13 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         if maia_project_model.objects.filter(namespace=maia_groups[maia_group]).exists():
             project = maia_project_model.objects.filter(namespace=maia_groups[maia_group]).first()
 
-            admin_users = [project.email]
+            if project.email:
+                admin_users = project.email.split(",") if "," in project.email else [project.email]
+            else:
+                admin_users = []
+            if project.supervisor:
+                for email in project.supervisor.split(","):
+                    admin_users.append(email)
             cpu_limit = project.cpu_limit
             memory_limit = project.memory_limit
             date = project.date
