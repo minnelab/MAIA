@@ -493,7 +493,9 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     return {
         "namespace": maia_namespace_values["namespace"],
         "release": f"{namespace_id}-namespace",
-        "chart": maia_namespace_values["chart_name"],
+         "chart": (
+            maia_namespace_values["chart_name"] if maia_namespace_chart_type == "helm_repo" else maia_namespace_values["path"]
+        ),
         "repo": maia_namespace_values["repo_url"],
         "version": maia_namespace_values["chart_version"],
         "values": str(
@@ -652,7 +654,9 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
     return {
         "namespace": maia_filebrowser_values["namespace"],
         "release": f"{namespace_id}-namespace",
-        "chart": maia_filebrowser_values["chart_name"],
+        "chart": (
+            maia_filebrowser_values["chart_name"] if maia_filebrowser_chart_type == "helm_repo" else maia_filebrowser_values["path"]
+        ),
         "repo": maia_filebrowser_values["repo_url"],
         "version": maia_filebrowser_values["chart_version"],
         "values": str(
