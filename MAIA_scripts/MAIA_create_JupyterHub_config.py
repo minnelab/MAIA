@@ -19,16 +19,13 @@ from types import SimpleNamespace
 
 from MAIA.kubernetes_utils import get_minio_shareable_link
 import MAIA
+from MAIA.versions import define_docker_image_versions
 
 version = MAIA.__version__
 
-from MAIA.versions import define_docker_image_versions
 
-maia_workspace_image = define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
-maia_workspace_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
 
-maia_workspace_pro_image = define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
-maia_workspace_pro_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
+
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
@@ -462,6 +459,12 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
         jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
+    
+    maia_workspace_image = define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
+    maia_workspace_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
+
+    maia_workspace_pro_image = define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
+    maia_workspace_pro_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
     if "maia_workspace_image_" + namespace in os.environ:
         maia_workspace_image = os.environ["maia_workspace_image_" + namespace]
     if "maia_workspace_version_" + namespace in os.environ:
