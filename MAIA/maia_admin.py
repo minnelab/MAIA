@@ -30,12 +30,16 @@ from MAIA.versions import (
 )
 
 maia_namespace_chart_version = define_maia_project_versions()["maia_namespace_chart_version"]
+maia_namespace_chart_type = define_maia_project_versions()["maia_namespace_chart_type"]
 maia_workspace_notebook_ssh_addons_image_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
 maia_workspace_notebook_ssh_addons_image_name = define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
 maia_workspace_base_notebook_ssh_image_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
 maia_workspace_base_notebook_ssh_image_name = define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
 maia_project_chart_version = define_maia_project_versions()["maia_project_chart_version"]
+maia_filebrowser_image_version = define_docker_image_versions()["maia-filebrowser"]
 maia_filebrowser_chart_version = define_maia_project_versions()["maia_filebrowser_chart_version"]
+maia_filebrowser_chart_type = define_maia_project_versions()["maia_filebrowser_chart_type"]
+maia_orthanc_image_version = define_docker_image_versions()["maia-orthanc"]
 admin_toolkit_chart_version = define_maia_admin_versions()["admin_toolkit_chart_version"]
 admin_toolkit_chart_type = define_maia_admin_versions()["admin_toolkit_chart_type"]
 harbor_chart_version = define_maia_admin_versions()["harbor_chart_version"]
@@ -370,16 +374,10 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         else:
             orthanc_ssh_port = ssh_ports[-1]
 
-    if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
-        repo_url = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
-    else:
-        repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
 
     maia_namespace_values = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
-        "chart_name": "maia-namespace",
         "chart_version": maia_namespace_chart_version,
-        "repo_url": repo_url,
         "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
         "serviceType": cluster_config["ssh_port_type"],
         "users": users,
@@ -388,6 +386,20 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         "metallbIpPool": cluster_config.get("metallb_ip_pool", False),
         "loadBalancerIp": cluster_config.get("maia_metallb_ip", False),
     }
+    
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_namespace_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
+
+    if maia_namespace_chart_type == "helm_repo":
+        if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
+            repo_url = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
+        else:
+            repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        maia_namespace_values["repo_url"] = repo_url
+        maia_namespace_values["chart_name"] = "maia-namespace"
+    elif maia_namespace_chart_type == "git_repo":
+        maia_namespace_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        maia_namespace_values["path"] = "charts/maia-namespace"
 
     if "imagePullSecrets" in os.environ:
         maia_namespace_values["dockerRegistrySecret"] = {
@@ -532,13 +544,21 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
     namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
 
     maia_filebrowser_values = {
-        "chart_name": "maia-filebrowser",
         "chart_version": maia_filebrowser_chart_version,
-        "repo_url": "https://minnelab.github.io/MAIA/",
         "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
     }
 
-    maia_filebrowser_values["image"] = {"repository": "ghcr.io/minnelab/maia-filebrowser", "tag": "1.0"}
+    maia_filebrowser_values["image"] = {"repository": "ghcr.io/minnelab/maia-filebrowser", "tag": maia_filebrowser_image_version}
+    
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_filebrowser_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
+
+    if maia_filebrowser_chart_type == "helm_repo":
+        maia_filebrowser_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        maia_filebrowser_values["chart_name"] = "maia-filebrowser"
+    elif maia_filebrowser_chart_type == "git_repo":
+        maia_filebrowser_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        maia_filebrowser_values["path"] = "charts/maia-filebrowser"
 
     # maia_filebrowser_values["imagePullSecrets"] = [{"name": os.environ["imagePullSecrets"]}]
     if mlflow_configs is None:
@@ -1534,6 +1554,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
             {"name": "keycloak_client_id", "value": "maia"},
             {"name": "keycloak_client_secret", "value": os.environ["keycloak_client_secret"]},
+            {"name": "keycloak_issuer_url", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},
             {
                 "name": "keycloak_authorize_url",
                 "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth",
@@ -1565,6 +1586,14 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 "value": os.environ.get(
                     "maia_workspace_pro_image", "ghcr.io/minnelab/" + maia_workspace_notebook_ssh_addons_image_name
                 ),
+            },
+            {
+                "name": "maia_orthanc_image",
+                "value": os.environ.get("maia_orthanc_image", "ghcr.io/minnelab/maia-orthanc"),
+            },
+            {
+                "name": "maia_orthanc_version",
+                "value": os.environ.get("maia_orthanc_version", maia_orthanc_image_version),
             },
             {"name": "argocd_namespace", "value": "argocd"},
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},

@@ -180,22 +180,34 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_NAMESPACE_CHART_VERSION") is not None:
         maia_namespace_chart_version = os.environ.get("MAIA_NAMESPACE_CHART_VERSION")
     else:
-        maia_namespace_chart_version = "1.7.3"
+        maia_namespace_chart_version = "master"  # "1.7.3"
 
     if os.environ.get("MAIA_FILEBROWSER_CHART_VERSION") is not None:
         maia_filebrowser_chart_version = os.environ.get("MAIA_FILEBROWSER_CHART_VERSION")
     else:
-        maia_filebrowser_chart_version = "1.0.0"
+        maia_filebrowser_chart_version = "master"  # "1.0.0"
+        
+    if os.environ.get("MAIA_FILEBROWSER_CHART_TYPE") is not None:
+        maia_filebrowser_chart_type = os.environ.get("MAIA_FILEBROWSER_CHART_TYPE")
+    else:
+        maia_filebrowser_chart_type = "git_repo"  # or "helm_repo"
 
     if os.environ.get("MAIA_PROJECT_CHART_VERSION") is not None:
         maia_project_chart_version = os.environ.get("MAIA_PROJECT_CHART_VERSION")
     else:
         maia_project_chart_version = "1.7.1"
+     
+    if os.environ.get("MAIA_NAMESPACE_CHART_TYPE") is not None:
+        maia_namespace_chart_type = os.environ.get("MAIA_NAMESPACE_CHART_TYPE")
+    else:
+        maia_namespace_chart_type = "git_repo"  # or "helm_repo"
 
     return {
         "maia_namespace_chart_version": maia_namespace_chart_version,
         "maia_filebrowser_chart_version": maia_filebrowser_chart_version,
+        "maia_filebrowser_chart_type": maia_filebrowser_chart_type,
         "maia_project_chart_version": maia_project_chart_version,
+        "maia_namespace_chart_type": maia_namespace_chart_type,
     }
 
 
