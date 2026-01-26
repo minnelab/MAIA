@@ -117,6 +117,24 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     keycloak = None
 
     if (
+        "OIDC_ISSUER_URL" in os.environ
+        and "OIDC_OP_AUTHORIZATION_ENDPOINT" in os.environ
+        and "OIDC_OP_TOKEN_ENDPOINT" in os.environ
+        and "OIDC_OP_USER_ENDPOINT" in os.environ
+        and "OIDC_OP_JWKS_ENDPOINT" in os.environ
+        and "OIDC_RP_CLIENT_ID" in os.environ
+        and "OIDC_RP_CLIENT_SECRET" in os.environ
+    ):
+        keycloak = {
+            "client_id": os.environ["OIDC_RP_CLIENT_ID"],
+            "client_secret": os.environ["OIDC_RP_CLIENT_SECRET"],
+            "authorize_url": os.environ["OIDC_OP_AUTHORIZATION_ENDPOINT"],
+            "token_url": os.environ["OIDC_OP_TOKEN_ENDPOINT"],
+            "userdata_url": os.environ["OIDC_OP_USER_ENDPOINT"],
+        }
+    
+
+    if (
         "keycloak_client_id" in os.environ
         and "keycloak_client_secret" in os.environ
         and "keycloak_authorize_url" in os.environ
