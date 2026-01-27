@@ -874,13 +874,13 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                         "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
                         "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
                     },
-                    "environment": project.minimal_env,
+                    "environment": project.project_tier,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu"] = "1"
 
-                if project.conda != "N/A" and project.conda is not None:
-                    namespace_form["minio_env_name"] = group_id + "_env"
+                if project.env_file != "N/A" and project.env_file is not None:
+                    namespace_form["minio_env_name"] = project.env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
@@ -922,13 +922,13 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                         "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
                         "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
                     },
-                    "environment": project.minimal_env,
+                    "environment": project.project_tier,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
 
-                if project.conda != "N/A" and project.conda is not None:
-                    namespace_form["minio_env_name"] = group_id + "_env"
+                if project.env_file != "N/A" and project.env_file is not None:
+                    namespace_form["minio_env_name"] = project.env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
