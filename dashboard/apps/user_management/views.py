@@ -16,9 +16,10 @@ from MAIA.kubernetes_utils import (
     create_helm_repo_secret_from_context,
     create_docker_registry_secret_from_context,
 )
-from MAIA.dashboard_utils import update_user_table, get_project, get_project_argo_status_and_user_table, get_pending_projects
+from MAIA.dashboard_utils import update_user_table, get_project, get_project_argo_status_and_user_table, get_pending_projects, upload_env_file_to_minio
 from MAIA.kubernetes_utils import create_namespace
 from rest_framework.response import Response
+from types import SimpleNamespace
 from MAIA.keycloak_utils import (
     get_user_ids,
     register_users_in_group_in_keycloak,
@@ -102,7 +103,7 @@ class CreateGroupSerializer(serializers.Serializer):
     date = serializers.DateField()
     memory_limit = serializers.CharField(max_length=100)
     cpu_limit = serializers.CharField(max_length=100)
-    env_file = serializers.CharField(max_length=100)
+    env_file = serializers.FileField(required=False, allow_empty_file=True)
     cluster = serializers.CharField(max_length=100)
     project_tier = serializers.CharField(max_length=100)
     user_id = serializers.EmailField(max_length=254, required=False, allow_blank=True)
@@ -268,6 +269,40 @@ class UserManagementAPICreateGroupView(APIView):
         email_list = validated_data.get("email_list", None)
         description = validated_data.get("description", None)
         supervisor = validated_data.get("supervisor", None)
+        if request.FILES:
+            env_file = request.FILES["env_file"]
+            if "MINIO_SECURE" in os.environ:
+                if os.environ["MINIO_SECURE"].lower() == "false":
+                    secure = False
+                elif os.environ["MINIO_SECURE"].lower() == "true":
+                    secure = True
+                else:
+                    secure = os.environ["MINIO_SECURE"]
+            else:
+                secure = True
+            if "MINIO_PUBLIC_SECURE" in os.environ:
+                if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
+                    public_secure = False
+                elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
+                    public_secure = True
+                else:
+                    public_secure = os.environ["MINIO_PUBLIC_SECURE"]
+            else:
+                public_secure = secure
+            settings_dict = {
+                "MINIO_URL": os.environ["MINIO_URL"],
+                "MINIO_PUBLIC_URL": os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"],
+                "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
+                "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
+                "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
+                "MINIO_SECURE": secure,
+                "BUCKET_NAME": os.environ["BUCKET_NAME"],
+            }
+            settings = SimpleNamespace(**settings_dict)
+            filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
+            if not success:
+                return Response({"error": filename}, status=400)
+        env_file = filename
         result = create_group_service(
             group_id,
             gpu,
@@ -408,62 +443,113 @@ class ProjectChartValuesAPIView(APIView):
 # Create your views here.
 @login_required(login_url="/maia/login/")
 def index(request):
-    if not request.user.is_superuser:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({}, request))
+    try:
+        if not request.user.is_superuser:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({}, request))
 
-    argocd_url = settings.ARGOCD_SERVER
+        argocd_url = settings.ARGOCD_SERVER
 
-    keycloak_users = get_user_ids(settings=settings)
+        keycloak_users = get_user_ids(settings=settings)
 
-    for keycloak_user in keycloak_users:
-        if MAIAUser.objects.filter(email=keycloak_user).exists():
-            ...  # do nothing
-        else:
-            logger.info(f"Creating user: {keycloak_user}")
-            try:
-                admin = False
-                if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
-                    admin = True
-                MAIAUser.objects.create(
-                            email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
-                        )
-            except Exception as e:
-                User.objects.filter(email=keycloak_user).delete()
-                admin = False
-                if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
-                    admin = True
-                logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
-                MAIAUser.objects.create(
-                            email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
-                        )
-                logger.info(f"User created: {keycloak_user}")
-    to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
-        get_project_argo_status_and_user_table(
-            settings=settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
-        )
-    )
-    for maia_group in maia_groups_dict:
-        logger.info(f"MAIA group: {maia_group} {maia_groups_dict[maia_group]}")
-        if not MAIAProject.objects.filter(namespace=maia_group).exists():
-            users = maia_groups_dict[maia_group]["users"]
-            if len(users) == 1:
-                email = users[0]
-                supervisor = email
+        for keycloak_user in keycloak_users:
+            if MAIAUser.objects.filter(email=keycloak_user).exists():
+                ...  # do nothing
             else:
-                supervisor = None
-                email = None
-            MAIAProject.objects.create(
-                namespace=maia_group,
-                email=email,
-                supervisor=supervisor,
+                logger.info(f"Creating user: {keycloak_user}")
+                try:
+                    admin = False
+                    if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
+                        admin = True
+                    MAIAUser.objects.create(
+                                email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
+                            )
+                except Exception as e:
+                    User.objects.filter(email=keycloak_user).delete()
+                    admin = False
+                    if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
+                        admin = True
+                    logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
+                    MAIAUser.objects.create(
+                                email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
+                            )
+                    logger.info(f"User created: {keycloak_user}")
+        to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
+            get_project_argo_status_and_user_table(
+                settings=settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
             )
+        )
+        for maia_group in maia_groups_dict:
+            logger.info(f"MAIA group: {maia_group} {maia_groups_dict[maia_group]}")
+            if not MAIAProject.objects.filter(namespace=maia_group).exists():
+                users = maia_groups_dict[maia_group]["users"]
+                if len(users) == 1:
+                    email = users[0]
+                    supervisor = email
+                else:
+                    supervisor = None
+                    email = None
+                MAIAProject.objects.create(
+                    namespace=maia_group,
+                    email=email,
+                    supervisor=supervisor,
+                )
 
-    logger.info("Users to Register in Keycloak: ", to_register_in_keycloak)
-    logger.info("Users to Register in Groups: ", to_register_in_groups)
-    logger.info("Users to Remove from Group: ", users_to_remove_from_group)
+        logger.info("Users to Register in Keycloak: ", to_register_in_keycloak)
+        logger.info("Users to Register in Groups: ", to_register_in_groups)
+        logger.info("Users to Remove from Group: ", users_to_remove_from_group)
+        os.environ["MINIO_CONSOLE_URL"] = "https://minio.maia.io/browser/maia-envs"
+        if request.method == "POST":
 
-    if request.method == "POST":
+            user_list = list(MAIAUser.objects.all().values())
+
+            for user in user_list:
+                if user["email"] in to_register_in_keycloak:
+                    user["is_registered_in_keycloak"] = 0
+                else:
+                    user["is_registered_in_keycloak"] = 1
+                if user["email"] in to_register_in_groups:
+                    user["is_registered_in_groups"] = to_register_in_groups[user["email"]]
+                else:
+                    user["is_registered_in_groups"] = 1
+                if user["email"] in users_to_remove_from_group:
+                    user["remove_from_group"] = users_to_remove_from_group[user["email"]]
+                else:
+                    user["remove_from_group"] = 0
+
+            # Sort users: put at the beginning if user needs action (not registered in keycloak, needs group registration, or needs removal from group)
+            sorted_user_list = sorted(
+                user_list,
+                key=lambda x: not (
+                    x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
+                ),
+            )
+            if "BACKEND" in os.environ:
+                backend = os.environ["BACKEND"]
+            else:
+                backend = "default"
+            context = {
+                "BACKEND": backend,
+                "user_table": sorted_user_list,
+                "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
+                "maia_groups_dict": maia_groups_dict,
+                "form": UserTableForm(request.POST),
+                "project_argo_status": project_argo_status,
+                "argocd_url": argocd_url,
+                "user": ["admin"],
+                "username": request.user.username + " [ADMIN]",
+            }
+            html_template = loader.get_template("base_user_management.html")
+
+            form = UserTableForm(request.POST)
+
+            if form.is_valid():
+                update_user_table(form, User, MAIAUser, MAIAProject)
+            else:
+                ...
+                # update_user_table(form, User, MAIAUser, MAIAProject)
+
+            return HttpResponse(html_template.render(context, request))
 
         user_list = list(MAIAUser.objects.all().values())
 
@@ -488,6 +574,8 @@ def index(request):
                 x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
             ),
         )
+
+        user_form = UserTableForm(users=sorted_user_list, projects=maia_groups_dict)
         if "BACKEND" in os.environ:
             backend = os.environ["BACKEND"]
         else:
@@ -495,74 +583,23 @@ def index(request):
         context = {
             "BACKEND": backend,
             "user_table": sorted_user_list,
-            "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
             "maia_groups_dict": maia_groups_dict,
-            "form": UserTableForm(request.POST),
+            "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
+            "form": user_form,
+            "user": ["admin"],
             "project_argo_status": project_argo_status,
             "argocd_url": argocd_url,
-            "user": ["admin"],
             "username": request.user.username + " [ADMIN]",
         }
+
         html_template = loader.get_template("base_user_management.html")
-
-        form = UserTableForm(request.POST)
-
-        if form.is_valid():
-            update_user_table(form, User, MAIAUser, MAIAProject)
-        else:
-            ...
-            # update_user_table(form, User, MAIAUser, MAIAProject)
+        if not request.user.is_superuser:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({}, request))
 
         return HttpResponse(html_template.render(context, request))
-
-    user_list = list(MAIAUser.objects.all().values())
-
-    for user in user_list:
-        if user["email"] in to_register_in_keycloak:
-            user["is_registered_in_keycloak"] = 0
-        else:
-            user["is_registered_in_keycloak"] = 1
-        if user["email"] in to_register_in_groups:
-            user["is_registered_in_groups"] = to_register_in_groups[user["email"]]
-        else:
-            user["is_registered_in_groups"] = 1
-        if user["email"] in users_to_remove_from_group:
-            user["remove_from_group"] = users_to_remove_from_group[user["email"]]
-        else:
-            user["remove_from_group"] = 0
-
-    # Sort users: put at the beginning if user needs action (not registered in keycloak, needs group registration, or needs removal from group)
-    sorted_user_list = sorted(
-        user_list,
-        key=lambda x: not (
-            x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
-        ),
-    )
-
-    user_form = UserTableForm(users=sorted_user_list, projects=maia_groups_dict)
-    if "BACKEND" in os.environ:
-        backend = os.environ["BACKEND"]
-    else:
-        backend = "default"
-    context = {
-        "BACKEND": backend,
-        "user_table": sorted_user_list,
-        "maia_groups_dict": maia_groups_dict,
-        "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
-        "form": user_form,
-        "user": ["admin"],
-        "project_argo_status": project_argo_status,
-        "argocd_url": argocd_url,
-        "username": request.user.username + " [ADMIN]",
-    }
-
-    html_template = loader.get_template("base_user_management.html")
-    if not request.user.is_superuser:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({}, request))
-
-    return HttpResponse(html_template.render(context, request))
-
+    except Exception as e:
+        logger.exception(e)
 
 @login_required(login_url="/maia/login/")
 def remove_user_from_group_view(request, email):
@@ -671,9 +708,9 @@ def register_group_view(request, group_id):
         date = project.date
         memory_limit = project.memory_limit
         cpu_limit = project.cpu_limit
-        conda = project.conda
+        env_file = project.env_file
         cluster = project.cluster
-        minimal_env = project.minimal_env
+        project_tier = project.project_tier
         user_id = project.email
         description = project.description
         supervisor = project.supervisor
@@ -682,9 +719,9 @@ def register_group_view(request, group_id):
         date = None
         memory_limit = None
         cpu_limit = None
-        conda = None
+        env_file = None
         cluster = None
-        minimal_env = None
+        project_tier = None
         user_id = None
         email_list = None
         description = None
@@ -696,9 +733,9 @@ def register_group_view(request, group_id):
         date,
         memory_limit,
         cpu_limit,
-        conda,
+        env_file,
         cluster,
-        minimal_env,
+        project_tier,
         user_id,
         email_list,
         description,
@@ -824,6 +861,32 @@ def deploy_view(request, group_id):
         disable_argocd = False
         if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
             disable_argocd = True
+        cluster_config_dict["ssh_port_type"] = "LoadBalancer"
+        #cluster_config_dict["maia_metallb_ip"] = ""
+        cluster_config_dict["metallb_shared_ip"] = "traefik"
+        cluster_config_dict["metallb_ip_pool"] = "default-addresspool"
+        cluster_config_dict["port_range"] = [2022, 2122]
+        cluster_config_dict["shared_storage_class"] = "microk8s-hostpath"
+        cluster_config_dict["storage_class"] = "microk8s-hostpath"
+        cluster_config_dict["domain"] = "maia.io"
+        cluster_config_dict["url_type"] = "subdomain"
+        cluster_config_dict["argocd_destination_cluster_address"] = "https://kubernetes.default.svc"
+        cluster_config_dict["radiology-cluster-config"] = {
+            "ip_whitelist": [
+                #"83.251.104.145/32",
+                #"130.237.84.121/32",
+                "10.0.2.2/32"
+            ],
+            "env": {
+                "maia_workspace_version" : "1.7.1"
+            },
+            "allow_ssh_password_authentication": "True"
+        }
+        os.environ["maia_project_chart"] = "maia-project"
+        os.environ["maia_project_repo"] = "https://minnelab.github.io/MAIA/"
+        os.environ["maia_project_version"] = "1.8.0"
+        os.environ["argocd_namespace"] = "argocd"
+        argocd_url = "https://argocd.maia.io"
         msg = deploy_maia_toolkit_api(
             project_form_dict=project_form_dict,
             # maia_config_dict=maia_config_dict,

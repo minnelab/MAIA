@@ -22,9 +22,46 @@ from minio import Minio
 from pyhelm3 import Client
 
 from MAIA.keycloak_utils import get_groups_in_keycloak
-from MAIA.kubernetes_utils import generate_kubeconfig, get_namespaces
+from MAIA.kubernetes_utils import generate_kubeconfig, get_namespaces, get_minio_shareable_link
 from MAIA_scripts.MAIA_install_project_toolkit import verify_installed_maia_toolkit
 
+
+def upload_env_file_to_minio(env_file, namespace, settings):
+    client = Minio(
+            settings.MINIO_URL,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_SECURE,
+        )
+    if env_file.name.endswith(".zip"):
+        with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
+            for chunk in env_file.chunks():
+                destination.write(chunk)
+        logger.info(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
+        client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.zip", f"/tmp/{namespace}_env.zip")
+        logger.info(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
+        filename = f"{namespace}_env.zip"
+    elif env_file.name.endswith(".yaml") or env_file.name.endswith(".yml"):
+        with open(f"/tmp/{namespace}_env.yaml", "wb+") as destination:
+            for chunk in env_file.chunks():
+                destination.write(chunk)
+        logger.info(f"Storing {namespace}_env.yaml in MinIO, in bucket {settings.BUCKET_NAME}")
+        client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.yaml", f"/tmp/{namespace}_env.yaml")
+        logger.info(get_minio_shareable_link(f"{namespace}_env.yaml", settings.BUCKET_NAME, settings))
+        filename = f"{namespace}_env.yaml"
+    elif env_file.name.endswith(".txt"):
+        with open(f"/tmp/{namespace}_env.txt", "wb+") as destination:
+            for chunk in env_file.chunks():
+                destination.write(chunk)
+        logger.info(f"Storing {namespace}_env.txt in MinIO, in bucket {settings.BUCKET_NAME}")
+        client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.txt", f"/tmp/{namespace}_env.txt")
+        logger.info(get_minio_shareable_link(f"{namespace}_env.txt", settings.BUCKET_NAME, settings))
+        filename = f"{namespace}_env.txt"
+    else:
+        msg = "Environment file must be a zip file, yaml file, or txt file"
+        success = False
+        return msg, success
+    return filename, True
 
 def verify_gpu_availability(global_existing_bookings, new_booking, gpu_specs):
     """
@@ -508,10 +545,9 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             secure=settings.MINIO_SECURE,
         )
 
-        minio_envs = [env.object_name[: -len("_env")] for env in list(client.list_objects(settings.BUCKET_NAME))]
+        minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
     except Exception:
-        minio_envs = []
-
+        minio_env_files = []
     for maia_group in maia_groups:
         if maia_groups[maia_group] in (
             getattr(settings, "USERS_GROUP", "users"),
@@ -526,8 +562,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         date = None
         cluster = None
         gpu = None
-        environment = None
-        conda_envs = []
+        project_tier = None
+        env_files = []
 
         if maia_project_model.objects.filter(namespace=maia_groups[maia_group]).exists():
             project = maia_project_model.objects.filter(namespace=maia_groups[maia_group]).first()
@@ -544,12 +580,14 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             date = project.date
             cluster = project.cluster
             gpu = project.gpu
-            environment = project.minimal_env
+            project_tier = project.project_tier
+            env_file = project.env_file
 
-        if maia_groups[maia_group] in minio_envs:
-            conda_envs.append(maia_groups[maia_group])
-        else:
-            conda_envs.append("N/A")
+        for env_file in minio_env_files:
+            if env_file.startswith(maia_groups[maia_group]+"_env"):
+                env_files.append(env_file)
+        if len(env_files) == 0:
+            env_files.append("N/A")
 
         group_users = []
         for user in users:
@@ -560,22 +598,23 @@ def get_user_table(settings, maia_user_model, maia_project_model):
 
         maia_group_dict[maia_groups[maia_group]] = {
             "users": group_users,
-            "conda": conda_envs,
+            "env_file": env_files,
             "admin_users": admin_users,
             "cpu_limit": cpu_limit,
             "memory_limit": memory_limit,
             "date": date,
             "cluster": cluster,
             "gpu": gpu,
-            "environment": environment,
+            "project_tier": project_tier,
         }
 
     for pending_project in pending_projects:
-        conda_envs = []
-        if pending_project in minio_envs:
-            conda_envs.append(pending_project)
-        else:
-            conda_envs.append("N/A")
+        env_files = []
+        for env_file in minio_env_files:
+            if env_file.startswith(pending_project+"_env"):
+                env_files.append(env_file)
+        if len(env_files) == 0:
+            env_files.append("N/A")
 
         users = []
 
@@ -587,14 +626,14 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         maia_group_dict[pending_project] = {
             "users": users,
             "pending": True,
-            "conda": conda_envs,
+            "env_file": env_files,
             "admin_users": [],
             "cpu_limit": project.cpu_limit,
             "memory_limit": project.memory_limit,
             "date": project.date,
             "cluster": "N/A",
             "gpu": project.gpu,
-            "environment": "Minimal",
+            "project_tier": project.project_tier,
         }
 
     users_to_register_in_keycloak = []

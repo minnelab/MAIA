@@ -121,8 +121,8 @@
                       {% if minio_available %}
                       <div class="mb-3">
                         <label>Conda/Python Environment File [OPTIONAL]</label>
-                        {{ form.conda }}
-                        <span class="text-danger">{{ form.conda.errors }}</span>
+                        {{ form.env_file }}
+                        <span class="text-danger">{{ form.env_file.errors }}</span>
                       </div>
                       {% endif %}
 

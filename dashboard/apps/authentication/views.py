@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from .forms import LoginForm, SignUpForm, RegisterProjectForm, MAIAInfoForm
 from minio import Minio
-from MAIA.dashboard_utils import send_discord_message, verify_minio_availability, send_maia_info_email
+from MAIA.dashboard_utils import send_discord_message, verify_minio_availability, send_maia_info_email, upload_env_file_to_minio
 from MAIA.kubernetes_utils import get_minio_shareable_link
 from core.settings import GITHUB_AUTH
 from django.conf import settings
@@ -236,7 +236,7 @@ def register_project(request, api=False):
         request_files = request.FILES
         if api:
             request_data = request.data
-            request_files = None
+            request_files = request.FILES
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
             form.save()
@@ -253,29 +253,14 @@ def register_project(request, api=False):
                     if email_list:
                         for email in email_list.split(","):
                             get_or_create_user_in_database(email=email, namespace=namespace)
-
-            if "conda" in request.FILES and minio_available:
-                conda_file = request.FILES["conda"]
-                if conda_file.name.endswith(".zip"):
-                    client = Minio(
-                        settings.MINIO_URL,
-                        access_key=settings.MINIO_ACCESS_KEY,
-                        secret_key=settings.MINIO_SECRET_KEY,
-                        secure=settings.MINIO_SECURE,
-                    )
-                    with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
-                        for chunk in request.FILES["conda"].chunks():
-                            destination.write(chunk)
-                    logger.info(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
-                    client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.zip", f"/tmp/{namespace}_env.zip")
-                    logger.info(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
-                else:
-                    with open(f"/tmp/{namespace}_env", "wb+") as destination:
-                        for chunk in request.FILES["conda"].chunks():
-                            destination.write(chunk)
-                    logger.info(f"Storing {namespace}_env in MinIO, in bucket {settings.BUCKET_NAME}")
-                    client.fput_object(settings.BUCKET_NAME, f"{namespace}_env", f"/tmp/{namespace}_env")
-                    logger.info(get_minio_shareable_link(f"{namespace}_env", settings.BUCKET_NAME, settings))
+            try:
+                if "env_file" in request_files and minio_available:
+                    env_file = request_files["env_file"]
+                    msg, success = upload_env_file_to_minio(env_file, namespace, settings)
+            except Exception as e:
+                logger.exception(e)
+                msg = "Error storing environment file in MinIO"
+                success = False
 
             if settings.DISCORD_URL is not None:
                 send_discord_message(username=email, namespace=namespace, url=settings.DISCORD_URL, project_registration=True)
