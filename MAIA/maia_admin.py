@@ -587,7 +587,7 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         {
             "name": "db-volume",
             "persistentVolumeClaim": {
-                "claimName": f"{namespace_id}-maia-filebrowser-pvc",
+                "claimName": f"{namespace_id}-filebrowser-maia-filebrowser-pvc",
             },
         }
     ]
