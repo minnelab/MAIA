@@ -385,6 +385,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         "metallbSharedIp": cluster_config.get("metallb_shared_ip", False),
         "metallbIpPool": cluster_config.get("metallb_ip_pool", False),
         "loadBalancerIp": cluster_config.get("maia_metallb_ip", False),
+        "storageClass": cluster_config["storage_class"],
     }
     
     if cluster_config.get("ip_whitelist", None) and cluster_config["ssh_port_type"] == "LoadBalancer":
