@@ -243,9 +243,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 "REFRESH": "60",
                 "DPI": "96",
                 "CDEPTH": "24",
-                "PASSWD": "maia",
+                "PASSWD": "maiapwd",
                 "WEBRTC_ENCODER": "nvh264enc",
-                "BASIC_AUTH_PASSWORD": "maia",
+                "BASIC_AUTH_PASSWORD": "maiapwd",
                 "NOVNC_ENABLE": "true",
                 "ssh_publickey": "NOKEY",
                 "NB_USER": "maia-user",
@@ -260,6 +260,11 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             },
         },
     }
+    
+    if "password" in cluster_config:
+        jh_template["singleuser"]["extraEnv"]["PASSWD"] = cluster_config["password"]
+        jh_template["singleuser"]["extraEnv"]["BASIC_AUTH_PASSWORD"] = cluster_config["password"]
+    
     
     if "allow_ssh_password_authentication" in cluster_config:
         jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = cluster_config["allow_ssh_password_authentication"]
@@ -318,6 +323,15 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         jh_template["singleuser"]["extraEnv"]["MLFLOW_TRACKING_URI"] = f"https://{hub_address}/{namespace}-mlflow"
 
     if "minio_env_name" in user_form or "MINIO_URL" in os.environ:
+        if "MINIO_SECURE" in os.environ:
+            if os.environ["MINIO_SECURE"].lower() == "false":
+                secure = False
+            elif os.environ["MINIO_SECURE"].lower() == "true":
+                secure = True
+            else:
+                secure = os.environ["MINIO_SECURE"]
+        else:
+            secure = True
         if "minio_env_name" not in user_form:
             minio_env_name = team_id + "_env"
         else:
@@ -326,7 +340,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             os.environ["MINIO_URL"],
             access_key=os.environ["MINIO_ACCESS_KEY"],
             secret_key=os.environ["MINIO_SECRET_KEY"],
-            secure=os.environ["MINIO_SECURE"],
+            secure=secure,
         )
         try:
             if minio_env_name.endswith(".zip"):
@@ -334,7 +348,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "MINIO_PUBLIC_URL": os.environ["MINIO_URL"],
                     "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
                     "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
-                    "MINIO_PUBLIC_SECURE": os.environ["MINIO_SECURE"],
+                    "MINIO_PUBLIC_SECURE": secure,
                     "BUCKET_NAME": os.environ["BUCKET_NAME"],
                 }
                 settings = SimpleNamespace(**settings_dict)
