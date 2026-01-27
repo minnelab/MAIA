@@ -298,10 +298,10 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             jh_template["singleuser"]["extraEnv"]["MINIO_SECRET_KEY"]
         ).decode("utf-8")
 
-    jh_template["hub"]["activeServerLimit"] = cluster_config.get("active_server_limit"+"_"+namespace, 1)
-    jh_template["hub"]["concurrentSpawnLimit"] = cluster_config.get("concurrent_spawn_limit"+"_"+namespace, 1)
+    jh_template["hub"]["activeServerLimit"] = cluster_config.get("active_server_limit", 1)
+    jh_template["hub"]["concurrentSpawnLimit"] = cluster_config.get("concurrent_spawn_limit", 1)
 
-    shared_server_user = cluster_config.get("shared_server_user_" + namespace, "user@maia.se")
+    shared_server_user = cluster_config.get("shared_server_user", "user@maia.se")
     jh_template["hub"]["loadRoles"] = {
         "user": {
             "description": "Allow users to access the shared server in addition to default perms",
