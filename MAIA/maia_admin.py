@@ -577,8 +577,20 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         {"name": "password", "value": pw},
     ]
 
-    maia_filebrowser_values["volumeMounts"] = []
-    maia_filebrowser_values["volumes"] = []
+    maia_filebrowser_values["volumeMounts"] = [
+        {
+            "name": "db-volume",
+            "mountPath": "/database",
+        }
+    ]
+    maia_filebrowser_values["volumes"] = [
+        {
+            "name": "db-volume",
+            "persistentVolumeClaim": {
+                "claimName": "maia-filebrowser-pvc",
+            },
+        }
+    ]
     maia_filebrowser_values["volumeMounts"].append({"name": "shared-volume", "mountPath": "/home/shared"})
     for user in namespace_config["users"]:
         maia_filebrowser_values["volumeMounts"].append(
@@ -648,6 +660,7 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
             cluster_config["traefik_resolver"]
         )
 
+    maia_filebrowser_values["storageClass"] = cluster_config["storage_class"]
     Path(config_folder).joinpath(namespace_config["group_ID"], "maia_filebrowser_values").mkdir(parents=True, exist_ok=True)
     with open(
         Path(config_folder).joinpath(namespace_config["group_ID"], "maia_filebrowser_values", "maia_filebrowser_values.yaml"), "w"
