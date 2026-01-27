@@ -861,32 +861,7 @@ def deploy_view(request, group_id):
         disable_argocd = False
         if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
             disable_argocd = True
-        cluster_config_dict["ssh_port_type"] = "LoadBalancer"
-        #cluster_config_dict["maia_metallb_ip"] = ""
-        cluster_config_dict["metallb_shared_ip"] = "traefik"
-        cluster_config_dict["metallb_ip_pool"] = "default-addresspool"
-        cluster_config_dict["port_range"] = [2022, 2122]
-        cluster_config_dict["shared_storage_class"] = "microk8s-hostpath"
-        cluster_config_dict["storage_class"] = "microk8s-hostpath"
-        cluster_config_dict["domain"] = "maia.io"
-        cluster_config_dict["url_type"] = "subdomain"
-        cluster_config_dict["argocd_destination_cluster_address"] = "https://kubernetes.default.svc"
-        cluster_config_dict["radiology-cluster-config"] = {
-            "ip_whitelist": [
-                #"83.251.104.145/32",
-                #"130.237.84.121/32",
-                "10.0.2.2/32"
-            ],
-            "env": {
-                "maia_workspace_version" : "1.7.1"
-            },
-            "allow_ssh_password_authentication": "True"
-        }
-        os.environ["maia_project_chart"] = "maia-project"
-        os.environ["maia_project_repo"] = "https://minnelab.github.io/MAIA/"
-        os.environ["maia_project_version"] = "1.8.0"
-        os.environ["argocd_namespace"] = "argocd"
-        argocd_url = "https://argocd.maia.io"
+
         msg = deploy_maia_toolkit_api(
             project_form_dict=project_form_dict,
             # maia_config_dict=maia_config_dict,
