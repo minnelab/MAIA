@@ -25,7 +25,7 @@ class UserTableForm(forms.Form):
         gpus = [(gpu["name"], gpu["name"]) for gpu in settings.GPU_SPECS]
         gpus.append(("N/A", "N/A"))
 
-        minimal_envs = (("Base", "Base"), ("Pro", "Pro"))
+        project_tiers = (("Base", "Base"), ("Pro", "Pro"))
 
         # maia_groups = get_groups_in_keycloak(settings= settings)
         # pending_projects = get_pending_projects(settings=settings, maia_project_model=MAIAProject)
@@ -66,14 +66,14 @@ class UserTableForm(forms.Form):
                         widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
                         input_formats=["%Y-%m-%d"],
                     )
-                elif k.startswith("conda"):
-                    self.fields[k] = forms.FileField(label="conda")
+                elif k.startswith("env_file"):
+                    self.fields[k] = forms.FileField(label="env_file")
                 elif k.startswith("cluster"):
                     self.fields[k] = forms.ChoiceField(choices=clusters, label="cluster")
                 elif k.startswith("gpu"):
                     self.fields[k] = forms.ChoiceField(choices=gpus, label="gpu")
-                elif k.startswith("minimal_environment"):
-                    self.fields[k] = forms.ChoiceField(label="minimal_environment", choices=minimal_envs)
+                elif k.startswith("project_tier"):
+                    self.fields[k] = forms.ChoiceField(label="project_tier", choices=project_tiers)
 
         if "projects" in kwargs:
             for i in kwargs["projects"]:
@@ -91,8 +91,8 @@ class UserTableForm(forms.Form):
                     kwargs["projects"][i]["cluster"] = "N/A"
                 if kwargs["projects"][i]["gpu"] is None:
                     kwargs["projects"][i]["gpu"] = "N/A"
-                if kwargs["projects"][i]["environment"] is None:
-                    kwargs["projects"][i]["environment"] = "Base"
+                if kwargs["projects"][i]["project_tier"] is None:
+                    kwargs["projects"][i]["project_tier"] = "Base"
                 self.fields[f"memory_limit_{project_name}"] = forms.ChoiceField(
                     label="memory_limit", choices=memory_limit, initial=kwargs["projects"][i]["memory_limit"]
                 )
@@ -106,7 +106,7 @@ class UserTableForm(forms.Form):
                     input_formats=["%Y-%m-%d"],
                 )
 
-                self.fields[f"conda_{project_name}"] = forms.FileField(label="conda", initial=kwargs["projects"][i]["conda"])
+                self.fields[f"env_file_{project_name}"] = forms.FileField(label="env_file", initial=kwargs["projects"][i]["env_file"])
                 self.fields[f"cluster_{project_name}"] = forms.ChoiceField(
                     choices=clusters, label="cluster", initial=kwargs["projects"][i]["cluster"]
                 )
@@ -115,6 +115,6 @@ class UserTableForm(forms.Form):
                     choices=gpus, label="gpu", initial=kwargs["projects"][i]["gpu"]
                 )
 
-                self.fields[f"minimal_environment_{project_name}"] = forms.ChoiceField(
-                    label="minimal_environment", initial=kwargs["projects"][i]["environment"], choices=minimal_envs
+                self.fields[f"project_tier_{project_name}"] = forms.ChoiceField(
+                    label="project_tier", initial=kwargs["projects"][i]["project_tier"], choices=project_tiers
                 )

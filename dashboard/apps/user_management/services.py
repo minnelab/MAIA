@@ -378,9 +378,9 @@ def create_group(
     date,
     memory_limit,
     cpu_limit,
-    conda,
+    env_file,
     cluster,
-    minimal_env,
+    project_tier,
     user_email,
     email_list=None,
     description=None,
@@ -395,9 +395,9 @@ def create_group(
         date (str): Creation date
         memory_limit (str): Memory limit for the group
         cpu_limit (str): CPU limit for the group
-        conda (str): Conda environment configuration
+        env_file (str): Environment file configuration
         cluster (str): Cluster assignment
-        minimal_env (str): Minimal environment flag
+        project_tier (str): Project tier flag
         user_email (str): Email of the user creating/owning the group
         email_list (list, optional): List of user emails to add to the group
         description (str, optional): Project description
@@ -447,9 +447,9 @@ def create_group(
                 "date": date,
                 "memory_limit": memory_limit,
                 "cpu_limit": cpu_limit,
-                "conda": conda,
+                "env_file": env_file,
                 "cluster": cluster,
-                "minimal_env": minimal_env,
+                "project_tier": project_tier,
                 "description": description,
                 "supervisor": supervisor,
             },

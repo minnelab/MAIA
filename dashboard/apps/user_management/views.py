@@ -102,9 +102,9 @@ class CreateGroupSerializer(serializers.Serializer):
     date = serializers.DateField()
     memory_limit = serializers.CharField(max_length=100)
     cpu_limit = serializers.CharField(max_length=100)
-    conda = serializers.CharField(max_length=100)
+    env_file = serializers.CharField(max_length=100)
     cluster = serializers.CharField(max_length=100)
-    minimal_env = serializers.CharField(max_length=100)
+    project_tier = serializers.CharField(max_length=100)
     user_id = serializers.EmailField(max_length=254, required=False, allow_blank=True)
     email_list = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
@@ -146,9 +146,9 @@ class UserManagementAPIListGroupsView(APIView):
             "date",
             "memory_limit",
             "cpu_limit",
-            "conda",
+            "env_file",
             "cluster",
-            "minimal_env",
+            "project_tier",
             "email",
             "description",
             "supervisor",
@@ -261,9 +261,9 @@ class UserManagementAPICreateGroupView(APIView):
         date = validated_data["date"]
         memory_limit = validated_data["memory_limit"]
         cpu_limit = validated_data["cpu_limit"]
-        conda = validated_data["conda"]
+        env_file = validated_data["env_file"]
         cluster = validated_data["cluster"]
-        minimal_env = validated_data["minimal_env"]
+        project_tier = validated_data["project_tier"]
         user_id = validated_data.get("user_id", None)
         email_list = validated_data.get("email_list", None)
         description = validated_data.get("description", None)
@@ -274,9 +274,9 @@ class UserManagementAPICreateGroupView(APIView):
             date,
             memory_limit,
             cpu_limit,
-            conda,
+            env_file,
             cluster,
-            minimal_env,
+            project_tier,
             user_id,
             email_list,
             description,

@@ -136,10 +136,10 @@
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column justify-content-center">
-                                        {% for conda_env in maia_groups_dict|get_item:namespace|get_item:"conda" %}
-                                        {% if conda_env != "N/A" %}
-                                        <a href="{{ minio_console_url }}/{{ conda_env }}_env">
-                                            <li>{{ conda_env }}</li>
+                                        {% for env_file in maia_groups_dict|get_item:namespace|get_item:"env_file" %}
+                                        {% if env_file != "N/A" %}
+                                        <a href="{{ minio_console_url }}/{{ env_file }}">
+                                            <li>{{ env_file }}</li>
                                         </a>
                                         {% else %}
                                         <li>N/A</li>
@@ -156,7 +156,7 @@
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="minimal_environment_"|add:namespace %}
+                                        {% with form_key="project_tier_"|add:namespace %}
                                         {{ form|index:form_key }}
                                         {% endwith %}
                                     </div>

@@ -65,10 +65,10 @@ class MAIAProject(models.Model):
     memory_limit = models.TextField("memory_limit", default="2 Gi", null=True)
     cpu_limit = models.TextField("memory_limit", default="2", null=True)
 
-    conda = models.TextField("conda", default="N/A", null=True)
+    env_file = models.TextField("env_file", default="N/A", null=True)
 
     cluster = models.TextField("cluster", default="N/A", null=True)
-    minimal_env = models.TextField("minimal_env", default="Base", null=True)
+    project_tier = models.TextField("project_tier", default="Base", null=True)
     description = models.TextField("description", blank=True, null=True)
     supervisor = models.EmailField("supervisor", max_length=150, null=True, blank=True)
 

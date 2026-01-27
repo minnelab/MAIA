@@ -97,7 +97,7 @@ class RegisterProjectForm(forms.ModelForm):
         ),
     )
 
-    conda = forms.FileField(
+    env_file = forms.FileField(
         required=False,
         label="Upload here your Conda Environment/PIP Requirements file to automatically load it in your environment.",
     )
@@ -131,4 +131,4 @@ class RegisterProjectForm(forms.ModelForm):
 
     class Meta:
         model = MAIAProject
-        fields = ("id", "namespace", "gpu", "conda", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
+        fields = ("id", "namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
