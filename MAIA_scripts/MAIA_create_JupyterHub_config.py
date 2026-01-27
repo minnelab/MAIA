@@ -260,6 +260,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             },
         },
     }
+    
+    if "allow_ssh_password_authentication" in cluster_config:
+        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = cluster_config["allow_ssh_password_authentication"]
 
     jh_template["hub"]["extraVolumes"] = [
         {"name": "kubernetes-ca", "secret": {"secretName": "kubernetes-ca"}},
