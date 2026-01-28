@@ -51,15 +51,11 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-- name: Normalize apps_to_sync
+- name: Normalize apps_to_sync to a proper list
   ansible.builtin.set_fact:
-    apps_to_sync: >-
-      {{
-        apps_to_sync
-        | from_json
-        if apps_to_sync is string
-        else apps_to_sync
-      }}
+    apps_to_sync: "{{ apps_to_sync | from_json }}"
+  when: apps_to_sync is string
+
 
 - name: DEBUG apps_to_sync after env.json
   debug:
