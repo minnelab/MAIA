@@ -238,15 +238,19 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 "GRANT_SUDO": "yes",
                 "SHELL": "/usr/bin/zsh",
                 "TZ": "UTC",
-                "SIZEW": "1920",
-                "SIZEH": "1080",
-                "REFRESH": "60",
-                "DPI": "96",
-                "CDEPTH": "24",
+                "DISPLAY_SIZEW": "1920",
+                "DISPLAY_SIZEH": "1080",
+                "DISPLAY_REFRESH": "60",
+                "DISPLAY_DPI": "96",
+                "DISPLAY_CDEPTH": "24",
                 "PASSWD": "maiapwd",
-                "WEBRTC_ENCODER": "nvh264enc",
-                "BASIC_AUTH_PASSWORD": "maiapwd",
-                "NOVNC_ENABLE": "true",
+                "SELKIES_ENCODER": "nvh264enc",
+                "SELKIES_ENABLE_RESIZE": "false",
+                "SELKIES_VIDEO_BITRATE": "8000",
+                "SELKIES_FRAMERATE": "60",
+                "SELKIES_AUDIO_BITRATE": "128000",
+                "SELKIES_BASIC_AUTH_PASSWORD": "maiapwd",
+                "KASMVNC_ENABLE": "true",
                 "ssh_publickey": "NOKEY",
                 "NB_USER": "maia-user",
                 "MINIO_ACCESS_KEY": user_form.get("minio_access_key", "N/A"),
@@ -263,7 +267,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     
     if "password" in cluster_config:
         jh_template["singleuser"]["extraEnv"]["PASSWD"] = cluster_config["password"]
-        jh_template["singleuser"]["extraEnv"]["BASIC_AUTH_PASSWORD"] = cluster_config["password"]
+        jh_template["singleuser"]["extraEnv"]["SELKIES_BASIC_AUTH_PASSWORD"] = cluster_config["password"]
     
     
     if "allow_ssh_password_authentication" in cluster_config:
