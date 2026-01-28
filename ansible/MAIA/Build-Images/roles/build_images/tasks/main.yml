@@ -52,6 +52,10 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
+- name: DEBUG apps_to_sync after env.json
+  debug:
+    var: apps_to_sync
+    
 - name: "Run MAIA_build_images"
   ansible.builtin.command: >
     MAIA_build_images

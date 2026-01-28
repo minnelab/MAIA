@@ -5,7 +5,7 @@ maia_git_repo_url: "git://github.com/minnelab/MAIA.git" #git://github.com/acme/m
 # Build chart details
 docker_build_project_chart: "maia-docker-build-project"
 docker_build_project_repo: "https://minnelab.github.io/MAIA/"
-docker_build_project_version: "1.3.1"
+docker_build_project_version: "1.3.3"
 maia_project_id: "maia-image"
 
 # Cluster / registry defaults
