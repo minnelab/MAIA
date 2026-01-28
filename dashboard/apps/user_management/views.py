@@ -498,7 +498,7 @@ def index(request):
         logger.info("Users to Register in Keycloak: ", to_register_in_keycloak)
         logger.info("Users to Register in Groups: ", to_register_in_groups)
         logger.info("Users to Remove from Group: ", users_to_remove_from_group)
-        os.environ["MINIO_CONSOLE_URL"] = "https://minio.maia.io/browser/maia-envs"
+
         if request.method == "POST":
 
             user_list = list(MAIAUser.objects.all().values())
