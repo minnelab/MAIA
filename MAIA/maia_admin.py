@@ -374,7 +374,6 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         else:
             orthanc_ssh_port = ssh_ports[-1]
 
-
     maia_namespace_values = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "chart_version": maia_namespace_chart_version,
@@ -387,10 +386,10 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         "loadBalancerIp": cluster_config.get("maia_metallb_ip", False),
         "storageClass": cluster_config["storage_class"],
     }
-    
+
     if cluster_config.get("ip_whitelist", None) and cluster_config["ssh_port_type"] == "LoadBalancer":
         maia_namespace_values["ipWhitelist"] = cluster_config["ip_whitelist"]
-    
+
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_namespace_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
 
@@ -497,7 +496,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     return {
         "namespace": maia_namespace_values["namespace"],
         "release": f"{namespace_id}-namespace",
-         "chart": (
+        "chart": (
             maia_namespace_values["chart_name"] if maia_namespace_chart_type == "helm_repo" else maia_namespace_values["path"]
         ),
         "repo": maia_namespace_values["repo_url"],
@@ -555,7 +554,7 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
     }
 
     maia_filebrowser_values["image"] = {"repository": "ghcr.io/minnelab/maia-filebrowser", "tag": maia_filebrowser_image_version}
-    
+
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_filebrowser_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
 
@@ -672,7 +671,9 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         "namespace": maia_filebrowser_values["namespace"],
         "release": f"{namespace_id}-namespace",
         "chart": (
-            maia_filebrowser_values["chart_name"] if maia_filebrowser_chart_type == "helm_repo" else maia_filebrowser_values["path"]
+            maia_filebrowser_values["chart_name"]
+            if maia_filebrowser_chart_type == "helm_repo"
+            else maia_filebrowser_values["path"]
         ),
         "repo": maia_filebrowser_values["repo_url"],
         "version": maia_filebrowser_values["chart_version"],

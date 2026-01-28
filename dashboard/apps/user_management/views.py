@@ -16,7 +16,13 @@ from MAIA.kubernetes_utils import (
     create_helm_repo_secret_from_context,
     create_docker_registry_secret_from_context,
 )
-from MAIA.dashboard_utils import update_user_table, get_project, get_project_argo_status_and_user_table, get_pending_projects, upload_env_file_to_minio
+from MAIA.dashboard_utils import (
+    update_user_table,
+    get_project,
+    get_project_argo_status_and_user_table,
+    get_pending_projects,
+    upload_env_file_to_minio,
+)
 from MAIA.kubernetes_utils import create_namespace
 from rest_framework.response import Response
 from types import SimpleNamespace
@@ -291,7 +297,9 @@ class UserManagementAPICreateGroupView(APIView):
                 public_secure = secure
             settings_dict = {
                 "MINIO_URL": os.environ["MINIO_URL"],
-                "MINIO_PUBLIC_URL": os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"],
+                "MINIO_PUBLIC_URL": (
+                    os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
+                ),
                 "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
                 "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
                 "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
@@ -462,17 +470,25 @@ def index(request):
                     if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
                     MAIAUser.objects.create(
-                                email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
-                            )
-                except Exception as e:
+                        email=keycloak_user,
+                        username=keycloak_user,
+                        namespace=",".join(keycloak_users[keycloak_user]),
+                        is_superuser=admin,
+                        is_staff=admin,
+                    )
+                except Exception:
                     User.objects.filter(email=keycloak_user).delete()
                     admin = False
                     if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
                     logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
                     MAIAUser.objects.create(
-                                email=keycloak_user, username=keycloak_user, namespace=",".join(keycloak_users[keycloak_user]), is_superuser=admin, is_staff=admin
-                            )
+                        email=keycloak_user,
+                        username=keycloak_user,
+                        namespace=",".join(keycloak_users[keycloak_user]),
+                        is_superuser=admin,
+                        is_staff=admin,
+                    )
                     logger.info(f"User created: {keycloak_user}")
         to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
             get_project_argo_status_and_user_table(
@@ -600,6 +616,7 @@ def index(request):
         return HttpResponse(html_template.render(context, request))
     except Exception as e:
         logger.exception(e)
+
 
 @login_required(login_url="/maia/login/")
 def remove_user_from_group_view(request, email):
@@ -861,7 +878,30 @@ def deploy_view(request, group_id):
         disable_argocd = False
         if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
             disable_argocd = True
-
+        cluster_config_dict["ssh_port_type"] = "LoadBalancer"
+        # cluster_config_dict["maia_metallb_ip"] = ""
+        cluster_config_dict["metallb_shared_ip"] = "traefik"
+        cluster_config_dict["metallb_ip_pool"] = "default-addresspool"
+        cluster_config_dict["port_range"] = [2022, 2122]
+        cluster_config_dict["shared_storage_class"] = "microk8s-hostpath"
+        cluster_config_dict["storage_class"] = "microk8s-hostpath"
+        cluster_config_dict["domain"] = "maia.io"
+        cluster_config_dict["url_type"] = "subdomain"
+        cluster_config_dict["argocd_destination_cluster_address"] = "https://kubernetes.default.svc"
+        cluster_config_dict["radiology-cluster-config"] = {
+            "ip_whitelist": [
+                # "83.251.104.145/32",
+                # "130.237.84.121/32",
+                "10.0.2.2/32"
+            ],
+            "env": {"maia_workspace_version": "1.7.1"},
+            "allow_ssh_password_authentication": "True",
+        }
+        os.environ["maia_project_chart"] = "maia-project"
+        os.environ["maia_project_repo"] = "https://minnelab.github.io/MAIA/"
+        os.environ["maia_project_version"] = "1.8.0"
+        os.environ["argocd_namespace"] = "argocd"
+        argocd_url = "https://argocd.maia.io"
         msg = deploy_maia_toolkit_api(
             project_form_dict=project_form_dict,
             # maia_config_dict=maia_config_dict,

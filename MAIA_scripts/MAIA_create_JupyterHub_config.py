@@ -24,9 +24,6 @@ from MAIA.versions import define_docker_image_versions
 version = MAIA.__version__
 
 
-
-
-
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
 DESC = dedent("""
@@ -132,7 +129,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "token_url": os.environ["OIDC_OP_TOKEN_ENDPOINT"],
             "userdata_url": os.environ["OIDC_OP_USER_ENDPOINT"],
         }
-    
 
     if (
         "keycloak_client_id" in os.environ
@@ -264,14 +260,15 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             },
         },
     }
-    
+
     if "password" in cluster_config:
         jh_template["singleuser"]["extraEnv"]["PASSWD"] = cluster_config["password"]
         jh_template["singleuser"]["extraEnv"]["SELKIES_BASIC_AUTH_PASSWORD"] = cluster_config["password"]
-    
-    
+
     if "allow_ssh_password_authentication" in cluster_config:
-        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = cluster_config["allow_ssh_password_authentication"]
+        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = cluster_config[
+            "allow_ssh_password_authentication"
+        ]
 
     jh_template["hub"]["extraVolumes"] = [
         {"name": "kubernetes-ca", "secret": {"secretName": "kubernetes-ca"}},
@@ -501,7 +498,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     maia_workspace_image = "ghcr.io/minnelab/" + define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
     maia_workspace_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
 
-    maia_workspace_pro_image = "ghcr.io/minnelab/" + define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
+    maia_workspace_pro_image = (
+        "ghcr.io/minnelab/" + define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
+    )
     maia_workspace_pro_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
     if "maia_workspace_image_" + namespace in os.environ:
         maia_workspace_image = os.environ["maia_workspace_image_" + namespace]

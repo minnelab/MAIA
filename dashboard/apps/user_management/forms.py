@@ -106,7 +106,9 @@ class UserTableForm(forms.Form):
                     input_formats=["%Y-%m-%d"],
                 )
 
-                self.fields[f"env_file_{project_name}"] = forms.FileField(label="env_file", initial=kwargs["projects"][i]["env_file"])
+                self.fields[f"env_file_{project_name}"] = forms.FileField(
+                    label="env_file", initial=kwargs["projects"][i]["env_file"]
+                )
                 self.fields[f"cluster_{project_name}"] = forms.ChoiceField(
                     choices=clusters, label="cluster", initial=kwargs["projects"][i]["cluster"]
                 )

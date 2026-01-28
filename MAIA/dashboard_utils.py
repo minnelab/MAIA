@@ -28,11 +28,11 @@ from MAIA_scripts.MAIA_install_project_toolkit import verify_installed_maia_tool
 
 def upload_env_file_to_minio(env_file, namespace, settings):
     client = Minio(
-            settings.MINIO_URL,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE,
-        )
+        settings.MINIO_URL,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
+        secure=settings.MINIO_SECURE,
+    )
     if env_file.name.endswith(".zip"):
         with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
             for chunk in env_file.chunks():
@@ -62,6 +62,7 @@ def upload_env_file_to_minio(env_file, namespace, settings):
         success = False
         return msg, success
     return filename, True
+
 
 def verify_gpu_availability(global_existing_bookings, new_booking, gpu_specs):
     """
@@ -584,7 +585,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             env_file = project.env_file
 
         for env_file in minio_env_files:
-            if env_file.startswith(maia_groups[maia_group]+"_env"):
+            if env_file.startswith(maia_groups[maia_group] + "_env"):
                 env_files.append(env_file)
         if len(env_files) == 0:
             env_files.append("N/A")
@@ -611,7 +612,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
     for pending_project in pending_projects:
         env_files = []
         for env_file in minio_env_files:
-            if env_file.startswith(pending_project+"_env"):
+            if env_file.startswith(pending_project + "_env"):
                 env_files.append(env_file)
         if len(env_files) == 0:
             env_files.append("N/A")
