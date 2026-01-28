@@ -186,7 +186,7 @@ def define_maia_project_versions():
         maia_filebrowser_chart_version = os.environ.get("MAIA_FILEBROWSER_CHART_VERSION")
     else:
         maia_filebrowser_chart_version = "master"  # "1.0.0"
-        
+
     if os.environ.get("MAIA_FILEBROWSER_CHART_TYPE") is not None:
         maia_filebrowser_chart_type = os.environ.get("MAIA_FILEBROWSER_CHART_TYPE")
     else:
@@ -196,7 +196,7 @@ def define_maia_project_versions():
         maia_project_chart_version = os.environ.get("MAIA_PROJECT_CHART_VERSION")
     else:
         maia_project_chart_version = "1.7.1"
-     
+
     if os.environ.get("MAIA_NAMESPACE_CHART_TYPE") is not None:
         maia_namespace_chart_type = os.environ.get("MAIA_NAMESPACE_CHART_TYPE")
     else:
@@ -281,7 +281,7 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_WORKSPACE_BASE_IMAGE_VERSION") is not None:
         maia_workspace_base_image_version = os.environ.get("MAIA_WORKSPACE_BASE_IMAGE_VERSION")
     else:
-        maia_workspace_base_image_version = "1.8.0"
+        maia_workspace_base_image_version = "1.8.1"
 
     if os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_IMAGE_VERSION") is not None:
         maia_workspace_base_notebook_image_version = os.environ.get("MAIA_WORKSPACE_BASE_NOTEBOOK_IMAGE_VERSION")
