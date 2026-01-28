@@ -51,11 +51,20 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+- name: Normalize apps_to_sync
+  ansible.builtin.set_fact:
+    apps_to_sync: >-
+      {{
+        apps_to_sync
+        | from_json
+        if apps_to_sync is string
+        else apps_to_sync
+      }}
 
 - name: DEBUG apps_to_sync after env.json
   debug:
     var: apps_to_sync
-    
+
 - name: "Run MAIA_build_images"
   ansible.builtin.command: >
     MAIA_build_images
