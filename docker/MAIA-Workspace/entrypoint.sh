@@ -32,11 +32,6 @@ else
   echo "JUPYTERHUB_POD_NAME=${JUPYTERHUB_POD_NAME}" >> /home/maia-user/.env
 fi
 
-# Update user credentials from $HOME/.env if present
-if [ -f /etc/update_user_credentials.sh ]; then
-  bash /etc/update_user_credentials.sh
-fi
-
 # Set password from PASSWD env var if present (fallback if not set by credentials update script)
 if [ -n "$PASSWD" ]; then
   echo "$(whoami):$PASSWD" | sudo chpasswd
@@ -61,5 +56,10 @@ fi
 #if [ ! -f "$HOME/.tmux.conf" ]; then
   cp /etc/.tmux.conf "$HOME/"
 #fi
+
+# Update user credentials from $HOME/.env if present
+if [ -f /etc/update_user_credentials.sh ]; then
+  bash /etc/update_user_credentials.sh
+fi
 # Only for debugging and development
 # exec "$@"

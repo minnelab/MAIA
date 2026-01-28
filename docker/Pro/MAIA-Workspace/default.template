@@ -6,8 +6,8 @@ server {
     listen [::]:80 ;
     ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
-    auth_basic "Selkies";
-    auth_basic_user_file /tmp/runtime-ubuntu/.htpasswd;
+    #auth_basic "Selkies";
+    #auth_basic_user_file /tmp/runtime-ubuntu/.htpasswd;
 
     location / {
         proxy_set_header        Upgrade $http_upgrade;

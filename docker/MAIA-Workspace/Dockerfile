@@ -46,6 +46,9 @@ COPY .bash_profile /etc/.bash_profile
 COPY .zshrc /etc/.zshrc
 COPY .tmux.conf /etc/.tmux.conf
 
+COPY Tools/MTOP/mtop /usr/local/bin/mtop
+RUN chmod 755 /usr/local/bin/mtop
+RUN chmod +x /usr/local/bin/mtop
 
 ENTRYPOINT ["bash", "/etc/entrypoint.sh"]
 
