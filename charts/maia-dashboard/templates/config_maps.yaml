@@ -39,5 +39,9 @@ data:
     {{ $cluster.cluster_name }}.yaml: |-
         {{ $cluster | toYaml | nindent 8 }}
     {{- end }}
-    
+
+    {{- range $index, $project := .Values.maia_projects }}
+    {{ $project.name }}.yaml: |-
+        {{ $project | toYaml | nindent 8 }}
+    {{- end }}
     
