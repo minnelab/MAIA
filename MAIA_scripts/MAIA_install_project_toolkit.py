@@ -160,12 +160,15 @@ def deploy_maia_toolkit_api(
 ):
     # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
-    if f"{namespace_id}-cluster-config" in cluster_config_dict:
-        for key, value in cluster_config_dict[f"{namespace_id}-cluster-config"].items():
-            cluster_config_dict[key] = value
-            if key == "env":
-                for env_key, env_value in value.items():
-                    os.environ[env_key + "_" + namespace_id] = env_value
+    if "CLUSTER_CONFIG_PATH" in os.environ:
+        cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
+        if Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").exists():
+            namespace_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").read_text())
+            for key, value in namespace_config_dict.items():
+                cluster_config_dict[key] = value
+                if key == "env":
+                    for env_key, env_value in value.items():
+                        os.environ[env_key + "_" + namespace_id] = env_value
     project_form_dict["extra_configs"] = {}
     if "enable_cifs_" + namespace_id in os.environ:
         project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_" + namespace_id]
