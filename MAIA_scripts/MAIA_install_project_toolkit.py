@@ -229,7 +229,8 @@ def deploy_maia_toolkit_api(
                 }
             )
 
-    copy_certificate_authority_secret(namespace)
+    if cluster_config_dict.get("selfsigned", False):
+        copy_certificate_authority_secret(namespace)
 
     helm_commands.append(create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal))
 

@@ -270,17 +270,18 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "allow_ssh_password_authentication"
         ]
 
-    jh_template["hub"]["extraVolumes"] = [
-        {"name": "kubernetes-ca", "secret": {"secretName": "kubernetes-ca"}},
-    ]
-    jh_template["hub"]["extraVolumeMounts"] = [
-        {
-            "name": "kubernetes-ca",
-            "mountPath": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
-            "subPath": "tls.crt",
-        },
-    ]
-    jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}
+    if cluster_config.get("selfsigned", False):
+        jh_template["hub"]["extraVolumes"] = [
+            {"name": "kubernetes-ca", "secret": {"secretName": "kubernetes-ca"}},
+        ]
+        jh_template["hub"]["extraVolumeMounts"] = [
+            {
+                "name": "kubernetes-ca",
+                "mountPath": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
+                "subPath": "tls.crt",
+            },
+        ]
+        jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}
 
     if not minimal:
         jh_template["singleuser"]["extraEnv"]["INSTALL_QUPATH"] = "1"
