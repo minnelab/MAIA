@@ -259,8 +259,12 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     }
     if cluster_config.get("selfsigned", False):
         jh_template["hub"]["config"]["GenericOAuthenticator"]["tls_verify"] = False
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["tls_ca_file"] = "/usr/local/share/ca-certificates/kubernetes-ca.crt"
-        jh_template["hub"]["config"]["GenericOAuthenticator"]["http_request_kwargs"] = {"ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"}
+        jh_template["hub"]["config"]["GenericOAuthenticator"][
+            "tls_ca_file"
+        ] = "/usr/local/share/ca-certificates/kubernetes-ca.crt"
+        jh_template["hub"]["config"]["GenericOAuthenticator"]["http_request_kwargs"] = {
+            "ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"
+        }
 
     if "password" in cluster_config:
         jh_template["singleuser"]["extraEnv"]["PASSWD"] = cluster_config["password"]
