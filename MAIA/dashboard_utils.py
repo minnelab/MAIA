@@ -747,7 +747,7 @@ def update_user_table(form, user_model, maia_user_model, project_model):
     - Project details are updated or created in the `project_model` based on the namespace.
     """
 
-    project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "minimal_environment"]
+    project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
 
     namespace_list = []
 
@@ -875,7 +875,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                         "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
                         "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
                     },
-                    "environment": project.project_tier,
+                    "project_tier": project.project_tier,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu"] = "1"
@@ -923,7 +923,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                         "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
                         "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
                     },
-                    "environment": project.project_tier,
+                    "project_tier": project.project_tier,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"

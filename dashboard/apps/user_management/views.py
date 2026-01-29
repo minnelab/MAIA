@@ -57,7 +57,7 @@ from loguru import logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-
+user_group = settings.USERS_GROUP
 
 def group_id_validator(value):
 
@@ -268,7 +268,7 @@ class UserManagementAPICreateGroupView(APIView):
         date = validated_data["date"]
         memory_limit = validated_data["memory_limit"]
         cpu_limit = validated_data["cpu_limit"]
-        env_file = validated_data["env_file"]
+        env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
         cluster = validated_data["cluster"]
         project_tier = validated_data["project_tier"]
         user_id = validated_data.get("user_id", None)
@@ -310,7 +310,14 @@ class UserManagementAPICreateGroupView(APIView):
             filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
             if not success:
                 return Response({"error": filename}, status=400)
-        env_file = filename
+            env_file = filename
+        for user in email_list:
+            if not MAIAUser.objects.filter(email=user).exists():
+                create_user_service(user, user, "", "", f"{group_id},{user_group}")
+        if not MAIAUser.objects.filter(email=supervisor).exists():
+            create_user_service(supervisor, supervisor, "", "", f"{group_id},{user_group}")
+        if not MAIAUser.objects.filter(email=user_id).exists():
+            create_user_service(user_id, user_id, "", "", f"{group_id},{user_group}")
         result = create_group_service(
             group_id,
             gpu,
@@ -343,110 +350,126 @@ class UserManagementAPIDeleteGroupView(APIView):
         return Response({"message": result["message"]}, status=result["status"])
 
 
-@method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
+class ProjectChartValuesSerializer(serializers.Serializer):
+    group_id = serializers.CharField(max_length=63)
+    users = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
+    memory_limit = serializers.CharField(max_length=100)
+    cpu_limit = serializers.CharField(max_length=100)
+    project_tier = serializers.CharField(max_length=100)
+    gpu = serializers.CharField(max_length=100)
+    env_file = serializers.FileField(required=False, allow_empty_file=True)
+    cluster = serializers.CharField(max_length=100)
+    date = serializers.DateField()
+    supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
+    username = serializers.EmailField(max_length=254)
+    description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
+    
+    
+    
+
 class ProjectChartValuesAPIView(APIView):
-    permission_classes = [AllowAny]  # 🚀 Allow requests without authentication or CSRF
-    throttle_classes = [AnonRateThrottle]
+    permission_classes = [IsAdminUser]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request, *args, **kwargs):
-        try:
-            project_form_dict = request.data.get("project_form_dict")
-            cluster_id = request.data.get("cluster_id")
-            id_token = request.data.get("id_token")
-            username = request.data.get("username")
+        serializer = ProjectChartValuesSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
 
-            if not project_form_dict:
-                return Response({"error": "Missing Project Form"}, status=400)
-            if not cluster_id:
-                return Response({"error": "Missing Cluster-ID"}, status=400)
-            if not id_token:
-                return Response({"error": "Missing ID Token"}, status=400)
-            if not username:
-                return Response({"error": "Missing Username"}, status=400)
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return Response({"error": "Missing Authorization header"}, status=401)
 
-            secret_token = request.data.get("token")
-            if not secret_token or secret_token != settings.SECRET_KEY:
-                return Response({"error": "Invalid or missing secret token"}, status=403)
+        # Expecting "Bearer <token>"
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != 'bearer':
+            return Response({"error": "Invalid Authorization header format"}, status=401)
 
-            argocd_cluster_id = settings.ARGOCD_CLUSTER
+        id_token = parts[1]
 
-            cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
-            # maia_config_file = os.environ["MAIA_CONFIG_PATH"]
-
-            kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=settings)
-            local_kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster_id, settings=settings)
-            config.load_kube_config_from_dict(kubeconfig_dict)
-
-            with open(Path("/tmp").joinpath("kubeconfig-project"), "w") as f:
-                yaml.dump(kubeconfig_dict, f)
-            with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
-                yaml.dump(local_kubeconfig_dict, f)
-                os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-project"))
-                os.environ["KUBECONFIG_LOCAL"] = str(Path("/tmp").joinpath("kubeconfig-project-local"))
-
-                cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(cluster_id + ".yaml").read_text())
-                # maia_config_dict = yaml.safe_load(Path(maia_config_file).read_text())
-
-                namespace = project_form_dict["group_ID"].lower().replace("_", "-")
-
-                if project_form_dict["environment"] != "Base":
-                    registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-                    if (
-                        not Path(cluster_config_path).joinpath(f"MAIA-Cloud_MAIA-KTH-{namespace}.json").exists()
-                        and not Path(cluster_config_path).joinpath("MAIA-Cloud-GLOBAL.json").exists()
-                    ):
-                        html_template = loader.get_template("home/page-500.html")
-                        return HttpResponse(
-                            html_template.render(
-                                {"message": f"The required JSON key does not exist for the project {namespace}"}, request
-                            )
-                        )
-
-                    if Path(cluster_config_path).joinpath("MAIA-Cloud-GLOBAL.json").exists():
-                        credentials_file = Path(cluster_config_path).joinpath("MAIA-Cloud-GLOBAL.json")
-                    if Path(cluster_config_path).joinpath(f"MAIA-Cloud_MAIA-KTH-{namespace}.json").exists():
-                        credentials_file = Path(cluster_config_path).joinpath(f"MAIA-Cloud_MAIA-KTH-{namespace}.json")
-                    try:
-                        with open(credentials_file, "r") as f:
-                            docker_credentials = json.load(f)
-                            r_username = docker_credentials.get("username")
-                            password = docker_credentials.get("password")
-                    except Exception:
-                        with open(credentials_file, "r") as f:
-                            docker_credentials = f.read()
-                            r_username = "_json_key"
-                            password = docker_credentials
-
-                    config.load_kube_config_from_dict(local_kubeconfig_dict)
-
-                    create_docker_registry_secret_from_context(
-                        docker_credentials={
-                            "registry": "https://" + registry_url.split("/")[0],
-                            "username": r_username,
-                            "password": password,
-                        },
-                        namespace=namespace,
-                        secret_name=registry_url.replace(".", "-").replace("/", "-"),
-                    )
-                    os.environ["JSON_KEY_PATH"] = str(credentials_file)
-
-                config.load_kube_config_from_dict(kubeconfig_dict)
-                os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-project"))
-                disable_argocd = True
-                response = deploy_maia_toolkit_api(
-                    project_form_dict=project_form_dict,
-                    # maia_config_dict=maia_config_dict,
-                    cluster_config_dict=cluster_config_dict,
-                    config_folder="/config",  # config_path,
-                    redeploy_enabled=True,
-                    minimal=(project_form_dict["environment"] == "Base"),
-                    no_argocd=disable_argocd,
-                    return_values_only=True,
-                )
-                return Response({"project_values": response}, status=200)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-
+        validated_data = serializer.validated_data
+        
+        group_id = validated_data["group_id"]
+        username = validated_data["username"]
+        users = validated_data["users"]
+        memory_limit = validated_data["memory_limit"]
+        cpu_limit = validated_data["cpu_limit"]
+        project_tier = validated_data["project_tier"]
+        gpu = validated_data["gpu"]
+        env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
+        cluster = validated_data["cluster"]
+        date = validated_data["date"]
+        supervisor = validated_data["supervisor"]
+        description = validated_data["description"]
+        if request.FILES:
+            env_file = request.FILES["env_file"]
+            if "MINIO_SECURE" in os.environ:
+                if os.environ["MINIO_SECURE"].lower() == "false":
+                    secure = False
+                elif os.environ["MINIO_SECURE"].lower() == "true":
+                    secure = True
+                else:
+                    secure = os.environ["MINIO_SECURE"]
+            else:
+                secure = True
+            if "MINIO_PUBLIC_SECURE" in os.environ:
+                if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
+                    public_secure = False
+                elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
+                    public_secure = True
+                else:
+                    public_secure = os.environ["MINIO_PUBLIC_SECURE"]
+            else:
+                public_secure = secure
+            settings_dict = {
+                "MINIO_URL": os.environ["MINIO_URL"],
+                "MINIO_PUBLIC_URL": (
+                    os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
+                ),
+                "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
+                "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
+                "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
+                "MINIO_SECURE": secure,
+                "BUCKET_NAME": os.environ["BUCKET_NAME"],
+            }
+            settings = SimpleNamespace(**settings_dict)
+            filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
+            if not success:
+                return Response({"error": filename}, status=400)
+            env_file = filename
+        for user in users:
+            if not MAIAUser.objects.filter(email=user).exists():
+                create_user_service(user, user, "", "", f"{group_id},{user_group}")
+        if not MAIAUser.objects.filter(email=supervisor).exists():
+            create_user_service(supervisor, supervisor, "", "", f"{group_id},{user_group}")
+        create_group_service(
+            group_id,
+            gpu,
+            date,
+            memory_limit,
+            cpu_limit,
+            env_file,
+            cluster,
+            project_tier,
+            supervisor,
+            users,
+            description,
+            supervisor,
+        )
+        project_form_dict = {
+            "group_ID": group_id,
+            "group_subdomain": group_id.lower().replace("_", "-"),
+            "users": users,
+            "resources_limits": {
+                "memory": [str(int(int(memory_limit[: -len(" Gi")]) / 2)) + " Gi", memory_limit],
+                "cpu": [str(int(int(cpu_limit) / 2)), cpu_limit],
+            },
+            "project_tier": project_tier,
+            "gpu": gpu,
+            "minio_env_name": env_file,
+        }
+        values = deploy_project(group_id, id_token, username, cluster, project_form_dict, disable_argocd=True, return_values_only=True)
+        return Response({"values": values["message"]}, status=200)
 
 # Create your views here.
 @login_required(login_url="/maia/login/")
@@ -766,33 +789,20 @@ def register_group_view(request, group_id):
         return HttpResponse(html_template.render({"message": result["message"]}, request))
 
 
-@login_required(login_url="/maia/login/")
-def deploy_view(request, group_id):
-    if not request.user.is_superuser:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({}, request))
-
-    id_token = request.session.get("oidc_id_token")
-
-    if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(
-            html_template.render({"message": "MAIA is running in Compose mode, Project Deployment is not supported."}, request)
-        )
+def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, disable_argocd=False, return_values_only=False):
     argocd_cluster_id = settings.ARGOCD_CLUSTER
-    argocd_url = settings.ARGOCD_SERVER
-
+    
     cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
     # maia_config_file = os.environ["MAIA_CONFIG_PATH"]
     # config_path=os.environ["CONFIG_PATH"]
 
-    project_form_dict, cluster_id = get_project(group_id, settings=settings, maia_project_model=MAIAProject)
+    
 
     if cluster_id is None:
-        return redirect("/maia/user-management/")
+        return {"status": 400, "message": "Cluster ID not found"}
 
-    kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
-    local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
+    kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=settings)
+    local_kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster_id, settings=settings)
     config.load_kube_config_from_dict(kubeconfig_dict)
 
     with open(Path("/tmp").joinpath("kubeconfig-project"), "w") as f:
@@ -807,9 +817,7 @@ def deploy_view(request, group_id):
 
         namespace = project_form_dict["group_ID"].lower().replace("_", "-")
 
-        create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=settings)
-
-        if project_form_dict["environment"] != "Base":
+        if project_form_dict["project_tier"] != "Base":
 
             registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
 
@@ -875,25 +883,53 @@ def deploy_view(request, group_id):
 
         config.load_kube_config_from_dict(kubeconfig_dict)
         os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-project"))
-        disable_argocd = False
-        if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
-            disable_argocd = True
         msg = deploy_maia_toolkit_api(
             project_form_dict=project_form_dict,
             # maia_config_dict=maia_config_dict,
             cluster_config_dict=cluster_config_dict,
             config_folder="/config",  # config_path,
             redeploy_enabled=True,
-            minimal=(project_form_dict["environment"] == "Base"),
+            minimal=(project_form_dict["project_tier"] == "Base"),
             no_argocd=disable_argocd,
+            return_values_only=return_values_only,
+        )
+        return {"status": 200, "message": msg}
+
+    return {"status": 400, "message": "Project deployment failed"}
+
+@login_required(login_url="/maia/login/")
+def deploy_view(request, group_id):
+    if not request.user.is_superuser:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({}, request))
+
+    id_token = request.session.get("oidc_id_token")
+
+    if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(
+            html_template.render({"message": "MAIA is running in Compose mode, Project Deployment is not supported."}, request)
         )
 
-        if msg is not None and msg != "":
-            html_template = loader.get_template("home/page-500.html")
-            return HttpResponse(html_template.render({"message": msg}, request))
 
-        ## Send User and Project Registration email, ONLY IF THE PROJECT IS NEWLY CREATED
+    project_form_dict, cluster_id = get_project(group_id, settings=settings, maia_project_model=MAIAProject)
+    namespace = project_form_dict["group_ID"].lower().replace("_", "-")
+    create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=settings)
+    
+    disable_argocd = False
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
+        disable_argocd = True
 
-        if disable_argocd:
-            return redirect(f"/maia/namespaces/{namespace}")
-        return redirect(f"{argocd_url}/applications?proj={namespace}")
+
+    msg = deploy_project(group_id, id_token, request.user.username, cluster_id, project_form_dict, disable_argocd)
+    
+    if msg["status"] != 200:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({"message": msg["message"]}, request))
+
+    ## Send User and Project Registration email, ONLY IF THE PROJECT IS NEWLY CREATED
+
+    if disable_argocd:
+        return redirect(f"/maia/namespaces/{namespace}")
+    argocd_url = settings.ARGOCD_SERVER
+    return redirect(f"{argocd_url}/applications?proj={namespace}")

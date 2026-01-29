@@ -403,11 +403,11 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
             gpu_dict[node_name] = []
 
             if node_status_dict[node_name][0] != "True":
-                gpu_dict[node_name].append("NA")
-                gpu_dict[node_name].append("NA")
+                gpu_dict[node_name].append(0)
+                gpu_dict[node_name].append(0)
             elif node_status_dict[node_name][1]:
-                gpu_dict[node_name].append("NA")
-                gpu_dict[node_name].append("NA")
+                gpu_dict[node_name].append(0)
+                gpu_dict[node_name].append(0)
             else:
                 gpu_dict[node_name].append(n_gpu_allocatable - n_gpu_requested)
                 gpu_dict[node_name].append(n_gpu_allocatable)

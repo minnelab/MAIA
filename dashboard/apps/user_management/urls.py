@@ -20,7 +20,7 @@ from apps.user_management.views import (
 urlpatterns = [
     # The home page
     path("", views.index, name="user-management"),
-    path("project-chart-values/", ProjectChartValuesAPIView.as_view(), name="project_chart_values"),
+    path("project-chart/", ProjectChartValuesAPIView.as_view(), name="project_chart_values"),
     path("deploy/<str:group_id>", views.deploy_view),
     path("register-user/<str:email>", views.register_user_view),
     path("list-users/", UserManagementAPIListUsersView.as_view(), name="list_users"),
