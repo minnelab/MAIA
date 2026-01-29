@@ -799,7 +799,7 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                 date=form.cleaned_data["date_" + namespace],
                 cluster=form.cleaned_data["cluster_" + namespace],
                 gpu=form.cleaned_data["gpu_" + namespace],
-                minimal_env=form.cleaned_data["minimal_environment_" + namespace],
+                project_tier=form.cleaned_data["project_tier_" + namespace],
             )
         else:
             project_model.objects.create(
@@ -809,7 +809,7 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                 date=form.cleaned_data["date_" + namespace],
                 cluster=form.cleaned_data["cluster_" + namespace],
                 gpu=form.cleaned_data["gpu_" + namespace],
-                minimal_env=form.cleaned_data["minimal_environment_" + namespace],
+                project_tier=form.cleaned_data["project_tier_" + namespace],
             )
 
 
