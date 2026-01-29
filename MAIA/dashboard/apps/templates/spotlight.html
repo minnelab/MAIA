@@ -1,0 +1,293 @@
+{% extends 'layouts/base-fullscreen.html' %}
+
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+
+
+
+<h1>MAIA Spotlights</h1>
+<br>
+<br>
+<br>
+<div class="page-header align-items-start border-radius-lg">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-9 text-center mx-auto">
+        <h2>MAIA Segmentation Portal </h2>
+        <p> Curious to try the models through a user-friendly web interface? Explore the newly launched MAIA Segmentation Portal, where you can quickly upload your medical images and receive predictions in seconds. Prefer to keep your data local? No problem — simply download the models and run inference on your own machine with a single command! </p>
+        <div>
+          <a href="https://monet-bundle.readthedocs.io/en/latest/MAIA_Segmentation_Portal.html" target="_blank">Docs</a><br>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<br>
+<br>
+<div class="page-header align-items-start border-radius-lg">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-9 text-center mx-auto">
+        <h2>Computer Science Workshop </h2>
+        <h3>23/24 January 2025</h3>
+        <p> One of the main MAIA goals is to educate and train the next generation of researchers in the field of medical imaging and artificial intelligence. To achieve this goal, MAIA organizes regular workshops and training sessions on topics such as deep learning, image analysis, and data science. These workshops are designed to provide participants with hands-on experience and practical skills that they can apply to their own research projects. The workshops cover a wide range of topics, starting from the very basics of Computer Science and Remote Computing, and they are suitable for researchers at all levels, from beginners to advanced users.</p>
+        <div>
+          <a href="https://minnelab.github.io/Computer-Science-Workshop/" target="_blank">Website</a><br>
+          <a href="https://github.com/minnelab/Computer-Science-Workshop" target="_blank">GitHub Link</a>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<br>
+<br>
+  <div class="page-header align-items-start border-radius-lg">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-9 text-center mx-auto">
+          <img alt="MAIA_Workspace" src="{{ ASSETS_ROOT }}/img/MAIA/MONAI-logo-color.png" width="300"/>
+          <p>MONAI is a PyTorch-based, open-source framework for deep learning in healthcare imaging. It provides domain-optimized foundational capabilities for developing healthcare imaging training workflows in a native PyTorch paradigm. MONAI is designed to support the development of deep learning models across a broad range of medical imaging tasks, such as classification, segmentation, and image generation.</p>
+          <div>
+            <a href="https://github.com/Project-MONAI/tutorials" target="_blank">MONAI Tutorials</a><br>
+            <a href="https://monai.io/" target="_blank">MONAI Website</a><br>
+            <a href="https://docs.monai.io/en/stable/" target="_blank">MONAI Documentation</a>
+          </div>
+          <!--<h3>Vista 3D</h3>
+          MONAI Model Zoo
+          MONAI Deploy
+          MONAI Label</h3>
+          <h3>MAISI</h3> -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+  <br>
+
+  <div class="page-header align-items-start border-radius-lg">
+
+    <div class="container">
+          <div class="row justify-content-center">
+    <div class="col-lg-9 text-center mx-auto">
+      <img alt="FreeSurfer" src="{{ ASSETS_ROOT }}/img/MAIA/FreeSurfer-Logo.png" width="300"/>
+  
+  <p>
+  FreeSurfer is a software package developed by the Laboratories for Computational Neuroimaging at the Athinoula A. Martinos Center for Biomedical Imaging. It provides tools for the reconstruction and analysis of brain imaging data, including cortical and subcortical segmentation, surface reconstruction, thickness measurement, and parcellation. FreeSurfer is widely used in neuroscience research for studying brain morphology, function, and connectivity, and it supports analysis workflows for both individual and group studies. 
+  </p>  
+  <div>
+    <a href="https://surfer.nmr.mgh.harvard.edu/" target="_blank">FreeSurfer Webpage</a><br>
+    <a href="https://surfer.nmr.mgh.harvard.edu/fswiki/Documentation" target="_blank">FreeSurfer Documentation</a><br>
+    <a href="https://github.com/freesurfer/freesurfer" target="_blank">FreeSurfer GitHub Repository</a>
+  </div>
+  </div></div></div></div></div>
+  <br>
+  <br>
+
+<div class="page-header align-items-start border-radius-lg">
+
+  <div class="container">
+        <div class="row justify-content-center">
+  <div class="col-lg-9 text-center mx-auto">
+    <img alt="MAIA_Workspace" src="{{ ASSETS_ROOT }}/img/MAIA/TCIA-Logo-02.png" width="300"/>
+<p>
+  TCIA Notebooks is a collection of Jupyter Notebooks that demonstrate how to access and analyze data from The Cancer Imaging Archive (TCIA). The notebooks are designed to be run on the TCIA Data Science Sandbox, a cloud-based platform that provides access to TCIA data and computational resources. The notebooks cover a variety of topics, including data retrieval, data exploration, data preprocessing, and machine learning. They are intended to help researchers and developers get started with TCIA data and develop new tools and algorithms for cancer imaging research.
+</p>  
+<div>
+  <a href="https://github.com/kirbyju/TCIA_Notebooks" target="_blank">TCIA Notebooks</a><br>
+  <a href="https://www.cancerimagingarchive.net/" target="_blank">TCIA Webpage</a>
+</div>
+</div></div></div></div></div>
+<br>
+<br>
+<h2>Metrics Reloaded</h2>
+<div class="page-header align-items-start border-radius-lg">
+
+  <div class="container">
+        <div class="row justify-content-center">
+  <div class="col-lg-9 text-center mx-auto">
+
+<p>
+  Metrics Reloaded is an initiative from DKFZ to provide a comprehensive set of evaluation metrics for medical image analysis tasks. The project aims to address the need for standardized evaluation metrics in the medical imaging community and to facilitate the comparison of different algorithms and models. Metrics Reloaded includes a wide range of metrics for tasks such as image segmentation, image registration, and image classification. The metrics are implemented in Python and are designed to be easy to use and integrate into existing workflows.
+</p>  
+<div>
+  <a href="https://metrics-reloaded.dkfz.de/" target="_blank">Metrics Reloaded Webpage</a><br>
+  <a href="https://www.nature.com/articles/s41592-023-02151-z" target="_blank">Metrics Reloaded Article</a>
+</div>
+</div></div></div></div></div>
+<br>
+<br>
+<h2>Rankings Reloaded</h2>
+<div class="page-header align-items-start border-radius-lg">
+
+  <div class="container">
+        <div class="row justify-content-center">
+  <div class="col-lg-9 text-center mx-auto">
+<p>
+Rankings Reloaded is an initiative from DKFZ to offer an open-source toolkit for robust and accurate uncertainty analysis and visualization of algorithm performance. Rankings Reloaded enables researchers to conduct fair benchmarking by revealing each algorithm’s true strengths and weaknesses.
+</p>  
+<div>
+  <a href="https://www.rankings-reloaded.de/" target="_blank">Rankings Reloaded Webpage</a><br>
+  <a href="https://www.nature.com/articles/s41598-021-82017-6" target="_blank">Rankings Reloaded Article</a>
+</div>
+</div></div></div></div></div>
+
+
+<br>
+<br>
+<div class="page-header align-items-start border-radius-lg">
+
+  <div class="container">
+        <div class="row justify-content-center">
+  <div class="col-lg-9 text-center mx-auto">
+    <img alt="MAIA_Workspace" src="{{ ASSETS_ROOT }}/img/MAIA/XNAT.png" width="300"/>
+
+<p>
+XNAT is an open-source imaging informatics platform developed by the Neuroinformatics Research Group at Washington University in St. Louis. XNAT provides a secure, web-based platform for storing, managing, and sharing medical imaging data. XNAT Notebooks is a collection of Jupyter Notebooks that demonstrate how to access and analyze data from XNAT. The notebooks cover a variety of topics, including data retrieval, data exploration, data preprocessing, and machine learning. They are intended to help researchers and developers get started with XNAT data and develop new tools and algorithms for medical imaging research.
+</p>  
+<div>
+  <a href="https://www.xnat.org/" target="_blank">XNAT Webpage</a><br>
+  <a href="https://wiki.xnat.org/documentation/" target="_blank">XNAT Documentation</a><br>
+  <a href="https://marketplace.xnat.org/" target="_blank">XNAT Marketplace</a><br>
+  <a href="https://github.com/NrgXnat/xnat-jupyter-notebooks" target="_blank">XNAT Notebooks</a>
+</div>
+</div></div></div></div></div>
+
+<!--nnUNet 3DSlicer NVFLare FreeSurfer BraTS
+https://github-pages.ucl.ac.uk/NextBrain/#/home
+SynthMorph
+VoxelMorph
+SynthSeg
+
+-->
+
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+
+  <script src="{{ ASSETS_ROOT }}/js/plugins/chartjs.min.js"></script>
+    <script>
+
+
+
+
+        var coll = document.getElementsByClassName("collapsible");
+        var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.display === "block") {
+      content.style.display = "none";
+    } else {
+      content.style.display = "block";
+    }
+  });
+
+
+
+
+}
+
+</script>
+  <script>
+
+    function copyToClipboard(e, namespace) {
+
+  navigator.clipboard.writeText("kubectl exec -it "+e.target.id+" -n "+namespace+" -- bash");
+
+
+
+}
+    function copyToClipboardPF(e, namespace, port) {
+
+  navigator.clipboard.writeText("kubectl port-forward svc/"+e.target.id+" -n "+namespace+" :"+port);
+
+
+
+}
+
+function deleteElement(e) {
+    if(!confirm('Are you sure you want to delete?'))e.preventDefault();
+
+}
+
+ function copyToClipboardPod(e, namespace, port) {
+
+  navigator.clipboard.writeText("kubectl port-forward "+e.target.id+" -n "+namespace+" :"+port);
+
+
+
+}
+  </script>
+    <style>
+    h1 {text-align: center;}
+    h2 {text-align: center;}
+p {text-align: center;}
+div {text-align: center;}
+    .center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+    .myDiv {
+  border: 5px outset red;
+  background-color: lightblue;
+  text-align: center;
+}
+    #thumbs {
+    width: 1000px;
+    margin-top:180px;
+    margin-left: auto;
+    margin-right: auto;
+
+     text-align: justify;
+    -ms-text-justify: distribute-all-lines;
+    text-justify: distribute-all-lines;
+}
+#thumbs a {
+    vertical-align: top;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+.stretch {
+    width: 100%;
+    display: inline-block;
+    font-size: 0;
+    line-height: 0
+}
+
+    .collapsible {
+  background-color: #777;
+  color: white;
+  cursor: pointer;
+  padding: 12px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 10px;
+}
+
+.content {
+  padding: 0 12px;
+  display: none;
+  overflow: hidden;
+  background-color: #f1f1f1;
+}
+</style>
+{% endblock javascripts %}
+
+
+
+
+
