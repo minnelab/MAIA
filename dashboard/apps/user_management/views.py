@@ -40,11 +40,8 @@ import urllib3
 import yaml
 from django.shortcuts import redirect
 from MAIA_scripts.MAIA_install_project_toolkit import deploy_maia_toolkit_api
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import IsAdminUser
 from .services import (
     create_user as create_user_service,
     update_user as update_user_service,
@@ -52,12 +49,13 @@ from .services import (
     create_group as create_group_service,
     delete_group as delete_group_service,
 )
-from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.throttling import UserRateThrottle
 from loguru import logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 user_group = settings.USERS_GROUP
+
 
 def group_id_validator(value):
 
@@ -363,9 +361,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
     username = serializers.EmailField(max_length=254)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
-    
-    
-    
+
 
 class ProjectChartValuesAPIView(APIView):
     permission_classes = [IsAdminUser]
@@ -376,19 +372,19 @@ class ProjectChartValuesAPIView(APIView):
         if not serializer.is_valid():
             return Response({"error": serializer.errors}, status=400)
 
-        auth_header = request.headers.get('Authorization')
+        auth_header = request.headers.get("Authorization")
         if not auth_header:
             return Response({"error": "Missing Authorization header"}, status=401)
 
         # Expecting "Bearer <token>"
         parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
+        if len(parts) != 2 or parts[0].lower() != "bearer":
             return Response({"error": "Invalid Authorization header format"}, status=401)
 
         id_token = parts[1]
 
         validated_data = serializer.validated_data
-        
+
         group_id = validated_data["group_id"]
         username = validated_data["username"]
         users = validated_data["users"]
@@ -468,8 +464,11 @@ class ProjectChartValuesAPIView(APIView):
             "gpu": gpu,
             "minio_env_name": env_file,
         }
-        values = deploy_project(group_id, id_token, username, cluster, project_form_dict, disable_argocd=True, return_values_only=True)
+        values = deploy_project(
+            group_id, id_token, username, cluster, project_form_dict, disable_argocd=True, return_values_only=True
+        )
         return Response({"values": values["message"]}, status=200)
+
 
 # Create your views here.
 @login_required(login_url="/maia/login/")
@@ -791,12 +790,10 @@ def register_group_view(request, group_id):
 
 def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, disable_argocd=False, return_values_only=False):
     argocd_cluster_id = settings.ARGOCD_CLUSTER
-    
+
     cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
     # maia_config_file = os.environ["MAIA_CONFIG_PATH"]
     # config_path=os.environ["CONFIG_PATH"]
-
-    
 
     if cluster_id is None:
         return {"status": 400, "message": "Cluster ID not found"}
@@ -827,9 +824,7 @@ def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, 
             ):
                 html_template = loader.get_template("home/page-500.html")
                 return HttpResponse(
-                    html_template.render(
-                        {"message": f"The required JSON key does not exist for the project {namespace}"}, request
-                    )
+                    html_template.render({"message": f"The required JSON key does not exist for the project {namespace}"})
                 )
 
             if Path(cluster_config_path).joinpath("MAIA-Cloud-GLOBAL.json").exists():
@@ -897,6 +892,7 @@ def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, 
 
     return {"status": 400, "message": "Project deployment failed"}
 
+
 @login_required(login_url="/maia/login/")
 def deploy_view(request, group_id):
     if not request.user.is_superuser:
@@ -911,18 +907,16 @@ def deploy_view(request, group_id):
             html_template.render({"message": "MAIA is running in Compose mode, Project Deployment is not supported."}, request)
         )
 
-
     project_form_dict, cluster_id = get_project(group_id, settings=settings, maia_project_model=MAIAProject)
     namespace = project_form_dict["group_ID"].lower().replace("_", "-")
     create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=settings)
-    
+
     disable_argocd = False
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
         disable_argocd = True
 
-
     msg = deploy_project(group_id, id_token, request.user.username, cluster_id, project_form_dict, disable_argocd)
-    
+
     if msg["status"] != 200:
         html_template = loader.get_template("home/page-500.html")
         return HttpResponse(html_template.render({"message": msg["message"]}, request))
