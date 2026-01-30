@@ -8,7 +8,7 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   {{- end }}
   ttlSecondsAfterFinished: 120
-  backoffLimit: 0
+  backoffLimit: {{ .Values.backoffLimit | default 0 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,7 +18,7 @@ spec:
       labels:
         {{- include "maiakubegate-kaniko.selectorLabels" . | nindent 8 }}
     spec:
-      restartPolicy: Never
+      restartPolicy: {{ .Values.restartPolicy | default "Never" }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
