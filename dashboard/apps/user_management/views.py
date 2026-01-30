@@ -366,6 +366,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
     auto_deploy = serializers.BooleanField(required=False, default=False)
     auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    project_configuration = serializers.DictField(required=False, allow_empty=True)
 
 
 class ProjectChartValuesAPIView(APIView):
@@ -404,6 +405,7 @@ class ProjectChartValuesAPIView(APIView):
         description = validated_data["description"]
         auto_deploy = validated_data["auto_deploy"]
         auto_deploy_apps = validated_data["auto_deploy_apps"] if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None else []
+        project_configuration = validated_data["project_configuration"] if "project_configuration" in validated_data and validated_data["project_configuration"] is not None else None
         if request.FILES:
             env_file = request.FILES["env_file"]
             if "MINIO_SECURE" in os.environ:
@@ -488,6 +490,7 @@ class ProjectChartValuesAPIView(APIView):
             project_form_dict,
             disable_argocd=not auto_deploy,
             return_values_only=not auto_deploy,
+            custom_config_dict=project_configuration,
         )
         if auto_deploy:
             apps_to_sync = auto_deploy_apps
@@ -825,7 +828,7 @@ def register_group_view(request, group_id):
         return HttpResponse(html_template.render({"message": result["message"]}, request))
 
 
-def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, disable_argocd=False, return_values_only=False):
+def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, disable_argocd=False, return_values_only=False, custom_config_dict=None):
     argocd_cluster_id = env_settings.ARGOCD_CLUSTER
 
     cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
@@ -924,6 +927,7 @@ def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, 
             minimal=(project_form_dict["project_tier"] == "Base"),
             no_argocd=disable_argocd,
             return_values_only=return_values_only,
+            custom_config_dict=custom_config_dict,
         )
         return {"status": 200, "message": msg}
 
