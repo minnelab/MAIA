@@ -3,7 +3,10 @@ from rest_framework import serializers
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template import loader
-from django.conf import settings
+from django.conf import settings as env_settings
+import requests
+from MAIA.maia_admin import get_maia_toolkit_apps
+from MAIA.maia_core import sync_argocd_app
 from kubernetes import config
 from django.contrib.auth.models import User
 from pathlib import Path
@@ -23,7 +26,7 @@ from MAIA.dashboard_utils import (
     get_pending_projects,
     upload_env_file_to_minio,
 )
-from MAIA.kubernetes_utils import create_namespace
+from MAIA.kubernetes_utils import create_namespace, create_namespace_from_context
 from rest_framework.response import Response
 from types import SimpleNamespace
 from MAIA.keycloak_utils import (
@@ -54,7 +57,7 @@ from loguru import logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-user_group = settings.USERS_GROUP
+user_group = env_settings.USERS_GROUP
 
 
 def group_id_validator(value):
@@ -135,7 +138,7 @@ class UserManagementAPIListPendingGroupsView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        pending_groups = get_pending_projects(settings=settings, maia_project_model=MAIAProject)
+        pending_groups = get_pending_projects(settings=env_settings, maia_project_model=MAIAProject)
         return Response({"pending_groups": pending_groups}, status=200)
 
 
@@ -158,9 +161,9 @@ class UserManagementAPIListGroupsView(APIView):
             "description",
             "supervisor",
         )
-        keycloak_groups = {v: k for k, v in get_groups_in_keycloak(settings=settings).items()}
+        keycloak_groups = {v: k for k, v in get_groups_in_keycloak(settings=env_settings).items()}
         # Fetch all Keycloak users once and build a mapping from group_id to users
-        keycloak_users = get_maia_users_from_keycloak(settings=settings)
+        keycloak_users = get_maia_users_from_keycloak(settings=env_settings)
         group_users = {}
         for user in keycloak_users:
             for group_id in user.get("groups", []):
@@ -182,7 +185,7 @@ class UserManagementAPIListUsersView(APIView):
     def get(self, request, *args, **kwargs):
         users_queryset = MAIAUser.objects.all().values("id", "email", "username", "namespace")
         users = list(users_queryset)
-        keycloak_users = get_maia_users_from_keycloak(settings=settings)
+        keycloak_users = get_maia_users_from_keycloak(settings=env_settings)
         keycloak_users_by_email = {ku["email"]: ku for ku in keycloak_users}
         for user in users:
             keycloak_info = keycloak_users_by_email.get(user["email"])
@@ -211,7 +214,7 @@ class UserManagementAPICreateUserView(APIView):
         last_name = validated_data["last_name"]
         namespace = validated_data["namespace"]
         if not namespace:
-            namespace = settings.USERS_GROUP
+            namespace = env_settings.USERS_GROUP
         result = create_user_service(email, username, first_name, last_name, namespace)
         return Response({"message": result["message"]}, status=result["status"])
 
@@ -464,9 +467,33 @@ class ProjectChartValuesAPIView(APIView):
             "gpu": gpu,
             "minio_env_name": env_file,
         }
+        kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster, settings=env_settings)
+        config.load_kube_config_from_dict(kubeconfig_dict)
+        with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
+            yaml.dump(kubeconfig_dict, f)
+            os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
+            create_namespace_from_context(namespace_id=group_id.lower().replace("_", "-"))
         values = deploy_project(
-            group_id, id_token, username, cluster, project_form_dict, disable_argocd=True, return_values_only=True
+            group_id, id_token, username, cluster, project_form_dict, disable_argocd=False, return_values_only=False
         )
+        ARGOCD_SERVER = "https://argocd.maia.io"
+        PASSWORD = "d5ce59eb162333291cec5ddd"
+
+        apps_to_sync = ["namespace", "jupyterhub"]  # , "filebrowser"]
+
+        url = f"{ARGOCD_SERVER}/api/v1/session"
+        response = requests.post(url, json={"username": "admin", "password": PASSWORD}, verify=False)
+        response.raise_for_status()
+
+        TOKEN = response.json()["token"]
+
+        apps = get_maia_toolkit_apps(group_id, PASSWORD, ARGOCD_SERVER)
+        logger.info(f"Apps: {apps}")
+        for app in apps_to_sync:
+            for a in apps:
+                if f"{group_id}-{app}" == a["name"]:
+                    sync_argocd_app(group_id, a["name"], a["version"], ARGOCD_SERVER, TOKEN)
+
         return Response({"values": values["message"]}, status=200)
 
 
@@ -478,9 +505,9 @@ def index(request):
             html_template = loader.get_template("home/page-500.html")
             return HttpResponse(html_template.render({}, request))
 
-        argocd_url = settings.ARGOCD_SERVER
+        argocd_url = env_settings.ARGOCD_SERVER
 
-        keycloak_users = get_user_ids(settings=settings)
+        keycloak_users = get_user_ids(settings=env_settings)
 
         for keycloak_user in keycloak_users:
             if MAIAUser.objects.filter(email=keycloak_user).exists():
@@ -489,7 +516,7 @@ def index(request):
                 logger.info(f"Creating user: {keycloak_user}")
                 try:
                     admin = False
-                    if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
+                    if env_settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
                     MAIAUser.objects.create(
                         email=keycloak_user,
@@ -501,7 +528,7 @@ def index(request):
                 except Exception:
                     User.objects.filter(email=keycloak_user).delete()
                     admin = False
-                    if settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
+                    if env_settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
                     logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
                     MAIAUser.objects.create(
@@ -514,7 +541,7 @@ def index(request):
                     logger.info(f"User created: {keycloak_user}")
         to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
             get_project_argo_status_and_user_table(
-                settings=settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
+                settings=env_settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
             )
         )
         for maia_group in maia_groups_dict:
@@ -648,12 +675,12 @@ def remove_user_from_group_view(request, email):
 
     desired_groups = get_list_of_groups_requesting_a_user(email=email, user_model=MAIAUser)
 
-    keycloak_groups = get_groups_for_user(email=email, settings=settings)
+    keycloak_groups = get_groups_for_user(email=email, settings=env_settings)
 
     for keycloak_group in keycloak_groups:
         if keycloak_group not in desired_groups:
-            remove_user_from_group_in_keycloak(email=email, group_id=keycloak_group, settings=settings)
-            if keycloak_group == settings.ADMIN_GROUP:
+            remove_user_from_group_in_keycloak(email=email, group_id=keycloak_group, settings=env_settings)
+            if keycloak_group == env_settings.ADMIN_GROUP:
                 user = MAIAUser.objects.filter(email=email).first()
                 user.is_superuser = False
                 user.is_staff = False
@@ -692,7 +719,7 @@ def register_user_view(request, email):
     first_name = user.first_name
     last_name = user.last_name
     if not namespace:
-        namespace = settings.USERS_GROUP
+        namespace = env_settings.USERS_GROUP
     result = create_user_service(email, username, first_name, last_name, namespace)
     if result["status"] == 200:
         return redirect("/maia/user-management/")
@@ -725,8 +752,8 @@ def register_user_in_group_view(request, email):
     groups = get_list_of_groups_requesting_a_user(email=email, user_model=MAIAUser)
 
     for group_id in groups:
-        register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=settings)
-        if group_id == settings.ADMIN_GROUP:
+        register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=env_settings)
+        if group_id == env_settings.ADMIN_GROUP:
             user = MAIAUser.objects.filter(email=email).first()
             user.is_superuser = True
             user.is_staff = True
@@ -789,7 +816,7 @@ def register_group_view(request, group_id):
 
 
 def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, disable_argocd=False, return_values_only=False):
-    argocd_cluster_id = settings.ARGOCD_CLUSTER
+    argocd_cluster_id = env_settings.ARGOCD_CLUSTER
 
     cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
     # maia_config_file = os.environ["MAIA_CONFIG_PATH"]
@@ -798,8 +825,8 @@ def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, 
     if cluster_id is None:
         return {"status": 400, "message": "Cluster ID not found"}
 
-    kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=settings)
-    local_kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster_id, settings=settings)
+    kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=env_settings)
+    local_kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster_id, settings=env_settings)
     config.load_kube_config_from_dict(kubeconfig_dict)
 
     with open(Path("/tmp").joinpath("kubeconfig-project"), "w") as f:
@@ -907,9 +934,9 @@ def deploy_view(request, group_id):
             html_template.render({"message": "MAIA is running in Compose mode, Project Deployment is not supported."}, request)
         )
 
-    project_form_dict, cluster_id = get_project(group_id, settings=settings, maia_project_model=MAIAProject)
+    project_form_dict, cluster_id = get_project(group_id, settings=env_settings, maia_project_model=MAIAProject)
     namespace = project_form_dict["group_ID"].lower().replace("_", "-")
-    create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=settings)
+    create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=env_settings)
 
     disable_argocd = False
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
@@ -925,5 +952,5 @@ def deploy_view(request, group_id):
 
     if disable_argocd:
         return redirect(f"/maia/namespaces/{namespace}")
-    argocd_url = settings.ARGOCD_SERVER
+    argocd_url = env_settings.ARGOCD_SERVER
     return redirect(f"{argocd_url}/applications?proj={namespace}")
