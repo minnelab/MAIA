@@ -736,9 +736,12 @@ def get_maia_toolkit_apps(group_id, password, argo_cd_host):
                         "name": name,
                         "version": item["spec"]["source"]["targetRevision"],
                         "repo": item["spec"]["source"]["repoURL"],
-                        "chart": item["spec"]["source"]["chart"],
                     }
                 )
+                if "chart" in item["spec"]["source"]:
+                    apps[-1]["chart"] = item["spec"]["source"]["chart"]
+                elif "path" in item["spec"]["source"]:
+                    apps[-1]["path"] = item["spec"]["source"]["path"]
         return apps
     else:
         logger.error(f"❌ Failed to fetch apps: {resp.status_code}")

@@ -30,7 +30,7 @@ logger = loguru.logger
 def sync_argocd_app(project_name, app_name, chart_version, argo_cd_host, password):
     headers = {"Authorization": f"Bearer {password}"}  # <- session cookie
     # 2. Trigger sync
-    url = f"{argo_cd_host}/api/v1/applications/{project_name}-{app_name}/sync"
+    url = f"{argo_cd_host}/api/v1/applications/{app_name}/sync"
     payload = {"revision": chart_version, "prune": False, "dryRun": False, "strategy": {"apply": {"force": False}}}
     response = requests.post(url, headers=headers, json=payload, verify=False)
 
