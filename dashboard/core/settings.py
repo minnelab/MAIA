@@ -57,6 +57,7 @@ OPENWEBAI_API_KEY = env("OPENWEBAI_API_KEY", default=None)
 OPENWEBAI_URL = env("OPENWEBAI_URL", default=None)
 ARGOCD_SERVER = env("ARGOCD_SERVER", default=None)
 ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
+ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
 
