@@ -194,7 +194,7 @@ def deploy_maia_toolkit_api(
 
     helm_commands = []
 
-    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"))
+    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
 
     if not minimal:
         minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"))
