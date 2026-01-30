@@ -364,6 +364,8 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
     username = serializers.EmailField(max_length=254)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
+    auto_deploy = serializers.BooleanField(required=False, default=False)
+    auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
 
 
 class ProjectChartValuesAPIView(APIView):
@@ -400,6 +402,8 @@ class ProjectChartValuesAPIView(APIView):
         date = validated_data["date"]
         supervisor = validated_data["supervisor"]
         description = validated_data["description"]
+        auto_deploy = validated_data["auto_deploy"]
+        auto_deploy_apps = validated_data["auto_deploy_apps"]
         if request.FILES:
             env_file = request.FILES["env_file"]
             if "MINIO_SECURE" in os.environ:
@@ -467,32 +471,36 @@ class ProjectChartValuesAPIView(APIView):
             "gpu": gpu,
             "minio_env_name": env_file,
         }
-        kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster, settings=env_settings)
-        config.load_kube_config_from_dict(kubeconfig_dict)
-        with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
-            yaml.dump(kubeconfig_dict, f)
-            os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
-            create_namespace_from_context(namespace_id=group_id.lower().replace("_", "-"))
+        if auto_deploy:
+            kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster, settings=env_settings)
+            config.load_kube_config_from_dict(kubeconfig_dict)
+            with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
+                yaml.dump(kubeconfig_dict, f)
+                os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
+                create_namespace_from_context(namespace_id=group_id.lower().replace("_", "-"))
         values = deploy_project(
-            group_id, id_token, username, cluster, project_form_dict, disable_argocd=False, return_values_only=False
+            group_id,
+            id_token,
+            username,
+            cluster,
+            project_form_dict,
+            disable_argocd=not auto_deploy,
+            return_values_only=not auto_deploy,
         )
-        ARGOCD_SERVER = "https://argocd.maia.io"
-        PASSWORD = "d5ce59eb162333291cec5ddd"
+        if auto_deploy:
+            apps_to_sync = auto_deploy_apps
+            url = f"{env_settings.ARGOCD_SERVER}/api/v1/session"
+            response = requests.post(url, json={"username": "admin", "password": env_settings.ARGOCD_PASSWORD}, verify=False)
+            response.raise_for_status()
 
-        apps_to_sync = ["namespace", "jupyterhub"]  # , "filebrowser"]
+            TOKEN = response.json()["token"]
 
-        url = f"{ARGOCD_SERVER}/api/v1/session"
-        response = requests.post(url, json={"username": "admin", "password": PASSWORD}, verify=False)
-        response.raise_for_status()
+            apps = get_maia_toolkit_apps(group_id, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
 
-        TOKEN = response.json()["token"]
-
-        apps = get_maia_toolkit_apps(group_id, PASSWORD, ARGOCD_SERVER)
-        logger.info(f"Apps: {apps}")
-        for app in apps_to_sync:
-            for a in apps:
-                if f"{group_id}-{app}" == a["name"]:
-                    sync_argocd_app(group_id, a["name"], a["version"], ARGOCD_SERVER, TOKEN)
+            for app in apps_to_sync:
+                for a in apps:
+                    if f"{group_id}-{app}" == a["name"]:
+                        sync_argocd_app(group_id, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
 
         return Response({"values": values["message"]}, status=200)
 
