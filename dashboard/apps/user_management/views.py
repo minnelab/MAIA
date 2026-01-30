@@ -371,7 +371,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
 class ProjectChartValuesAPIView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
-
+    
     def post(self, request, *args, **kwargs):
         serializer = ProjectChartValuesSerializer(data=request.data)
         if not serializer.is_valid():
@@ -403,7 +403,7 @@ class ProjectChartValuesAPIView(APIView):
         supervisor = validated_data["supervisor"]
         description = validated_data["description"]
         auto_deploy = validated_data["auto_deploy"]
-        auto_deploy_apps = validated_data["auto_deploy_apps"]
+        auto_deploy_apps = validated_data["auto_deploy_apps"] if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None else []
         if request.FILES:
             env_file = request.FILES["env_file"]
             if "MINIO_SECURE" in os.environ:
@@ -445,6 +445,8 @@ class ProjectChartValuesAPIView(APIView):
                 create_user_service(user, user, "", "", f"{group_id},{user_group}")
         if not MAIAUser.objects.filter(email=supervisor).exists():
             create_user_service(supervisor, supervisor, "", "", f"{group_id},{user_group}")
+        if supervisor not in users:
+            users = [supervisor] + users
         create_group_service(
             group_id,
             gpu,
