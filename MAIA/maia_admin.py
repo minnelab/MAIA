@@ -143,7 +143,7 @@ def get_minio_config_if_exists(project_id):
     return minio_configs
 
 
-def generate_mlflow_configs(namespace):
+def generate_mlflow_configs(namespace, config_dict=None):
     """
     Generate MLflow configuration dictionary with encoded user and password.
 
@@ -151,7 +151,9 @@ def generate_mlflow_configs(namespace):
     ----------
     namespace : str
         The namespace to be encoded as the MLflow user.
-
+    
+    config_dict : dict, optional
+        A dictionary containing the custom configuration for the MLflow.
     Returns
     -------
     dict
@@ -170,7 +172,13 @@ def generate_mlflow_configs(namespace):
             if "mlflow_password" in existing_mlflow_configs
             else base64.b64encode(token_urlsafe(16).replace("-", "_").encode("ascii")).decode("ascii")
         ),
-    }
+        }
+    if config_dict:
+        for key, value in config_dict.items():
+            if key == "mlflow_user":
+                mlflow_configs["mlflow_user"] = base64.b64encode(value.encode("ascii")).decode("ascii")
+            if key == "mlflow_password":
+                mlflow_configs["mlflow_password"] = base64.b64encode(value.replace("-", "_").encode("ascii")).decode("ascii")
 
     return mlflow_configs
 
@@ -568,12 +576,14 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
     # maia_filebrowser_values["imagePullSecrets"] = [{"name": os.environ["imagePullSecrets"]}]
     if mlflow_configs is None:
         pw = generate_human_memorable_password(16)
+        username = "maia-admin"
     else:
         pw = base64.b64decode(mlflow_configs["mlflow_password"]).decode("ascii")
+        username = base64.b64decode(mlflow_configs["mlflow_user"]).decode("ascii")
     maia_filebrowser_values["env"] = [
         {"name": "RUN_FILEBROWSER", "value": "True"},
         {"name": "n_users", "value": "1"},
-        {"name": "user", "value": "maia-admin"},
+        {"name": "user", "value": username},
         {"name": "password", "value": pw},
     ]
 

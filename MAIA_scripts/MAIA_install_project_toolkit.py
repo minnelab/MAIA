@@ -157,6 +157,7 @@ def deploy_maia_toolkit_api(
     no_argocd=False,
     redeploy_enabled=True,
     return_values_only=False,
+    custom_config_dict=None,
 ):
     # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
@@ -169,6 +170,12 @@ def deploy_maia_toolkit_api(
                 if key == "env":
                     for env_key, env_value in value.items():
                         os.environ[env_key + "_" + namespace_id] = env_value
+    if custom_config_dict:
+        for key, value in custom_config_dict.items():
+            cluster_config_dict[key] = value
+            if key == "env":
+                for env_key, env_value in value.items():
+                    os.environ[env_key + "_" + namespace_id] = env_value
     project_form_dict["extra_configs"] = {}
     if "enable_cifs_" + namespace_id in os.environ:
         project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_" + namespace_id]
@@ -187,7 +194,7 @@ def deploy_maia_toolkit_api(
 
     helm_commands = []
 
-    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"))
+    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
 
     if not minimal:
         minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"))
