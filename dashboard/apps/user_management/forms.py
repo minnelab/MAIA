@@ -42,12 +42,12 @@ class UserTableForm(forms.Form):
                 #    initial=i['namespace'].split(","),
                 #    choices=maia_groups,
                 # )
-                self.fields[f"namespace_{username}"] = forms.CharField(max_length=100, label="namespace", initial=i["namespace"])
+                self.fields[f"namespace_{username}"] = forms.CharField(max_length=150, label="namespace", initial=i["namespace"])
         else:
             for k in args[0]:
                 if k.startswith("namespace"):
                     # self.fields[k] = forms.MultipleChoiceField(label='namespace', choices=maia_groups)
-                    self.fields[k] = forms.CharField(max_length=100, label="namespace")
+                    self.fields[k] = forms.CharField(max_length=150, label="namespace")
                 elif k.startswith("memory_limit"):
 
                     self.fields[k] = forms.ChoiceField(
@@ -80,7 +80,7 @@ class UserTableForm(forms.Form):
 
                 project_name = i
 
-                self.fields[f"namespace_{project_name}"] = forms.CharField(max_length=100, label="namespace", initial=i)
+                self.fields[f"namespace_{project_name}"] = forms.CharField(max_length=150, label="namespace", initial=i)
                 if kwargs["projects"][i]["memory_limit"] is None:
                     kwargs["projects"][i]["memory_limit"] = "2 Gi"
                 if kwargs["projects"][i]["cpu_limit"] is None:
