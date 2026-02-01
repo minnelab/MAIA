@@ -113,10 +113,12 @@ class KeycloakAuthentication(BaseAuthentication):
         except jwt.InvalidTokenError as e:
             raise AuthenticationFailed("Invalid or malformed token") from e
 
-        # Optionally, map Keycloak username/email to Django user
+        # Map Keycloak token to Django user (username and email can differ in Keycloak)
         email = payload.get("email")
         if not email or not isinstance(email, str) or not email.strip():
             raise AuthenticationFailed("Token does not contain an email claim")
+        preferred_username = payload.get("preferred_username")
+        django_username = (preferred_username if preferred_username and isinstance(preferred_username, str) and preferred_username.strip() else email)
         try:
             user = MAIAUser.objects.get(email=email)
         except MAIAUser.DoesNotExist:
@@ -136,7 +138,7 @@ class KeycloakAuthentication(BaseAuthentication):
             user, created = MAIAUser.objects.get_or_create(
                 email=email,
                 defaults={
-                    "username": email,
+                    "username": django_username,
                     "namespace": ",".join(namespaces),
                     "is_staff": settings.ADMIN_GROUP in namespaces,
                     "is_superuser": settings.ADMIN_GROUP in namespaces,

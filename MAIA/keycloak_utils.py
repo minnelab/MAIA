@@ -171,6 +171,23 @@ def get_user_ids(settings):
     return user_list
 
 
+def get_user_username_from_email(email, settings):
+    """
+    Retrieve the username for a user from Keycloak.
+    """
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=settings.OIDC_SERVER_URL,
+        username=settings.OIDC_USERNAME,
+        password="",
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    users = keycloak_admin.get_users()
+    for user in users:
+        if "email" in user and user["email"] == email:
+            return user["username"]
+    return None
+
+
 def get_groups_for_user(email, settings):
     """
     Retrieve the MAIA groups associated with a user in Keycloak.
@@ -383,7 +400,7 @@ def get_groups_in_keycloak(settings) -> dict[str, str]:
     return maia_groups
 
 
-def register_user_in_keycloak(email, settings) -> None:
+def register_user_in_keycloak(email, settings, username=None) -> None:
     """
     Registers a user in Keycloak and sends an approved registration email.
 
@@ -393,6 +410,8 @@ def register_user_in_keycloak(email, settings) -> None:
         The email address of the user to be registered.
     settings : object
         An object containing the necessary settings for Keycloak connection and email sending.
+    username : str, optional
+        The Keycloak username. If not provided, email is used (username and email can differ).
 
     Settings Attributes
     -------------------
@@ -426,10 +445,11 @@ def register_user_in_keycloak(email, settings) -> None:
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
 
     temp_password = "Maia4YOU!"
+    keycloak_username = (username if username is not None and str(username).strip() else email)
 
     keycloak_admin.create_user(
         {
-            "username": email,
+            "username": keycloak_username,
             "email": email,
             "emailVerified": True,
             "enabled": True,

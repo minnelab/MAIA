@@ -592,7 +592,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
 
         group_users = []
         for user in users:
-            if user["username"] in admin_users:
+            # admin_users are email addresses (project.email, supervisor); compare with user email
+            if user.get("email") in admin_users:
                 group_users.append(user["email"] + " [Project Admin]")
             else:
                 group_users.append(user["email"])

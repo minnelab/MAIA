@@ -134,12 +134,12 @@ def register_user(request, api=False):
                             )
                         success = True
                     else:
-                        msg = "A user with that username already exists and has been already registered to the project {}".format(
+                        msg = "A user with that email already exists and has been already registered to the project {}".format(
                             requested_namespace
                         )
                         success = True
                 else:
-                    msg = "A user with that username does not exist."
+                    msg = "A user with that email does not exist."
                     success = False
             else:
                 msg = "Form is not valid: " + str(form.errors)
@@ -200,17 +200,25 @@ def register_project_api(request):
     return register_project(request, api=True)
 
 
-def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
+def get_or_create_user_in_database(email: str, namespace: str, username: str = None) -> MAIAUser:
+    """
+    Get or create a MAIAUser by email. Username is only set when creating;
+    if not provided, email is used (backward compatibility).
+    """
     if not email or not namespace:
         return None
+    # Use email as username when not provided (username and email can differ)
+    django_username = username if username is not None and username.strip() else email
     if not MAIAUser.objects.filter(email=email).exists():
         if namespace != settings.USERS_GROUP:
             if namespace != "":
-                MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
+                MAIAUser.objects.create(
+                    email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=django_username
+                )
             else:
-                MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=email)
+                MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=django_username)
         else:
-            MAIAUser.objects.create(email=email, namespace=namespace, username=email)
+            MAIAUser.objects.create(email=email, namespace=namespace, username=django_username)
         return MAIAUser.objects.filter(email=email).first()
     else:
         user = MAIAUser.objects.filter(email=email).first()

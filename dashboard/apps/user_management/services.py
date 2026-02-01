@@ -112,9 +112,9 @@ def create_user(email, username, first_name, last_name, namespace):
         if not created:
             update_user_in_database(user, namespace)
 
-        # Register user in Keycloak
+        # Register user in Keycloak (pass username so Keycloak username can differ from email)
         try:
-            register_user_in_keycloak(email=email, settings=settings)
+            register_user_in_keycloak(email=email, username=username, settings=settings)
             user_already_exists = False
         except KeycloakPostError as e:
             logger.error(f"Error registering user {email} in Keycloak: {e}")

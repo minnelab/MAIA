@@ -38,6 +38,7 @@ from MAIA.keycloak_utils import (
     remove_user_from_group_in_keycloak,
     get_maia_users_from_keycloak,
     get_groups_in_keycloak,
+    get_user_username_from_email
 )
 import urllib3
 import yaml
@@ -117,6 +118,15 @@ class CreateGroupSerializer(serializers.Serializer):
     email_list = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
+    email_to_username_map = serializers.DictField(child=serializers.CharField(), required=False, allow_empty=True)
+    
+    def validate_email_to_username_map(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("email_to_username_map must be a dictionary")
+        for email, username in value.items():
+            if not isinstance(email, str) or not isinstance(username, str):
+                raise serializers.ValidationError("email_to_username_map must be a dictionary of email: username pairs")
+        return value
 
     def validate_group_id(self, value):
         return group_id_validator(value)
@@ -276,6 +286,7 @@ class UserManagementAPICreateGroupView(APIView):
         email_list = validated_data.get("email_list", None)
         description = validated_data.get("description", None)
         supervisor = validated_data.get("supervisor", None)
+        email_to_username_map = validated_data.get("email_to_username_map", None)
         if request.FILES:
             env_file = request.FILES["env_file"]
             if "MINIO_SECURE" in os.environ:
@@ -314,11 +325,14 @@ class UserManagementAPICreateGroupView(APIView):
             env_file = filename
         for user in email_list:
             if not MAIAUser.objects.filter(email=user).exists():
-                create_user_service(user, user, "", "", f"{group_id},{user_group}")
+                username = email_to_username_map.get(user, user)
+                create_user_service(user, username, "", "", f"{group_id},{user_group}")
         if not MAIAUser.objects.filter(email=supervisor).exists():
-            create_user_service(supervisor, supervisor, "", "", f"{group_id},{user_group}")
+            username = email_to_username_map.get(supervisor, supervisor)
+            create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
         if not MAIAUser.objects.filter(email=user_id).exists():
-            create_user_service(user_id, user_id, "", "", f"{group_id},{user_group}")
+            username = email_to_username_map.get(user_id, user_id)
+            create_user_service(user_id, username, "", "", f"{group_id},{user_group}")
         result = create_group_service(
             group_id,
             gpu,
@@ -366,6 +380,15 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
     auto_deploy = serializers.BooleanField(required=False, default=False)
     auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    email_to_username_map = serializers.DictField(child=serializers.CharField(), required=False, allow_empty=True)
+    
+    def validate_email_to_username_map(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("email_to_username_map must be a dictionary")
+        for email, username in value.items():
+            if not isinstance(email, str) or not isinstance(username, str):
+                raise serializers.ValidationError("email_to_username_map must be a dictionary of email: username pairs")
+        return value
 
 
 class ProjectChartValuesAPIView(APIView):
@@ -404,6 +427,7 @@ class ProjectChartValuesAPIView(APIView):
         description = validated_data["description"]
         auto_deploy = validated_data["auto_deploy"]
         auto_deploy_apps = validated_data["auto_deploy_apps"]
+        email_to_username_map = validated_data.get("email_to_username_map", None)
         if request.FILES:
             env_file = request.FILES["env_file"]
             if "MINIO_SECURE" in os.environ:
@@ -442,9 +466,11 @@ class ProjectChartValuesAPIView(APIView):
             env_file = filename
         for user in users:
             if not MAIAUser.objects.filter(email=user).exists():
-                create_user_service(user, user, "", "", f"{group_id},{user_group}")
+                username = email_to_username_map.get(user, user)
+                create_user_service(user, username, "", "", f"{group_id},{user_group}")
         if not MAIAUser.objects.filter(email=supervisor).exists():
-            create_user_service(supervisor, supervisor, "", "", f"{group_id},{user_group}")
+            username = email_to_username_map.get(supervisor, supervisor)
+            create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
         create_group_service(
             group_id,
             gpu,
@@ -526,9 +552,10 @@ def index(request):
                     admin = False
                     if env_settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
+                    username = get_user_username_from_email(email=keycloak_user, settings=env_settings)
                     MAIAUser.objects.create(
                         email=keycloak_user,
-                        username=keycloak_user,
+                        username=username,
                         namespace=",".join(keycloak_users[keycloak_user]),
                         is_superuser=admin,
                         is_staff=admin,
