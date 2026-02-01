@@ -571,9 +571,10 @@ def index(request):
                     if env_settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
                     logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
+                    username = get_user_username_from_email(email=keycloak_user, settings=env_settings)
                     MAIAUser.objects.create(
                         email=keycloak_user,
-                        username=keycloak_user,
+                        username=username,
                         namespace=",".join(keycloak_users[keycloak_user]),
                         is_superuser=admin,
                         is_staff=admin,
@@ -652,6 +653,7 @@ def index(request):
                 update_user_table(form, User, MAIAUser, MAIAProject)
             else:
                 ...
+                logger.info(f"Form is not valid: {form.errors}")
                 # update_user_table(form, User, MAIAUser, MAIAProject)
 
             return HttpResponse(html_template.render(context, request))
