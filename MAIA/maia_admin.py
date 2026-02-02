@@ -151,7 +151,7 @@ def generate_mlflow_configs(namespace, config_dict=None):
     ----------
     namespace : str
         The namespace to be encoded as the MLflow user.
-    
+
     config_dict : dict, optional
         A dictionary containing the custom configuration for the MLflow.
     Returns
@@ -172,7 +172,7 @@ def generate_mlflow_configs(namespace, config_dict=None):
             if "mlflow_password" in existing_mlflow_configs
             else base64.b64encode(token_urlsafe(16).replace("-", "_").encode("ascii")).decode("ascii")
         ),
-        }
+    }
     if config_dict:
         for key, value in config_dict.items():
             if key == "mlflow_user":

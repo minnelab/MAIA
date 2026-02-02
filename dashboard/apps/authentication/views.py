@@ -212,9 +212,7 @@ def get_or_create_user_in_database(email: str, namespace: str, username: str = N
     if not MAIAUser.objects.filter(email=email).exists():
         if namespace != settings.USERS_GROUP:
             if namespace != "":
-                MAIAUser.objects.create(
-                    email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=django_username
-                )
+                MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=django_username)
             else:
                 MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=django_username)
         else:

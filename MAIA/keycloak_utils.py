@@ -449,7 +449,7 @@ def register_user_in_keycloak(email, settings, username=None) -> None:
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
 
     temp_password = "Maia4YOU!"
-    keycloak_username = (username if username is not None and str(username).strip() else email)
+    keycloak_username = username if username is not None and str(username).strip() else email
 
     keycloak_admin.create_user(
         {

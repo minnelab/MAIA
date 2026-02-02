@@ -118,7 +118,11 @@ class KeycloakAuthentication(BaseAuthentication):
         if not email or not isinstance(email, str) or not email.strip():
             raise AuthenticationFailed("Token does not contain an email claim")
         preferred_username = payload.get("preferred_username")
-        django_username = (preferred_username if preferred_username and isinstance(preferred_username, str) and preferred_username.strip() else email)
+        django_username = (
+            preferred_username
+            if preferred_username and isinstance(preferred_username, str) and preferred_username.strip()
+            else email
+        )
         try:
             user = MAIAUser.objects.get(email=email)
         except MAIAUser.DoesNotExist:
