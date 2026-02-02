@@ -14,6 +14,7 @@ from .forms import UserTableForm
 import re
 from apps.models import MAIAUser, MAIAProject
 import json
+from django.core.cache import cache
 from MAIA.kubernetes_utils import (
     generate_kubeconfig,
     create_helm_repo_secret_from_context,
@@ -55,6 +56,7 @@ from .services import (
 )
 from rest_framework.throttling import UserRateThrottle
 from loguru import logger
+import datetime
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
@@ -571,19 +573,53 @@ def index(request):
                     if env_settings.ADMIN_GROUP in keycloak_users[keycloak_user]:
                         admin = True
                     logger.info(f"Deleting user and creating new MAIA user: {keycloak_user}")
+                    username = get_user_username_from_email(email=keycloak_user, settings=env_settings)
                     MAIAUser.objects.create(
                         email=keycloak_user,
-                        username=keycloak_user,
+                        username=username,
                         namespace=",".join(keycloak_users[keycloak_user]),
                         is_superuser=admin,
                         is_staff=admin,
                     )
                     logger.info(f"User created: {keycloak_user}")
-        to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
-            get_project_argo_status_and_user_table(
-                settings=env_settings, request=request, maia_user_model=MAIAUser, maia_project_model=MAIAProject
+        
+
+        cache_key = "project_argo_status_and_user_table"
+        cache_timeout = 300  # 5 minutes (adjust as needed)
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            (
+                to_register_in_groups,
+                to_register_in_keycloak,
+                maia_groups_dict,
+                project_argo_status,
+                users_to_remove_from_group,
+            ) = cached_data
+        else:
+            (
+                to_register_in_groups,
+                to_register_in_keycloak,
+                maia_groups_dict,
+                project_argo_status,
+                users_to_remove_from_group,
+            ) = get_project_argo_status_and_user_table(
+                settings=env_settings,
+                request=request,
+                maia_user_model=MAIAUser,
+                maia_project_model=MAIAProject,
             )
-        )
+            cache.set(
+                cache_key,
+                (
+                    to_register_in_groups,
+                    to_register_in_keycloak,
+                    maia_groups_dict,
+                    project_argo_status,
+                    users_to_remove_from_group,
+                ),
+                timeout=cache_timeout,
+            )
         for maia_group in maia_groups_dict:
             logger.info(f"MAIA group: {maia_group} {maia_groups_dict[maia_group]}")
             if not MAIAProject.objects.filter(namespace=maia_group).exists():
@@ -594,10 +630,17 @@ def index(request):
                 else:
                     supervisor = None
                     email = None
+                if len(env_settings.CLUSTER_NAMES) == 1:
+                    cluster = list(env_settings.CLUSTER_NAMES.values())[0]
+                else:
+                    cluster = None
+                date = datetime.date.today() + datetime.timedelta(days=180)
                 MAIAProject.objects.create(
                     namespace=maia_group,
                     email=email,
                     supervisor=supervisor,
+                    cluster=cluster,
+                    date=date,
                 )
 
         logger.info("Users to Register in Keycloak: ", to_register_in_keycloak)
@@ -652,6 +695,7 @@ def index(request):
                 update_user_table(form, User, MAIAUser, MAIAProject)
             else:
                 ...
+                logger.info(f"Form is not valid: {form.errors}")
                 # update_user_table(form, User, MAIAUser, MAIAProject)
 
             return HttpResponse(html_template.render(context, request))
