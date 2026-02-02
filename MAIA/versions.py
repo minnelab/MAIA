@@ -56,7 +56,7 @@ def define_maia_core_versions():
     if os.environ.get("GPU_BOOKING_CHART_VERSION") is not None:
         gpu_booking_chart_version = os.environ.get("GPU_BOOKING_CHART_VERSION")
     else:
-        gpu_booking_chart_version = "1.0.0"
+        gpu_booking_chart_version = "master"  # "1.0.0"
 
     if os.environ.get("GPU_BOOKING_CHART_TYPE") is not None:
         gpu_booking_chart_type = os.environ.get("GPU_BOOKING_CHART_TYPE")
@@ -114,7 +114,7 @@ def define_maia_admin_versions():
     if os.environ.get("RANCHER_CHART_VERSION") is not None:
         rancher_chart_version = os.environ.get("RANCHER_CHART_VERSION")
     else:
-        rancher_chart_version = "2.13.2"
+        rancher_chart_version = "2.13.0"
 
     if os.environ.get("HARBOR_CHART_VERSION") is not None:
         harbor_chart_version = os.environ.get("HARBOR_CHART_VERSION")
