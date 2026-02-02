@@ -954,5 +954,5 @@ def create_gpu_booking_values(config_folder, project_id):
         "version": gpu_booking_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "gpu_booking_values", "gpu_booking_values.yaml")),
         "release": f"{project_id}-gpu-booking",
-        "chart": gpu_booking_values["chart_name"],
+        "chart": gpu_booking_values["chart_name"] if gpu_booking_chart_type == "helm_repo" else gpu_booking_values["path"],
     }
