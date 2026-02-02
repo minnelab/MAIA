@@ -4,7 +4,7 @@
 
 # MicroK8s version/channel to install
 # Examples: "1.31/stable", "1.30/stable", "latest/stable"
-microk8s_version: 1.31/stable
+microk8s_version: 1.35/stable
 
 # User to add to the microk8s group
 # This user will be able to run microk8s commands without sudo
