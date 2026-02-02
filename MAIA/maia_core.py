@@ -442,9 +442,9 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                 },
             ],
             "globalArguments": [
-                "--entrypoints.web.http.redirections.entryPoint.to=:443",
+                #"--entrypoints.web.http.redirections.entryPoint.to=:443",
                 # "--entrypoints.web.http.redirections.entrypoint.to=websecure",
-                "--entrypoints.web.http.redirections.entrypoint.scheme=https",
+                #"--entrypoints.web.http.redirections.entrypoint.scheme=https",
                 "--global.checknewversion",
                 "--global.sendanonymoususage",
                 # "--entrypoints.metrics.address=:9100/tcp",
