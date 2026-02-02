@@ -76,7 +76,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
     else:
-        core_project_chart_version = "1.0.1"
+        core_project_chart_version = "1.1.0"
 
     if os.environ.get("LOGINAPP_CHART_VERSION") is not None:
         loginapp_chart_version = os.environ.get("LOGINAPP_CHART_VERSION")
@@ -114,12 +114,12 @@ def define_maia_admin_versions():
     if os.environ.get("RANCHER_CHART_VERSION") is not None:
         rancher_chart_version = os.environ.get("RANCHER_CHART_VERSION")
     else:
-        rancher_chart_version = "2.10.1"
+        rancher_chart_version = "2.13.2"
 
     if os.environ.get("HARBOR_CHART_VERSION") is not None:
         harbor_chart_version = os.environ.get("HARBOR_CHART_VERSION")
     else:
-        harbor_chart_version = "1.16.0"
+        harbor_chart_version = "1.18.2"
 
     if os.environ.get("KEYCLOAK_CHART_VERSION") is not None:
         keycloak_chart_version = os.environ.get("KEYCLOAK_CHART_VERSION")
