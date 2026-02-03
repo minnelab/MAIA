@@ -7,7 +7,11 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.orthanc_values.path }}
+    path: {{ .Values.orthanc_values.path }}
+    {{- else }}
     chart: {{ .Values.orthanc_values.chart_name }}
+    {{- end }}
     repoURL: {{.Values.orthanc_values.repo_url}}
     targetRevision: {{ .Values.orthanc_values.chart_version }}
     helm:

@@ -195,7 +195,7 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_PROJECT_CHART_VERSION") is not None:
         maia_project_chart_version = os.environ.get("MAIA_PROJECT_CHART_VERSION")
     else:
-        maia_project_chart_version = "1.7.1"
+        maia_project_chart_version = "1.8.1"
 
     if os.environ.get("MAIA_NAMESPACE_CHART_TYPE") is not None:
         maia_namespace_chart_type = os.environ.get("MAIA_NAMESPACE_CHART_TYPE")
@@ -222,10 +222,22 @@ def define_maia_docker_versions():
         kaniko_chart_type = os.environ.get("KANIKO_CHART_TYPE")
     else:
         kaniko_chart_type = "git_repo"  # or "helm_repo"
+        
+    if os.environ.get("MKG_CHART_VERSION") is not None:
+        mkg_chart_version = os.environ.get("MKG_CHART_VERSION")
+    else:
+        mkg_chart_version = "main"
+
+    if os.environ.get("MKG_CHART_TYPE") is not None:
+        mkg_chart_type = os.environ.get("MKG_CHART_TYPE")
+    else:
+        mkg_chart_type = "git_repo"
 
     return {
         "kaniko_chart_version": kaniko_chart_version,
         "kaniko_chart_type": kaniko_chart_type,
+        "mkg_chart_version": mkg_chart_version,
+        "mkg_chart_type": mkg_chart_type,
     }
 
 
@@ -327,7 +339,12 @@ def define_docker_image_versions():
         maia_lab_image_version = os.environ.get("MAIA_LAB_IMAGE_VERSION")
     else:
         maia_lab_image_version = maia_workspace_base_image_version
-
+        
+    if os.environ.get("MYSQL_IMAGE_VERSION") is not None:
+        mysql_image_version = os.environ.get("MYSQL_IMAGE_VERSION")
+    else:
+        mysql_image_version = "8.0.28"
+        
     return {
         "maia-kube": maia_kube_image_version,
         "maia-dashboard": maia_dashboard_image_version,
@@ -348,4 +365,5 @@ def define_docker_image_versions():
         "maia-workspace-notebook-ssh-addons": maia_workspace_notebook_ssh_addons_image_version,
         "maia-workspace-notebook-ssh-addons-image-name": maia_workspace_notebook_ssh_addons_image_name,
         "maia-lab": maia_lab_image_version,
+        "mysql": mysql_image_version,
     }
