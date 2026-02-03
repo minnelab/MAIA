@@ -21,7 +21,7 @@ from omegaconf import OmegaConf
 
 from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
 
-from MAIA.versions import define_docker_image_versions, define_maia_docker_versions
+from MAIA.versions import define_docker_image_versions, define_maia_docker_versions, define_maia_project_versions
 
 mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
@@ -30,6 +30,8 @@ mkg_chart_type = define_maia_docker_versions()["mkg_chart_type"]
 maia_mlflow_image_version = define_docker_image_versions()["maia-mlflow"]
 maia_orthanc_image_version = define_docker_image_versions()["maia-orthanc"]
 maia_orthanc_image = define_docker_image_versions()["maia-orthanc-image"]
+maia_orthanc_chart_version = define_maia_project_versions()["maia-orthanc-chart_version"]
+maia_orthanc_chart_type = define_maia_project_versions()["maia-orthanc-chart_type"]
 
 def generate_random_password(length=12):
     characters = string.ascii_letters + string.digits
@@ -576,7 +578,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         mlflow_values["chart_name"] = "mkg"
         mlflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
     else:
-        mlflow_values["path"] = "charts/maia-mlflow"
+        mlflow_values["path"] = "charts/maiakubegate"
         mlflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
     mlflow_values["chart_version"] = mkg_chart_version
 
@@ -739,7 +741,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
             "traefik_resolver"
         ]
     orthanc_config["chart_version"] = maia_orthanc_chart_version
-    if mkg_chart_type == "helm_repo":
+    if maia_orthanc_chart_type == "helm_repo":
         orthanc_config["chart_name"] = "maia-orthanc"
         orthanc_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
     else:
@@ -754,7 +756,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     return {
         "namespace": user_config["group_ID"].lower().replace("_", "-"),
         "release": user_config["group_ID"].lower().replace("_", "-") + "-orthanc",
-        "chart": orthanc_config["chart_name"] if mkg_chart_type == "helm_repo" else orthanc_config["path"],
+        "chart": orthanc_config["chart_name"] if maia_orthanc_chart_type == "helm_repo" else orthanc_config["path"],
         "repo": orthanc_config["repo_url"],
         "version": orthanc_config["chart_version"],
         "values": str(Path(config_folder).joinpath(user_config["group_ID"], "orthanc_values", "orthanc_values.yaml")),

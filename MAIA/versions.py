@@ -202,12 +202,25 @@ def define_maia_project_versions():
     else:
         maia_namespace_chart_type = "git_repo"  # or "helm_repo"
 
+
+    if os.environ.get("MAIA_ORTHANC_CHART_VERSION") is not None:
+        maia_orthanc_chart_version = os.environ.get("MAIA_ORTHANC_CHART_VERSION")
+    else:
+        maia_orthanc_chart_version = "master"  # "1.1.0"
+
+    if os.environ.get("MAIA_ORTHANC_CHART_TYPE") is not None:
+        maia_orthanc_chart_type = os.environ.get("MAIA_ORTHANC_CHART_TYPE")
+    else:
+        maia_orthanc_chart_type = "git_repo"  # or "helm_repo"
+
     return {
         "maia_namespace_chart_version": maia_namespace_chart_version,
         "maia_filebrowser_chart_version": maia_filebrowser_chart_version,
         "maia_filebrowser_chart_type": maia_filebrowser_chart_type,
         "maia_project_chart_version": maia_project_chart_version,
         "maia_namespace_chart_type": maia_namespace_chart_type,
+        "maia-orthanc-chart_version": maia_orthanc_chart_version,
+        "maia-orthanc-chart_type": maia_orthanc_chart_type,
     }
 
 
