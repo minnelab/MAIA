@@ -237,10 +237,11 @@ USERS_GROUP = os.getenv("USERS_GROUP", "users")
 JWKS_TIMEOUT = int(os.getenv("JWKS_TIMEOUT", 10))
 OIDC_STORE_ID_TOKEN = True
 
-if OIDC_CA_BUNDLE.lower() == "true":
-    OIDC_CA_BUNDLE = True
-elif OIDC_CA_BUNDLE.lower() == "false":
-    OIDC_CA_BUNDLE = False
+if isinstance(OIDC_CA_BUNDLE, str):
+    if OIDC_CA_BUNDLE.lower() == "true":
+        OIDC_CA_BUNDLE = True
+    elif OIDC_CA_BUNDLE.lower() == "false":
+        OIDC_CA_BUNDLE = False
 
 AUTHENTICATION_BACKENDS = (
     "core.MAIA_UA.HoneyCombOIDCAB",
