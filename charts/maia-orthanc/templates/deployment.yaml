@@ -1,16 +1,16 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: {{ .Release.Name }}-deployment
+  name: {{ .Release.Name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app-name: {{ .Release.Name }}-deployment
+      app-name: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app-name: {{ .Release.Name }}-deployment
+        app-name: {{ .Release.Name }}
     spec:
       restartPolicy: Always
       containers:
@@ -75,7 +75,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Release.Name }}-pvc
   labels:
-   app-name: {{ .Release.Name }}-deployment
+   app-name: {{ .Release.Name }}
 spec:
   storageClassName: {{ .Values.pvc.pvc_type }}
   accessModes:
