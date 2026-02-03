@@ -628,7 +628,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     if "maia_orthanc_version_" + namespace in os.environ:
         docker_version = os.environ["maia_orthanc_version_" + namespace]
 
-    image_pull_secret = os.environ["imagePullSecrets"]
+    image_pull_secret = os.environ.get("imagePullSecrets", None)
     if "imagePullSecrets_" + namespace in os.environ:
         image_pull_secret = os.environ["imagePullSecrets_" + namespace]
     orthanc_config = {
@@ -658,7 +658,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
             "mysqlDatabase": "orthanc",
         }
 
-    orthanc_config["imagePullSecret"] = private_registry.replace(".", "-").replace("/", "-")
+    if private_registry is not None:
+        orthanc_config["imagePullSecret"] = private_registry.replace(".", "-").replace("/", "-")
 
     namespace = user_config["group_ID"].lower().replace("_", "-")
     orthanc_custom_config = {
@@ -725,19 +726,18 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         orthanc_config["orthanc_node_port"] = {"loadBalancer": orthanc_port}
         orthanc_config["loadBalancerIp"] = cluster_config.get("maia_metallb_ip", False)
         orthanc_config["serviceType"] = "LoadBalancer"
-
-    if cluster_config["ingress_class"] == "maia-core-traefik":
+    if "nginx_cluster_issuer" in cluster_config:
+        orthanc_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
+        orthanc_config["ingress_tls"]["secretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
+        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
+    if "traefik_resolver" in cluster_config:
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
             "traefik_resolver"
         ]
-    elif cluster_config["ingress_class"] == "nginx":
-        orthanc_config["ingress_annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
-        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
-        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
-        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
-        orthanc_config["ingress_tls"]["secretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
     orthanc_config["chart_version"] = maia_orthanc_chart_version
     if mkg_chart_type == "helm_repo":
         orthanc_config["chart_name"] = "maia-orthanc"

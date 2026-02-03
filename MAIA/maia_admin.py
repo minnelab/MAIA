@@ -440,9 +440,9 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "storageSize": "10Gi",
             "accessKey": minio_configs["access_key"],
             "secretKey": minio_configs["secret_key"],
-            "clientId": os.environ["keycloak_client_id"],
-            "clientSecret": os.environ["keycloak_client_secret"],
-            "openIdConfigUrl": os.environ["keycloak_issuer_url"] + "/.well-known/openid-configuration",
+            "clientId": os.environ["OIDC_RP_CLIENT_ID"],
+            "clientSecret": os.environ["OIDC_RP_CLIENT_SECRET"],
+            "openIdConfigUrl": os.environ["OIDC_ISSUER_URL"] + "/.well-known/openid-configuration",
             "consoleAccessKey": minio_configs["console_access_key"],
             "consoleSecretKey": minio_configs["console_secret_key"],
             "ingress": {

@@ -499,7 +499,8 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             registry_url = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
         else:
             registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-        jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
+        if registry_url is not None:
+            jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
     maia_workspace_image = "ghcr.io/minnelab/" + define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
     maia_workspace_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
