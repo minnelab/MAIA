@@ -1,0 +1,85 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-name: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app-name: {{ .Release.Name }}
+    spec:
+      restartPolicy: Always
+      containers:
+        # ToDo add init-container to wait for db-host
+      - name: orthanc-ohif
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        resources:
+          requests:
+            cpu: {{ .Values.cpu }}
+            memory: {{ .Values.memory }}
+            {{- if .Values.gpu }}
+            nvidia.com/gpu: "1"
+            {{- end}}
+          limits:
+            cpu: {{ .Values.cpu }}
+            memory: {{ .Values.memory }}
+            {{- if .Values.gpu }}
+            nvidia.com/gpu: "1"
+            {{- end}}
+        env:
+          - name: INGRESS_PATH
+            value: /{{ .Values.orthanc_path }}
+          - name: MONAI_LABEL_INGRESS_PATH
+            value: /{{ .Values.monai_label_path }}
+          - name: ORTHANC_DICOMWEB_ADDRESS
+            value: "http://localhost:8042/dicom-web"
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: cache-volume
+        - mountPath: /var/lib/orthanc/db
+          name: orthanc
+        {{- if .Values.orthanc_config_map.enabled }}
+        - mountPath: /mnt
+          name: orthanc-config
+        {{- end }}
+        #- mountPath: /workspace/mlflow
+        #  name: mlflow-model
+      volumes:
+        - emptyDir:
+            medium: Memory
+          name: cache-volume
+        - name: orthanc
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
+        {{- if .Values.orthanc_config_map.enabled }}
+        - name: orthanc-config
+          configMap:
+            name: orthanc-config
+        {{- end }}
+        #- name: mlflow-model
+        #  persistentVolumeClaim:
+        #    claimName: {{ .Values.mlflow_pvc_name }}
+      imagePullSecrets:
+      - name: {{ .Values.imagePullSecret }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeSelector.hostname}}
+      {{- end}}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-pvc
+  labels:
+   app-name: {{ .Release.Name }}
+spec:
+  storageClassName: {{ .Values.pvc.pvc_type }}
+  accessModes:
+    - {{ .Values.pvc.access_mode}}
+  resources:
+    requests:
+      storage: {{ .Values.pvc.size }}

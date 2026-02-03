@@ -1,0 +1,88 @@
+{{- if .Values.mysql.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mysql
+  labels:
+    app-name: {{ .Release.Name }}-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-name: {{ .Release.Name }}-mysql
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app-name: {{ .Release.Name }}-mysql
+    spec:
+      volumes:
+        - name: persistent-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-mysql
+      containers:
+        - name: {{ .Chart.Name }}
+          image: mysql:8.0.28
+          env:
+            - name: NVIDIA_VISIBLE_DEVICES
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ .Values.mysql.mysqlRootPassword }}
+            - name: MYSQL_USER
+              value: {{ .Values.mysql.mysqlUser }}
+            - name: MYSQL_PASSWORD
+              value: {{ .Values.mysql.mysqlPassword }}
+            - name: MYSQL_DATABASE
+              value: {{ .Values.mysql.mysqlDatabase }}
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+            - name: persistent-storage
+              mountPath: /var/lib/mysql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-mysql
+  labels:
+    app-name: {{ .Release.Name }}-mysql
+spec:
+  storageClassName: {{ .Values.pvc.pvc_type }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mysql
+  labels:
+    app-name: {{ .Release.Name }}-mysql
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app-name: {{ .Release.Name }}-mysql
+{{- end }}
+
+
+# To execute after starting MySQL
+#mysql -u root -p -e "
+#ALTER USER 'maia-admin'@'%' IDENTIFIED WITH mysql_native_password BY 'PW';
+#FLUSH PRIVILEGES;
+#SET GLOBAL log_bin_trust_function_creators = 1;
+#DROP DATABASE IF EXISTS orthanc;
+#CREATE DATABASE orthanc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+#GRANT ALL PRIVILEGES ON orthanc.* TO 'maia-admin'@'%';
+#FLUSH PRIVILEGES;
+#"

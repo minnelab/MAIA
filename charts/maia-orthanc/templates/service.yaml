@@ -1,0 +1,111 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-svc
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      name: monai-label
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: orthanc
+  type: ClusterIP
+  selector:
+    app-name: {{ .Release.Name }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-svc-orthanc
+  labels:
+    app: {{ .Release.Name }}
+  {{- if .Values.orthanc_dicom_service_annotations }}
+  annotations:
+    {{- toYaml .Values.orthanc_dicom_service_annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $.Values.loadBalancerIp }}
+  loadBalancerIP: {{ $.Values.loadBalancerIp }}
+  {{- end }}
+  ports:
+    - protocol: TCP
+      {{- if eq .Values.serviceType "LoadBalancer" }}
+      port: {{ .Values.orthanc_node_port.loadBalancer }}
+      {{- else }}
+      port: 4242
+      {{- end }}
+      targetPort: 4242
+      {{- if eq .Values.serviceType "NodePort" }}
+      nodePort: {{ .Values.orthanc_node_port }}
+      {{- end }}
+      name: orthanc-dicom
+  {{- if eq .Values.serviceType "LoadBalancer" }}
+  type: LoadBalancer
+  {{- else }}
+  type: NodePort
+  {{- end }}
+  selector:
+    app-name: {{ .Release.Name }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-monai-label
+  {{- if .Values.ingress_annotations }}
+  annotations:
+    {{- toYaml .Values.ingress_annotations | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.ingress_tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress_tls.host }}
+      {{- if .Values.ingress_tls.secretName }}
+      secretName: {{ .Values.ingress_tls.secretName }}
+      {{- end }}
+{{- end }}
+  rules:
+  - host: {{ .Values.ingress_tls.host }}
+    http:
+      paths:
+      - path: {{ printf "/%s" .Values.monai_label_path }}
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ .Release.Name }}-svc
+            port:
+              name: monai-label
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-orthanc
+  {{- if .Values.ingress_annotations }}
+  annotations:
+    {{- toYaml .Values.ingress_annotations | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.ingress_tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress_tls.host }}
+      {{- if .Values.ingress_tls.secretName }}
+      secretName: {{ .Values.ingress_tls.secretName }}
+      {{- end }}
+{{- end }}
+  rules:
+  - host: {{ .Values.ingress_tls.host }}
+    http:
+      paths:
+      - path: {{ printf "/%s" .Values.orthanc_path }}
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: {{ .Release.Name }}-svc
+            port:
+              name: orthanc
