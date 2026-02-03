@@ -202,7 +202,6 @@ def define_maia_project_versions():
     else:
         maia_namespace_chart_type = "git_repo"  # or "helm_repo"
 
-
     if os.environ.get("MAIA_ORTHANC_CHART_VERSION") is not None:
         maia_orthanc_chart_version = os.environ.get("MAIA_ORTHANC_CHART_VERSION")
     else:
@@ -235,7 +234,7 @@ def define_maia_docker_versions():
         kaniko_chart_type = os.environ.get("KANIKO_CHART_TYPE")
     else:
         kaniko_chart_type = "git_repo"  # or "helm_repo"
-        
+
     if os.environ.get("MKG_CHART_VERSION") is not None:
         mkg_chart_version = os.environ.get("MKG_CHART_VERSION")
     else:
@@ -352,22 +351,22 @@ def define_docker_image_versions():
         maia_lab_image_version = os.environ.get("MAIA_LAB_IMAGE_VERSION")
     else:
         maia_lab_image_version = maia_workspace_base_image_version
-        
+
     if os.environ.get("MYSQL_IMAGE_VERSION") is not None:
         mysql_image_version = os.environ.get("MYSQL_IMAGE_VERSION")
     else:
         mysql_image_version = "8.0.28"
-        
+
     if os.environ.get("MYSQL_IMAGE") is not None:
         mysql_image = os.environ.get("MYSQL_IMAGE")
     else:
         mysql_image = "mysql"
-        
+
     if os.environ.get("MAIA_ORTHANC_IMAGE") is not None:
         maia_orthanc_image = os.environ.get("MAIA_ORTHANC_IMAGE")
     else:
         maia_orthanc_image = "ghcr.io/minnelab/maia-orthanc"
-                
+
     return {
         "maia-kube": maia_kube_image_version,
         "maia-dashboard": maia_dashboard_image_version,
