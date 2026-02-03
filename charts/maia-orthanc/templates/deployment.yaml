@@ -63,8 +63,8 @@ spec:
         #- name: mlflow-model
         #  persistentVolumeClaim:
         #    claimName: {{ .Values.mlflow_pvc_name }}
-      imagePullSecrets:
-      - name: {{ .Values.imagePullSecret }}
+      #imagePullSecrets:
+      #- name: {{ .Values.imagePullSecret }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeSelector.hostname}}
