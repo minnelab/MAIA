@@ -55,35 +55,6 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Release.Name }}-monai-label
-  {{- if .Values.ingress_annotations }}
-  annotations:
-    {{- toYaml .Values.ingress_annotations | nindent 4 }}
-  {{- end }}
-spec:
-{{- if .Values.ingress_tls }}
-  tls:
-    - hosts:
-        - {{ .Values.ingress_tls.host }}
-      {{- if .Values.ingress_tls.secretName }}
-      secretName: {{ .Values.ingress_tls.secretName }}
-      {{- end }}
-{{- end }}
-  rules:
-  - host: {{ .Values.ingress_tls.host }}
-    http:
-      paths:
-      - path: {{ printf "/%s" .Values.monai_label_path }}
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: {{ .Release.Name }}-svc
-            port:
-              name: monai-label
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
   name: {{ .Release.Name }}-orthanc
   {{- if .Values.ingress_annotations }}
   annotations:
