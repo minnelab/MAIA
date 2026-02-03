@@ -520,7 +520,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
     keycloak_connection = KeycloakOpenIDConnection(
         server_url=settings.OIDC_SERVER_URL,
         username=settings.OIDC_USERNAME,
-        password="",    
+        password="",
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,

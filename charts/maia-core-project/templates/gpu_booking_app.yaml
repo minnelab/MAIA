@@ -7,7 +7,12 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.gpu_booking_values.chart_name }}
     chart: {{ .Values.gpu_booking_values.chart_name }}
+    {{- end }}
+    {{- if .Values.gpu_booking_values.path }}
+    path: {{ .Values.gpu_booking_values.path }}
+    {{- end }}
     repoURL: {{ .Values.gpu_booking_values.repo_url }}
     targetRevision: {{ .Values.gpu_booking_values.chart_version }}
     helm:

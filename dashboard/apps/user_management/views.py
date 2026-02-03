@@ -39,7 +39,7 @@ from MAIA.keycloak_utils import (
     remove_user_from_group_in_keycloak,
     get_maia_users_from_keycloak,
     get_groups_in_keycloak,
-    get_user_username_from_email
+    get_user_username_from_email,
 )
 import urllib3
 import yaml
@@ -121,7 +121,7 @@ class CreateGroupSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
     email_to_username_map = serializers.DictField(child=serializers.CharField(), required=False, allow_empty=True)
-    
+
     def validate_email_to_username_map(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("email_to_username_map must be a dictionary")
@@ -384,7 +384,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
     project_configuration = serializers.DictField(required=False, allow_empty=True)
     email_to_username_map = serializers.DictField(child=serializers.CharField(), required=False, allow_empty=True)
-    
+
     def validate_email_to_username_map(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("email_to_username_map must be a dictionary")
@@ -397,7 +397,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
 class ProjectChartValuesAPIView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
-    
+
     def post(self, request, *args, **kwargs):
         serializer = ProjectChartValuesSerializer(data=request.data)
         if not serializer.is_valid():
@@ -429,8 +429,16 @@ class ProjectChartValuesAPIView(APIView):
         supervisor = validated_data["supervisor"]
         description = validated_data["description"]
         auto_deploy = validated_data["auto_deploy"]
-        auto_deploy_apps = validated_data["auto_deploy_apps"] if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None else []
-        project_configuration = validated_data["project_configuration"] if "project_configuration" in validated_data and validated_data["project_configuration"] is not None else None
+        auto_deploy_apps = (
+            validated_data["auto_deploy_apps"]
+            if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None
+            else []
+        )
+        project_configuration = (
+            validated_data["project_configuration"]
+            if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
+            else None
+        )
         email_to_username_map = validated_data.get("email_to_username_map", None)
         if request.FILES:
             env_file = request.FILES["env_file"]
@@ -582,7 +590,6 @@ def index(request):
                         is_staff=admin,
                     )
                     logger.info(f"User created: {keycloak_user}")
-        
 
         cache_key = "project_argo_status_and_user_table"
         cache_timeout = 300  # 5 minutes (adjust as needed)
@@ -899,7 +906,16 @@ def register_group_view(request, group_id):
         return HttpResponse(html_template.render({"message": result["message"]}, request))
 
 
-def deploy_project(group_id, id_token, username, cluster_id, project_form_dict, disable_argocd=False, return_values_only=False, custom_config_dict=None):
+def deploy_project(
+    group_id,
+    id_token,
+    username,
+    cluster_id,
+    project_form_dict,
+    disable_argocd=False,
+    return_values_only=False,
+    custom_config_dict=None,
+):
     argocd_cluster_id = env_settings.ARGOCD_CLUSTER
 
     cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]

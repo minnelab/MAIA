@@ -59,4 +59,32 @@ spec:
       {{- if .Values.minio.ingress.tlsSecretName }}
       secretName: {{ .Values.minio.ingress.tlsSecretName }}
       {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-api-ingress
+  namespace: {{ .Values.minio.namespace }}
+  annotations:
+    {{- if .Values.minio.ingress.annotations }}
+    {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.minio.apiDomain }}
+      {{- if .Values.minio.ingress.tlsSecretNameApi }}
+      secretName: {{ .Values.minio.ingress.tlsSecretNameApi }}
+      {{- end }}
+  rules:
+    - host: {{ .Values.minio.apiDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 80
 {{- end }}
