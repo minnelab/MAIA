@@ -202,12 +202,25 @@ def define_maia_project_versions():
     else:
         maia_namespace_chart_type = "git_repo"  # or "helm_repo"
 
+
+    if os.environ.get("MAIA_ORTHANC_CHART_VERSION") is not None:
+        maia_orthanc_chart_version = os.environ.get("MAIA_ORTHANC_CHART_VERSION")
+    else:
+        maia_orthanc_chart_version = "master"  # "1.1.0"
+
+    if os.environ.get("MAIA_ORTHANC_CHART_TYPE") is not None:
+        maia_orthanc_chart_type = os.environ.get("MAIA_ORTHANC_CHART_TYPE")
+    else:
+        maia_orthanc_chart_type = "git_repo"  # or "helm_repo"
+
     return {
         "maia_namespace_chart_version": maia_namespace_chart_version,
         "maia_filebrowser_chart_version": maia_filebrowser_chart_version,
         "maia_filebrowser_chart_type": maia_filebrowser_chart_type,
         "maia_project_chart_version": maia_project_chart_version,
         "maia_namespace_chart_type": maia_namespace_chart_type,
+        "maia-orthanc-chart_version": maia_orthanc_chart_version,
+        "maia-orthanc-chart_type": maia_orthanc_chart_type,
     }
 
 
@@ -226,7 +239,7 @@ def define_maia_docker_versions():
     if os.environ.get("MKG_CHART_VERSION") is not None:
         mkg_chart_version = os.environ.get("MKG_CHART_VERSION")
     else:
-        mkg_chart_version = "main"
+        mkg_chart_version = "master"
 
     if os.environ.get("MKG_CHART_TYPE") is not None:
         mkg_chart_type = os.environ.get("MKG_CHART_TYPE")
@@ -345,6 +358,16 @@ def define_docker_image_versions():
     else:
         mysql_image_version = "8.0.28"
         
+    if os.environ.get("MYSQL_IMAGE") is not None:
+        mysql_image = os.environ.get("MYSQL_IMAGE")
+    else:
+        mysql_image = "mysql"
+        
+    if os.environ.get("MAIA_ORTHANC_IMAGE") is not None:
+        maia_orthanc_image = os.environ.get("MAIA_ORTHANC_IMAGE")
+    else:
+        maia_orthanc_image = "ghcr.io/minnelab/maia-orthanc"
+                
     return {
         "maia-kube": maia_kube_image_version,
         "maia-dashboard": maia_dashboard_image_version,
@@ -366,4 +389,6 @@ def define_docker_image_versions():
         "maia-workspace-notebook-ssh-addons-image-name": maia_workspace_notebook_ssh_addons_image_name,
         "maia-lab": maia_lab_image_version,
         "mysql": mysql_image_version,
+        "mysql_image": mysql_image,
+        "maia-orthanc-image": maia_orthanc_image,
     }

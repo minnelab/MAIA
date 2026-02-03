@@ -21,6 +21,17 @@ from omegaconf import OmegaConf
 
 from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
 
+from MAIA.versions import define_docker_image_versions, define_maia_docker_versions, define_maia_project_versions
+
+mysql_image = define_docker_image_versions()["mysql_image"]
+mysql_image_version = define_docker_image_versions()["mysql"]
+mkg_chart_version = define_maia_docker_versions()["mkg_chart_version"]
+mkg_chart_type = define_maia_docker_versions()["mkg_chart_type"]
+maia_mlflow_image_version = define_docker_image_versions()["maia-mlflow"]
+maia_orthanc_image_version = define_docker_image_versions()["maia-orthanc"]
+maia_orthanc_image = define_docker_image_versions()["maia-orthanc-image"]
+maia_orthanc_chart_version = define_maia_project_versions()["maia-orthanc-chart_version"]
+maia_orthanc_chart_type = define_maia_project_versions()["maia-orthanc-chart_type"]
 
 def generate_random_password(length=12):
     characters = string.ascii_letters + string.digits
@@ -426,8 +437,8 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
     mysql_config = {
         "namespace": namespace,
         "chart_name": "mysql-db-v1",
-        "docker_image": "mysql",
-        "tag": "8.0.28",
+        "docker_image": mysql_image,
+        "tag": mysql_image_version,
         "memory_request": "2Gi",
         "cpu_request": "500m",
         "deployment": True,
@@ -449,12 +460,13 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
     }  # TODO: Change this to updated values
 
     mysql_values = read_config_dict_and_generate_helm_values_dict(mysql_config, kubeconfig)
-
-    mysql_values["chart_name"] = "mkg"
-    mysql_values["chart_version"] = "1.0.4"
-    mysql_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
-    if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
-        mysql_values["repo_url"] = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
+    mysql_values["chart_version"] = mkg_chart_version
+    if mkg_chart_type == "git_repo":
+        mysql_values["path"] = "charts/maiakubegate"
+        mysql_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+    else:
+        mysql_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        mysql_values["chart_name"] = "mkg"
 
     Path(config_folder).joinpath(user_config["group_ID"], "mysql_values").mkdir(parents=True, exist_ok=True)
 
@@ -464,7 +476,7 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
     return {
         "namespace": user_config["group_ID"].lower().replace("_", "-"),
         "release": user_config["group_ID"].lower().replace("_", "-") + "-mysql",
-        "chart": mysql_values["chart_name"],
+        "chart": mysql_values["chart_name"] if mkg_chart_type == "helm_repo" else mysql_values["path"],
         "repo": mysql_values["repo_url"],
         "version": mysql_values["chart_version"],
         "values": str(Path(config_folder).joinpath(user_config["group_ID"], "mysql_values", "mysql_values.yaml")),
@@ -499,8 +511,9 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
     config.load_kube_config_from_dict(kubeconfig)
-
-    docker_image = os.environ.get("MAIA_PRIVATE_REGISTRY", None) + "/maia-mlflow"
+    
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
+    docker_image = os.environ.get("MAIA_PRIVATE_REGISTRY", default_registry) + "/maia-mlflow"
     if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
         docker_image = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace] + "/maia-mlflow"
 
@@ -512,7 +525,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         "namespace": namespace,
         "chart_name": "mlflow-v1",
         "docker_image": docker_image,
-        "tag": "1.0",
+        "tag": maia_mlflow_image_version,
         "deployment": True,
         "memory_request": "2Gi",
         "cpu_request": "500m",
@@ -558,13 +571,16 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
             "traefik_resolver"
         ]
 
-    mlflow_config["image_pull_secret"] = private_registry.replace(".", "-").replace("/", "-")
-
+    if private_registry is not None:
+        mlflow_config["image_pull_secret"] = private_registry.replace(".", "-").replace("/", "-")
     mlflow_values = read_config_dict_and_generate_helm_values_dict(mlflow_config, kubeconfig)
-
-    mlflow_values["chart_name"] = "mkg"
-    mlflow_values["chart_version"] = "1.0.4"
-    mlflow_values["repo_url"] = private_registry
+    if mkg_chart_type == "helm_repo":
+        mlflow_values["chart_name"] = "mkg"
+        mlflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+    else:
+        mlflow_values["path"] = "charts/maiakubegate"
+        mlflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+    mlflow_values["chart_version"] = mkg_chart_version
 
     Path(config_folder).joinpath(user_config["group_ID"], "mlflow_values").mkdir(parents=True, exist_ok=True)
 
@@ -574,7 +590,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
     return {
         "namespace": user_config["group_ID"].lower().replace("_", "-"),
         "release": user_config["group_ID"].lower().replace("_", "-") + "-mlflow",
-        "chart": mlflow_values["chart_name"],
+        "chart": mlflow_values["chart_name"] if mkg_chart_type == "helm_repo" else mlflow_values["path"],
         "repo": mlflow_values["repo_url"],
         "version": mlflow_values["chart_version"],
         "values": str(Path(config_folder).joinpath(user_config["group_ID"], "mlflow_values", "mlflow_values.yaml")),
@@ -607,14 +623,14 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
         private_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
 
-    docker_image = os.environ["maia_orthanc_image"]
-    docker_version = os.environ["maia_orthanc_version"]
+    docker_image = maia_orthanc_image
+    docker_version = maia_orthanc_image_version
     if "maia_orthanc_image_" + namespace in os.environ:
         docker_image = os.environ["maia_orthanc_image_" + namespace]
     if "maia_orthanc_version_" + namespace in os.environ:
         docker_version = os.environ["maia_orthanc_version_" + namespace]
 
-    image_pull_secret = os.environ["imagePullSecrets"]
+    image_pull_secret = os.environ.get("imagePullSecrets", None)
     if "imagePullSecrets_" + namespace in os.environ:
         image_pull_secret = os.environ["imagePullSecrets_" + namespace]
     orthanc_config = {
@@ -644,7 +660,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
             "mysqlDatabase": "orthanc",
         }
 
-    orthanc_config["imagePullSecret"] = private_registry.replace(".", "-").replace("/", "-")
+    if private_registry is not None:
+        orthanc_config["imagePullSecret"] = private_registry.replace(".", "-").replace("/", "-")
 
     namespace = user_config["group_ID"].lower().replace("_", "-")
     orthanc_custom_config = {
@@ -711,23 +728,25 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         orthanc_config["orthanc_node_port"] = {"loadBalancer": orthanc_port}
         orthanc_config["loadBalancerIp"] = cluster_config.get("maia_metallb_ip", False)
         orthanc_config["serviceType"] = "LoadBalancer"
-
-    if cluster_config["ingress_class"] == "maia-core-traefik":
+    if "nginx_cluster_issuer" in cluster_config:
+        orthanc_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
+        orthanc_config["ingress_tls"]["secretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
+        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
+    if "traefik_resolver" in cluster_config:
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
             "traefik_resolver"
         ]
-    elif cluster_config["ingress_class"] == "nginx":
-        orthanc_config["ingress_annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
-        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
-        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
-        orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
-        orthanc_config["ingress_tls"]["secretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
-
-    orthanc_config["chart_name"] = "maia-orthanc"
-    orthanc_config["chart_version"] = "1.1.0"
-    orthanc_config["repo_url"] = private_registry
+    orthanc_config["chart_version"] = maia_orthanc_chart_version
+    if maia_orthanc_chart_type == "helm_repo":
+        orthanc_config["chart_name"] = "maia-orthanc"
+        orthanc_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+    else:
+        orthanc_config["path"] = "charts/maia-orthanc"
+        orthanc_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
 
     Path(config_folder).joinpath(user_config["group_ID"], "orthanc_values").mkdir(parents=True, exist_ok=True)
 
@@ -737,7 +756,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     return {
         "namespace": user_config["group_ID"].lower().replace("_", "-"),
         "release": user_config["group_ID"].lower().replace("_", "-") + "-orthanc",
-        "chart": orthanc_config["chart_name"],
+        "chart": orthanc_config["chart_name"] if maia_orthanc_chart_type == "helm_repo" else orthanc_config["path"],
         "repo": orthanc_config["repo_url"],
         "version": orthanc_config["chart_version"],
         "values": str(Path(config_folder).joinpath(user_config["group_ID"], "orthanc_values", "orthanc_values.yaml")),
