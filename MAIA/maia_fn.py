@@ -33,6 +33,7 @@ maia_orthanc_image = define_docker_image_versions()["maia-orthanc-image"]
 maia_orthanc_chart_version = define_maia_project_versions()["maia-orthanc-chart_version"]
 maia_orthanc_chart_type = define_maia_project_versions()["maia-orthanc-chart_type"]
 
+
 def generate_random_password(length=12):
     characters = string.ascii_letters + string.digits
     return "".join(random.choice(characters) for i in range(length))
@@ -511,7 +512,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
     config.load_kube_config_from_dict(kubeconfig)
-    
+
     default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
     docker_image = os.environ.get("MAIA_PRIVATE_REGISTRY", default_registry) + "/maia-mlflow"
     if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
@@ -722,7 +723,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         orthanc_config["orthanc_dicom_service_annotations"]["metallb.universe.tf/allow-shared-ip"] = cluster_config.get(
             "metallb_shared_ip", False
         )
-        orthanc_config["orthanc_dicom_service_annotations"]["metallb.universe.tf/ip-allocated-from-pool"] = cluster_config.get(
+        orthanc_config["orthanc_dicom_service_annotations"]["metallb.io/ip-allocated-from-pool"] = cluster_config.get(
             "metallb_ip_pool", False
         )
         orthanc_config["orthanc_node_port"] = {"loadBalancer": orthanc_port}
