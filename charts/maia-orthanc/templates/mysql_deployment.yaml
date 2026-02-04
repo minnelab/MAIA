@@ -46,6 +46,10 @@ spec:
           volumeMounts:
             - name: persistent-storage
               mountPath: /var/lib/mysql
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "mysql -u root -p -e \"ALTER USER 'maia-admin'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Values.mysql.mysqlPassword }}'; FLUSH PRIVILEGES; SET GLOBAL log_bin_trust_function_creators = 1; DROP DATABASE IF EXISTS orthanc; CREATE DATABASE orthanc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON orthanc.* TO 'maia-admin'@'%'; FLUSH PRIVILEGES;\""]
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
