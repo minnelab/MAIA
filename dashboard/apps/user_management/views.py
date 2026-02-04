@@ -941,7 +941,7 @@ def deploy_project(
 
         namespace = project_form_dict["group_ID"].lower().replace("_", "-")
 
-        if project_form_dict["project_tier"] != "Base":
+        if False:
 
             registry_url = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
 
