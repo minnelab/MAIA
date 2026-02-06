@@ -58,7 +58,7 @@ spec:
         {{- if .Values.orthanc_config_map.enabled }}
         - name: orthanc-config
           configMap:
-            name: orthanc-config
+            name: {{ .Release.Name }}-orthanc-config
         {{- end }}
         #- name: mlflow-model
         #  persistentVolumeClaim:

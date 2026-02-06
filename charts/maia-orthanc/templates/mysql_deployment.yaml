@@ -34,8 +34,6 @@ spec:
               value: {{ .Values.mysql.mysqlUser }}
             - name: MYSQL_PASSWORD
               value: {{ .Values.mysql.mysqlPassword }}
-            - name: MYSQL_PWD
-              value: {{ .Values.mysql.mysqlPassword }}
             - name: MYSQL_DATABASE
               value: {{ .Values.mysql.mysqlDatabase }}
           resources:
@@ -51,7 +49,7 @@ spec:
           lifecycle:
             postStart:
               exec:
-                command: ["/bin/sh", "-c", "sleep 30 && mysql -u root -p\"{{ .Values.mysql.mysqlPassword }}\" -e \"ALTER USER 'maia-admin'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Values.mysql.mysqlPassword }}'; FLUSH PRIVILEGES; SET GLOBAL log_bin_trust_function_creators = 1; DROP DATABASE IF EXISTS orthanc; CREATE DATABASE orthanc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON orthanc.* TO 'maia-admin'@'%'; FLUSH PRIVILEGES;\""]
+                command: ["/bin/sh", "-c", "sleep 10 && mysql -u root -p\'{{ .Values.mysql.mysqlPassword }}\' -e \"ALTER USER 'maia-admin'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Values.mysql.mysqlPassword }}'; FLUSH PRIVILEGES; SET GLOBAL log_bin_trust_function_creators = 1; DROP DATABASE IF EXISTS orthanc; CREATE DATABASE orthanc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON orthanc.* TO 'maia-admin'@'%'; FLUSH PRIVILEGES;\""]
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

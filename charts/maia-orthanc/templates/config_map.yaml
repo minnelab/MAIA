@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: orthanc-config
+  name: {{ .Release.Name }}-orthanc-config
 data:
   orthanc.json: {{ .Values.orthanc_config_map.orthanc_config | toJson | quote }}
   models.json: |
