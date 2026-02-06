@@ -481,7 +481,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "email": cluster_config_dict["ingress_resolver_email"],
                     # "httpchallenge": "true",
                     "httpchallenge": {"entryPoint": "web"},
-                    #"caserver": "https://acme-v02.api.letsencrypt.org/directory",
+                    # "caserver": "https://acme-v02.api.letsencrypt.org/directory",
                     "caserver": "https://acme-staging-v02.api.letsencrypt.org/directory",
                     "storage": "/data/acme.json",
                 }
