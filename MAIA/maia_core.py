@@ -486,12 +486,14 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "email": cluster_config_dict["ingress_resolver_email"],
                     # "httpchallenge": "true",
                     "httpchallenge": {"entryPoint": "web"},
-                    # "caserver": "https://acme-v02.api.letsencrypt.org/directory",
-                    "caserver": "https://acme-staging-v02.api.letsencrypt.org/directory",
                     "storage": "/data/acme.json",
                 }
             }
         }
+        if "staging_certificates" in cluster_config_dict and cluster_config_dict["staging_certificates"]:
+            traefik_values["certificatesResolvers"][cluster_config_dict["traefik_resolver"]]["acme"]["caserver"] = "https://acme-staging-v02.api.letsencrypt.org/directory"
+        else:
+            traefik_values["certificatesResolvers"][cluster_config_dict["traefik_resolver"]]["acme"]["caserver"] = "https://acme-v02.api.letsencrypt.org/directory"
 
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
