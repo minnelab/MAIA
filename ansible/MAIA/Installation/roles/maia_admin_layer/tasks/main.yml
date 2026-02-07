@@ -248,7 +248,7 @@
 
 - name: Download MAIA Keycloak Theme inside Keycloak container
   ansible.builtin.shell: |
-    kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -sSL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && tar -xzf /opt/bitnami/keycloak/themes/maia-theme.tar.gz -C /opt/bitnami/keycloak/themes'
+    kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -f -sSL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && cd /opt/bitnami/keycloak/themes && tar -xvf maia-theme.tar.gz'
   delegate_to: localhost
   when: auto_sync | bool
   environment:
