@@ -1,0 +1,14 @@
+{{- if .Values.keycloak.enabled}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-keycloak-themes
+  namespace: {{ .Values.keycloak.values.namespace }}
+spec:
+  storageClassName: {{ .Values.keycloak.values.storageClassName }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+{{- end }}

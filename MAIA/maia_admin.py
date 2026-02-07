@@ -938,6 +938,10 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
                 "enabled": True,
                 "values": {"namespace": "harbor", "storageClassName": cluster_config_dict["storage_class"]},
             },
+            "keycloak": {
+                "enabled": True,
+                "values": {"namespace": "keycloak", "storageClassName": cluster_config_dict["storage_class"]},
+            },
             "minio": {
                 "enabled": True,
                 "namespace": "maia-dashboard",
@@ -1099,6 +1103,7 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         harbor_values["expose"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         harbor_values["expose"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        harbor_values["expose"]["tls"]["certSource"] = "none"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             harbor_values["expose"]["ingress"]["annotations"][
                 "traefik.ingress.kubernetes.io/router.tls.certresolver"
