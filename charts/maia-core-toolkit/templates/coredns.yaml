@@ -21,7 +21,7 @@ data:
     {{ .Values.cluster_domain }}:53 {
     hosts {
         {{ range .Values.coredns_mappings }}
-        {{ .coredns_ip }} {{ .subdomain }}.{{ .Values.cluster_domain }}
+        {{ .coredns_ip }} {{ .subdomain }}.{{ $.Values.cluster_domain }}
         {{ end }}
         fallthrough
       }
