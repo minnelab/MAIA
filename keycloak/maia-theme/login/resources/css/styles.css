@@ -1,0 +1,7 @@
+/* Target the main page container */
+.login-pf-page {
+    background-image: url('../img/MAIA-logo.png') !important;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
