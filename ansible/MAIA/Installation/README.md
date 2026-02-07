@@ -138,6 +138,9 @@ cluster_config_extra_env:
       coredns_ip: "<IP_ADDRESS>"
     - subdomain: "mgmt"
       coredns_ip: "<IP_ADDRESS>"
+  externalCA:
+    name: "external-ca-secret"
+    cert: "<PATH_TO_CERTIFICATE>"
   shared_storage_class: microk8s-hostpath
 ```
 

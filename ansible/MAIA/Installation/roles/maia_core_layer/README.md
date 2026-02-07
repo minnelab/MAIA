@@ -463,6 +463,12 @@ After running the role, verify the MAIA Core installation:
       - subdomain: "mgmt"
         coredns_ip: "<IP_ADDRESS>"
 ```
+- **External CA**: If `externalCA` is set in the cluster config, the role will create a secret with the CA certificate.
+```yaml
+    externalCA:
+      name: "external-ca-secret"
+      cert: "<PATH_TO_CERTIFICATE>"
+```
 - **kubernetes.core collection**: The role requires the `kubernetes.core` Ansible collection. Install it with `ansible-galaxy collection install kubernetes.core`.
 - **Helm requirement**: Helm must be installed and configured to access the Prometheus chart repository.
 - **Internet access**: The role requires internet access to download ArgoCD CLI and Helm charts.

@@ -33,6 +33,19 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
+- name: Check if external CA is set in cluster config
+  ansible.builtin.set_fact:
+    external_ca_set: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA | default(false) }}"
+  delegate_to: localhost
+
+- name: Create external CA secret if set in cluster config in maia-dashboard namespace, used by MinIO Tenant
+  ansible.builtin.command: >
+    kubectl create secret generic {{ (cluster_config_content.content | b64decode | from_yaml).externalCA.name }} --from-file=ca.crt={{ (cluster_config_content.content | b64decode | from_yaml).externalCA.cert }} -n maia-dashboard
+  when: external_ca_set | bool
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
 - name: Run MAIA Admin Toolkit installer
   ansible.builtin.command: >
     MAIA_install_admin_toolkit
@@ -213,6 +226,12 @@
   delay: 10
   until: keycloak_pod_ready.rc == 0
   when: keycloak_synced == false and auto_sync | bool 
+
+- name: Download MAIA Keycloak Theme inside Keycloak container
+  ansible.builtin.shell: |
+    kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -sSL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && tar -xzf /opt/bitnami/keycloak/themes/maia-theme.tar.gz -C /opt/bitnami/keycloak/themes'
+  delegate_to: localhost
+  when: auto_sync | bool
 
 - name: Run MAIA_configure_keycloak to configure Keycloak
   ansible.builtin.command: >
