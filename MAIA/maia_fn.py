@@ -687,7 +687,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     if enable_mysql:
         orthanc_custom_config["MySQL"] = {
             "EnableIndex": True,
-            "EnableStorage": True,
+            "EnableStorage": False,
             "Host": user_config["group_ID"].lower().replace("_", "-") + "-orthanc-mysql",
             "Port": 3306,
             "UnixSocket": "",

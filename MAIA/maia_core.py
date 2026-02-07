@@ -361,6 +361,9 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         )
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
+        
+    if "coredns_mappings" in cluster_config_dict:
+        core_toolkit_values.update({"cluster_domain": cluster_config_dict["domain"], "coredns_mappings": cluster_config_dict["coredns_mappings"]})
 
     Path(config_folder).joinpath(project_id, "core_toolkit_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:

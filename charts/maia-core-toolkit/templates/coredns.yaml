@@ -1,0 +1,36 @@
+{{ if .Values.coredns_mappings }}
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          ttl 30
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+    {{ .Values.cluster_domain }}:53 {
+    hosts {
+        {{ range .Values.coredns_mappings }}
+        {{ .coredns_ip }} {{ .domain }}
+        {{ end }}
+        fallthrough
+      }
+    forward . /etc/resolv.conf
+    cache 30
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    k0s.k0sproject.io/stack: coredns
+  name: coredns
+  namespace: kube-system

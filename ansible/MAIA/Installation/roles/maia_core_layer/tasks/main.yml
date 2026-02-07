@@ -113,6 +113,7 @@
 - name: Check if 'selfsigned' is present and true in cluster config
   ansible.builtin.set_fact:
     use_selfsigned: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).selfsigned | default(false) }}"
+    coredns_mappings: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).coredns_mappings | default([]) }}"
   delegate_to: localhost
 
 - name: Rollout restart maia-core-traefik deployment if selfsigned is enabled
@@ -127,7 +128,7 @@
 - name: Rollout restart coredns deployment if selfsigned is enabled
   ansible.builtin.shell: |
     kubectl rollout restart deployment/coredns -n kube-system
-  when: use_selfsigned | bool and auto_sync | bool
+  when: (use_selfsigned | bool or coredns_mappings | length > 0) and auto_sync | bool
   changed_when: true
   delegate_to: localhost
   environment:
