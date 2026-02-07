@@ -9,9 +9,9 @@ spec:
     - name: maia-envs
   requestAutoCert: false
   {{- if .Values.minio.externalCA }}
-  externalCaCertSecret:
-    name: {{ .Values.minio.externalCA.name }}
-    type: Opaque
+  externalCaCertSecrets:
+    - name: {{ .Values.minio.externalCA.name }}
+      type: Opaque
   {{- end }}
   exposeServices:
     console: true
