@@ -244,13 +244,15 @@
   retries: 10
   delay: 10
   until: keycloak_pod_ready.rc == 0
-  when: keycloak_synced == false and auto_sync | bool 
+  when: auto_sync | bool 
 
 - name: Download MAIA Keycloak Theme inside Keycloak container
   ansible.builtin.shell: |
     kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -sSL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && tar -xzf /opt/bitnami/keycloak/themes/maia-theme.tar.gz -C /opt/bitnami/keycloak/themes'
   delegate_to: localhost
   when: auto_sync | bool
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
 - name: Run MAIA_configure_keycloak to configure Keycloak
   ansible.builtin.command: >
