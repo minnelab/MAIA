@@ -1,7 +1,38 @@
 /* Target the main page container */
 .login-pf-page {
-    background-image: url('../img/MAIA-logo.png') !important;
-    background-size: cover;
+    background-image: url('../img/MAIA/MAIA_room_simple.png');
     background-position: center;
     background-repeat: no-repeat;
+    background-size: 50% auto;
+}
+/* Add a title in the lower left side */
+.maia-upperleft-title {
+    position: absolute;
+    top: 25%;
+    left: 0;
+    width: 67vw;
+    color: #fff;
+    font-size: clamp(18px, 4vw, 32px);
+    font-weight: bold;
+    text-align: center;
+    transform: translateY(-50%);
+    /* Responsive padding for smaller screens */
+    padding-left: 2vw;
+    padding-right: 2vw;
+}
+
+@media (max-width: 768px) {
+    .maia-upperleft-title {
+        top: 18%;
+        width: 90vw;
+        font-size: clamp(16px, 6vw, 24px);
+    }
+}
+
+@media (max-width: 480px) {
+    .maia-upperleft-title {
+        top: 15%;
+        width: 98vw;
+        font-size: clamp(13px, 8vw, 20px);
+    }
 }
