@@ -34,3 +34,4 @@ metadata:
     k0s.k0sproject.io/stack: coredns
   name: coredns
   namespace: kube-system
+{{ end }}
