@@ -38,9 +38,18 @@
     external_ca_set: "{{ (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0 }}"
   delegate_to: localhost
 
-- name: Create external CA secret if set in cluster config in maia-dashboard namespace, used by MinIO Tenant
-  ansible.builtin.command: >
-    kubectl create secret generic {{ (cluster_config_content.content | b64decode | from_yaml).externalCA.name }} --from-file=ca.crt={{ (cluster_config_content.content | b64decode | from_yaml).externalCA.cert }} -n maia-dashboard
+- name: Ensure external CA secret exists in maia-dashboard namespace, used by MinIO Tenant
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA.name }}"
+        namespace: maia-dashboard
+      type: Opaque
+      data:
+        ca.crt: "{{ lookup('file', (cluster_config_content.content | b64decode | from_yaml).externalCA.cert) | b64encode }}"
   when: external_ca_set | bool
   delegate_to: localhost
   environment:
