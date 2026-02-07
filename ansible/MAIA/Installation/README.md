@@ -131,6 +131,13 @@ env:
 # Additional cluster configuration options
 cluster_config_extra_env:
   selfsigned: true
+  coredns_mappings:
+    - subdomain: "iam"
+      coredns_ip: "<IP_ADDRESS>"
+    - subdomain: "registry"
+      coredns_ip: "<IP_ADDRESS>"
+    - subdomain: "mgmt"
+      coredns_ip: "<IP_ADDRESS>"
   shared_storage_class: microk8s-hostpath
 ```
 
