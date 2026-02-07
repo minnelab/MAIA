@@ -10,7 +10,7 @@ spec:
   requestAutoCert: false
   {{- if .Values.minio.externalCA }}
   externalCaCertSecret:
-    name: {{ .Values.minio.externalCA }}
+    name: {{ .Values.minio.externalCA.name }}
     type: Opaque
   {{- end }}
   exposeServices:
@@ -92,4 +92,15 @@ spec:
                 name: minio
                 port:
                   number: 80
+{{- if .Values.minio.externalCA }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.minio.externalCA.name }}
+  namespace: {{ .Values.minio.namespace }}
+type: Opaque
+data:
+  ca.crt: {{ .Values.minio.externalCA.cert | b64enc }}
+{{- end }}
 {{- end }}
