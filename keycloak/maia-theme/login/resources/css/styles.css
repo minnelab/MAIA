@@ -1,7 +1,7 @@
 /* Target the main page container */
-.login-pf-page {
-    background-image: url('../img/MAIA/MAIA_room_simple.png');
-    background-position: center;
+body {
+    background-image: url('../img/MAIA_room_simple.jpg');
+    background-position: right;
     background-repeat: no-repeat;
     background-size: 50% auto;
 }
