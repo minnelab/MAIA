@@ -8,6 +8,11 @@ spec:
   buckets:
     - name: maia-envs
   requestAutoCert: false
+  {{- if .Values.minio.externalCA }}
+  externalCaCertSecret:
+    name: {{ .Values.minio.externalCA }}
+    type: Opaque
+  {{- end }}
   exposeServices:
     console: true
     minio: true
