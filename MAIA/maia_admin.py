@@ -971,7 +971,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
         admin_toolkit_values["minio"]["externalCA"]["name"] = cluster_config_dict["externalCA"]["name"]
         admin_toolkit_values["minio"]["externalCA"]["cert"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
         admin_toolkit_values["argocd"]["rootCA"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
-        
+
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         admin_toolkit_values["argocd"]["rootCA"] = open(Path(cluster_config_dict["rootCA"])).read()
 
@@ -1179,10 +1179,17 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
                 "hostname": "iam." + cluster_config_dict["domain"],
                 "annotations": {},
             },
-            "extraVolumeMounts": [{"name": "keycloak-import", "mountPath": "/opt/bitnami/keycloak/data/import",},
-                                  {"name": "keycloak-themes", "mountPath": "/opt/bitnami/keycloak/themes"}],
-            "extraVolumes": [{"name": "keycloak-import", "configMap": {"name": "maia-realm-import"}},
-                             {"name": "keycloak-themes", "persistentVolumeClaim": {"claimName": "pvc-keycloak-themes"}}],
+            "extraVolumeMounts": [
+                {
+                    "name": "keycloak-import",
+                    "mountPath": "/opt/bitnami/keycloak/data/import",
+                },
+                {"name": "keycloak-themes", "mountPath": "/opt/bitnami/keycloak/themes"},
+            ],
+            "extraVolumes": [
+                {"name": "keycloak-import", "configMap": {"name": "maia-realm-import"}},
+                {"name": "keycloak-themes", "persistentVolumeClaim": {"claimName": "pvc-keycloak-themes"}},
+            ],
         }
     )
 
