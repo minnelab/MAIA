@@ -12,6 +12,19 @@
   delegate_to: localhost
   run_once: true
 
+- name: Check if externalCA.cert key exists in cluster config
+  set_fact:
+    external_ca_cert: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA.cert }}"
+  when: >
+    (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0
+    and (cluster_config_content.content | b64decode | from_yaml).externalCA.cert is defined
+
+- name: Register externalCA.cert as oidc_ca_file if present
+  set_fact:
+    oidc_ca_file: "{{ external_ca_cert }}"
+  when: external_ca_cert is defined
+
+
 - name: Extract cluster domain
   ansible.builtin.set_fact:
     cluster_domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"

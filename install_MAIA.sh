@@ -173,6 +173,27 @@ select yn in "Yes" "No"; do
     esac
 done
 
+echo "Do you want to generate staging certificates with Let's Encrypt? (y/N): "
+select yn in "Yes" "No"; do
+    case $yn in
+        Yes )
+            export GENERATE_STAGING_CERTIFICATES="yes"
+            break
+            ;;
+        No )
+            export GENERATE_STAGING_CERTIFICATES="no"
+            break
+            ;;
+    esac
+done
+
+if [ "$GENERATE_STAGING_CERTIFICATES" = "yes" ]; then
+    # Download CA for Staging and save it in <CONFIG_FOLDER>/staging-ca.pem
+    mkdir -p "$CONFIG_FOLDER"
+    curl -fsSL "https://letsencrypt.org/certs/staging/letsencrypt-stg-root-x1.pem" -o "$CONFIG_FOLDER/staging-ca.pem"
+
+fi
+
 export PUBLIC_REGISTRY=1
 
 export K8S_DISTRIBUTION="microk8s"
@@ -227,6 +248,12 @@ steps:
 cluster_config_extra_env:
   empty: empty
   $(if [ "$SELF_SIGNED_CERTIFICATES" = "yes" ]; then echo "selfsigned: true"; fi)
+  $(if [ "$GENERATE_STAGING_CERTIFICATES" = "yes" ]; then echo "staging_certificates: true"; fi)
+  $(if [ "$GENERATE_STAGING_CERTIFICATES" = "yes" ]; then 
+    echo "externalCA:"; 
+    echo "  name: \"iam-ca-secret\"";
+    echo "  cert: \"$CONFIG_FOLDER/staging-ca.pem\"";
+  fi)
 EOF
 
 

@@ -105,12 +105,15 @@ def get_arg_parser():
     )
     parser.add_argument("--client_secret", type=str, required=True, help="The client secret to use")
     parser.add_argument("--server_url", type=str, required=True, help="The server URL to configure")
+    parser.add_argument("--admin_email", type=str, required=False, default="admin@maia.se", help="The admin email to use")
+    parser.add_argument("--admin_password", type=str, required=False, default="Admin", help="The admin password to use")
+    parser.add_argument("--admin_group_id", type=str, required=False, default="admin", help="The admin group ID to use")
     return parser
 
 
 def main():
     args = get_arg_parser().parse_args()
-    create_admin_user_and_group(args.server_url, args.client_secret)
+    create_admin_user_and_group(args.server_url, args.client_secret, args.admin_email, args.admin_password, args.admin_group_id)
 
 
 if __name__ == "__main__":

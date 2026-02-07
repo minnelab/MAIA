@@ -4,6 +4,10 @@
     file: "{{ config_folder }}/env.json"
   when: config_folder is defined
 
+- name: Ensure admin_email is set
+  set_fact:
+    admin_email: "{{ admin_email | default('admin@maia.io') }}"
+
 - name: Read cluster config YAML file
   ansible.builtin.slurp:
     src: "{{ config_folder }}/{{ cluster_name }}.yaml"
@@ -256,7 +260,7 @@
 
 - name: Run MAIA_configure_keycloak to configure Keycloak
   ansible.builtin.command: >
-    MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}"
+    MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}" --admin_email "{{ admin_email }}"
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   register: configure_keycloak_result
