@@ -33,9 +33,9 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
-- name: Check if external CA is set in cluster config
+- name: Check if externalCA key exists in cluster config
   ansible.builtin.set_fact:
-    external_ca_set: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA is defined }}"
+    external_ca_set: "{{ (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0 }}"
   delegate_to: localhost
 
 - name: Create external CA secret if set in cluster config in maia-dashboard namespace, used by MinIO Tenant
