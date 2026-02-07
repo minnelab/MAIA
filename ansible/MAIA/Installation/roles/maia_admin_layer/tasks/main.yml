@@ -214,6 +214,16 @@
   ignore_errors: true
   when: keycloak_synced == false
 
+- name: Sync maia-admin-admin-toolkit ArgoCD application
+  ansible.builtin.shell: |
+    argocd app sync maia-admin-admin-toolkit
+  register: argocd_sync_admin_toolkit_result
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  timeout: 120
+  when: auto_sync | bool
+
 - name: Wait until maia-admin-keycloak-0 pod is ready
   ansible.builtin.shell: |
     kubectl -n keycloak wait --for=condition=Ready pod/maia-admin-keycloak-0 --timeout=300s
