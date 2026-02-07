@@ -1173,8 +1173,10 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
                 "hostname": "iam." + cluster_config_dict["domain"],
                 "annotations": {},
             },
-            "extraVolumeMounts": [{"name": "keycloak-import", "mountPath": "/opt/bitnami/keycloak/data/import"}],
-            "extraVolumes": [{"name": "keycloak-import", "configMap": {"name": "maia-realm-import"}}],
+            "extraVolumeMounts": [{"name": "keycloak-import", "mountPath": "/opt/bitnami/keycloak/data/import",},
+                                  {"name": "keycloak-themes", "mountPath": "/opt/bitnami/keycloak/themes"}],
+            "extraVolumes": [{"name": "keycloak-import", "configMap": {"name": "maia-realm-import"}},
+                             {"name": "keycloak-themes", "persistentVolumeClaim": {"claimName": "pvc-keycloak-themes"}}],
         }
     )
 
