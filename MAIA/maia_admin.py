@@ -1391,7 +1391,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         A dictionary containing the namespace, release name, chart name, repository URL, chart version,
         and the path to the generated values YAML file.
     """
-
     maia_dashboard_values = {
         "namespace": "maia-dashboard",
         "chart_version": maia_dashboard_chart_version,
@@ -1407,6 +1406,95 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
         maia_dashboard_values["path"] = "charts/maia-dashboard"
 
+    maia_dashboard_values.update(
+        {"ingress": {
+            "enabled": True,
+            "annotations": {},
+            "hosts": [
+                {
+                    "host": "maia." + cluster_config_dict["domain"],
+                    "paths": [
+                        {"path": "/", "pathType": "ImplementationSpecific"},
+                        {"path": "/maia-api/", "pathType": "ImplementationSpecific"},
+                        {"path": "/maia/", "pathType": "ImplementationSpecific"},
+                    ]
+                }
+            ],
+            "tls": [
+                {"hosts": ["maia." + cluster_config_dict["domain"]]}
+            ]
+        },
+        "env": [
+            {"name": "DEBUG", "value": "False"},
+            {"name": "SERVER", "value": "maia." + cluster_config_dict["domain"]},
+            {"name": "LOCAL_DB_PATH", "value": "/etc/MAIA-Dashboard/db"}
+        ],
+        "storageClass": cluster_config_dict["storage_class"],
+        "image": {"repository": "ghcr.io/minnelab/maia-dashboard", "tag": maia_dashboard_image_version},
+        "dashboard": {
+            "local_config_path": "/mnt/dashboard-config"
+        },
+        "mysql": {
+            "enabled": True
+        }
+        }
+    )
+    
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
+    elif cluster_config_dict["ingress_class"] == "nginx":
+        maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = cluster_config_dict["domain"]
+
+    Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(maia_dashboard_values))
+
+    return {
+        "namespace": maia_dashboard_values["namespace"],
+        "release": f"{project_id}-dashboard",
+        "chart": (
+            maia_dashboard_values["chart_name"] if maia_dashboard_chart_type == "helm_repo" else maia_dashboard_values["path"]
+        ),
+        "repo": maia_dashboard_values["repo_url"],
+        "version": maia_dashboard_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
+    }
+def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_dict):
+    """
+    Create MAIA dashboard values for Helm chart deployment.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The project identifier.
+    cluster_config_dict : dict
+        Dictionary containing cluster configuration details.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the namespace, release name, chart name, repository URL, chart version,
+        and the path to the generated values YAML file.
+    """
+
+
+    maia_dashboard_values = {}
     maia_dashboard_values.update(
         {
             "image": {"pullPolicy": "IfNotPresent", "tag": maia_dashboard_image_version},
@@ -1477,24 +1565,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["image"]["repository"] = "ghcr.io/minnelab/maia-dashboard"
         maia_dashboard_values["imagePullSecrets"] = []
 
-    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
-        maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            ...
-        else:
-            maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-                cluster_config_dict["traefik_resolver"]
-            )
-    elif cluster_config_dict["ingress_class"] == "nginx":
-        maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
-        maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
-        maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
-        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
-        else:
-            maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
-        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = cluster_config_dict["domain"]
+
 
     # maia_dashboard_values["clusters"] = [cluster_config_dict]
 
