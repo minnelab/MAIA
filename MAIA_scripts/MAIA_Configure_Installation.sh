@@ -226,6 +226,21 @@ else
   rancher_password=$(openssl rand -hex 12)
 fi
 
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  if [ -f "$CONFIG_FOLDER/$CLUSTER_NAME.yaml" ]; then
+    existing_keycloak_admin_password=$(yq -r '.keycloak_admin_password // empty' "$CONFIG_FOLDER/$CLUSTER_NAME.yaml")
+  else
+    existing_keycloak_admin_password=""
+  fi
+else
+  existing_keycloak_admin_password=""
+fi
+
+if [ -n "$existing_keycloak_admin_password" ] && [ "$existing_keycloak_admin_password" != "null" ]; then
+  keycloak_admin_password="$existing_keycloak_admin_password"
+else
+  keycloak_admin_password=$(openssl rand -hex 10)
+fi
 export SSH_PORT_TYPE=${SSH_PORT_TYPE:-NodePort}
 export PORT_RANGE_LOWER_BOUND=${PORT_RANGE_LOWER_BOUND:-30000}
 export PORT_RANGE_UPPER_BOUND=${PORT_RANGE_UPPER_BOUND:-31000}
@@ -246,6 +261,7 @@ k8s_distribution: "$K8S_DISTRIBUTION"
 traefik_resolver: "maiaresolver"
 traefik_dashboard_password: "$traefik_dashboard_password"
 rancher_password: "$rancher_password"
+keycloak_admin_password: "$keycloak_admin_password"
 rancher_token: "$RANCHER_TOKEN"
 rootCA: $CONFIG_FOLDER/ca.crt
 bucket_name: $BUCKET_NAME

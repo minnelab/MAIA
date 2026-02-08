@@ -1179,6 +1179,9 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
                 "hostname": "iam." + cluster_config_dict["domain"],
                 "annotations": {},
             },
+            "auth": {
+                "adminPassword": cluster_config_dict["keycloak_admin_password"],
+            },
             "extraVolumeMounts": [
                 {
                     "name": "keycloak-import",

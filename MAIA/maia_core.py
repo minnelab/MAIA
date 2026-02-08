@@ -8,6 +8,7 @@ from kubernetes import client, config
 from omegaconf import OmegaConf
 import loguru
 from MAIA.versions import define_maia_core_versions, define_maia_admin_versions
+from secrets import token_urlsafe
 
 prometheus_chart_version = define_maia_core_versions()["prometheus_chart_version"]
 loki_chart_version = define_maia_core_versions()["loki_chart_version"]
@@ -338,9 +339,17 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         metallb_ip_pool = "-".join(internal_ips)
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        secret = token_urlsafe(32)
         core_toolkit_values.update(
             {
-                "dashboard": {"enabled": True, "dashboard_domain": "dashboard." + cluster_config_dict["domain"]},
+                "dashboard": {
+                    "enabled": True,
+                    "dashboard_domain": "dashboard." + cluster_config_dict["domain"],
+                    "plugin_secret": secret,
+                    "keycloak_client_secret": os.environ["keycloak_client_secret"],
+                    "admin_group_ID": os.environ["admin_group_ID"],
+                    "domain": cluster_config_dict["domain"],
+                },
                 "default_ingress_class": cluster_config_dict["ingress_class"],
                 "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
                 "metallb": {"enabled": True, "addresses": metallb_ip_pool},
@@ -415,6 +424,8 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
         "chart_version": traefik_chart_version,
     }  # TODO: Change this to updated values
 
+    secret = token_urlsafe(32)
+
     traefik_values.update(
         {
             "ingressRoute": {
@@ -422,7 +433,11 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "enabled": True,
                     "matchRule": "Host(`{}`)".format("traefik." + cluster_config_dict["domain"]),  # && PathPrefix(`/dashboard`)
                     "entryPoints": ["websecure"],
-                    "middlewares": [{"name": "traefik-dashboard-auth"}, {"name": "traefik-dashboard-replace-path"}],
+                    "middlewares": [
+                        {"name": "oidc"},
+                        # {"name": "traefik-dashboard-auth"},
+                        {"name": "traefik-dashboard-replace-path"},
+                    ],
                 }
             },
             "extraObjects": [
@@ -444,6 +459,36 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "kind": "Middleware",
                     "metadata": {"name": "traefik-dashboard-auth"},
                     "spec": {"basicAuth": {"secret": "traefik-dashboard-auth-secret"}},
+                },
+                {
+                    "apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {"name": "oidc-secret"},
+                    "stringData": {
+                        "pluginSecret": secret,
+                        "providerClientSecret": os.environ["keycloak_client_secret"],
+                    },
+                    "type": "Opaque",
+                },
+                {
+                    "apiVersion": "traefik.io/v1alpha1",
+                    "kind": "Middleware",
+                    "metadata": {"name": "oidc"},
+                    "spec": {
+                        "plugin": {
+                            "traefik-oidc-auth": {
+                                "Secret": "urn:k8s:secret:oidc-secret:pluginSecret",
+                                "Provider": {
+                                    "ClientId": "maia",
+                                    "ClientSecret": "urn:k8s:secret:oidc-secret:providerClientSecret",
+                                    "Url": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+                                    "Scopes": ["openid", "email", "profile"],
+                                    "InsecureSkipVerify": True,
+                                },
+                                "Authorization": {"AssertClaims": [{"Name": "groups", "AnyOf": [os.environ["admin_group_ID"]]}]},
+                            }
+                        }
+                    },
                 },
             ],
             "globalArguments": [
@@ -473,6 +518,12 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                 # f"--certificatesresolvers.{resolver}.acme.storage=/data/acme.json",
                 # f"--certificatesresolvers.{resolver}.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
             ],
+            "experimental": {
+                "plugins": {
+                    "traefik-oidc-auth": {"moduleName": "github.com/sevensolutions/traefik-oidc-auth", "version": "v0.17.0"}
+                }
+            },
+            "persistence": {"enabled": True},
         }
     )
 
@@ -647,6 +698,8 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        rancher_values["ingress"]["tls"]["secretName"] = None
+
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             ...
         else:
