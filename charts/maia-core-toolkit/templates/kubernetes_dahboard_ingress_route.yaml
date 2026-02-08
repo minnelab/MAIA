@@ -30,7 +30,7 @@ spec:
       port: 443                      
       serversTransport: kubernetes-dashboard-transport
     middlewares:
-    - name: oidc
+    - name: dashboard-oidc
     #- name: kubernetes-dashboard-replace-path
   {{- if .Values.certResolver }}
   tls:                              
@@ -51,8 +51,8 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: oidc-secret
-  namespace: traefik
+  name: dashboard-oidc-secret
+  namespace: kube-system
 type: Opaque
 stringData:
   pluginSecret: "{{ .Values.dashboard.plugin_secret }}"
@@ -61,19 +61,19 @@ stringData:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: oidc
-  namespace: traefik
+  name: dashboard-oidc
+  namespace: kube-system
 spec:
   plugin:
     traefik-oidc-auth: # same key as in the static configuration
-      Secret: "urn:k8s:secret:oidc-secret:pluginSecret"
+      Secret: "urn:k8s:secret:dashboard-oidc-secret:pluginSecret"
       Provider:
         # You could just write strings here for the values.
         ClientId: "maia"
         # Or you can reference a Secret in the same namespace as the Middleware.
         # This will resolve to the value of the providerClientSecret key
         # in the secret named oidc-secret.
-        ClientSecret: "urn:k8s:secret:oidc-secret:providerClientSecret"
+        ClientSecret: "urn:k8s:secret:dashboard-oidc-secret:providerClientSecret"
         InsecureSkipVerify: true
         Url: "https://iam.{{ .Values.dashboard.domain }}/realms/maia"
         Scopes:
