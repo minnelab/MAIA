@@ -113,7 +113,13 @@ def get_arg_parser():
 
 def main():
     args = get_arg_parser().parse_args()
-    create_admin_user_and_group(server_url=args.server_url, client_secret=args.client_secret, admin_email=args.admin_email, admin_password=args.admin_password, admin_group_id=args.admin_group_id)
+    create_admin_user_and_group(
+        server_url=args.server_url,
+        client_secret=args.client_secret,
+        admin_email=args.admin_email,
+        admin_password=args.admin_password,
+        admin_group_id=args.admin_group_id,
+    )
 
 
 if __name__ == "__main__":
