@@ -15,9 +15,7 @@
 - name: Check if externalCA.cert key exists in cluster config
   set_fact:
     external_ca_cert: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA.cert }}"
-  when: >
-    (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0
-    and (cluster_config_content.content | b64decode | from_yaml).externalCA.cert is defined
+  when: "{{ (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0 }}"
 
 - name: Register externalCA.cert as oidc_ca_file if present
   set_fact:
