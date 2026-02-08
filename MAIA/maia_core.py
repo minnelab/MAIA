@@ -339,7 +339,7 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         metallb_ip_pool = "-".join(internal_ips)
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        secret = token_urlsafe(32)
+        secret = token_urlsafe(32)[:32]
         core_toolkit_values.update(
             {
                 "dashboard": {
@@ -424,7 +424,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
         "chart_version": traefik_chart_version,
     }  # TODO: Change this to updated values
 
-    secret = token_urlsafe(32)
+    secret = token_urlsafe(32)[:32]
 
     traefik_values.update(
         {
