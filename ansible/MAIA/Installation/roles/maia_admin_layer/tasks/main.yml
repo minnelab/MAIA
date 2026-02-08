@@ -53,7 +53,7 @@
         namespace: maia-dashboard
       type: Opaque
       data:
-        ca.crt: "{{ lookup('file', (cluster_config_content.content | b64decode | from_yaml).externalCA.cert) | b64encode }}"
+        public.crt: "{{ lookup('file', (cluster_config_content.content | b64decode | from_yaml).externalCA.cert) | b64encode }}"
   when: external_ca_set | bool
   delegate_to: localhost
   environment:
