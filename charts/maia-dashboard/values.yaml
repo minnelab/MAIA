@@ -95,23 +95,22 @@ affinity: {}
 
 env: []
 
-clusters:    
-- api: ""
-  maia_dashboard:
-    enabled: True
-    token: <RANCHER_TOKEN>
-  cluster_name: demo-cluster
-  ssh_hostname: "hostname of the cluster for SSH access to display on the namespace page"
-  services:
-    argocd: https://argocd.maia.com
-    dashboard: https://dashboard.maia.com
-    grafana: https://grafana.maia-cloud.com
-    keycloak: https://iam.maia.com
-    login: https://login.maia.com
-    rancher: https://mgmt.maia.com
-    registry: https://registry.maia.com
-    traefik: https://traefik.maia.com
-
+clusters:    []
+#- api: ""
+#  maia_dashboard:
+#    enabled: True
+#    token: <RANCHER_TOKEN>
+#  cluster_name: demo-cluster
+#  ssh_hostname: "hostname of the cluster for SSH access to display on the namespace page"
+#  services:
+#    argocd: https://argocd.maia.com
+#    dashboard: https://dashboard.maia.com
+#    grafana: https://grafana.maia-cloud.com
+#    keycloak: https://iam.maia.com
+#    login: https://login.maia.com
+#    rancher: https://mgmt.maia.com
+#    registry: https://registry.maia.com
+#    traefik: https://traefik.maia.com
 gpuList: []
 
 dashboard:
