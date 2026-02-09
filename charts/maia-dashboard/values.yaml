@@ -77,6 +77,8 @@ mysql:
   mysqlUser: ""
   mysqlPassword: ""
   mysqlDatabase: ""
+  image: "mysql"
+  tag: "8.0.28"
 
 storageClass: ""
 
