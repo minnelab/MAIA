@@ -1465,15 +1465,27 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "OIDC_REALM_NAME", "value": "maia"},
             {"name": "OIDC_USERNAME", "value": "admin"},
             {"name": "OIDC_ISSUER_URL", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},
-            {"name": "OIDC_OP_AUTHORIZATION_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth"},
-            {"name": "OIDC_OP_TOKEN_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token"},
-            {"name": "OIDC_OP_USER_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo"},
-            {"name": "OIDC_OP_JWKS_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs"},
+            {
+                "name": "OIDC_OP_AUTHORIZATION_ENDPOINT",
+                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth",
+            },
+            {
+                "name": "OIDC_OP_TOKEN_ENDPOINT",
+                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token",
+            },
+            {
+                "name": "OIDC_OP_USER_ENDPOINT",
+                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
+            },
+            {
+                "name": "OIDC_OP_JWKS_ENDPOINT",
+                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs",
+            },
             {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
         ]
     )
-    
+
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
