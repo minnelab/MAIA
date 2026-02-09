@@ -50,6 +50,8 @@ maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_char
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
 maia_dashboard_chart_type = define_maia_admin_versions()["maia_dashboard_chart_type"]
+mysql_image = define_docker_image_versions()["mysql_image"]
+mysql_image_version = define_docker_image_versions()["mysql"]
 
 
 def generate_minio_configs(namespace):
@@ -1431,7 +1433,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "storageClass": cluster_config_dict["storage_class"],
             "image": {"repository": "ghcr.io/minnelab/maia-dashboard", "tag": maia_dashboard_image_version},
             "dashboard": {"local_config_path": "/mnt/dashboard-config"},
-            "mysql": {"enabled": True},
+            "mysql": {"enabled": True, "image": mysql_image, "tag": mysql_image_version},
         }
     )
 
@@ -1454,6 +1456,24 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
         maia_dashboard_values["ingress"]["tls"][0]["secretName"] = cluster_config_dict["domain"]
 
+    # Authentication
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "OIDC_RP_CLIENT_ID", "value": "maia"},
+            {"name": "OIDC_RP_CLIENT_SECRET", "value": os.environ["keycloak_client_secret"]},
+            {"name": "OIDC_SERVER_URL", "value": "https://iam." + cluster_config_dict["domain"]},
+            {"name": "OIDC_REALM_NAME", "value": "maia"},
+            {"name": "OIDC_USERNAME", "value": "admin"},
+            {"name": "OIDC_ISSUER_URL", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},
+            {"name": "OIDC_OP_AUTHORIZATION_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth"},
+            {"name": "OIDC_OP_TOKEN_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token"},
+            {"name": "OIDC_OP_USER_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo"},
+            {"name": "OIDC_OP_JWKS_ENDPOINT", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs"},
+            {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
+            {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
+        ]
+    )
+    
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
@@ -1493,23 +1513,9 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
     maia_dashboard_values = {}
     maia_dashboard_values.update(
         {
-            "image": {"pullPolicy": "IfNotPresent", "tag": maia_dashboard_image_version},
-            "storageClass": cluster_config_dict["storage_class"],
+            "image": {"pullPolicy": "IfNotPresent"},
             "ingress": {
-                "enabled": True,
                 "className": cluster_config_dict["ingress_class"],
-                "annotations": {},
-                "hosts": [
-                    {
-                        "host": "maia." + cluster_config_dict["domain"],
-                        "paths": [
-                            {"path": "/maia/", "pathType": "Prefix"},
-                            {"path": "/maia-api/", "pathType": "Prefix"},
-                            {"path": "/", "pathType": "Prefix"},
-                        ],
-                    }
-                ],
-                "tls": [{"hosts": ["maia." + cluster_config_dict["domain"]]}],
             },
             "gpuList": cluster_config_dict["gpu_list"] if "gpu_list" in cluster_config_dict else [],
             "dashboard": {
@@ -1584,13 +1590,7 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
     debug = False
 
     if debug:
-
-        maia_dashboard_values["env"] = [
-            {"name": "DEBUG", "value": "True"},
-            {"name": "CLUSTER_CONFIG_PATH", "value": "/etc/MAIA-Dashboard/config"},
-            {"name": "LOCAL_DB_PATH", "value": "/etc/MAIA-Dashboard/db"},
-        ]
-        maia_dashboard_values["dashboard"]["local_config_path"] = "/etc/MAIA-Dashboard/config"
+        ...
     else:
 
         if "mysql_dashboard_password" in os.environ:
@@ -1651,30 +1651,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             {"name": "POD_TERMINATOR_ADDRESS", "value": "http://pod-terminator.gpu-booking:8080"},
             {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{domain}/browser/maia-envs"},
             {"name": "MAIA_SEGMENTATION_PORTAL_NAMESPACE_ID", "value": "maia-segmentation"},
-            {"name": "OIDC_RP_CLIENT_ID", "value": "maia"},
-            {"name": "OIDC_RP_CLIENT_SECRET", "value": os.environ["keycloak_client_secret"]},
-            {"name": "OIDC_SERVER_URL", "value": "https://iam." + cluster_config_dict["domain"]},
-            {"name": "OIDC_REALM_NAME", "value": "maia"},
-            {"name": "OIDC_USERNAME", "value": "admin"},
-            {"name": "OIDC_ISSUER_URL", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},
-            {
-                "name": "OIDC_OP_AUTHORIZATION_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth",
-            },
-            {
-                "name": "OIDC_OP_TOKEN_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token",
-            },
-            {
-                "name": "OIDC_OP_USER_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
-            },
-            {
-                "name": "OIDC_OP_JWKS_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs",
-            },
-            {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
-            {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
             {"name": "keycloak_client_id", "value": "maia"},
             {"name": "keycloak_client_secret", "value": os.environ["keycloak_client_secret"]},
             {"name": "keycloak_issuer_url", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},

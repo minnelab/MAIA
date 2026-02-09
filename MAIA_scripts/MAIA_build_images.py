@@ -22,10 +22,11 @@ import MAIA
 from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import install_maia_project
 from MAIA.maia_docker_images import deploy_maia_kaniko
-from MAIA.versions import define_maia_docker_versions, define_docker_image_versions
+from MAIA.versions import define_maia_docker_versions, define_docker_image_versions, define_maia_admin_versions
 
 kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
 build_versions = define_docker_image_versions()
+maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
 version = MAIA.__version__
 
 
@@ -257,8 +258,8 @@ def build_maia_images(
                 project_id,
                 registry_server + registry_path,
                 docker_secret_name,
-                "maia-dashboard-dev",
-                build_versions["maia-dashboard"] + "-dev",
+                "maia-dashboard",
+                build_versions["maia-dashboard"] + maia_dashboard_dev_tag_suffix,
                 "dashboard",
                 [f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}", "DEVEL=1"],
                 registry_credentials=registry_credentials,

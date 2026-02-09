@@ -659,6 +659,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
             "mysqlUser": "maia-admin",
             "mysqlPassword": mysql_password,
             "mysqlDatabase": "orthanc",
+            "image": mysql_image,
+            "tag": mysql_image_version,
         }
 
     if private_registry is not None:

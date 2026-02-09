@@ -149,7 +149,7 @@ def define_maia_admin_versions():
     if os.environ.get("MAIA_DASHBOARD_DEV_TAG_SUFFIX") is not None:
         maia_dashboard_dev_tag_suffix = os.environ.get("MAIA_DASHBOARD_DEV_TAG_SUFFIX")
     else:
-        maia_dashboard_dev_tag_suffix = "-dev.1"
+        maia_dashboard_dev_tag_suffix = "-dev"
 
     if os.environ.get("MAIA_DASHBOARD_CHART_TYPE") is not None:
         maia_dashboard_chart_type = os.environ.get("MAIA_DASHBOARD_CHART_TYPE")
