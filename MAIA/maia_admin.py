@@ -1485,6 +1485,19 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
         ]
     )
+    
+    ## Cluster Access
+    maia_dashboard_values["clusters"] = [
+        {
+            "api": "https://mgmt." + cluster_config_dict["domain"] + "/k8s/clusters/local",
+            "cluster_name": cluster_config_dict["cluster_name"],
+            "maia_dashboard": {"enabled": True, "token": cluster_config_dict["rancher_token"]},
+        }
+    ]
+
+    maia_dashboard_values["env"].extend([
+        {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
+    ])
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
@@ -1535,12 +1548,7 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             },
             "clusters": [
                 {
-                    "api": f"https://mgmt.{cluster_config_dict['domain']}/k8s/clusters/local",
-                    "cluster_name": cluster_config_dict["cluster_name"],
-                    "maia_dashboard": {
-                        "enabled": True,
-                        "token": cluster_config_dict["rancher_token"],
-                    },
+
                     "ssh_hostname": (
                         cluster_config_dict["ssh_hostname"]
                         if "ssh_hostname" in cluster_config_dict
