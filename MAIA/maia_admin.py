@@ -1486,17 +1486,31 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         ]
     )
     
-    ## Cluster Access
+    # Cluster Access
     maia_dashboard_values["clusters"] = [
         {
             "api": "https://mgmt." + cluster_config_dict["domain"] + "/k8s/clusters/local",
             "cluster_name": cluster_config_dict["cluster_name"],
+            "ssh_hostname": cluster_config_dict["ssh_hostname"] if "ssh_hostname" in cluster_config_dict else cluster_config_dict["domain"],
             "maia_dashboard": {"enabled": True, "token": cluster_config_dict["rancher_token"]},
         }
     ]
 
     maia_dashboard_values["env"].extend([
         {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
+    ])
+    
+    
+    
+    # Access Project Pages
+    
+    maia_dashboard_values["env"].extend([
+        {"name": "CLUSTER_CONFIG_PATH", "value": "/mnt/dashboard-config"},
+    ])
+
+    # Access KubeFlow and XNAT
+    maia_dashboard_values["env"].extend([
+        {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system"},
     ])
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
@@ -1548,12 +1562,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             },
             "clusters": [
                 {
-
-                    "ssh_hostname": (
-                        cluster_config_dict["ssh_hostname"]
-                        if "ssh_hostname" in cluster_config_dict
-                        else cluster_config_dict["domain"]
-                    ),
                     "services": {
                         "argocd": "https://argocd." + cluster_config_dict["domain"],
                         "dashboard": "https://dashboard." + cluster_config_dict["domain"],
@@ -1621,7 +1629,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         cifs_server = ""
         maia_dashboard_values["env"] = [
             {"name": "DEBUG", "value": "False"},
-            {"name": "CLUSTER_CONFIG_PATH", "value": "/mnt/dashboard-config"},
             {"name": "DB_ENGINE", "value": "mysql"},
             {"name": "DB_NAME", "value": "mysql"},
             {"name": "DB_HOST", "value": "maia-admin-maia-dashboard-mysql"},
@@ -1665,8 +1672,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             {"name": "BUCKET_NAME", "value": "maia-envs"},
             {"name": "SECRET_KEY", "value": os.environ["dashboard_api_secret"]},
             {"name": "ARGOCD_SERVER", "value": "https://argocd." + cluster_config_dict["domain"]},
-            {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
-            {"name": "SERVER", "value": "maia." + cluster_config_dict["domain"]},
             {"name": "GLOBAL_NAMESPACES", "value": "xnat,kubeflow,istio-system"},
             {"name": "POD_TERMINATOR_ADDRESS", "value": "http://pod-terminator.gpu-booking:8080"},
             {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{domain}/browser/maia-envs"},
