@@ -47,7 +47,7 @@ def generate_human_memorable_password(length=12):
     return password
 
 
-def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", source_namespace="cert-manager"):
+def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", source_namespace="cert-manager", opaque=False, cert_name="tls.crt", key_name="tls.key"):
     if "KUBECONFIG_LOCAL" not in os.environ:
         os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
@@ -63,8 +63,9 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
             namespace=namespace,
             body={
                 "metadata": {"name": secret_name},
-                "data": {"public.crt": secret.data["tls.crt"], "private.key": secret.data["tls.key"]},
+                "data": {cert_name: secret.data["tls.crt"], key_name: secret.data["tls.key"]},
             },
+            type= "Opaque" if opaque else "kubernetes.io/tls",
         )
     except ApiException as e:
         logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")

@@ -458,7 +458,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
 
         if cluster_config.get("selfsigned", False):
             maia_namespace_values["minio"]["externalCA"] = {
-                "name": "kubernetes-ca",
+                "name": "kubernetes-ca-minio",
             }
 
         if "nginx_cluster_issuer" in cluster_config:
