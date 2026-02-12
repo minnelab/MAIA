@@ -283,7 +283,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             {
                 "name": "kubernetes-ca",
                 "mountPath": "/usr/local/share/ca-certificates/kubernetes-ca.crt",
-                "subPath": "tls.crt",
+                "subPath": "public.crt",
             },
         ]
         jh_template["hub"]["extraEnv"] = {"REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"}

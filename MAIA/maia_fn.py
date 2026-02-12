@@ -63,7 +63,7 @@ def copy_certificate_authority_secret(namespace, secret_name="kubernetes-ca", so
             namespace=namespace,
             body={
                 "metadata": {"name": secret_name},
-                "data": {"tls.crt": secret.data["tls.crt"], "tls.key": secret.data["tls.key"]},
+                "data": {"public.crt": secret.data["tls.crt"], "private.key": secret.data["tls.key"]},
             },
         )
     except ApiException as e:

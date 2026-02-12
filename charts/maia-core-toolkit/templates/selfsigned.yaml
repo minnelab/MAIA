@@ -32,6 +32,7 @@ data:
         {{ .Values.selfsigned.coredns_ip }} registry.{{ .Values.selfsigned.cluster_domain }}
         {{ .Values.selfsigned.coredns_ip }} mgmt.{{ .Values.selfsigned.cluster_domain }}
         {{ .Values.selfsigned.coredns_ip }} argocd.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} kubeflow.{{ .Values.selfsigned.cluster_domain }}
         fallthrough
       }
     forward . /etc/resolv.conf

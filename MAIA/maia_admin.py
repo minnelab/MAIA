@@ -455,6 +455,11 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
                 "serviceName": f"{namespace}-mlflow-mkg",
             },
         }
+        
+        if cluster_config.get("selfsigned", False):
+            maia_namespace_values["minio"]["externalCA"] = {
+                "name": "kubernetes-ca",
+            }
 
         if "nginx_cluster_issuer" in cluster_config:
             maia_namespace_values["minio"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
@@ -1485,33 +1490,39 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
         ]
     )
-    
+
     # Cluster Access
     maia_dashboard_values["clusters"] = [
         {
             "api": "https://mgmt." + cluster_config_dict["domain"] + "/k8s/clusters/local",
             "cluster_name": cluster_config_dict["cluster_name"],
-            "ssh_hostname": cluster_config_dict["ssh_hostname"] if "ssh_hostname" in cluster_config_dict else cluster_config_dict["domain"],
+            "ssh_hostname": (
+                cluster_config_dict["ssh_hostname"] if "ssh_hostname" in cluster_config_dict else cluster_config_dict["domain"]
+            ),
             "maia_dashboard": {"enabled": True, "token": cluster_config_dict["rancher_token"]},
         }
     ]
 
-    maia_dashboard_values["env"].extend([
-        {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
-    ])
-    
-    
-    
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
+        ]
+    )
+
     # Access Project Pages
-    
-    maia_dashboard_values["env"].extend([
-        {"name": "CLUSTER_CONFIG_PATH", "value": "/mnt/dashboard-config"},
-    ])
+
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "CLUSTER_CONFIG_PATH", "value": "/mnt/dashboard-config"},
+        ]
+    )
 
     # Access KubeFlow and XNAT
-    maia_dashboard_values["env"].extend([
-        {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system"},
-    ])
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system"},
+        ]
+    )
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:

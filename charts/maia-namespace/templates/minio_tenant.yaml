@@ -18,6 +18,11 @@ spec:
     domains:
       console: {{ .Values.minio.consoleDomain }}
   image: quay.io/minio/minio:RELEASE.2024-08-03T04-33-23Z
+  {{- if .Values.minio.externalCA }}
+  externalCaCertSecret:
+    - name: {{ .Values.minio.externalCA.name }}
+      type: Opaque
+  {{- end }}
   imagePullSecret: {}
   mountPath: /export
   pools:
