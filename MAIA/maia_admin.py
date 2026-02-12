@@ -455,7 +455,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
                 "serviceName": f"{namespace}-mlflow-mkg",
             },
         }
-        
+
         if cluster_config.get("selfsigned", False):
             maia_namespace_values["minio"]["externalCA"] = {
                 "name": "kubernetes-ca",
