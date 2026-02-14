@@ -1523,6 +1523,95 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system"},
         ]
     )
+    
+    # Self Signed Certificate
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OIDC_CA_BUNDLE", "value": "/mnt/dashboard-config/ca.crt"},
+            ]
+        )
+        
+        maia_dashboard_values["ca.crt"] = open(Path(cluster_config_dict["rootCA"])).read()
+        
+        maia_dashboard_values["clusters"][0]["selfsigned"] = True
+    elif "staging_certificates" in cluster_config_dict and cluster_config_dict["staging_certificates"]:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OIDC_CA_BUNDLE", "value": "/mnt/dashboard-config/ca.crt"},
+            ]
+        )
+        maia_dashboard_values["ca.crt"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
+        maia_dashboard_values["clusters"][0]["selfsigned"] = True
+    else:
+        if "traefik_resolver" in cluster_config_dict:
+            maia_dashboard_values["clusters"][0]["traefik_resolver"] = cluster_config_dict["traefik_resolver"]
+        elif "nginx_cluster_issuer" in cluster_config_dict:
+            maia_dashboard_values["clusters"][0]["nginx_cluster_issuer"] = cluster_config_dict["nginx_cluster_issuer"]
+
+    # Deploy with ArgoCD
+    
+    maia_dashboard_values["clusters"][0].extend(
+        {
+            "ssh_port_type": cluster_config_dict["ssh_port_type"],
+            "port_range": cluster_config_dict["port_range"],
+            "shared_storage_class": cluster_config_dict["shared_storage_class"],
+            "storage_class": cluster_config_dict["storage_class"],
+            "domain": cluster_config_dict["domain"],
+            "url_type": cluster_config_dict["url_type"],
+            "argocd_destination_cluster_address": cluster_config_dict["argocd_destination_cluster_address"] if "argocd_destination_cluster_address" in cluster_config_dict else "https://kubernetes.default.svc",
+        }
+    )
+    if "metallb_ip_pool" in cluster_config_dict:
+        maia_dashboard_values["clusters"][0]["metallb_ip_pool"] = cluster_config_dict["metallb_ip_pool"]
+    if "maia_metallb_ip" in cluster_config_dict:
+        maia_dashboard_values["clusters"][0]["maia_metallb_ip"] = cluster_config_dict["maia_metallb_ip"]
+    if "metallb_shared_ip" in cluster_config_dict:
+        maia_dashboard_values["clusters"][0]["metallb_shared_ip"] = cluster_config_dict["metallb_shared_ip"]
+        
+    maia_dashboard_values["env"].extend(
+        [   
+            {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
+            {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
+            {"name": "maia_project_version", "value": os.environ.get("maia_project_version", maia_project_chart_version)},
+            {"name": "ADMIN_GROUP", "value": cluster_config_dict.get("admin_group", "admin")},
+            {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
+            {"name": "argocd_namespace", "value": "argocd"},
+            {"name": "ARGOCD_SERVER", "value": "https://argocd." + cluster_config_dict["domain"]},
+        ]
+    )
+    
+    # Dev Branch
+    if os.environ.get("DEV_BRANCH") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
+            ]
+        )
+    if os.environ.get("GIT_EMAIL") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
+            ]
+        )
+    if os.environ.get("GIT_NAME") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
+            ]
+        )
+    if os.environ.get("GPG_KEY") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "GPG_KEY", "value": "/var/keys/gpg.key"},
+            ]
+        )
+        with open(os.environ["GPG_KEY"], "r") as f:
+            maia_dashboard_values["gpg_key"] = f.read()
+
+    if os.environ.get("DEV_BRANCH") is not None or os.environ.get("GIT_EMAIL") is not None or os.environ.get("GIT_NAME") is not None or os.environ.get("GPG_KEY") is not None:
+        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
+        maia_dashboard_values["image"]["repository"] = "ghcr.io/minnelab/maia-dashboard-dev"
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
@@ -1609,19 +1698,9 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
     # maia_dashboard_values["clusters"] = [cluster_config_dict]
 
     # Variables for Namespace Deployment
-    maia_dashboard_values["clusters"][0]["ssh_port_type"] = cluster_config_dict["ssh_port_type"]
-    maia_dashboard_values["clusters"][0]["port_range"] = cluster_config_dict["port_range"]
-    maia_dashboard_values["clusters"][0]["shared_storage_class"] = cluster_config_dict["shared_storage_class"]
-    maia_dashboard_values["clusters"][0]["storage_class"] = cluster_config_dict["storage_class"]
-    maia_dashboard_values["clusters"][0]["domain"] = cluster_config_dict["domain"]
-    maia_dashboard_values["clusters"][0]["url_type"] = cluster_config_dict["url_type"]
     maia_dashboard_values["clusters"][0]["bucket_name"] = cluster_config_dict["bucket_name"]
     maia_dashboard_values["clusters"][0]["registry_server"] = "ghcr.io/minnelab"
-    maia_dashboard_values["clusters"][0]["argocd_destination_cluster_address"] = (
-        cluster_config_dict["argocd_destination_cluster_address"]
-        if "argocd_destination_cluster_address" in cluster_config_dict
-        else "https://kubernetes.default.svc"
-    )
+
     if "projects" in cluster_config_dict:
         for project in cluster_config_dict["projects"]:
             maia_dashboard_values["clusters"][0][project + "-cluster-config"] = cluster_config_dict[project + "-cluster-config"]
@@ -1682,8 +1761,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             {"name": "MINIO_PUBLIC_SECURE", "value": "True"},
             {"name": "BUCKET_NAME", "value": "maia-envs"},
             {"name": "SECRET_KEY", "value": os.environ["dashboard_api_secret"]},
-            {"name": "ARGOCD_SERVER", "value": "https://argocd." + cluster_config_dict["domain"]},
-            {"name": "GLOBAL_NAMESPACES", "value": "xnat,kubeflow,istio-system"},
             {"name": "POD_TERMINATOR_ADDRESS", "value": "http://pod-terminator.gpu-booking:8080"},
             {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{domain}/browser/maia-envs"},
             {"name": "MAIA_SEGMENTATION_PORTAL_NAMESPACE_ID", "value": "maia-segmentation"},
@@ -1730,24 +1807,9 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
                 "name": "maia_orthanc_version",
                 "value": os.environ.get("maia_orthanc_version", maia_orthanc_image_version),
             },
-            {"name": "argocd_namespace", "value": "argocd"},
-            {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
-            {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
-            {"name": "maia_project_version", "value": os.environ.get("maia_project_version", maia_project_chart_version)},
-            {"name": "ADMIN_GROUP", "value": cluster_config_dict.get("admin_group", "admin")},
-            {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
         ]
     )
-    if "rootCA" in cluster_config_dict and cluster_config_dict.get("selfsigned", False):
-        try:
-            with open(Path(cluster_config_dict["rootCA"]), "r") as f:
-                maia_dashboard_values["ca_crt"] = f.read()
-                config_path = maia_dashboard_values["dashboard"]["local_config_path"]
-                maia_dashboard_values["env"].append({"name": "OIDC_CA_BUNDLE", "value": f"{config_path}/ca.crt"})
-        except OSError as e:
-            root_ca_path = cluster_config_dict["rootCA"]
-            logger.error(f"Failed to read root CA certificate from '{root_ca_path}': {e}")
-            raise RuntimeError(f"Unable to load root CA certificate from '{root_ca_path}'") from e
+
     if (
         "MAIA_PRIVATE_REGISTRY" in os.environ
         and "registry_username" in os.environ
@@ -1760,18 +1822,7 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             ]
         )
 
-    if os.environ.get("DEV_BRANCH") is not None:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
-                {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
-                {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
-                {"name": "GPG_KEY", "value": "/var/keys/gpg.key"},
-            ]
-        )
-        with open(os.environ["GPG_KEY"], "r") as f:
-            maia_dashboard_values["gpg_key"] = f.read()
-        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
+
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:

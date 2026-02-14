@@ -592,7 +592,7 @@ def index(request):
                     logger.info(f"User created: {keycloak_user}")
 
         cache_key = "project_argo_status_and_user_table"
-        cache_timeout = 300  # 5 minutes (adjust as needed)
+        cache_timeout = 10  # 10 seconds (adjust as needed)
         cached_data = cache.get(cache_key)
 
         if cached_data:
