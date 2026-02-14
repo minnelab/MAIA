@@ -1532,7 +1532,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             ]
         )
 
-        maia_dashboard_values["ca.crt"] = open(Path(cluster_config_dict["rootCA"])).read()
+        maia_dashboard_values["ca_crt"] = open(Path(cluster_config_dict["rootCA"])).read()
 
         maia_dashboard_values["clusters"][0]["selfsigned"] = True
     elif "staging_certificates" in cluster_config_dict and cluster_config_dict["staging_certificates"]:
@@ -1541,7 +1541,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "OIDC_CA_BUNDLE", "value": "/mnt/dashboard-config/ca.crt"},
             ]
         )
-        maia_dashboard_values["ca.crt"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
+        maia_dashboard_values["ca_crt"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
         maia_dashboard_values["clusters"][0]["selfsigned"] = True
     else:
         if "traefik_resolver" in cluster_config_dict:
