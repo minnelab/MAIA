@@ -1,0 +1,148 @@
+{% extends 'layouts/base-fullscreen.html' %}
+
+{% block title %} Sign IN {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+  <div class="container position-sticky z-index-sticky top-0">
+    <div class="row">
+      <div class="col-12">
+
+        {% include "includes/navigation-fullscreen.html" %}
+
+      </div>
+    </div>
+  </div>
+
+  <main class="main-content mt-0"></main>
+    <section>
+      <div class="page-header min-vh-75">
+        <div class="container">
+          <div class="row">
+            <div class="col-xl-4 col-lg-5 col-md-6 d-flex flex-column mx-auto">
+              <div class="card card-plain mt-8">
+                <div class="card-header pb-0 text-left bg-transparent">
+                  <h3 class="font-weight-bolder text-info text-gradient">
+                    {% if BACKEND == "compose" %}
+                      MAIA Lite Dashboard
+                    {% else %}
+                      MAIA Dashboard
+                    {% endif %}
+                  </h3>
+                  <p class="mb-0">
+                    {% if msg %}
+                      <span class="text-danger">{{ msg | safe }}</span>
+                    {% else %}
+                    <div class="text-center">
+                       <a href="/maia/info" class="btn bg-gradient-error w-100 mt-4 mb-0">About MAIA</a>
+                    </div>
+                    {% endif %}                     
+                  </p>
+                </div>
+                <div class="card-body">
+                  <form role="form text-left" method="post" action="">
+                    {% csrf_token %}
+                    <div class="text-center">
+                       <a href="{% url 'oidc_authentication_init' %}" class="btn bg-gradient-info w-100 mt-4 mb-0">Sign IN</a>
+                    </div>
+                    <div class="text-center">
+                      <a href="{% url 'register' %}" class="btn bg-gradient-secondary w-100 mt-4 mb-0">Sign UP for an Existing Project</a>
+                    </div>
+                    <div class="text-center">
+                      <a href="{% url 'register_project' %}" class="btn bg-gradient-secondary w-100 mt-4 mb-0">Register a New Project</a>
+                    </div>
+                    
+                  </form>
+                </div>
+                <br><br>
+                <div class="text-left">
+                  <a href="/maia/spotlight" >Interested in learning more about open-source Medical AI Tools? check out the MAIA Spotlights</a>
+                </div>
+                <br><br>
+                <div class="text-left">
+                <p style="display: flex; align-items: center; gap: 8px;">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Nature_journal_logo.svg/1200px-Nature_journal_logo.svg.png" alt="NPJ AI" style="height: 24px;">
+                  <span>
+                    Check out the <a href="https://www.nature.com/articles/s44387-025-00042-6" target="_blank">MAIA article published in NPJ Artificial Intelligence</a> and please make sure to
+                    cite it when using the platform in your research.
+                  </span>
+                </p>
+              </div>
+                <div class="card-footer text-center pt-0 px-lg-2 px-1">
+                  <p class="mb-4 text-sm mx-auto">
+                    <!-- GitHub button starts here -->
+                    {% if GITHUB_AUTH %}
+                      <p class="mb-2">or SignIn with</p>
+                      <form method="post" action="/social_login/github/login/?next=%2F">{% csrf_token %}
+                        <button class="btn btn-outline" type="submit">
+                          <span class="text-lg fs-1 fab fa-github"></span>
+                        </button>
+                      </form>  
+                    {% endif %}
+                    <!-- GitHub ends here -->
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="oblique position-absolute top-0 h-100 d-md-block d-none me-n8">
+                {% if BACKEND == "compose" %}
+                      <div class="oblique-image bg-cover position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6" style="background-image:url('{{ ASSETS_ROOT }}/img/miniMAIA.png')"></div>
+                    {% else %}
+                      <div class="oblique-image bg-cover position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6" style="background-image:url('{{ ASSETS_ROOT }}/img/maia_background.jpg')"></div>
+                    {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include "includes/footer-fullscreen.html" %}
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+
+<script>
+  // Save aKey in localStorage 
+  const asyncLocalStorage = {
+      setItem: function (key, value) {
+          return Promise.resolve().then(function () {
+              localStorage.setItem(key, value);
+          });
+      }
+  }
+
+  // Login hook  
+  document.getElementsByTagName('form')[0].onsubmit = (e) => {
+    e.preventDefault()
+    const formData = new FormData(e.target)
+    const username = formData.get('username');
+    const password = formData.get('password');
+
+    fetch('/maia/login/jwt/',{
+        method: 'POST',
+        body: JSON.stringify({
+            username: username,
+            password: password
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then((response) => response.json())
+    .then((res) => {
+      // store token in localStorage
+      asyncLocalStorage.setItem('token',res.token).then(result => {e.target.submit()})
+    })
+    .catch((err) => {console.log(err)})   
+  }
+</script>
+
+{% endblock javascripts %}
