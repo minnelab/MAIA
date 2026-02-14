@@ -1523,7 +1523,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system"},
         ]
     )
-    
+
     # Self Signed Certificate
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         maia_dashboard_values["env"].extend(
@@ -1531,9 +1531,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "OIDC_CA_BUNDLE", "value": "/mnt/dashboard-config/ca.crt"},
             ]
         )
-        
+
         maia_dashboard_values["ca.crt"] = open(Path(cluster_config_dict["rootCA"])).read()
-        
+
         maia_dashboard_values["clusters"][0]["selfsigned"] = True
     elif "staging_certificates" in cluster_config_dict and cluster_config_dict["staging_certificates"]:
         maia_dashboard_values["env"].extend(
@@ -1550,7 +1550,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             maia_dashboard_values["clusters"][0]["nginx_cluster_issuer"] = cluster_config_dict["nginx_cluster_issuer"]
 
     # Deploy with ArgoCD
-    
+
     maia_dashboard_values["clusters"][0].extend(
         {
             "ssh_port_type": cluster_config_dict["ssh_port_type"],
@@ -1559,7 +1559,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "storage_class": cluster_config_dict["storage_class"],
             "domain": cluster_config_dict["domain"],
             "url_type": cluster_config_dict["url_type"],
-            "argocd_destination_cluster_address": cluster_config_dict["argocd_destination_cluster_address"] if "argocd_destination_cluster_address" in cluster_config_dict else "https://kubernetes.default.svc",
+            "argocd_destination_cluster_address": (
+                cluster_config_dict["argocd_destination_cluster_address"]
+                if "argocd_destination_cluster_address" in cluster_config_dict
+                else "https://kubernetes.default.svc"
+            ),
         }
     )
     if "metallb_ip_pool" in cluster_config_dict:
@@ -1568,9 +1572,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["clusters"][0]["maia_metallb_ip"] = cluster_config_dict["maia_metallb_ip"]
     if "metallb_shared_ip" in cluster_config_dict:
         maia_dashboard_values["clusters"][0]["metallb_shared_ip"] = cluster_config_dict["metallb_shared_ip"]
-        
+
     maia_dashboard_values["env"].extend(
-        [   
+        [
             {"name": "maia_project_chart", "value": os.environ.get("maia_project_chart", "maia-project")},
             {"name": "maia_project_repo", "value": os.environ.get("maia_project_repo", "https://minnelab.github.io/MAIA/")},
             {"name": "maia_project_version", "value": os.environ.get("maia_project_version", maia_project_chart_version)},
@@ -1580,7 +1584,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "ARGOCD_SERVER", "value": "https://argocd." + cluster_config_dict["domain"]},
         ]
     )
-    
+
     # Dev Branch
     if os.environ.get("DEV_BRANCH") is not None:
         maia_dashboard_values["env"].extend(
@@ -1609,7 +1613,12 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         with open(os.environ["GPG_KEY"], "r") as f:
             maia_dashboard_values["gpg_key"] = f.read()
 
-    if os.environ.get("DEV_BRANCH") is not None or os.environ.get("GIT_EMAIL") is not None or os.environ.get("GIT_NAME") is not None or os.environ.get("GPG_KEY") is not None:
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ):
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
         maia_dashboard_values["image"]["repository"] = "ghcr.io/minnelab/maia-dashboard-dev"
 
@@ -1821,8 +1830,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
                 {"name": "imagePullSecrets", "value": os.environ["MAIA_PRIVATE_REGISTRY"].replace("/", "-")},
             ]
         )
-
-
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
