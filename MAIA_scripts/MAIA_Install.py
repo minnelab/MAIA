@@ -105,12 +105,10 @@ def main():
         config_dict = yaml.safe_load(Path(config_folder).joinpath("config.yaml").read_text())
         os.environ["CONFIG_FOLDER"] = str(config_folder)
         if "env" in config_dict:
-            logger.info(f"CLUSTER_NAME: {os.environ['CLUSTER_NAME']}")
             for key, value in config_dict["env"].items():
                 if key != "MAIA_PRIVATE_REGISTRY" and key != "INGRESS_RESOLVER_EMAIL":
                     logger.info(f"Setting environment variable {key} to {value}")
                     os.environ[key] = value
-            logger.info(f"CLUSTER_NAME: {os.environ['CLUSTER_NAME']}")
     else:
         config_dict = {}
 
