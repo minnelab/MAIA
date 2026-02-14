@@ -239,7 +239,7 @@ def deploy_maia_toolkit_api(
     if cluster_config_dict.get("selfsigned", False):
         copy_certificate_authority_secret(namespace)
         copy_certificate_authority_secret(
-            namespace, secret_name="kubernetes-ca-minio", opaque=True, cert_name="public.crt", key_name="private.key"
+            namespace, source_secret_name="kubernetes-ca", target_secret_name="kubernetes-ca-minio", opaque=True, cert_name="public.crt", key_name="private.key"
         )
 
     helm_commands.append(create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal))
