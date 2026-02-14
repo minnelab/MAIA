@@ -1551,7 +1551,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     # Deploy with ArgoCD
 
-    maia_dashboard_values["clusters"][0].extend(
+    maia_dashboard_values["clusters"][0].update(
         {
             "ssh_port_type": cluster_config_dict["ssh_port_type"],
             "port_range": cluster_config_dict["port_range"],
