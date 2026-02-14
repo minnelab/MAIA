@@ -66,8 +66,8 @@ def copy_certificate_authority_secret(
             body={
                 "metadata": {"name": target_secret_name},
                 "data": {cert_name: secret.data["tls.crt"], key_name: secret.data["tls.key"]},
-            },
-            type="Opaque" if opaque else "kubernetes.io/tls",
+                "type": "Opaque" if opaque else "kubernetes.io/tls",
+            }
         )
     except ApiException as e:
         logger.error(f"Exception when calling CoreV1Api->create_namespaced_secret: {e}")
