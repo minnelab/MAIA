@@ -14,6 +14,7 @@ from MAIA.keycloak_utils import (
 from django.db import transaction
 from loguru import logger
 from MAIA.notifications import send_email_approved_project_registration
+
 RESERVED_GROUPS = []
 if getattr(settings, "ADMIN_GROUP", None):
     RESERVED_GROUPS.append(settings.ADMIN_GROUP)
@@ -457,18 +458,27 @@ def create_group(
     except Exception as e:
         logger.exception(f"Error creating or updating group {group_id} in the database: {e}")
         raise
-    
-    if not group_already_exists and settings.DISCORD_SUPPORT_URL is not None and settings.HOSTNAME is not None and settings.SMTP_SENDER_EMAIL is not None and settings.SMTP_SERVER is not None and settings.SMTP_PORT is not None and settings.SMTP_PASSWORD is not None:
+
+    if (
+        not group_already_exists
+        and settings.DISCORD_SUPPORT_URL is not None
+        and settings.HOSTNAME is not None
+        and settings.SMTP_SENDER_EMAIL is not None
+        and settings.SMTP_SERVER is not None
+        and settings.SMTP_PORT is not None
+        and settings.SMTP_PASSWORD is not None
+    ):
         for email in email_list:
             send_email_approved_project_registration(
                 project_name=group_id,
                 project_owner=email,
                 discord_support_link=settings.DISCORD_SUPPORT_URL,
-                dashboard_url=settings.HOSTNAME+"/maia/",
+                dashboard_url=settings.HOSTNAME + "/maia/",
                 smtp_sender_email=settings.SMTP_SENDER_EMAIL,
                 smtp_server=settings.SMTP_SERVER,
                 smtp_port=settings.SMTP_PORT,
-                smtp_password=settings.SMTP_PASSWORD)
+                smtp_password=settings.SMTP_PASSWORD,
+            )
     return {
         "message": "Group already exists in Keycloak" if group_already_exists else "Group created successfully",
         "status": 200,

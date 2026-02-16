@@ -1,21 +1,16 @@
 from __future__ import annotations
 
-import argparse
-import datetime
-import os
 import smtplib
 import ssl
-import sys
-from argparse import RawTextHelpFormatter
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
-from textwrap import dedent
-from email.message import EmailMessage
 
 from loguru import logger
 
-def send_email_approved_project_registration(project_name, project_owner, discord_support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password):
+
+def send_email_approved_project_registration(
+    project_name, project_owner, discord_support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+):
 
     message = MIMEMultipart()
     message["Subject"] = f"{project_name} Project Approved"
@@ -41,14 +36,14 @@ def send_email_approved_project_registration(project_name, project_owner, discor
         </body>
     </html>
     """.format(project_name, dashboard_url, project_name, dashboard_url, project_name, discord_support_link, discord_support_link)
-    
+
     part1 = MIMEText(html, "html")
     message.attach(part1)
 
     _ = ssl.create_default_context()
 
     try:
-        
+
         if not smtp_server or not smtp_sender_email or not smtp_password:
             raise ValueError("Missing required email environment variables.")
         with smtplib.SMTP(smtp_server, smtp_port) as server:
