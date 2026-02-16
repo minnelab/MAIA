@@ -1543,6 +1543,10 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         )
         maia_dashboard_values["ca_crt"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
         maia_dashboard_values["clusters"][0]["selfsigned"] = True
+        if "traefik_resolver" in cluster_config_dict:
+            maia_dashboard_values["clusters"][0]["traefik_resolver"] = cluster_config_dict["traefik_resolver"]
+        elif "nginx_cluster_issuer" in cluster_config_dict:
+            maia_dashboard_values["clusters"][0]["nginx_cluster_issuer"] = cluster_config_dict["nginx_cluster_issuer"]
     else:
         if "traefik_resolver" in cluster_config_dict:
             maia_dashboard_values["clusters"][0]["traefik_resolver"] = cluster_config_dict["traefik_resolver"]

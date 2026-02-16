@@ -50,6 +50,10 @@ BUCKET_NAME = env("BUCKET_NAME")
 DISCORD_URL = env("DISCORD_URL", default=None)
 DISCORD_SUPPORT_URL = env("DISCORD_SUPPORT_URL", default=None)
 
+SMTP_SENDER_EMAIL = env("SMTP_SENDER_EMAIL", default=None)
+SMTP_SERVER = env("SMTP_SERVER", default=None)
+SMTP_PORT = env("SMTP_PORT", default=None)
+SMTP_PASSWORD = env("SMTP_PASSWORD", default=None)
 
 DEFAULT_INGRESS_HOST = env("DEFAULT_INGRESS_HOST", default="localhost")
 
