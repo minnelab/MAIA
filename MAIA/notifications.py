@@ -57,7 +57,9 @@ def send_email_approved_project_registration(
         raise
 
 
-def send_email_user_registration_to_group(project_name, user_email, discord_support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password):
+def send_email_user_registration_to_group(
+    project_name, user_email, discord_support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+):
 
     message = MIMEMultipart()
     message["Subject"] = f"{project_name} Registration Approved"
