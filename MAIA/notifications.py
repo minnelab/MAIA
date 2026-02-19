@@ -72,7 +72,7 @@ def send_email_user_registration_to_group(
         <body>
             <p>Welcome to MAIA!</p>
             <p>Your request to join the group <b>{}</b> has been approved and you can now access the the project workspace at:<br>
-            <a href="{}namespaces/{}/">{}namespaces/{}/</a></p>
+            <a href="{}namespaces/{}">{}namespaces/{}</a></p>
             
             <p>In the project workspace page you can find all the links and applications available for your project.</p>
             <br>
