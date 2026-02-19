@@ -329,7 +329,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     if cluster_config["url_type"] == "subpath":
         jh_template["singleuser"]["extraEnv"]["MLFLOW_TRACKING_URI"] = f"https://{hub_address}/{namespace}-mlflow"
 
-    if "minio_env_name" in user_form or "MINIO_URL" in os.environ:
+    if ("minio_env_name" in user_form and user_form["minio_env_name"] is not None) or "MINIO_URL" in os.environ:
         if "MINIO_SECURE" in os.environ:
             if os.environ["MINIO_SECURE"].lower() == "false":
                 secure = False
