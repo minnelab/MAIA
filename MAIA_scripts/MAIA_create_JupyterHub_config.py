@@ -207,7 +207,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "config": {
                 "GenericOAuthenticator": {
                     "login_service": "MAIA Account",
-                    "username_claim": "preferred_username",
+                    "username_claim": cluster_config.get("jupyterhub_username_claim", "preferred_username"),
                     "scope": ["openid", "profile", "email"],
                     "userdata_params": {"state": "state"},
                     "claim_groups_key": "groups",
