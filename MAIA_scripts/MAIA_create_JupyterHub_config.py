@@ -154,6 +154,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     if "gpu_request" in user_form:
         gpu_request = int(user_form["gpu_request"])
 
+    if "gpu_request" in cluster_config:
+        gpu_request = int(cluster_config["gpu_request"])
+
     domain = cluster_config["domain"]
 
     if "url_type" in cluster_config:
