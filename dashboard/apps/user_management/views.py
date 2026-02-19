@@ -30,6 +30,7 @@ from MAIA.dashboard_utils import (
 from MAIA.kubernetes_utils import create_namespace, create_namespace_from_context
 from rest_framework.response import Response
 from types import SimpleNamespace
+from MAIA.notifications import send_email_user_registration_to_group
 from MAIA.keycloak_utils import (
     get_user_ids,
     register_users_in_group_in_keycloak,
@@ -844,6 +845,15 @@ def register_user_in_group_view(request, email):
 
     for group_id in groups:
         register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=env_settings)
+        send_email_user_registration_to_group(
+        project_name=group_id,
+        user_email=email,
+        discord_support_link=env_settings.DISCORD_SUPPORT_URL,
+        dashboard_url=env_settings.HOSTNAME + "/maia/",
+        smtp_sender_email=env_settings.SMTP_SENDER_EMAIL,
+        smtp_server=env_settings.SMTP_SERVER,
+        smtp_port=env_settings.SMTP_PORT,
+        smtp_password=env_settings.SMTP_PASSWORD)
         if group_id == env_settings.ADMIN_GROUP:
             user = MAIAUser.objects.filter(email=email).first()
             user.is_superuser = True
