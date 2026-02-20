@@ -9,6 +9,7 @@ ADMIN_PROJECT_VERSION=$(python3 -c "from MAIA.versions import define_maia_admin_
 ARGOCD_NAMESPACE="argocd"
 ADMIN_GROUP_ID="MAIA:admin"
 
+# Load environment variables from JSON file, passed as the first argument
 if [ $# -ge 1 ]; then
   ENV_JSON="$1"
   if [ ! -f "$ENV_JSON" ]; then
@@ -25,11 +26,12 @@ if [ $# -ge 1 ]; then
     export ${key}=${value}
     echo "Read $key from $ENV_JSON"
   done < <(jq -r 'to_entries|map("\(.key)=\(.value|tostring)")|.[]' "$ENV_JSON")
+  # Set CONFIG_FOLDER to the directory of the JSON file
   export CONFIG_FOLDER=$(dirname "$(realpath "$ENV_JSON")")
   if [ -n "$CONFIG_FOLDER" ]; then
     echo "Exported CONFIG_FOLDER from $ENV_JSON"
   fi
-  # Extract CLUSTER_NAME from DEPLOY_KUBECONFIG if possible
+  # Extract CLUSTER_NAME from DEPLOY_KUBECONFIG if possible (kubeconfig file name without the -kubeconfig.yaml suffix)
   if [ -n "$DEPLOY_KUBECONFIG" ]; then
     CLUSTER_NAME=$(basename "$DEPLOY_KUBECONFIG" | sed -E 's/-kubeconfig\.yaml$//')
     export CLUSTER_NAME=${CLUSTER_NAME}
@@ -53,7 +55,14 @@ if [ -n "$JSON_KEY_PATH" ] && [ -f "$JSON_KEY_PATH" ]; then
   fi
 fi
 
+# If CLUSTER_NAME and CONFIG_FOLDER are set, load cluster configuration from the file
+# The configuration parameters loaded are:
+# - CLUSTER_DOMAIN
+# - K8S_DISTRIBUTION
+# - INGRESS_RESOLVER_EMAIL
+# - RANCHER_TOKEN
 if [ -n "$CLUSTER_NAME" ]; then
+  # Check if CONFIG_FOLDER is set
   if [ -z "$CONFIG_FOLDER" ]; then
     echo "Error: CONFIG_FOLDER must be set to read cluster configuration."
     exit 1
@@ -70,19 +79,24 @@ if [ -n "$CLUSTER_NAME" ]; then
     if [ -n "$CLUSTER_DOMAIN_VAL" ]; then
       # Remove quotes only if present
       export CLUSTER_DOMAIN=$(echo "${CLUSTER_DOMAIN_VAL}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded CLUSTER_DOMAIN from $CLUSTER_CONFIG_FILE"
+      echo "Loaded CLUSTER_DOMAIN from $CLUSTER_CONFIG_FILE: $CLUSTER_DOMAIN"
     fi
     export K8S_DISTRIBUTION=$(yq '.k8s_distribution // empty' "$CLUSTER_CONFIG_FILE")
     if [ -n "$K8S_DISTRIBUTION" ]; then
       export K8S_DISTRIBUTION=$(echo "${K8S_DISTRIBUTION}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded K8S_DISTRIBUTION from $CLUSTER_CONFIG_FILE"
+      echo "Loaded K8S_DISTRIBUTION from $CLUSTER_CONFIG_FILE: $K8S_DISTRIBUTION"
     fi
-    export INGRESS_RESOLVER_EMAIL=$(yq '.ingress_resolver_email // empty' "$CLUSTER_CONFIG_FILE" | sed 's/^"\(.*\)"$/\1/')
-    echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE"
+    # Set INGRESS_RESOLVER_EMAIL if the entry exists in YAML (even if it is empty),
+    # but do NOT set if the entry does not exist at all.
+    if yq 'has("ingress_resolver_email")' "$CLUSTER_CONFIG_FILE" | grep -q 'true'; then
+      INGRESS_RESOLVER_EMAIL_VAL=$(yq '.ingress_resolver_email' "$CLUSTER_CONFIG_FILE" | sed 's/^"\(.*\)"$/\1/')
+      export INGRESS_RESOLVER_EMAIL="$INGRESS_RESOLVER_EMAIL_VAL"
+      echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE: $INGRESS_RESOLVER_EMAIL"
+    fi
     export RANCHER_TOKEN=$(yq '.rancher_token // empty' "$CLUSTER_CONFIG_FILE")
     if [ -n "$RANCHER_TOKEN" ]; then
       export RANCHER_TOKEN=$(echo "${RANCHER_TOKEN}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded RANCHER_TOKEN from $CLUSTER_CONFIG_FILE"
+      echo "Loaded RANCHER_TOKEN from $CLUSTER_CONFIG_FILE: $RANCHER_TOKEN"
     fi
   fi
 fi
