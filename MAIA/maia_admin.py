@@ -1653,6 +1653,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "BUCKET_NAME", "value": "maia-envs"},
             {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{cluster_config_dict['domain']}/browser/maia-envs"},
         ]
+    )
         
     ## MONAI Toolkit Image and Orthanc
     maia_dashboard_values["env"].extend(
