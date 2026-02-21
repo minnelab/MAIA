@@ -1638,10 +1638,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     ):
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
         maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
-
-    Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
-    with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
-        f.write(OmegaConf.to_yaml(maia_dashboard_values))
         
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
@@ -1693,7 +1689,10 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         "mysqlDatabase": "mysql",
     }
 
-
+    Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(maia_dashboard_values))
+        
     return {
         "namespace": maia_dashboard_values["namespace"],
         "release": f"{project_id}-dashboard",
