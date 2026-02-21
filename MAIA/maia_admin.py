@@ -1682,13 +1682,13 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "DB_PASS", "value": db_password},
         ]
     )
-    maia_dashboard_values["mysql"].extend(
-        [
-            {"name": "mysqlRootPassword", "value": db_password},
-            {"name": "mysqlUser", "value": "maia-admin"},
-            {"name": "mysqlPassword", "value": db_password},
-            {"name": "mysqlDatabase", "value": "mysql"},
-        ]
+    maia_dashboard_values["mysql"].update(
+        {
+            "mysqlRootPassword": db_password,
+            "mysqlUser": "maia-admin",
+            "mysqlPassword": db_password,
+            "mysqlDatabase": "mysql",
+        }
     )
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
