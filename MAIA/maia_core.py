@@ -994,11 +994,11 @@ def create_gpu_booking_values(config_folder, project_id):
         {
             "image": {
                 "pod_terminator": {
-                    "repository": f"{default_registry}/gpu-booking-pod-terminator",
+                    "repository": f"{default_registry}/maia-gpu-booking-pod-terminator",
                     "pullPolicy": "IfNotPresent",
                     "tag": "1.4",
                 },
-                "repository": f"{default_registry}/gpu-booking-admission-controller",
+                "repository": f"{default_registry}/maia-gpu-booking-admission-controller",
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },

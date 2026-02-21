@@ -568,7 +568,8 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
     }
 
-    maia_filebrowser_values["image"] = {"repository": "ghcr.io/minnelab/maia-filebrowser", "tag": maia_filebrowser_image_version}
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
+    maia_filebrowser_values["image"] = {"repository": f"{default_registry}/maia-filebrowser", "tag": maia_filebrowser_image_version}
 
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_filebrowser_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
@@ -1413,6 +1414,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
         maia_dashboard_values["path"] = "charts/maia-dashboard"
 
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
     maia_dashboard_values.update(
         {
             "ingress": {
@@ -1436,7 +1438,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "LOCAL_DB_PATH", "value": "/etc/MAIA-Dashboard/db"},
             ],
             "storageClass": cluster_config_dict["storage_class"],
-            "image": {"repository": "ghcr.io/minnelab/maia-dashboard", "tag": maia_dashboard_image_version},
+            "image": {"repository": f"{default_registry}/maia-dashboard", "tag": maia_dashboard_image_version},
             "dashboard": {"local_config_path": "/mnt/dashboard-config"},
             "mysql": {"enabled": True, "image": mysql_image, "tag": mysql_image_version},
         }
@@ -1568,6 +1570,17 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 if "argocd_destination_cluster_address" in cluster_config_dict
                 else "https://kubernetes.default.svc"
             ),
+            "services": {
+                "argocd": "https://argocd." + cluster_config_dict["domain"],
+                "dashboard": "https://dashboard." + cluster_config_dict["domain"],
+                "traefik": "https://traefik." + cluster_config_dict["domain"],
+                "grafana": "https://grafana." + cluster_config_dict["domain"],
+                "keycloak": "https://iam." + cluster_config_dict["domain"] + "/admin/maia/console/",
+                "login": "https://login." + cluster_config_dict["domain"],
+                "rancher": "https://mgmt." + cluster_config_dict["domain"],
+                "registry": "https://registry." + cluster_config_dict["domain"],
+                "minio": "https://minio." + cluster_config_dict["domain"],
+            },
         }
     )
     if "metallb_ip_pool" in cluster_config_dict:
@@ -1624,11 +1637,61 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         or os.environ.get("GPG_KEY") is not None
     ):
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
-        maia_dashboard_values["image"]["repository"] = "ghcr.io/minnelab/maia-dashboard-dev"
+        maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
+        
+    ### MinIO Configuration
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "MINIO_URL", "value": "minio:80"},
+            {"name": "MINIO_ACCESS_KEY", "value": "maia-admin"},
+            {"name": "MINIO_SECRET_KEY", "value": os.environ["minio_admin_password"]},
+            {"name": "MINIO_SECURE", "value": "False"},
+            {"name": "BUCKET_NAME", "value": "maia-envs"},
+            {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{cluster_config_dict['domain']}/browser/maia-envs"},
+        ]
+        
+    ## MONAI Toolkit Image and Orthanc
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "MONAI_TOOLKIT_IMAGE", "value": f"{default_registry}/monai-toolkit"},
+        ]
+    )
+    
+    ## MAIA Registry where  the MAIA images can be pulled from, can also be maiacloudai, default is ghcr.io/minnelab
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "MAIA_REGISTRY", "value": os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")},
+        ]
+    )
+
+    ## MySQL Configuration
+    
+    if "mysql_dashboard_password" in os.environ:
+        db_password = os.environ["mysql_dashboard_password"]
+    else:
+        db_password = generate_human_memorable_password()
+
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "DB_ENGINE", "value": "mysql"},
+            {"name": "DB_NAME", "value": "mysql"},
+            {"name": "DB_HOST", "value": "maia-admin-maia-dashboard-mysql"},
+            {"name": "DB_PORT", "value": "3306"},
+            {"name": "DB_USERNAME", "value": "maia-admin"},
+            {"name": "DB_PASS", "value": db_password},
+        ]
+    )
+    maia_dashboard_values["mysql"] = {
+        "mysqlRootPassword": db_password,
+        "mysqlUser": "maia-admin",
+        "mysqlPassword": db_password,
+        "mysqlDatabase": "mysql",
+    }
+
 
     return {
         "namespace": maia_dashboard_values["namespace"],
@@ -1673,21 +1736,7 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             "dashboard": {
                 "local_db_path": "/etc/MAIA-Dashboard/db",
             },
-            "clusters": [
-                {
-                    "services": {
-                        "argocd": "https://argocd." + cluster_config_dict["domain"],
-                        "dashboard": "https://dashboard." + cluster_config_dict["domain"],
-                        "traefik": "https://traefik." + cluster_config_dict["domain"],
-                        "grafana": "https://grafana." + cluster_config_dict["domain"],
-                        "keycloak": "https://iam." + cluster_config_dict["domain"] + "/admin/maia/console/",
-                        "login": "https://login." + cluster_config_dict["domain"],
-                        "rancher": "https://mgmt." + cluster_config_dict["domain"],
-                        "registry": "https://registry." + cluster_config_dict["domain"],
-                        "minio": "https://minio." + cluster_config_dict["domain"],
-                    },
-                }
-            ],
+
             "name": "maia-dashboard",
         }
     )
@@ -1724,29 +1773,8 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         ...
     else:
 
-        if "mysql_dashboard_password" in os.environ:
-            db_password = os.environ["mysql_dashboard_password"]
-        else:
-            db_password = generate_human_memorable_password()
-        maia_dashboard_values["dashboard"]["local_config_path"] = "/mnt/dashboard-config"
-        cifs_server = ""
-        maia_dashboard_values["env"] = [
-            {"name": "DEBUG", "value": "False"},
-            {"name": "DB_ENGINE", "value": "mysql"},
-            {"name": "DB_NAME", "value": "mysql"},
-            {"name": "DB_HOST", "value": "maia-admin-maia-dashboard-mysql"},
-            {"name": "DB_PORT", "value": "3306"},
-            {"name": "DB_USERNAME", "value": "maia-admin"},
-            {"name": "DB_PASS", "value": db_password},
-        ]
 
-        maia_dashboard_values["mysql"] = {
-            "enabled": True,
-            "mysqlRootPassword": db_password,
-            "mysqlUser": "maia-admin",
-            "mysqlPassword": db_password,
-            "mysqlDatabase": "mysql",
-        }
+        cifs_server = ""
 
     if "CIFS_SERVER" in os.environ:
         cifs_server = os.environ["CIFS_SERVER"]
@@ -1766,60 +1794,9 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
     domain = cluster_config_dict["domain"]
     maia_dashboard_values["env"].extend(
         [
-            {"name": "MINIO_URL", "value": "minio:80"},
-            {"name": "MINIO_PUBLIC_URL", "value": "minio:80"},
-            {"name": "MINIO_ACCESS_KEY", "value": "maia-admin"},
-            {"name": "MINIO_SECRET_KEY", "value": os.environ["minio_admin_password"]},
-            {"name": "MINIO_SECURE", "value": "False"},
-            {"name": "MINIO_PUBLIC_SECURE", "value": "True"},
-            {"name": "BUCKET_NAME", "value": "maia-envs"},
             {"name": "SECRET_KEY", "value": os.environ["dashboard_api_secret"]},
             {"name": "POD_TERMINATOR_ADDRESS", "value": "http://pod-terminator.gpu-booking:8080"},
-            {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{domain}/browser/maia-envs"},
             {"name": "MAIA_SEGMENTATION_PORTAL_NAMESPACE_ID", "value": "maia-segmentation"},
-            {"name": "keycloak_client_id", "value": "maia"},
-            {"name": "keycloak_client_secret", "value": os.environ["keycloak_client_secret"]},
-            {"name": "keycloak_issuer_url", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},
-            {
-                "name": "keycloak_authorize_url",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth",
-            },
-            {
-                "name": "keycloak_token_url",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token",
-            },
-            {
-                "name": "keycloak_userdata_url",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
-            },
-            {
-                "name": "maia_workspace_version",
-                "value": os.environ.get("maia_workspace_version", maia_workspace_base_notebook_ssh_image_version),
-            },
-            {
-                "name": "maia_workspace_image",
-                "value": os.environ.get(
-                    "maia_workspace_image", "ghcr.io/minnelab/" + maia_workspace_base_notebook_ssh_image_name
-                ),
-            },
-            {
-                "name": "maia_workspace_pro_version",
-                "value": os.environ.get("maia_workspace_pro_version", maia_workspace_notebook_ssh_addons_image_version),
-            },
-            {
-                "name": "maia_workspace_pro_image",
-                "value": os.environ.get(
-                    "maia_workspace_pro_image", "ghcr.io/minnelab/" + maia_workspace_notebook_ssh_addons_image_name
-                ),
-            },
-            {
-                "name": "maia_orthanc_image",
-                "value": os.environ.get("maia_orthanc_image", "ghcr.io/minnelab/maia-orthanc"),
-            },
-            {
-                "name": "maia_orthanc_version",
-                "value": os.environ.get("maia_orthanc_version", maia_orthanc_image_version),
-            },
         ]
     )
 

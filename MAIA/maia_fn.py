@@ -633,7 +633,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
         private_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
 
-    docker_image = maia_orthanc_image
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
+    docker_image = f"{default_registry}/{maia_orthanc_image}"
     docker_version = maia_orthanc_image_version
     if "maia_orthanc_image_" + namespace in os.environ:
         docker_image = os.environ["maia_orthanc_image_" + namespace]
