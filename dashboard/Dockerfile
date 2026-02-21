@@ -6,7 +6,7 @@ USER root
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ARG MAIA_DASHBOARD_PATH="/etc/MAIA/dashboard"
+ARG MAIA_DASHBOARD_PATH="/etc/MAIA-Dashboard"
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 RUN mkdir /etc/MAIA-Dashboard
