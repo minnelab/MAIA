@@ -9,19 +9,20 @@ ENV PYTHONUNBUFFERED 1
 ARG MAIA_DASHBOARD_PATH="/etc/MAIA-Dashboard"
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
-RUN git clone https://github.com/minnelab/MAIA.git@v2.4.4 /etc/MAIA
+WORKDIR /etc
+RUN git clone --branch v2.4.4 --single-branch https://github.com/minnelab/MAIA.git
 RUN mkdir /etc/MAIA-Dashboard
 WORKDIR /etc/MAIA-Dashboard
-COPY /etc/MAIA/dashboard/requirements.txt /etc/MAIA-Dashboard
+RUN cp /etc/MAIA/dashboard/requirements.txt /etc/MAIA-Dashboard
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY /etc/MAIA/dashboard/manage.py /etc/MAIA-Dashboard
-COPY /etc/MAIA/dashboard/apps /etc/MAIA-Dashboard/apps
-COPY /etc/MAIA/dashboard/core /etc/MAIA-Dashboard/core
+RUN cp /etc/MAIA/dashboard/manage.py /etc/MAIA-Dashboard
+RUN cp -r /etc/MAIA/dashboard/apps /etc/MAIA-Dashboard/apps
+RUN cp -r /etc/MAIA/dashboard/core /etc/MAIA-Dashboard/core
 
-COPY /etc/MAIA/dashboard/start-script.sh /etc/MAIA-Dashboard
-COPY /etc/MAIA/dashboard/start-script_dev.sh /etc/MAIA-Dashboard
+RUN cp /etc/MAIA/dashboard/start-script.sh /etc/MAIA-Dashboard
+RUN cp /etc/MAIA/dashboard/start-script_dev.sh /etc/MAIA-Dashboard
 
 RUN chmod +x /etc/MAIA-Dashboard/start-script.sh
 RUN chmod 777 /etc/MAIA-Dashboard/start-script.sh
