@@ -1,0 +1,291 @@
+{% extends 'layouts/base-fullscreen.html' %}
+
+{% block title %} How to Register {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+<style>
+  .instruction-section {
+    margin-bottom: 3rem;
+  }
+  .instruction-section h2 {
+    color: #344767;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+  }
+  .instruction-section h3 {
+    color: #67748e;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+  .step-card {
+    background: #fff;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  .step-number {
+    display: inline-block;
+    width: 2.5rem;
+    height: 2.5rem;
+    line-height: 2.5rem;
+    text-align: center;
+    border-radius: 50%;
+    background: linear-gradient(310deg, #7928CA 0%, #FF0080 100%);
+    color: white;
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+  .screenshot-container {
+    margin: 2rem 0;
+    text-align: center;
+  }
+  .screenshot-container img {
+    max-width: 100%;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e9ecef;
+  }
+  .screenshot-caption {
+    font-size: 0.875rem;
+    color: #67748e;
+    margin-top: 0.75rem;
+    font-style: italic;
+  }
+  .info-box {
+    background: #f8f9fa;
+    border-left: 4px solid #7928CA;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0.5rem;
+  }
+  .info-box strong {
+    color: #344767;
+  }
+  .note-box {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0.5rem;
+  }
+  ul.instruction-list {
+    list-style: none;
+    padding-left: 0;
+  }
+  ul.instruction-list li {
+    padding: 0.5rem 0 0.5rem 2rem;
+    position: relative;
+  }
+  ul.instruction-list li:before {
+    content: "→";
+    position: absolute;
+    left: 0.5rem;
+    color: #7928CA;
+    font-weight: bold;
+  }
+  .btn-register {
+    margin: 2rem 0;
+  }
+  .content-wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+
+  <div class="container position-sticky z-index-sticky top-1">
+    <div class="row">
+      <div class="col-12">
+        {% include "includes/navigation-fullscreen.html" %}
+      </div>
+    </div>
+  </div>
+
+  <main class="main-content mt-0">
+    <section class="min-vh-100 mb-8">
+      <div class="page-header align-items-start min-vh-30 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/maia_background.jpg');">
+        <span class="mask bg-gradient-dark opacity-6"></span>
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-lg-8 text-center mx-auto">
+              <h1 class="text-white mb-2 mt-5">How to Register</h1>
+              <p class="text-white lead">Complete guide for user and project registration in MAIA</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="row mt-lg-n10 mt-md-n11 mt-n10">
+          <div class="col-12">
+            <div class="card z-index-0">
+              <div class="card-body">
+                <div class="content-wrapper">
+                  
+                  <!-- User Registration Section -->
+                  <div class="instruction-section">
+                    <h2><i class="fas fa-user-plus"></i> How to Register a New User</h2>
+                    
+                    <div class="info-box">
+                      <strong>Prerequisites:</strong> You need an existing MAIA project to join. If you don't have one, please register a project first or contact your project administrator.
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">1</span>Navigate to the Registration Page</h4>
+                      <ul class="instruction-list">
+                        <li>Go to the MAIA dashboard login page</li>
+                        <li>Click on the "Sign UP" or "Register" link</li>
+                      </ul>
+                    </div>
+
+                    <div class="screenshot-container">
+                      <img src="{{ ASSETS_ROOT }}/img/MAIA/registration-user-step1.png" alt="User Registration Step 1">
+                      <p class="screenshot-caption">User registration page showing the registration form</p>
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">2</span>Fill in Your Information</h4>
+                      <ul class="instruction-list">
+                        <li><strong>Username:</strong> Choose a unique username (lowercase letters, numbers, and hyphens)</li>
+                        <li><strong>Email:</strong> Enter your valid email address</li>
+                        <li><strong>Existing Project:</strong> Select the MAIA project you want to join from the dropdown</li>
+                      </ul>
+                    </div>
+
+                    <div class="note-box">
+                      <strong>Note:</strong> The password will be automatically generated and sent to you via email. Make sure to use a valid email address.
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">3</span>Submit and Verify</h4>
+                      <ul class="instruction-list">
+                        <li>Click the "Sign UP" button to submit your registration</li>
+                        <li>Wait for the confirmation message</li>
+                        <li>Check your email for your auto-generated password</li>
+                        <li>You can now log in with your username and the password received via email</li>
+                      </ul>
+                    </div>
+
+                    <div class="text-center btn-register">
+                      <a href="{% url 'register' %}" class="btn bg-gradient-dark btn-lg">
+                        <i class="fas fa-user-plus me-2"></i>Register as User
+                      </a>
+                    </div>
+                  </div>
+
+                  <hr class="my-5">
+
+                  <!-- Project Registration Section -->
+                  <div class="instruction-section">
+                    <h2><i class="fas fa-project-diagram"></i> How to Register a New Project</h2>
+                    
+                    <div class="info-box">
+                      <strong>Important:</strong> Project registration is required before users can join. The project administrator will have access to manage the project resources and users.
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">1</span>Access Project Registration</h4>
+                      <ul class="instruction-list">
+                        <li>Navigate to the MAIA dashboard</li>
+                        <li>Click on "Register Project" or <a href="{% url 'register_project' %}">access it directly here</a></li>
+                      </ul>
+                    </div>
+
+                    <div class="screenshot-container">
+                      <img src="{{ ASSETS_ROOT }}/img/MAIA/registration-project-step1.png" alt="Project Registration Step 1">
+                      <p class="screenshot-caption">Project registration form with all required fields</p>
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">2</span>Complete Project Details</h4>
+                      <ul class="instruction-list">
+                        <li><strong>Project Name:</strong> Choose a unique project name (lowercase, alphanumeric, hyphens)</li>
+                        <li><strong>Email:</strong> Provide the project administrator's email address</li>
+                        <li><strong>Project Description:</strong> Describe the purpose and goals of your project</li>
+                        <li><strong>Principal Investigator:</strong> Name of the principal investigator or project lead</li>
+                        <li><strong>GPU Request:</strong> Specify the number of GPUs needed</li>
+                        <li><strong>Project Allocation Until:</strong> Set the end date for project allocation</li>
+                        <li><strong>CPU Request:</strong> Specify CPU resource requirements (e.g., "4")</li>
+                        <li><strong>Memory Request:</strong> Specify memory requirements (e.g., "8Gi", "16Gi")</li>
+                      </ul>
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">3</span>Optional: Upload Conda Environment</h4>
+                      <ul class="instruction-list">
+                        <li>If available, you can upload a Conda or Python environment YAML file</li>
+                        <li>This will set up the environment automatically for your project</li>
+                        <li>This step is optional and can be configured later</li>
+                      </ul>
+                    </div>
+
+                    <div class="step-card">
+                      <h4><span class="step-number">4</span>Submit Project Registration</h4>
+                      <ul class="instruction-list">
+                        <li>Review all entered information carefully</li>
+                        <li>Click "Register Project" to submit your request</li>
+                        <li>Wait for administrator approval and notification</li>
+                        <li>Once approved, you can add users to your project</li>
+                      </ul>
+                    </div>
+
+                    <div class="note-box">
+                      <strong>Best Practice:</strong> Carefully estimate your resource requirements (GPU, CPU, Memory) to ensure optimal allocation and avoid resource waste.
+                    </div>
+
+                    <div class="text-center btn-register">
+                      <a href="{% url 'register_project' %}" class="btn bg-gradient-dark btn-lg">
+                        <i class="fas fa-project-diagram me-2"></i>Register New Project
+                      </a>
+                    </div>
+                  </div>
+
+                  <hr class="my-5">
+
+                  <!-- Additional Resources Section -->
+                  <div class="instruction-section">
+                    <h2><i class="fas fa-question-circle"></i> Additional Resources</h2>
+                    
+                    <div class="step-card">
+                      <h4>Need Help?</h4>
+                      <ul class="instruction-list">
+                        <li>For technical support, contact your system administrator</li>
+                        <li>Check the <a href="{% url 'maia_docs' %}">MAIA Documentation</a> for more information</li>
+                        <li>Review project quotas and resource limits before registration</li>
+                      </ul>
+                    </div>
+
+                    <div class="step-card">
+                      <h4>Common Issues</h4>
+                      <ul class="instruction-list">
+                        <li><strong>Project name already exists:</strong> Choose a different, unique project name</li>
+                        <li><strong>Email not received:</strong> Check your spam folder or verify email address</li>
+                        <li><strong>Invalid resource format:</strong> Use proper format for CPU (e.g., "4") and Memory (e.g., "8Gi")</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% include "includes/footer-fullscreen.html" %}
+
+  </main>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}{% endblock javascripts %}

@@ -223,6 +223,12 @@ def maia_spotlight(request):
     return HttpResponse(html_template.render(context, request))
 
 
+def how_to_register(request):
+    context = {}
+    html_template = loader.get_template("home/how-to-register.html")
+    return HttpResponse(html_template.render(context, request))
+
+
 @csrf_exempt
 def chat(request):
     if request.method == "POST":
