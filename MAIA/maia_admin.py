@@ -1710,7 +1710,12 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     # Email Notification Systen
 
-    if "SMTP_SENDER_EMAIL" in os.environ and "SMTP_SERVER" in os.environ and "SMTP_PORT" in os.environ and "SMTP_PASSWORD" in os.environ:
+    if (
+        "SMTP_SENDER_EMAIL" in os.environ
+        and "SMTP_SERVER" in os.environ
+        and "SMTP_PORT" in os.environ
+        and "SMTP_PASSWORD" in os.environ
+    ):
         maia_dashboard_values["env"].extend(
             [
                 {"name": "SMTP_SENDER_EMAIL", "value": os.environ["SMTP_SENDER_EMAIL"]},

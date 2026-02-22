@@ -118,8 +118,16 @@ def create_user(email, username, first_name, last_name, namespace):
         try:
             temp_password = generate_human_memorable_password()
             register_user_in_keycloak(email=email, username=username, settings=settings, temp_password=temp_password)
-            send_email_approved_registration_email(email, temp_password, settings.HOSTNAME + "/maia/", settings.SMTP_SENDER_EMAIL, settings.SMTP_SERVER, settings.SMTP_PORT, settings.SMTP_PASSWORD)
-            user_already_exists = False    
+            send_email_approved_registration_email(
+                email,
+                temp_password,
+                settings.HOSTNAME + "/maia/",
+                settings.SMTP_SENDER_EMAIL,
+                settings.SMTP_SERVER,
+                settings.SMTP_PORT,
+                settings.SMTP_PASSWORD,
+            )
+            user_already_exists = False
         except KeycloakPostError as e:
             logger.error(f"Error registering user {email} in Keycloak: {e}")
             if getattr(e, "response_code", 0) == 409:

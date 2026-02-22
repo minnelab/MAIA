@@ -194,7 +194,9 @@ def confirm_request_registration_for_group(
         return False
 
 
-def send_email_approved_registration_email(email, temp_password, login_url, smtp_sender_email, smtp_server, smtp_port, smtp_password):
+def send_email_approved_registration_email(
+    email, temp_password, login_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+):
     message = MIMEMultipart()
     message["Subject"] = "Your MAIA Account has been approved"
     message["From"] = f"MAIA Admin Team <{smtp_sender_email}>"
@@ -219,7 +221,7 @@ def send_email_approved_registration_email(email, temp_password, login_url, smtp
     message.attach(part1)
 
     _ = ssl.create_default_context()
-    
+
     try:
         if not smtp_server or not smtp_sender_email or not smtp_password:
             raise ValueError("Missing required email environment variables.")
