@@ -192,3 +192,44 @@ def confirm_request_registration_for_group(
     except Exception as smtp_error:
         logger.error(f"SMTP error: {smtp_error}")
         return False
+
+
+def send_email_approved_registration_email(email, temp_password, login_url, smtp_sender_email, smtp_server, smtp_port, smtp_password):
+    message = MIMEMultipart()
+    message["Subject"] = "Your MAIA Account has been approved"
+    message["From"] = f"MAIA Admin Team <{smtp_sender_email}>"
+    message["To"] = email
+
+    html = """\
+    <html>
+        <head></head>
+        <body>
+            <p>Welcome to MAIA!</p>
+            <p>Your MAIA account has been approved and you can now log in to MAIA at the following link: <a href="{}">{}</a></p>
+            <p>Your temporary password is: {}</p>
+            <p>Please change your password after logging in.</p>
+            <br>
+            <p>Best regards,</p>
+            <p>The MAIA Admin Team</p>
+        </body>
+    </html>
+    """.format(login_url, login_url, temp_password)
+
+    part1 = MIMEText(html, "html")
+    message.attach(part1)
+
+    _ = ssl.create_default_context()
+    
+    try:
+        if not smtp_server or not smtp_sender_email or not smtp_password:
+            raise ValueError("Missing required email environment variables.")
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()  # identify ourselves to SMTP server
+            server.starttls()  # encrypt the session
+            server.login(smtp_sender_email, smtp_password)
+            server.sendmail(smtp_sender_email, email, message.as_string())
+            logger.success(f"Approved registration email sent to {email}")
+        return True
+    except Exception as smtp_error:
+        logger.error(f"SMTP error: {smtp_error}")
+        return False

@@ -13,7 +13,8 @@ from MAIA.keycloak_utils import (
 )
 from django.db import transaction
 from loguru import logger
-from MAIA.notifications import send_email_approved_project_registration
+from MAIA.notifications import send_email_approved_project_registration, send_email_approved_registration_email
+from MAIA.maia_fn import generate_human_memorable_password
 
 RESERVED_GROUPS = []
 if getattr(settings, "ADMIN_GROUP", None):
@@ -115,8 +116,10 @@ def create_user(email, username, first_name, last_name, namespace):
 
         # Register user in Keycloak (pass username so Keycloak username can differ from email)
         try:
-            register_user_in_keycloak(email=email, username=username, settings=settings)
-            user_already_exists = False
+            temp_password = generate_human_memorable_password()
+            register_user_in_keycloak(email=email, username=username, settings=settings, temp_password=temp_password)
+            send_email_approved_registration_email(email, temp_password, settings.HOSTNAME + "/maia/", settings.SMTP_SENDER_EMAIL, settings.SMTP_SERVER, settings.SMTP_PORT, settings.SMTP_PASSWORD)
+            user_already_exists = False    
         except KeycloakPostError as e:
             logger.error(f"Error registering user {email} in Keycloak: {e}")
             if getattr(e, "response_code", 0) == 409:
