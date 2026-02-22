@@ -1519,8 +1519,8 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             port = 16443
         else:
             raise ValueError(f"K8S_DISTRIBUTION {os.environ['K8S_DISTRIBUTION']} not supported")
-        maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}{port}"
-        maia_dashboard_values["clusters"][0]["token"] = ""
+        maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}:{port}"
+        maia_dashboard_values["clusters"][0]["maia_dashboard"]["token"] = ""
 
     maia_dashboard_values["env"].extend(
         [
