@@ -360,66 +360,6 @@ def verify_minio_availability(settings):
     return minio_available
 
 
-def send_approved_registration_email(receiver_email, login_url, temp_password):
-    """
-    Sends an email to notify the user that their MAIA account registration has been approved.
-
-    Parameters
-    ----------
-    receiver_email : str
-        The email address of the recipient.
-    login_url : str
-        The URL where the user can log in to MAIA.
-    temp_password : str
-        The temporary password assigned to the user.
-
-    Raises
-    ------
-    KeyError
-        If the environment variables 'email_account' or 'email_password' are not set.
-    smtplib.SMTPException
-        If there is an error sending the email.
-    """
-
-    sender_email = os.environ["email_account"]
-    message = MIMEMultipart()
-    message["Subject"] = "Account Registration Approved"
-    message["From"] = f"MAIA Registration <{sender_email}>"
-    message["To"] = receiver_email
-
-    html = """\
-    <html>
-        <head></head>
-        <body>
-            <p>Your MAIA Account has been approved.</p>
-            <p>Log in to MAIA at the following link: <a href="{}">MAIA</a></p>
-            <p>Your temporary password is: {}</p>
-            <p>Please change your password after logging in.</p>
-            <br>
-            <p>Best Regards,</p>
-            <p>MAIA Admin Team</p>
-        </body>
-    </html>
-    """.format(login_url, temp_password)
-
-    # Turn these into plain/html MIMEText objects
-    part1 = MIMEText(html, "html")
-
-    message.attach(part1)
-
-    port = 587  # For SSL
-    password = os.environ["email_password"]
-
-    # Create a secure SSL context
-    # context = ssl.create_default_context()
-
-    with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()  # identify ourselves to SMTP server
-        server.starttls()  # encrypt the session
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-
-
 def send_webhook_message(username, namespace, url, project_registration=False):
     """
     Sends a message to a webhook to request a MAIA account.

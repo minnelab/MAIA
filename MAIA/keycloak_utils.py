@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from typing import Any
 import requests
@@ -464,11 +462,6 @@ def register_user_in_keycloak(email, settings, username=None, temp_password="Mai
             "credentials": [{"type": "password", "temporary": True, "value": temp_password}],
         }
     )
-    maia_login_url = "https://" + settings.HOSTNAME + "/maia/"
-    if "email_account" in os.environ and "email_password" in os.environ and "email_smtp_server" in os.environ:
-        from MAIA.dashboard_utils import send_approved_registration_email
-
-        send_approved_registration_email(email, maia_login_url, temp_password)
 
 
 def register_group_in_keycloak(group_id, settings) -> None:
