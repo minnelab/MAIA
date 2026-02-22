@@ -106,7 +106,9 @@ def send_email_user_registration_to_group(
         raise
 
 
-def confirm_request_registration_to_project(project_name, user_email, support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password):
+def confirm_request_registration_to_project(
+    project_name, user_email, support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+):
     message = MIMEMultipart()
     message["Subject"] = f"Confirmation of your request to join the MAIA project {project_name}"
     message["From"] = f"MAIA Admin Team <{smtp_sender_email}>"
@@ -132,7 +134,7 @@ def confirm_request_registration_to_project(project_name, user_email, support_li
     message.attach(part1)
 
     _ = ssl.create_default_context()
-    
+
     try:
         if not smtp_server or not smtp_sender_email or not smtp_password:
             raise ValueError("Missing required email environment variables.")
@@ -146,9 +148,11 @@ def confirm_request_registration_to_project(project_name, user_email, support_li
     except Exception as smtp_error:
         logger.error(f"SMTP error: {smtp_error}")
         return False
-    
 
-def confirm_request_registration_for_group(group_name, user_email, support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password):
+
+def confirm_request_registration_for_group(
+    group_name, user_email, support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+):
     message = MIMEMultipart()
     message["Subject"] = f"Confirmation of your request to register a new MAIA project {group_name}"
     message["From"] = f"MAIA Admin Team <{smtp_sender_email}>"
@@ -169,12 +173,12 @@ def confirm_request_registration_for_group(group_name, user_email, support_link,
         </body>
     </html>
     """.format(group_name, support_link, support_link)
-    
+
     part1 = MIMEText(html, "html")
     message.attach(part1)
 
     _ = ssl.create_default_context()
-    
+
     try:
         if not smtp_server or not smtp_sender_email or not smtp_password:
             raise ValueError("Missing required email environment variables.")
