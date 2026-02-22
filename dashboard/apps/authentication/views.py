@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from .forms import LoginForm, SignUpForm, RegisterProjectForm, MAIAInfoForm
-from MAIA.dashboard_utils import send_discord_message, verify_minio_availability, send_maia_info_email, upload_env_file_to_minio
+from MAIA.dashboard_utils import send_webhook_message, verify_minio_availability, send_maia_info_email, upload_env_file_to_minio
 from core.settings import GITHUB_AUTH
 from django.conf import settings
 from apps.models import MAIAUser, MAIAProject
@@ -102,8 +102,8 @@ def register_user(request, api=False):
 
             # if os.environ["DEBUG"] != "True":
             # send_email(email, os.environ["admin_email"], email)
-            if settings.DISCORD_URL is not None:
-                send_discord_message(username=username, namespace=namespace, url=settings.DISCORD_URL)
+            if settings.WEBHOOK_URL is not None:
+                send_webhook_message(username=username, namespace=namespace, url=settings.WEBHOOK_URL)
             msg = "Request for Account Registration submitted successfully. Please wait for the admin to approve your request."
             success = True
 
@@ -128,9 +128,9 @@ def register_user(request, api=False):
                         msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
                             form.cleaned_data.get("email"), requested_namespace
                         )
-                        if settings.DISCORD_URL is not None:
-                            send_discord_message(
-                                username=form.cleaned_data.get("email"), namespace=namespace, url=settings.DISCORD_URL
+                        if settings.WEBHOOK_URL is not None:
+                            send_webhook_message(
+                                username=form.cleaned_data.get("email"), namespace=namespace, url=settings.WEBHOOK_URL
                             )
                         success = True
                     else:
@@ -166,7 +166,7 @@ def send_maia_email(request):
     hostname = settings.HOSTNAME
     register_project_url = f"https://{hostname}/maia/register_project/"
     register_user_url = f"https://{hostname}/maia/register/"
-    discord_support_link = settings.DISCORD_SUPPORT_URL
+    support_link = settings.SUPPORT_URL
     msg = None
     success = False
 
@@ -174,7 +174,7 @@ def send_maia_email(request):
 
         form = MAIAInfoForm(request.POST, request.FILES)
         if form.is_valid():
-            send_maia_info_email(form.cleaned_data.get("email"), register_project_url, register_user_url, discord_support_link)
+            send_maia_info_email(form.cleaned_data.get("email"), register_project_url, register_user_url, support_link)
             msg = "Request for MAIA Info submitted successfully."
             success = True
 
@@ -266,8 +266,8 @@ def register_project(request, api=False):
                 msg = "Error storing environment file in MinIO"
                 success = False
 
-            if settings.DISCORD_URL is not None:
-                send_discord_message(username=email, namespace=namespace, url=settings.DISCORD_URL, project_registration=True)
+            if settings.WEBHOOK_URL is not None:
+                send_webhook_message(username=email, namespace=namespace, url=settings.WEBHOOK_URL, project_registration=True)
             msg = "Request for Project Registration submitted successfully."
             success = True
 

@@ -1504,6 +1504,20 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "maia_dashboard": {"enabled": True, "token": cluster_config_dict["rancher_token"]},
         }
     ]
+    
+    if cluster_config_dict["oidc_authentication"] == "True":
+        
+        port = None
+        if os.environ["K8S_DISTRIBUTION"] == "microk8s":
+            port = 16443
+        elif os.environ["K8S_DISTRIBUTION"] == "k0s":
+            port = 16443
+        elif os.environ["K8S_DISTRIBUTION"] == "k3s":
+            port = 16443
+        else:
+            raise ValueError(f"K8S_DISTRIBUTION {os.environ['K8S_DISTRIBUTION']} not supported")
+        maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}{port}"
+        maia_dashboard_values["clusters"][0]["token"] = ""
 
     maia_dashboard_values["env"].extend(
         [
@@ -1782,11 +1796,12 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         cifs_server = os.environ["CIFS_SERVER"]
         maia_dashboard_values["env"].append({"name": "CIFS_SERVER", "value": cifs_server})
 
-    # DISCORD_URL
-    # DISCORD_SUPPORT_URL
+    # WEBHOOK_URL
+    # SUPPORT_URL
     # DEFAULT_INGRESS_HOST
     # OPENWEBAI_API_KEY
     # OPENWEBAI_URL
+    # OPENWEBAI_MODEL
     # BACKEND
     # MAIA_PRIVATE_REGISTRY registry.maia-cloud.com/maia-private needed when deploying PRO projects
     # ARGOCD_DISABLED

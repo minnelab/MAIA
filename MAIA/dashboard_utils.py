@@ -259,7 +259,7 @@ def verify_gpu_booking_policy(existing_bookings, new_booking, global_existing_bo
     return True, None
 
 
-def send_maia_info_email(receiver_email, register_project_url, register_user_url, discord_support_link):
+def send_maia_info_email(receiver_email, register_project_url, register_user_url, support_link):
     """
     Send an email with registration information for the MAIA platform.
     Parameters
@@ -270,8 +270,8 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
         The URL for project registration.
     register_user_url : str
         The URL for user registration.
-    discord_support_link : str
-        The URL for the MAIA support Discord.
+    support_link : str
+        The URL for the MAIA support webhook.
     Returns
     -------
     None
@@ -295,13 +295,13 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
             To create a user account, an active project must be available to select. Once a project is registered, you can sign up for an account linked to that project here:<br>
             <a href="{}">MAIA User Registration</a></p>
             <p>If you have any questions or need further assistance, feel free to join our Discord community:<br>
-            <a href="{}">MAIA Support Discord</a></p>
+            <a href="{}">MAIA Support Webhook</a></p>
             <br>
             <p>Best regards,</p>
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(register_project_url, register_user_url, discord_support_link)  # noqa: B950
+    """.format(register_project_url, register_user_url, support_link)  # noqa: B950
 
     # Turn these into plain/html MIMEText objects
     part1 = MIMEText(html, "html")
@@ -420,9 +420,9 @@ def send_approved_registration_email(receiver_email, login_url, temp_password):
         server.sendmail(sender_email, receiver_email, message.as_string())
 
 
-def send_discord_message(username, namespace, url, project_registration=False):
+def send_webhook_message(username, namespace, url, project_registration=False):
     """
-    Sends a message to a Discord webhook to request a MAIA account.
+    Sends a message to a webhook to request a MAIA account.
 
     Parameters
     ----------
@@ -431,7 +431,7 @@ def send_discord_message(username, namespace, url, project_registration=False):
     namespace : str
         The project namespace for which the account is being requested.
     url : str
-        The Discord webhook URL to which the message will be sent.
+        The webhook URL to which the message will be sent.
     project_registration : bool, optional
         If True, indicates that a project registration is also being requested (default is False).
 
@@ -447,20 +447,20 @@ def send_discord_message(username, namespace, url, project_registration=False):
     str
         Error message if the HTTP request fails.
     """
-    data = {"content": f"{username} is requesting a MAIA account for the project {namespace}.", "username": "MAIA-Bot"}
+    data = {"text": f"{username} is requesting a MAIA account for the project {namespace}.", "username": "maia-bot"}
 
     data["embeds"] = [{"description": "MAIA User Registration Request", "title": "MAIA Account Request"}]
     if project_registration:
         data["embeds"][0]["description"] = "MAIA Project Registration Request"
         data["embeds"][0]["title"] = "MAIA Project Registration Request"
-        data["content"] = f"{username} is requesting a MAIA account and a new project registration for {namespace}."
+        data["text"] = f"{username} is requesting a MAIA account and a new project registration for {namespace}."
 
     result = requests.post(url, json=data)
 
     try:
         result.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        logger.error(f"Discord webhook error: {err}")
+        logger.error(f"Webhook error: {err}")
     else:
         logger.info(f"Payload delivered successfully, code {result.status_code}")
 

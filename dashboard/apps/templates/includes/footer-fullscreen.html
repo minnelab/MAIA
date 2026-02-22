@@ -2,7 +2,7 @@
     <div class="container">
       <div class="row">
         <div class="col-lg-8 mb-4 mx-auto text-center">
-          <a href={{"DISCORD_SUPPORT_URL"|env}} target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2 fab fa-discord">
+          <a href={{"SUPPORT_URL"|env}} target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2 fab fa-discord">
             Support
           </a>
           <a href="https://github.com/minnelab/maia" target="_blank" class="text-secondary me-xl-4 me-4">
@@ -151,7 +151,7 @@
     100% { content: '...'; }
   }
 </style>
-{% if 'OPENWEBAI_API_KEY'|global_env and 'OPENWEBAI_URL'|global_env %}
+{% if 'OPENWEBAI_API_KEY'|global_env and 'OPENWEBAI_URL'|global_env and 'OPENWEBAI_MODEL'|global_env %}
 <!-- Chat bubble button -->
 <div id="chatbot-button">💬</div>
 

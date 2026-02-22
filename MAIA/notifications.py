@@ -9,7 +9,7 @@ from loguru import logger
 
 
 def send_email_approved_project_registration(
-    project_name, project_owner, discord_support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+    project_name, project_owner, support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
 ):
 
     message = MIMEMultipart()
@@ -35,7 +35,7 @@ def send_email_approved_project_registration(
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(project_name, dashboard_url, project_name, dashboard_url, project_name, discord_support_link, discord_support_link)
+    """.format(project_name, dashboard_url, project_name, dashboard_url, project_name, support_link, support_link)
 
     part1 = MIMEText(html, "html")
     message.attach(part1)
@@ -58,7 +58,7 @@ def send_email_approved_project_registration(
 
 
 def send_email_user_registration_to_group(
-    project_name, user_email, discord_support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
+    project_name, user_email, support_link, dashboard_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
 ):
 
     message = MIMEMultipart()
@@ -84,7 +84,7 @@ def send_email_user_registration_to_group(
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(project_name, dashboard_url, project_name, dashboard_url, project_name, discord_support_link, discord_support_link)
+    """.format(project_name, dashboard_url, project_name, dashboard_url, project_name, support_link, support_link)
 
     part1 = MIMEText(html, "html")
     message.attach(part1)
