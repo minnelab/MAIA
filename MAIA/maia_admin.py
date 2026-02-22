@@ -569,7 +569,10 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
     }
 
     default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
-    maia_filebrowser_values["image"] = {"repository": f"{default_registry}/maia-filebrowser", "tag": maia_filebrowser_image_version}
+    maia_filebrowser_values["image"] = {
+        "repository": f"{default_registry}/maia-filebrowser",
+        "tag": maia_filebrowser_image_version,
+    }
 
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_filebrowser_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
@@ -1504,9 +1507,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "maia_dashboard": {"enabled": True, "token": cluster_config_dict["rancher_token"]},
         }
     ]
-    
-    if cluster_config_dict["oidc_authentication"] == "True":
-        
+
+    if cluster_config_dict.get("oidc_authentication", False):
+
         port = None
         if os.environ["K8S_DISTRIBUTION"] == "microk8s":
             port = 16443
@@ -1652,7 +1655,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     ):
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
         maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
-        
+
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
         [
@@ -1664,14 +1667,14 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{cluster_config_dict['domain']}/browser/maia-envs"},
         ]
     )
-        
+
     ## MONAI Toolkit Image and Orthanc
     maia_dashboard_values["env"].extend(
         [
             {"name": "MONAI_TOOLKIT_IMAGE", "value": f"{default_registry}/monai-toolkit"},
         ]
     )
-    
+
     ## MAIA Registry where  the MAIA images can be pulled from, can also be maiacloudai, default is ghcr.io/minnelab
     maia_dashboard_values["env"].extend(
         [
@@ -1680,7 +1683,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     )
 
     ## MySQL Configuration
-    
+
     if "mysql_dashboard_password" in os.environ:
         db_password = os.environ["mysql_dashboard_password"]
     else:
@@ -1704,9 +1707,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "mysqlDatabase": "mysql",
         }
     )
-    
+
     # Email Notification Systen
-    
+
     if "email_account" in os.environ and "email_smtp_server" in os.environ and "email_password" in os.environ:
         maia_dashboard_values["env"].extend(
             [
@@ -1715,7 +1718,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "email_password", "value": os.environ["email_password"]},
             ]
         )
-        
+
     # Webhook and Support URL
     if "WEBHOOK_URL" in os.environ and "SUPPORT_URL" in os.environ:
         maia_dashboard_values["env"].extend(
@@ -1724,7 +1727,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
             ]
         )
-    
+
     # MAIA-Chatbot Configuration
     if "OPENWEBAI_API_KEY" in os.environ and "OPENWEBAI_URL" in os.environ and "OPENWEBAI_MODEL" in os.environ:
         maia_dashboard_values["env"].extend(
@@ -1738,7 +1741,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
-        
+
     return {
         "namespace": maia_dashboard_values["namespace"],
         "release": f"{project_id}-dashboard",
@@ -1782,7 +1785,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
             "dashboard": {
                 "local_db_path": "/etc/MAIA-Dashboard/db",
             },
-
             "name": "maia-dashboard",
         }
     )
@@ -1819,7 +1821,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         ...
     else:
 
-
         cifs_server = ""
 
     if "CIFS_SERVER" in os.environ:
@@ -1831,7 +1832,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
     # MAIA_PRIVATE_REGISTRY registry.maia-cloud.com/maia-private needed when deploying PRO projects
     # ARGOCD_DISABLED
 
-    domain = cluster_config_dict["domain"]
     maia_dashboard_values["env"].extend(
         [
             {"name": "SECRET_KEY", "value": os.environ["dashboard_api_secret"]},
