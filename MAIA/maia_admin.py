@@ -1704,6 +1704,36 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "mysqlDatabase": "mysql",
         }
     )
+    
+    # Email Notification Systen
+    
+    if "email_account" in os.environ and "email_smtp_server" in os.environ and "email_password" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "email_account", "value": os.environ["email_account"]},
+                {"name": "email_smtp_server", "value": os.environ["email_smtp_server"]},
+                {"name": "email_password", "value": os.environ["email_password"]},
+            ]
+        )
+        
+    # Webhook and Support URL
+    if "WEBHOOK_URL" in os.environ and "SUPPORT_URL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL"]},
+                {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
+            ]
+        )
+    
+    # MAIA-Chatbot Configuration
+    if "OPENWEBAI_API_KEY" in os.environ and "OPENWEBAI_URL" in os.environ and "OPENWEBAI_MODEL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OPENWEBAI_API_KEY", "value": os.environ["OPENWEBAI_API_KEY"]},
+                {"name": "OPENWEBAI_URL", "value": os.environ["OPENWEBAI_URL"]},
+                {"name": "OPENWEBAI_MODEL", "value": os.environ["OPENWEBAI_MODEL"]},
+            ]
+        )
 
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
@@ -1796,18 +1826,11 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         cifs_server = os.environ["CIFS_SERVER"]
         maia_dashboard_values["env"].append({"name": "CIFS_SERVER", "value": cifs_server})
 
-    # WEBHOOK_URL
-    # SUPPORT_URL
     # DEFAULT_INGRESS_HOST
-    # OPENWEBAI_API_KEY
-    # OPENWEBAI_URL
-    # OPENWEBAI_MODEL
     # BACKEND
     # MAIA_PRIVATE_REGISTRY registry.maia-cloud.com/maia-private needed when deploying PRO projects
     # ARGOCD_DISABLED
-    # email_account:  <SMTP email address>
-    # email_smtp_server: <SMTP server address>
-    # email_password: <SMTP server password>
+
     domain = cluster_config_dict["domain"]
     maia_dashboard_values["env"].extend(
         [

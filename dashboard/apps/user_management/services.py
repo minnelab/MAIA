@@ -461,7 +461,7 @@ def create_group(
 
     if (
         not group_already_exists
-        and settings.DISCORD_SUPPORT_URL is not None
+        and settings.SUPPORT_URL is not None
         and settings.HOSTNAME is not None
         and settings.SMTP_SENDER_EMAIL is not None
         and settings.SMTP_SERVER is not None
@@ -472,7 +472,7 @@ def create_group(
             send_email_approved_project_registration(
                 project_name=group_id,
                 project_owner=email,
-                discord_support_link=settings.DISCORD_SUPPORT_URL,
+                support_link=settings.SUPPORT_URL,
                 dashboard_url=settings.HOSTNAME + "/maia/",
                 smtp_sender_email=settings.SMTP_SENDER_EMAIL,
                 smtp_server=settings.SMTP_SERVER,
