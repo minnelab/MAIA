@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from loguru import logger
-
+from MAIA.notifications import confirm_request_registration_to_project, confirm_request_registration_for_group
 
 class RegisterAnonThrottle(AnonRateThrottle):
     scope = "post_anon"
@@ -104,7 +104,8 @@ def register_user(request, api=False):
             # send_email(email, os.environ["admin_email"], email)
             if settings.WEBHOOK_URL is not None:
                 send_webhook_message(username=username, namespace=namespace, url=settings.WEBHOOK_URL)
-            msg = "Request for Account Registration submitted successfully. Please wait for the admin to approve your request."
+            confirm_request_registration_to_project(project_name=namespace, user_email=form.cleaned_data.get("email"), support_link=settings.SUPPORT_URL, dashboard_url=settings.HOSTNAME+"/maia/", smtp_sender_email=settings.SMTP_SENDER_EMAIL, smtp_server=settings.SMTP_SERVER, smtp_port=settings.SMTP_PORT, smtp_password=settings.SMTP_PASSWORD)
+            msg = "Request for Account Registration submitted successfully. Please wait for the admin to approve your request. You should receive a confirmation email once your request is approved at the email address: {}.".format(form.cleaned_data.get("email"))
             success = True
 
             # return redirect("/login/")
@@ -132,9 +133,13 @@ def register_user(request, api=False):
                             send_webhook_message(
                                 username=form.cleaned_data.get("email"), namespace=namespace, url=settings.WEBHOOK_URL
                             )
+                        confirm_request_registration_to_project(project_name=requested_namespace, user_email=form.cleaned_data.get("email"), support_link=settings.SUPPORT_URL, dashboard_url=settings.HOSTNAME+"/maia/", smtp_sender_email=settings.SMTP_SENDER_EMAIL, smtp_server=settings.SMTP_SERVER, smtp_port=settings.SMTP_PORT, smtp_password=settings.SMTP_PASSWORD)
+                        msg = "A user with that email already exists. {} has now requested to be registered to the project {}. You should receive a confirmation email once your request is approved at the email address: {}.".format(
+                            form.cleaned_data.get("email"), requested_namespace, form.cleaned_data.get("email")
+                        )
                         success = True
                     else:
-                        msg = "A user with that email already exists and has been already registered to the project {}".format(
+                        msg = "A user with that email already exists and has already requested to be registered to the project {}".format(
                             requested_namespace
                         )
                         success = True
@@ -268,7 +273,9 @@ def register_project(request, api=False):
 
             if settings.WEBHOOK_URL is not None:
                 send_webhook_message(username=email, namespace=namespace, url=settings.WEBHOOK_URL, project_registration=True)
-            msg = "Request for Project Registration submitted successfully."
+            
+            confirm_request_registration_for_group(group_name=namespace, user_email=email, support_link=settings.SUPPORT_URL, dashboard_url=settings.HOSTNAME+"/maia/", smtp_sender_email=settings.SMTP_SENDER_EMAIL, smtp_server=settings.SMTP_SERVER, smtp_port=settings.SMTP_PORT, smtp_password=settings.SMTP_PASSWORD)
+            msg = "Request for Project Registration submitted successfully. You should receive a confirmation email once your request is approved at the email address: {}.".format(email)
             success = True
 
             # check_pending_projects_and_assign_id(settings=settings)
