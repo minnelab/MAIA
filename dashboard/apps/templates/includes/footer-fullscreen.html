@@ -218,7 +218,7 @@
 
       // Replace typing animation with actual reply
       if (data.reply) {
-        typingEl.innerHTML = `<b>MAIA:</b><br><span>${marked.parseInline(data.reply)}</span>`;
+        typingEl.innerHTML = `<b>MAIA:</b><br><span>${marked.parse(data.reply)}</span>`;
       } else {
         typingEl.innerHTML = `<b>MAIA:</b> Error: ${data.error}`;
       }
