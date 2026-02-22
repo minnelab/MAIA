@@ -4,6 +4,14 @@
 
 replicaCount: 1
 
+# Restart policy for job pods. Options: OnFailure, Never
+# Never is default for build jobs as they typically shouldn't retry without changes
+restartPolicy: Never
+
+# Number of retries for failed jobs
+# 0 is default for build jobs as they typically shouldn't retry without changes
+backoffLimit: 0
+
 image:
   repository: gcr.io/kaniko-project/executor
   pullPolicy: IfNotPresent
