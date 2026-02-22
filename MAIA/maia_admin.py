@@ -1508,7 +1508,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         }
     ]
 
-    if cluster_config_dict.get("maia_dashboardoidc_authentication", False):
+    if cluster_config_dict.get("maia_dashboard_oidc_authentication", False):
 
         port = None
         if os.environ["K8S_DISTRIBUTION"] == "microk8s":
