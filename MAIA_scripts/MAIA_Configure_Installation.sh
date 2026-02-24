@@ -259,10 +259,9 @@ export SSH_PORT_TYPE=${SSH_PORT_TYPE:-NodePort}
 export PORT_RANGE_LOWER_BOUND=${PORT_RANGE_LOWER_BOUND:-30000}
 export PORT_RANGE_UPPER_BOUND=${PORT_RANGE_UPPER_BOUND:-31000}
 
-if [ "$K8S_DISTRIBUTION" = "microk8s" ]; then
-  export STORAGE_CLASS=${STORAGE_CLASS:-microk8s-hostpath}
-  export SHARED_STORAGE_CLASS=${SHARED_STORAGE_CLASS:-nfs-client}
-fi
+DEFAULT_STORAGE_CLASS=$(python3 -c "from MAIA.maia_k8s_distros import get_storage_class; print(get_storage_class('$K8S_DISTRIBUTION'))")
+export STORAGE_CLASS=${STORAGE_CLASS:-$DEFAULT_STORAGE_CLASS}
+export SHARED_STORAGE_CLASS=${SHARED_STORAGE_CLASS:-nfs-client}
 export URL_TYPE=${URL_TYPE:-subdomain}
 export BUCKET_NAME=${BUCKET_NAME:-maia-envs}
 

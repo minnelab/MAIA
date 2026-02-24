@@ -23,7 +23,7 @@ from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import install_maia_project
 from MAIA.maia_docker_images import deploy_maia_kaniko
 from MAIA.versions import define_maia_docker_versions, define_docker_image_versions, define_maia_admin_versions
-
+from MAIA.maia_k8s_distros import get_storage_class
 kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
 build_versions = define_docker_image_versions()
 maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
@@ -126,16 +126,11 @@ def build_maia_images(
     build_custom_images=None,
 ):
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
-    dev_distros = ["microk8s", "k0s"]
 
     if "storage_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            if cluster_config_dict["k8s_distribution"] == "microk8s":
-                cluster_config_dict["storage_class"] = "microk8s-hostpath"
-            elif cluster_config_dict["k8s_distribution"] == "k0s":
-                cluster_config_dict["storage_class"] = "local-path"
-        else:
-            cluster_config_dict["storage_class"] = "local-path"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["storage_class"] = get_storage_class(cluster_config_dict["k8s_distribution"])
+           
     # Docker Registry configuration where the images will be pushed
     registry_username = os.environ["registry_username"]
     registry_password = os.environ["registry_password"]

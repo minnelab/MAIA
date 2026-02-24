@@ -21,7 +21,7 @@ from MAIA.maia_fn import (
     get_ssh_port_dict,
     get_ssh_ports,
 )
-
+from MAIA.maia_k8s_distros import get_api_port
 from MAIA.versions import (
     define_maia_admin_versions,
     define_maia_core_versions,
@@ -1277,7 +1277,8 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
     client_id = "maia"
     client_secret = os.environ["keycloak_client_secret"]
     issuer_url = "https://iam." + cluster_config_dict["domain"] + "/realms/maia"
-    cluster_server_address = "https://" + cluster_config_dict["domain"] + ":16443"
+    port = get_api_port(os.environ["K8S_DISTRIBUTION"])
+    cluster_server_address = f"https://{cluster_config_dict['domain']}:{port}"
 
     ca_file = None
     if "rootCA" in cluster_config_dict:
@@ -1422,6 +1423,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         {
             "ingress": {
                 "enabled": True,
+                "className": cluster_config_dict["ingress_class"],
                 "annotations": {},
                 "hosts": [
                     {
@@ -1510,15 +1512,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     if cluster_config_dict.get("maia_dashboard_oidc_authentication", False):
 
-        port = None
-        if os.environ["K8S_DISTRIBUTION"] == "microk8s":
-            port = 16443
-        elif os.environ["K8S_DISTRIBUTION"] == "k0s":
-            port = 16443
-        elif os.environ["K8S_DISTRIBUTION"] == "k3s":
-            port = 16443
-        else:
-            raise ValueError(f"K8S_DISTRIBUTION {os.environ['K8S_DISTRIBUTION']} not supported")
+        port = get_api_port(os.environ["K8S_DISTRIBUTION"])
         maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}:{port}"
         maia_dashboard_values["clusters"][0]["maia_dashboard"]["token"] = ""
 
@@ -1744,6 +1738,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             ]
         )
 
+    # GPU Configuration
+    maia_dashboard_values["gpuList"] = cluster_config_dict["gpu_list"] if "gpu_list" in cluster_config_dict else []
+    
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
@@ -1784,10 +1781,6 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
     maia_dashboard_values.update(
         {
             "image": {"pullPolicy": "IfNotPresent"},
-            "ingress": {
-                "className": cluster_config_dict["ingress_class"],
-            },
-            "gpuList": cluster_config_dict["gpu_list"] if "gpu_list" in cluster_config_dict else [],
             "dashboard": {
                 "local_db_path": "/etc/MAIA-Dashboard/db",
             },
