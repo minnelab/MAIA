@@ -25,6 +25,16 @@
     ingress_resolver_email: "{{ (cluster_config_content.content | b64decode | from_yaml).ingress_resolver_email }}"
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
+- name: "Write Registry Credentials to File"
+  ansible.builtin.copy:
+    content: |
+      {
+        "username": "{{ GIT_USERNAME }}",
+        "password": "{{ GIT_TOKEN }}"
+      }
+    dest: "{{ config_folder }}/{{ credentials_json_filename }}"
+    mode: '0600'
+
 - name: "Load registry credentials"
   ansible.builtin.slurp:
     src: "{{ config_folder }}/{{ credentials_json_filename }}"
@@ -38,8 +48,8 @@
   ansible.builtin.fail:
     msg: "Registry credentials username/password cannot be empty"
   when:
-    - (registry_credentials.username | default('')) | length == 0
-    - or (registry_credentials.password | default('')) | length == 0
+    - ((registry_credentials.username | default('')) | length == 0)
+    - ((registry_credentials.password | default('')) | length == 0)
 
 - name: Ensure MAIA Build Images related namespaces exist
   kubernetes.core.k8s:
@@ -51,11 +61,6 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-- name: Normalize apps_to_sync to a proper list
-  ansible.builtin.set_fact:
-    apps_to_sync: "{{ apps_to_sync | from_json }}"
-  when: apps_to_sync is string
-
 
 - name: DEBUG apps_to_sync after env.json
   debug:
@@ -118,92 +123,13 @@
   ansible.builtin.debug:
     var: argocd_cli_login.stdout
   when: auto_sync | default(false) | bool
-- name: Sync maia-kube ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-kube && argocd app wait {{ maia_project_id }}-maia-kube
-  register: argocd_sync_maia_kube
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_kube' in apps_to_sync)
-        )
-- name: Sync maia-dashboard ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-dashboard && argocd app wait {{ maia_project_id }}-maia-dashboard
-  register: argocd_sync_maia_dashboard
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_dashboard' in apps_to_sync)
-        )
-- name: Sync maia-filebrowser ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-filebrowser && argocd app wait {{ maia_project_id }}-maia-filebrowser
-  register: argocd_sync_maia_filebrowser
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_filebrowser' in apps_to_sync)
-        )
-- name: Sync maia-workspace-base ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-workspace-base && argocd app wait {{ maia_project_id }}-maia-workspace-base
-  register: argocd_sync_maia_workspace_base
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_workspace_base' in apps_to_sync)
-        )
-- name: Sync maia-workspace ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-workspace && argocd app wait {{ maia_project_id }}-maia-workspace
-  register: argocd_sync_maia_workspace
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_workspace' in apps_to_sync)
-        )
-- name: Sync maia-workspace-notebook ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-workspace-notebook && argocd app wait {{ maia_project_id }}-maia-workspace-notebook
-  register: argocd_sync_maia_workspace_notebook
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_workspace_notebook' in apps_to_sync)
-        )
-- name: Sync maia-workspace-notebook-ssh ArgoCD application and wait for it to complete
-  ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-maia-workspace-notebook-ssh && argocd app wait {{ maia_project_id }}-maia-workspace-notebook-ssh
-  register: argocd_sync_maia_workspace_notebook_ssh
-  changed_when: false
-  ignore_errors: true
-  delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_workspace_notebook_ssh' in apps_to_sync)
-        )
 
-- name: Sync maia-workspace-notebook-ssh-addons ArgoCD application and wait for it to complete
+- name: Sync ArgoCD application and wait for it to complete
   ansible.builtin.shell: |
-    argocd app sync {{ maia_project_id }}-{{ maia_workspace_notebook_ssh_addons_image_name }} && argocd app wait {{ maia_project_id }}-{{ maia_workspace_notebook_ssh_addons_image_name }}
-  register: argocd_sync_maia_workspace_notebook_ssh_addons
+    argocd app sync {{ maia_project_id }}-{{ item }} && argocd app wait {{ maia_project_id }}-{{ item }}
+  loop: "{{ apps_to_sync | from_json }}"
+  register: argocd_sync_results
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: (auto_sync | default(false) | bool) and (
-          ('all' in apps_to_sync) or
-          ('maia_workspace_notebook_ssh_addons' in apps_to_sync)
-        )
+  when: auto_sync | default(false) | bool

@@ -100,7 +100,8 @@ ansible-playbook -i inventory maia.build_images.build_images \
   -e registry_base=https://index.docker.io/v1/ \
   -e registry_path=maiacloudai \
   -e credentials_json_filename=dockerhub-registry-credentials.json \
-  -e maia_project_id=maia-image-dockerhub
+  -e maia_project_id=maia-image-dockerhub \
+  -e 'apps_to_sync=["maia-kube", "maia-dashboard"]'
 ```
 
 **For GitHub Container Registry:**
@@ -113,7 +114,8 @@ ansible-playbook -i inventory maia.build_images.build_images \
   -e registry_base=ghcr.io \
   -e registry_path=/minnelab \
   -e credentials_json_filename=github-registry-credentials.json \
-  -e maia_project_id=maia-image-github
+  -e maia_project_id=maia-image-github \
+  -e 'apps_to_sync=["maia-kube", "maia-dashboard"]'
 ```
 
 ## Required Variables
@@ -159,8 +161,18 @@ The following variables must be provided when running the build_images playbook:
   - Example: `maia_git_repo_url: git://github.com/minnelab/MAIA.git`
 - **build_custom_images**: Enable building custom images from the given YAML file (optional)
   - Default: `false`
-  - Description: Enable building custom images from the given YAML file. When enabled, the role will build the custom images from the given YAML file.
+  - Description: Enable building custom images from the given YAML file (`<CONFIG_FOLDER>/custom_images.yaml`). When enabled, the role will build the custom images from the given YAML file.
   - Example: `build_custom_images: true`
+  - Example of custom_images.yaml:
+  ```yaml
+  - release_name: <RELEASE_NAME>
+    image_name: <IMAGE_NAME>
+    image_tag: <IMAGE_TAG>
+    git_repo_url: git://github.com/<GIT_REPO_OWNER>/<GIT_REPO_NAME>.git
+    subpath: <GIT_REPO_SUBPATH> # Optional
+    build_args:
+      - BUILD_ARG=value # Optional
+  ```
 - **docker_build_project_chart**: Helm chart name for Docker build project (optional)
   - Default: `maia-docker-build-project`
   - Description: Helm chart name for Docker build project. When enabled, the role will install ArgoCD CLI, login, and sync all configured applications.
@@ -214,7 +226,8 @@ ansible-playbook -i inventory maia.build_images.build_images \
   -e registry_base=https://index.docker.io/v1/ \
   -e registry_path=maiacloudai \
   -e credentials_json_filename=dockerhub-registry-credentials.json \
-  -e maia_project_id=maia-image-dockerhub
+  -e maia_project_id=maia-image-dockerhub \
+  -e 'apps_to_sync=["maia-kube", "maia-dashboard"]'
 ```
 
 ## Using the Role Directly
