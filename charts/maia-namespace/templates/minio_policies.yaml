@@ -1,0 +1,43 @@
+{{- if .Values.minio.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.minio.namespace }}-policy-setup
+  namespace: {{ .Values.minio.namespace }}
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        env:
+        - name: MINIO_ROOT_USER
+          value: {{ .Values.minio.accessKey }}
+        - name: MINIO_ROOT_PASSWORD
+          value: {{ .Values.minio.secretKey }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Configure alias to the MinIO Service
+          # Service name is usually just the tenant name
+          mc alias set myminio http://minio.{{ .Values.minio.namespace }}.svc.cluster.local:80 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD;
+          
+          # Create the policy file
+          echo '{
+            "Version": "2012-10-17",
+            "Statement": [
+              {"Effect": "Allow", "Action": ["admin:*"]},
+              {"Effect": "Allow", "Action": ["kms:*"]},
+              {"Effect": "Allow", "Action": ["s3:*"], "Resource": ["arn:aws:s3:::*"]}
+            ]
+          }' > /tmp/{{ .Values.minio.namespace }}-policy.json;
+          
+          # Apply the policy
+          mc admin policy create myminio MAIA:{{ .Values.minio.namespace }} /tmp/{{ .Values.minio.namespace }}-policy.json;
+          mc admin policy create myminio MAIA:admin /tmp/{{ .Values.minio.namespace }}-policy.json;
+          
+          echo "Setup complete.";
+      restartPolicy: OnFailure
+{{- end }}
