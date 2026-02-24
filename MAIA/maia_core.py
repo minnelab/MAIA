@@ -401,7 +401,7 @@ def create_local_path_values(config_folder, project_id, cluster_config_dict):
     the internal IP addresses of the nodes in the Kubernetes cluster and uses them to
     configure the MetalLB addresses. The generated values are saved to a YAML file.
     """
-    
+
     local_path_values = {
         "namespace": "local-path-storage",
         "chart_version": local_path_chart_version,
@@ -418,14 +418,16 @@ def create_local_path_values(config_folder, project_id, cluster_config_dict):
 
     storage_class = get_storage_class(cluster_config_dict["k8s_distribution"])
     if storage_class == "local-path":
-        local_path_values.update({"enabled": True, "storage_class": storage_class, "local_path_provisioner_path": "/opt/local-path-provisioner"})
+        local_path_values.update(
+            {"enabled": True, "storage_class": storage_class, "local_path_provisioner_path": "/opt/local-path-provisioner"}
+        )
     else:
         local_path_values.update({"enabled": False})
 
     Path(config_folder).joinpath(project_id, "local_path_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "local_path_values", "local_path_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(local_path_values))
-        
+
     return {
         "namespace": local_path_values["namespace"],
         "repo": local_path_values["repo_url"],

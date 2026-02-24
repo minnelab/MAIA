@@ -1740,7 +1740,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     # GPU Configuration
     maia_dashboard_values["gpuList"] = cluster_config_dict["gpu_list"] if "gpu_list" in cluster_config_dict else []
-    
+
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))

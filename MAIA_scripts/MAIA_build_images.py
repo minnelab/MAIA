@@ -24,6 +24,7 @@ from MAIA.maia_admin import install_maia_project
 from MAIA.maia_docker_images import deploy_maia_kaniko
 from MAIA.versions import define_maia_docker_versions, define_docker_image_versions, define_maia_admin_versions
 from MAIA.maia_k8s_distros import get_storage_class
+
 kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
 build_versions = define_docker_image_versions()
 maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
@@ -130,7 +131,7 @@ def build_maia_images(
     if "storage_class" not in cluster_config_dict:
         if "k8s_distribution" in cluster_config_dict:
             cluster_config_dict["storage_class"] = get_storage_class(cluster_config_dict["k8s_distribution"])
-           
+
     # Docker Registry configuration where the images will be pushed
     registry_username = os.environ["registry_username"]
     registry_password = os.environ["registry_password"]

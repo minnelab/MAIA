@@ -72,7 +72,7 @@ def define_maia_core_versions():
         core_toolkit_chart_type = os.environ.get("CORE_TOOLKIT_CHART_TYPE")
     else:
         core_toolkit_chart_type = "git_repo"  # or "helm_repo"
-        
+
     if os.environ.get("LOCAL_PATH_CHART_VERSION") is not None:
         local_path_chart_version = os.environ.get("LOCAL_PATH_CHART_VERSION")
     else:
