@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from typing import Any
 import requests
@@ -404,7 +402,7 @@ def get_groups_in_keycloak(settings) -> dict[str, str]:
     return maia_groups
 
 
-def register_user_in_keycloak(email, settings, username=None) -> None:
+def register_user_in_keycloak(email, settings, username=None, temp_password="Maia4YOU!") -> None:
     """
     Registers a user in Keycloak and sends an approved registration email.
 
@@ -416,6 +414,8 @@ def register_user_in_keycloak(email, settings, username=None) -> None:
         An object containing the necessary settings for Keycloak connection and email sending.
     username : str, optional
         The Keycloak username. If not provided, email is used (username and email can differ).
+    temp_password : str, optional
+        The temporary password for the user. If not provided, "Maia4YOU!" is used.
 
     Settings Attributes
     -------------------
@@ -448,7 +448,6 @@ def register_user_in_keycloak(email, settings, username=None) -> None:
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
 
-    temp_password = "Maia4YOU!"
     keycloak_username = username if username is not None and str(username).strip() else email
 
     keycloak_admin.create_user(
@@ -463,11 +462,6 @@ def register_user_in_keycloak(email, settings, username=None) -> None:
             "credentials": [{"type": "password", "temporary": True, "value": temp_password}],
         }
     )
-    maia_login_url = "https://" + settings.HOSTNAME + "/maia/"
-    if "email_account" in os.environ and "email_password" in os.environ and "email_smtp_server" in os.environ:
-        from MAIA.dashboard_utils import send_approved_registration_email
-
-        send_approved_registration_email(email, maia_login_url, temp_password)
 
 
 def register_group_in_keycloak(group_id, settings) -> None:

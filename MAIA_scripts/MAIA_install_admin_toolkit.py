@@ -18,6 +18,7 @@ from hydra import initialize_config_dir
 from loguru import logger
 from omegaconf import OmegaConf
 from pyhelm3 import Client
+from MAIA.maia_k8s_distros import get_storage_class, get_ingress_class
 
 import MAIA
 from MAIA.maia_admin import (
@@ -101,21 +102,13 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
 
     cluster_address = "https://kubernetes.default.svc"  # TODO: Change this to make it configurable
 
-    dev_distros = ["microk8s", "k0s"]
     if "ingress_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            cluster_config_dict["ingress_class"] = "maia-core-traefik"
-        else:
-            cluster_config_dict["ingress_class"] = "nginx"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["ingress_class"] = get_ingress_class(cluster_config_dict["k8s_distribution"])
 
     if "storage_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            if cluster_config_dict["k8s_distribution"] == "microk8s":
-                cluster_config_dict["storage_class"] = "microk8s-hostpath"
-            elif cluster_config_dict["k8s_distribution"] == "k0s":
-                cluster_config_dict["storage_class"] = "local-path"
-        else:
-            cluster_config_dict["storage_class"] = "local-path"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["storage_class"] = get_storage_class(cluster_config_dict["k8s_distribution"])
 
     helm_commands = []
 

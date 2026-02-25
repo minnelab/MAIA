@@ -69,4 +69,6 @@ spec:
       server: {{ .Values.destination_server }}
     - namespace: {{ .Values.metrics_server_values.namespace }}
       server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.local_path_values.namespace }}
+      server: {{ .Values.destination_server }}
   sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}

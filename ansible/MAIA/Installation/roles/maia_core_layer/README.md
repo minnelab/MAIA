@@ -462,6 +462,8 @@ After running the role, verify the MAIA Core installation:
         coredns_ip: "<IP_ADDRESS>"
       - subdomain: "mgmt"
         coredns_ip: "<IP_ADDRESS>"
+      - subdomain: "kubeflow"
+        coredns_ip: "<IP_ADDRESS>"
 ```
 - **External CA**: If `externalCA` is set in the cluster config, the role will create a secret with the CA certificate.
 ```yaml

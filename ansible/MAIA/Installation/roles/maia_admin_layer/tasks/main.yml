@@ -148,7 +148,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-rancher' in maia_admin_argocd_applications
 - name: Check if maia-admin-keycloak ArgoCD app is synced
   ansible.builtin.shell: |
     argocd app get maia-admin-keycloak -o json | jq -r '.status.operationState.phase'
@@ -169,7 +169,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: keycloak_synced == false and auto_sync | bool
+  when: keycloak_synced == false and auto_sync | bool and 'maia-admin-keycloak' in maia_admin_argocd_applications
 
 - name: Patch maia-admin-keycloak StatefulSet image
   ansible.builtin.shell: |
@@ -235,7 +235,7 @@
   ignore_errors: true
   delegate_to: localhost
   timeout: 120
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-admin-toolkit' in maia_admin_argocd_applications
 
 - name: Wait until maia-admin-keycloak-0 pod is ready
   ansible.builtin.shell: |
@@ -279,7 +279,7 @@
   ignore_errors: true
   delegate_to: localhost
   timeout: 120
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-admin-toolkit' in maia_admin_argocd_applications
 
 - name: Rollout restart argocd-server deployment in argocd namespace
   ansible.builtin.shell: |
@@ -314,7 +314,7 @@
   delegate_to: localhost
   retries: 5
   delay: 20
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-harbor' in maia_admin_argocd_applications
 - name: Sync maia-core-loginapp ArgoCD application
   ansible.builtin.shell: |
     argocd app sync maia-core-loginapp
@@ -322,7 +322,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-core-loginapp' in maia_admin_argocd_applications
 - name: Wait for admin-minio-tenant-pool-0-0 pod to be running
   kubernetes.core.k8s_info:
     kind: Pod

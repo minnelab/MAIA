@@ -47,8 +47,8 @@ MINIO_SECURE = env("MINIO_SECURE", default=True)
 MINIO_PUBLIC_SECURE = env("MINIO_PUBLIC_SECURE", default=MINIO_SECURE)
 BUCKET_NAME = env("BUCKET_NAME")
 
-DISCORD_URL = env("DISCORD_URL", default=None)
-DISCORD_SUPPORT_URL = env("DISCORD_SUPPORT_URL", default=None)
+WEBHOOK_URL = env("WEBHOOK_URL", default=None)
+SUPPORT_URL = env("SUPPORT_URL", default=None)
 
 SMTP_SENDER_EMAIL = env("SMTP_SENDER_EMAIL", default=None)
 SMTP_SERVER = env("SMTP_SERVER", default=None)
@@ -59,6 +59,7 @@ DEFAULT_INGRESS_HOST = env("DEFAULT_INGRESS_HOST", default="localhost")
 
 OPENWEBAI_API_KEY = env("OPENWEBAI_API_KEY", default=None)
 OPENWEBAI_URL = env("OPENWEBAI_URL", default=None)
+OPENWEBAI_MODEL = env("OPENWEBAI_MODEL", default="llama3:latest")
 ARGOCD_SERVER = env("ARGOCD_SERVER", default=None)
 ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
 ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)

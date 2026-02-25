@@ -73,10 +73,20 @@ def define_maia_core_versions():
     else:
         core_toolkit_chart_type = "git_repo"  # or "helm_repo"
 
+    if os.environ.get("LOCAL_PATH_CHART_VERSION") is not None:
+        local_path_chart_version = os.environ.get("LOCAL_PATH_CHART_VERSION")
+    else:
+        local_path_chart_version = "master"  # "0.1.0"
+
+    if os.environ.get("LOCAL_PATH_CHART_TYPE") is not None:
+        local_path_chart_type = os.environ.get("LOCAL_PATH_CHART_TYPE")
+    else:
+        local_path_chart_type = "git_repo"  # or "helm_repo"
+
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
     else:
-        core_project_chart_version = "1.1.0"
+        core_project_chart_version = "1.1.1"
 
     if os.environ.get("LOGINAPP_CHART_VERSION") is not None:
         loginapp_chart_version = os.environ.get("LOGINAPP_CHART_VERSION")
@@ -106,6 +116,8 @@ def define_maia_core_versions():
         "core_toolkit_chart_type": core_toolkit_chart_type,
         "loginapp_chart_version": loginapp_chart_version,
         "minio_operator_chart_version": minio_operator_chart_version,
+        "local_path_chart_version": local_path_chart_version,
+        "local_path_chart_type": local_path_chart_type,
     }
 
 
@@ -352,6 +364,11 @@ def define_docker_image_versions():
     else:
         maia_lab_image_version = maia_workspace_base_image_version
 
+    if os.environ.get("MAIA_LAB_PRO_IMAGE_VERSION") is not None:
+        maia_lab_pro_image_version = os.environ.get("MAIA_LAB_PRO_IMAGE_VERSION")
+    else:
+        maia_lab_pro_image_version = maia_workspace_base_image_version
+
     if os.environ.get("MYSQL_IMAGE_VERSION") is not None:
         mysql_image_version = os.environ.get("MYSQL_IMAGE_VERSION")
     else:
@@ -365,11 +382,12 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_ORTHANC_IMAGE") is not None:
         maia_orthanc_image = os.environ.get("MAIA_ORTHANC_IMAGE")
     else:
-        maia_orthanc_image = "ghcr.io/minnelab/maia-orthanc"
+        maia_orthanc_image = "maia-orthanc"
 
     return {
         "maia-kube": maia_kube_image_version,
         "maia-dashboard": maia_dashboard_image_version,
+        "maia-dashboard-dev": maia_dashboard_image_version + "-dev",
         "monai-toolkit": monai_toolkit_image_version,
         "maia-xnat": maia_xnat_image_version,
         "maia-orthanc": maia_orthanc_image_version,
@@ -387,6 +405,7 @@ def define_docker_image_versions():
         "maia-workspace-notebook-ssh-addons": maia_workspace_notebook_ssh_addons_image_version,
         "maia-workspace-notebook-ssh-addons-image-name": maia_workspace_notebook_ssh_addons_image_name,
         "maia-lab": maia_lab_image_version,
+        "maia-lab-pro": maia_lab_pro_image_version,
         "mysql": mysql_image_version,
         "mysql_image": mysql_image,
         "maia-orthanc-image": maia_orthanc_image,

@@ -56,3 +56,4 @@ maia_core_argocd_applications:
   - maia-core-gpu-booking
   - maia-core-minio-operator
   - maia-core-nfs-provisioner
+  - maia-core-prometheus

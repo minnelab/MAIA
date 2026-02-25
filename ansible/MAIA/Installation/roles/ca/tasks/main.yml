@@ -21,7 +21,7 @@
 
 - name: Ensure cert-manager namespace exists
   become: true
-  ansible.builtin.command: microk8s.kubectl create namespace {{ cert_manager_namespace }}
+  ansible.builtin.command: "{{ kubernetes_kubectl_cmd }} create namespace {{ cert_manager_namespace }}"
   register: create_cert_manager_ns
   failed_when: create_cert_manager_ns.rc != 0 and 'AlreadyExists' not in (create_cert_manager_ns.stderr | default(''))
   changed_when: "'Created' in (create_cert_manager_ns.stdout | default(''))"
@@ -30,7 +30,7 @@
 - name: Create kubernetes-ca secret in cert-manager namespace
   become: true
   ansible.builtin.command: >
-    microk8s.kubectl -n {{ cert_manager_namespace }}
+    {{ kubernetes_kubectl_cmd }} -n {{ cert_manager_namespace }}
     create secret tls {{ kubernetes_ca_secret_name }}
     --cert={{ kubernetes_ca_crt_path }} --key={{ kubernetes_ca_key_path }}
   register: create_secret

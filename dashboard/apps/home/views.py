@@ -228,14 +228,14 @@ def chat(request):
     if request.method == "POST":
         data = json.loads(request.body)
         user_message = data.get("message", "")
-        if not settings.OPENWEBAI_API_KEY or not settings.OPENWEBAI_URL:
-            return JsonResponse({"error": "OPENWEBAI_API_KEY or OPENWEBAI_URL is not set"}, status=500)
+        if not settings.OPENWEBAI_API_KEY or not settings.OPENWEBAI_URL or not settings.OPENWEBAI_MODEL:
+            return JsonResponse({"error": "OPENWEBAI_API_KEY or OPENWEBAI_URL or OPENWEBAI_MODEL is not set"}, status=500)
         headers = {
             "Authorization": f"Bearer {settings.OPENWEBAI_API_KEY}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": "llama3:latest",
+            "model": settings.OPENWEBAI_MODEL,
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},

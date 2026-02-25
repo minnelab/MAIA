@@ -25,6 +25,7 @@ from MAIA.maia_admin import (
     create_minio_operator_values,
     install_maia_project,
 )
+from MAIA.maia_k8s_distros import get_ingress_class
 from MAIA.maia_core import (
     create_cert_manager_values,
     create_core_toolkit_values,
@@ -38,6 +39,7 @@ from MAIA.maia_core import (
     create_tempo_values,
     create_traefik_values,
     create_metrics_server_values,
+    create_local_path_values,
 )
 
 version = MAIA.__version__
@@ -124,12 +126,9 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     else:
         cluster_address = "https://kubernetes.default.svc"
 
-    dev_distros = ["microk8s", "k0s"]
     if "ingress_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            cluster_config_dict["ingress_class"] = "maia-core-traefik"
-        else:
-            cluster_config_dict["ingress_class"] = "nginx"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["ingress_class"] = get_ingress_class(cluster_config_dict["k8s_distribution"])
 
     helm_commands = []
     helm_commands.append(create_prometheus_values(config_folder, project_id, cluster_config_dict))
@@ -151,7 +150,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
 
     helm_commands.append(create_loginapp_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_minio_operator_values(config_folder, project_id))
-
+    helm_commands.append(create_local_path_values(config_folder, project_id, cluster_config_dict))
     if "MAIA_DASHBOARD_DOMAIN" in os.environ and "dashboard_api_secret" in os.environ:
         helm_commands.append(create_gpu_booking_values(config_folder, project_id))
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
@@ -270,6 +269,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             {"nfs_provisioner_values": "nfs_provisioner_values"},
             {"cert_manager_chart_info": "cert_manager_chart_info"},
             {"gpu_booking_values": "gpu_booking_values"},
+            {"local_path_values": "local_path_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "admin_group_ID": admin_group_id,

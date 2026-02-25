@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 import loguru
 from MAIA.versions import define_maia_core_versions, define_maia_admin_versions
 from secrets import token_urlsafe
+from MAIA.maia_k8s_distros import get_gpu_operator_toolkit, get_storage_class
 
 prometheus_chart_version = define_maia_core_versions()["prometheus_chart_version"]
 loki_chart_version = define_maia_core_versions()["loki_chart_version"]
@@ -25,6 +26,8 @@ nfs_server_provisioner_chart_version = define_maia_core_versions()["nfs_server_p
 metrics_server_chart_version = define_maia_core_versions()["metrics_server_chart_version"]
 gpu_booking_chart_version = define_maia_core_versions()["gpu_booking_chart_version"]
 gpu_booking_chart_type = define_maia_core_versions()["gpu_booking_chart_type"]
+local_path_chart_version = define_maia_core_versions()["local_path_chart_version"]
+local_path_chart_type = define_maia_core_versions()["local_path_chart_type"]
 logger = loguru.logger
 
 
@@ -387,6 +390,51 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         "values": str(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml")),
         "release": f"{project_id}-toolkit",
         "chart": core_toolkit_values["chart_name"] if core_toolkit_chart_type == "helm_repo" else core_toolkit_values["path"],
+    }
+
+
+def create_local_path_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and saves the local path values for a Kubernetes cluster.
+    This function generates a dictionary of local path values based on the provided
+    configuration folder, project ID, and cluster configuration dictionary. It retrieves
+    the internal IP addresses of the nodes in the Kubernetes cluster and uses them to
+    configure the MetalLB addresses. The generated values are saved to a YAML file.
+    """
+
+    local_path_values = {
+        "namespace": "local-path-storage",
+        "chart_version": local_path_chart_version,
+    }
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and local_path_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and local_path_chart_type is set to git_repo, which is not allowed")
+
+    if local_path_chart_type == "helm_repo":
+        local_path_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        local_path_values["chart_name"] = "maia-core-local-path"
+    elif local_path_chart_type == "git_repo":
+        local_path_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        local_path_values["path"] = "charts/maia-core-local-path"
+
+    storage_class = get_storage_class(cluster_config_dict["k8s_distribution"])
+    if storage_class == "local-path":
+        local_path_values.update(
+            {"enabled": True, "storage_class": storage_class, "local_path_provisioner_path": "/opt/local-path-provisioner"}
+        )
+    else:
+        local_path_values.update({"enabled": False})
+
+    Path(config_folder).joinpath(project_id, "local_path_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "local_path_values", "local_path_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(local_path_values))
+
+    return {
+        "namespace": local_path_values["namespace"],
+        "repo": local_path_values["repo_url"],
+        "version": local_path_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "local_path_values", "local_path_values.yaml")),
+        "release": f"{project_id}-local-path",
+        "chart": local_path_values["chart_name"] if local_path_chart_type == "helm_repo" else local_path_values["path"],
     }
 
 
@@ -753,39 +801,7 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
         "chart_name": "gpu-operator",
     }  # TODO: Change this to updated values
 
-    if cluster_config_dict["k8s_distribution"] == "microk8s":
-        gpu_operator_values["toolkit"] = {
-            "env": [
-                {"name": "CONTAINERD_CONFIG", "value": "/var/snap/microk8s/current/args/containerd-template.toml"},
-                {"name": "CONTAINERD_SOCKET", "value": "/var/snap/microk8s/common/run/containerd.sock"},
-                {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
-            ]
-        }
-
-    elif cluster_config_dict["k8s_distribution"] == "rke2":
-        gpu_operator_values["toolkit"] = {
-            "driver": {"enabled": False},
-            "env": [
-                {"name": "CONTAINERD_SOCKET", "value": "/run/k3s/containerd/containerd.sock"},
-                {"name": "CONTAINERD_CONFIG", "value": "/var/lib/rancher/rke2/agent/etc/containerd/config.toml.tmpl"},
-                {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
-            ],
-        }
-    elif cluster_config_dict["k8s_distribution"] == "k0s":
-        gpu_operator_values.update(
-            {
-                "operator": {"defaultRuntime": "containerd"},
-                "toolkit": {
-                    "env": [
-                        {"name": "CONTAINERD_CONFIG", "value": "/etc/k0s/containerd.d/nvidia.toml"},
-                        {"name": "CONTAINERD_SOCKET", "value": "/run/k0s/containerd.sock"},
-                        {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                    ]
-                },
-            }
-        )
+    gpu_operator_values["toolkit"] = get_gpu_operator_toolkit(cluster_config_dict["k8s_distribution"])
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -994,11 +1010,11 @@ def create_gpu_booking_values(config_folder, project_id):
         {
             "image": {
                 "pod_terminator": {
-                    "repository": f"{default_registry}/gpu-booking-pod-terminator",
+                    "repository": f"{default_registry}/maia-gpu-booking-pod-terminator",
                     "pullPolicy": "IfNotPresent",
                     "tag": "1.4",
                 },
-                "repository": f"{default_registry}/gpu-booking-admission-controller",
+                "repository": f"{default_registry}/maia-gpu-booking-admission-controller",
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },

@@ -15,3 +15,12 @@ auto_sync: true
 
 # ArgoCD port for CLI login
 argocd_port: 8080
+
+
+# List of ArgoCD applications to sync
+maia_admin_argocd_applications:
+  - maia-admin-harbor
+  - maia-core-loginapp
+  - maia-admin-rancher
+  - maia-admin-keycloak
+  - maia-admin-admin-toolkit

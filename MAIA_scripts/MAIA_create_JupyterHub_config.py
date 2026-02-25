@@ -154,6 +154,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     if "gpu_request" in user_form:
         gpu_request = int(user_form["gpu_request"])
 
+    if "gpu_request" in cluster_config:
+        gpu_request = int(cluster_config["gpu_request"])
+
     domain = cluster_config["domain"]
 
     if "url_type" in cluster_config:
@@ -204,7 +207,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "config": {
                 "GenericOAuthenticator": {
                     "login_service": "MAIA Account",
-                    "username_claim": "preferred_username",
+                    "username_claim": cluster_config.get("jupyterhub_username_claim", "preferred_username"),
                     "scope": ["openid", "profile", "email"],
                     "userdata_params": {"state": "state"},
                     "claim_groups_key": "groups",
@@ -296,11 +299,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         jh_template["singleuser"]["extraEnv"]["INSTALL_MITK"] = "1"
         jh_template["singleuser"]["extraEnv"]["INSTALL_NAPARI"] = "1"
 
-    if os.environ.get("DEV_BRANCH") is not None:
-        jh_template["singleuser"]["extraEnv"]["DEV_BRANCH"] = os.environ["DEV_BRANCH"]
-        jh_template["singleuser"]["extraEnv"]["GIT_EMAIL"] = os.environ["GIT_EMAIL"]
-        jh_template["singleuser"]["extraEnv"]["GIT_NAME"] = os.environ["GIT_NAME"]
-        jh_template["singleuser"]["extraEnv"]["GPG_KEY"] = os.environ["GPG_KEY"]
 
     # Perform base64 decoding if MINIO_ACCESS_KEY or MINIO_SECRET_KEY is not "N/A"
     if jh_template["singleuser"]["extraEnv"]["MINIO_ACCESS_KEY"] != "N/A":
@@ -502,11 +500,12 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         if registry_url is not None:
             jh_template["singleuser"]["image"]["pullSecrets"].append(registry_url.replace(".", "-").replace("/", "-"))
 
-    maia_workspace_image = "ghcr.io/minnelab/" + define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
+    maia_workspace_image = f"{default_registry}/" + define_docker_image_versions()["maia-workspace-base-notebook-ssh-image-name"]
     maia_workspace_version = define_docker_image_versions()["maia-workspace-base-notebook-ssh"]
 
     maia_workspace_pro_image = (
-        "ghcr.io/minnelab/" + define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
+        f"{default_registry}/" + define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
     )
     maia_workspace_pro_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
     if "maia_workspace_image_" + namespace in os.environ:

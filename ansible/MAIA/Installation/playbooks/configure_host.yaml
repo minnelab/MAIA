@@ -19,6 +19,7 @@
       - "minio-api.{{ cluster_domain }}"
       - "minio-api.test.{{ cluster_domain }}"
       - "login.{{ cluster_domain }}"
+      - "kubeflow.{{ cluster_domain }}"
   tasks:
     - name: Ensure /etc/hosts contains all required host mappings
       ansible.builtin.lineinfile:

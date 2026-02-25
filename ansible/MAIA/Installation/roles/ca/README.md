@@ -1,10 +1,10 @@
-# CA MicroK8s Role
+# CA Kubernetes CA Role
 
-This Ansible role configures the Kubernetes CA (Certificate Authority) certificate and key from MicroK8s to be used with cert-manager. It creates a TLS secret in the cert-manager namespace containing the MicroK8s CA certificate and private key, which is required for cert-manager to issue certificates signed by the Kubernetes CA.
+This Ansible role configures the Kubernetes CA (Certificate Authority) certificate and key from a Kubernetes distribution (for example MicroK8s, k0s, or a generic kubeadm cluster) to be used with cert-manager. It creates a TLS secret in the cert-manager namespace containing the Kubernetes CA certificate and private key, which is required for cert-manager to issue certificates signed by the Kubernetes CA.
 
 ## Description
 
-The `ca_microk8s` role automates the configuration of the Kubernetes CA certificate for cert-manager. It performs the following tasks:
+The `ca` role automates the configuration of the Kubernetes CA certificate for cert-manager. It performs the following tasks:
 
 1. **Verifies CA certificate and key exist** at the specified paths
 2. **Creates cert-manager namespace** if it doesn't already exist
@@ -23,12 +23,12 @@ This role is designed to be used as part of the MAIA installation process, parti
 - **Privileges**: Requires root/sudo access (use `become: true`)
 
 ### Dependencies
-- **MicroK8s must be installed**: This role requires MicroK8s to be installed and running (typically via the `microk8s` role)
+- **Kubernetes cluster must be installed**: This role requires a Kubernetes distribution (for example MicroK8s, k0s, kubeadm) to be installed and running.
 - **No role dependencies**: This role has no dependencies on other Ansible roles
 
 ### System Requirements
-- **MicroK8s CA certificate and key**: Must exist at the default paths (`/var/snap/microk8s/current/certs/ca.crt` and `/var/snap/microk8s/current/certs/ca.key`)
-- **MicroK8s kubectl access**: The role uses `microk8s.kubectl` to create namespace and secrets
+- **Kubernetes CA certificate and key**: Must exist at the configured paths. By default, the role assumes MicroK8s paths (`/var/snap/microk8s/current/certs/ca.crt` and `/var/snap/microk8s/current/certs/ca.key`), but these can be overridden per distribution.
+- **kubectl access**: The role uses a configurable kubectl command (for example `microk8s.kubectl`, `k0s kubectl`, or plain `kubectl`) to create namespaces and secrets.
 
 ## Default Values
 
@@ -36,10 +36,11 @@ The following variables are set by default in `defaults/main.yml`:
 
 | Variable | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `kubernetes_ca_crt_path` | `/var/snap/microk8s/current/certs/ca.crt` | string | Path to MicroK8s CA certificate file |
-| `kubernetes_ca_key_path` | `/var/snap/microk8s/current/certs/ca.key` | string | Path to MicroK8s CA private key file |
+| `kubernetes_ca_crt_path` | `/var/snap/microk8s/current/certs/ca.crt` | string | Path to Kubernetes CA certificate file (default is MicroK8s path) |
+| `kubernetes_ca_key_path` | `/var/snap/microk8s/current/certs/ca.key` | string | Path to Kubernetes CA private key file (default is MicroK8s path) |
 | `cert_manager_namespace` | `cert-manager` | string | Namespace for cert-manager |
 | `kubernetes_ca_secret_name` | `kubernetes-ca` | string | Name of the TLS secret to create |
+| `kubernetes_kubectl_cmd` | `microk8s.kubectl` | string | Kubernetes kubectl command to use (for example `microk8s.kubectl`, `k0s kubectl`, `kubectl`) |
 
 ## Required Values
 
@@ -54,14 +55,14 @@ All variables are optional and can be overridden when using the role:
 ### `kubernetes_ca_crt_path`
 - **Type**: `string`
 - **Default**: `/var/snap/microk8s/current/certs/ca.crt`
-- **Description**: Path to the MicroK8s CA certificate file. This is the certificate that will be used by cert-manager to sign certificates.
-- **Example**: `kubernetes_ca_crt_path: /var/snap/microk8s/current/certs/ca.crt`
+- **Description**: Path to the Kubernetes CA certificate file. This is the certificate that will be used by cert-manager to sign certificates. The default points to the MicroK8s CA certificate path but should be adjusted for other distributions.
+- **Example** (MicroK8s): `kubernetes_ca_crt_path: /var/snap/microk8s/current/certs/ca.crt`
 
 ### `kubernetes_ca_key_path`
 - **Type**: `string`
 - **Default**: `/var/snap/microk8s/current/certs/ca.key`
-- **Description**: Path to the MicroK8s CA private key file. This is the private key corresponding to the CA certificate.
-- **Example**: `kubernetes_ca_key_path: /var/snap/microk8s/current/certs/ca.key`
+- **Description**: Path to the Kubernetes CA private key file. This is the private key corresponding to the CA certificate. The default points to the MicroK8s CA key path but should be adjusted for other distributions.
+- **Example** (MicroK8s): `kubernetes_ca_key_path: /var/snap/microk8s/current/certs/ca.key`
 
 ### `cert_manager_namespace`
 - **Type**: `string`
@@ -75,18 +76,27 @@ All variables are optional and can be overridden when using the role:
 - **Description**: Name of the TLS secret that will be created in the cert-manager namespace. This secret contains both the CA certificate and private key.
 - **Example**: `kubernetes_ca_secret_name: kubernetes-ca`
 
+### `kubernetes_kubectl_cmd`
+- **Type**: `string`
+- **Default**: `microk8s.kubectl`
+- **Description**: Kubernetes kubectl command to use when creating namespaces and secrets. This allows you to adapt the role to different Kubernetes distributions.
+- **Examples**:
+  - MicroK8s: `kubernetes_kubectl_cmd: microk8s.kubectl`
+  - k0s: `kubernetes_kubectl_cmd: k0s kubectl`
+  - Generic kubeadm cluster: `kubernetes_kubectl_cmd: kubectl`
+
 ## Usage
 
 ### Basic Usage
 
-Include the role in a playbook with default settings:
+Include the role in a playbook with default settings (MicroK8s):
 
 ```yaml
 - name: Configure Kubernetes CA for cert-manager
   hosts: control-plane
   become: true
   roles:
-    - role: maia.installation.ca_microk8s
+    - role: maia.installation.ca
 ```
 
 ### Custom CA Certificate Paths
@@ -98,7 +108,7 @@ Specify custom paths for the CA certificate and key:
   hosts: control-plane
   become: true
   roles:
-    - role: maia.installation.ca_microk8s
+    - role: maia.installation.ca
       vars:
         kubernetes_ca_crt_path: /custom/path/ca.crt
         kubernetes_ca_key_path: /custom/path/ca.key
@@ -113,7 +123,7 @@ Specify a different namespace or secret name:
   hosts: control-plane
   become: true
   roles:
-    - role: maia.installation.ca_microk8s
+    - role: maia.installation.ca
       vars:
         cert_manager_namespace: my-cert-manager
         kubernetes_ca_secret_name: my-kubernetes-ca
@@ -140,7 +150,7 @@ This role is used as part of the MAIA installation process:
   roles:
     - role: maia.installation.microk8s
     - role: maia.installation.oidc_microk8s
-    - role: maia.installation.ca_microk8s
+    - role: maia.installation.ca
 ```
 
 ### Standalone Playbook Example
@@ -153,7 +163,7 @@ Create a dedicated playbook for CA configuration:
   hosts: control-plane
   become: true
   roles:
-    - role: maia.installation.ca_microk8s
+    - role: maia.installation.ca
       vars:
         kubernetes_ca_crt_path: /var/snap/microk8s/current/certs/ca.crt
         kubernetes_ca_key_path: /var/snap/microk8s/current/certs/ca.key
@@ -188,7 +198,7 @@ The cert-manager namespace is created if it doesn't exist. The role handles the 
 
 ### Secret Creation
 
-The TLS secret is created using `microk8s.kubectl create secret tls`. If the secret already exists, the operation is skipped (idempotent).
+The TLS secret is created using the configured kubectl command (for example `microk8s.kubectl create secret tls`, `k0s kubectl create secret tls`, or `kubectl create secret tls`). If the secret already exists, the operation is skipped (idempotent).
 
 ## Testing
 
@@ -201,7 +211,7 @@ The role includes a test playbook located at `tests/test.yml`:
 - hosts: all
   remote_user: root
   roles:
-    - ca_microk8s
+    - ca
 ```
 
 ### Running Tests
