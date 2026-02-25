@@ -310,6 +310,26 @@ After running the role, verify the LVM configuration:
 - **NFS server configuration**: Test on hosts in `nfs_server` group
 - **Non-NFS hosts**: Test on hosts not in `nfs_server` group
 
+## Resize the local storage logical volume
+
+To resize the local storage logical volume, you can use the following command:
+
+```bash
+sudo lvresize -L +100G --resizefs MAIA_Storage/maia_0
+```
+
+To list the logical volumes, you can use the following command:
+
+```bash
+sudo lvdisplay
+```
+
+To list the volume groups, you can use the following command:
+
+```bash
+sudo vgdisplay
+```
+
 ## Notes
 
 - **Device availability**: Ensure the specified devices in `device_list` are available and not currently in use or mounted. The role will fail if devices are already part of another volume group or are mounted.

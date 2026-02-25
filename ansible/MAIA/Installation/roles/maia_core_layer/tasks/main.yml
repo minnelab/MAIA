@@ -59,7 +59,7 @@
     helm upgrade --install {{ prometheus_release_name }} {{ prometheus_chart_name }} -n observability --values {{ config_folder }}/{{ prometheus_values_path }} --version {{ prometheus_chart_version }}
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-core-prometheus' in maia_core_argocd_applications
 
 
 #- name: Install latest argocd CLI
