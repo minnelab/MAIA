@@ -256,19 +256,19 @@ def main():
             sys.exit(1)
         else:
             logger.info("\n=== Step 3.2: Skipping configure_host.yaml for all hosts ===")
-    # Step 4: Run install_microk8s.yaml
-    logger.info("\n=== Step 4: Running install_microk8s.yaml ===")
-    install_microk8s_cmd = [
+    # Step 4: Run install_k8s_distribution.yaml
+    logger.info(f"\n=== Step 4: Running install_{os.environ['K8S_DISTRIBUTION']}.yaml ===")
+    install_k8s_distribution_cmd = [
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        str(playbooks_dir + ".install_microk8s"),
+        str(playbooks_dir + f".install_{os.environ['K8S_DISTRIBUTION']}"),
         "-e",
         f"config_folder={config_folder_env}",
     ]
-    if "install_microk8s" in config_dict:
-        for key, value in config_dict["install_microk8s"].items():
-            install_microk8s_cmd.extend(
+    if f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict:
+        for key, value in config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"].items():
+            install_k8s_distribution_cmd.extend(
                 [
                     "-e",
                     f"{key}={value}",
@@ -276,12 +276,12 @@ def main():
             )
     if "steps" in config_dict and "install_microk8s" in config_dict["steps"]:
         try:
-            run_command(install_microk8s_cmd)
+            run_command(install_k8s_distribution_cmd)
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error running install_microk8s.yaml: {e}")
+            logger.error(f"Error running install_{os.environ['K8S_DISTRIBUTION']}.yaml: {e}")
             sys.exit(1)
     else:
-        logger.info("\n=== Step 4: Skipping install_microk8s.yaml ===")
+        logger.info(f"\n=== Step 4: Skipping install_{os.environ['K8S_DISTRIBUTION']}.yaml ===")
     # Step 5: Run install_maia_core.yaml
     logger.info("\n=== Step 5: Running install_maia_core.yaml ===")
     install_maia_core_cmd = [
