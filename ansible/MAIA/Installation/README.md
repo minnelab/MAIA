@@ -97,7 +97,7 @@ prepare_hosts:
 install_microk8s:
   install_microk8s: true
   enable_oidc_microk8s: true
-  enable_ca_microk8s: true
+  enable_ca: true
   install_argocd: true
   connect_to_microk8s: false
   connect_to_argocd: false
@@ -137,6 +137,8 @@ cluster_config_extra_env:
     - subdomain: "registry"
       coredns_ip: "<IP_ADDRESS>"
     - subdomain: "mgmt"
+      coredns_ip: "<IP_ADDRESS>"
+    - subdomain: "kubeflow"
       coredns_ip: "<IP_ADDRESS>"
   externalCA:
     name: "external-ca-secret"
@@ -220,6 +222,125 @@ export GIT_EMAIL=<email>
 export GIT_NAME=<name>
 export GPG_KEY=<path/to/gpg.key>
 ```
+
 The DEV_BRANCH is the branch that will be used to deploy the MAIA Dashboard and install the `maia-toolkit` package.
 The GIT_EMAIL and GIT_NAME are the email and name of the user that will be used to commit the changes to the repository.
 The GPG_KEY is the path to the GPG key that will be used to sign the commits.
+
+## Extra Configuration
+
+### Deploy MAIA-Admin without Rancher
+
+If you want to deploy MAIA-Admin without Rancher, you can set in your config.yaml file the following variable, to force the user OIDC authentication for the MAIA Dashboard to connect with the k8s cluster (by default, the connection is done through Rancher).
+
+```yaml
+cluster_config_extra_env:
+  maia_dashboard_oidc_authentication: true
+```
+
+### Move Let's Encrypt staging to production
+
+After validating the Ingress certificate with the staging CA, you can move the Let's Encrypt staging to production by performing the following steps:
+
+1. Set the OIDC_CA_BUNDLE environment variable to True in the maia-admin-maia-dashboard Application from ArgoCD:
+
+```yaml
+env:
+  - name: OIDC_CA_BUNDLE
+    value: True
+```
+
+2. Remove the rootCA environment variable from the ArgoCD `argocd-cm` ConfigMap, entry `oidc.config`.
+
+3. Remove the `--oidc-ca-file` configuration from the apiserver args (kube-apiserver) and restart the kubernetes service. In microk8s, you can find the apiserver-args in the `/var/snap/microk8s/current/args/kube-apiserver` file, while in k0s, you can find it in the `/var/lib/k0s/pki/admin.conf` file.
+
+### Set MAIA Registry
+
+The default MAIA Registry is ghcr.io/minnelab, but you can set it to any other registry by setting the MAIA_REGISTRY environment variable in your config.yaml file:
+
+```yaml
+env:
+  MAIA_REGISTRY: maiacloudai
+```
+
+### Set Dev Environment
+
+To enable the dev environment for the MAIA Dashboard, allowing to install, deploy and update the MAIA ecosystem with the latest changes from the dev branch, and also contributing to the MAIA Github repository, you can set the following environment variables in your config.yaml file:
+
+```yaml
+env:
+  DEV_BRANCH: master
+  GIT_EMAIL: <email>
+  GIT_NAME: <name>
+  GPG_KEY: <path/to/gpg.key>
+```
+
+### Set Webhook and Support URL
+
+The WEBHOOK_URL is the URL of the webhook that will be used to send notifications to the admin channel, notifying the administrators about the new project registrations and user registrations.
+The SUPPORT_URL is the URL for registering to the support channels, such as Discord, Slack, Mattermost, etc.
+
+```yaml
+env:
+  WEBHOOK_URL: <WEBHOOK_URL>
+  SUPPORT_URL: <SUPPORT_URL>
+```
+
+### Set OpenWebAI API Key and URL
+
+To enable the OpenWebAI API for the MAIA Chatbot, you can set the following environment variables in your config.yaml file:
+
+```yaml
+env:
+  OPENWEBAI_API_KEY: <OPENWEBAI_API_KEY>
+  OPENWEBAI_URL: <OPENWEBAI_URL>
+  OPENWEBAI_MODEL: <OPENWEBAI_MODEL>
+```
+
+The OPENWEBAI_API_KEY is the API key for the OpenWebAI API.
+The OPENWEBAI_URL is the URL for the OpenWebAI API.
+The OPENWEBAI_MODEL is the model to use for the OpenWebAI API.
+
+### Set Email Notification System
+
+The email notification system is used to send notifications to users about the user and project notifications in MAIA, such as project approval, user approval, project registration, user registration, etc.
+To enable the email notification system for the MAIA Dashboard, you can set the following environment variables in your config.yaml file:
+
+```yaml
+env:
+  SMTP_SENDER_EMAIL: <SMTP_SENDER_EMAIL>
+  SMTP_SERVER: <SMTP_SERVER>
+  SMTP_PORT: <SMTP_PORT>
+  SMTP_PASSWORD: <SMTP_PASSWORD>
+```
+
+The SMTP_SENDER_EMAIL is the email address that will be used to send the notifications.
+The SMTP_SERVER is the SMTP server address.
+The SMTP_PORT is the SMTP server port.
+The SMTP_PASSWORD is the SMTP server password.
+
+### Select which ArgoCD applications to automatically synchronize
+
+For the MAIA core and admin layers, you can select which ArgoCD applications to automatically synchronize by setting the following environment variables in your config.yaml file:
+
+```yaml
+install_maia_core:
+  auto_sync: true
+  maia_core_argocd_applications: ["maia-core-traefik", "maia-core-cert-manager",  "maia-core-toolkit", "maia-core-minio-operator"]
+
+install_maia_admin:
+  auto_sync: true
+  maia_admin_argocd_applications: ["maia-core-loginapp", "maia-admin-keycloak", "maia-admin-admin-toolkit"]
+```
+
+### Override default cluster configuration
+
+To override the default cluster configuration, you can set the following variables in your config.yaml file (e.g., to set the shared storage class to microk8s-hostpath and the port range to 32000-32767):
+
+```yaml
+cluster_config_extra_env:
+  shared_storage_class: microk8s-hostpath
+  port_range:
+  - 32000
+  - 32767
+```
