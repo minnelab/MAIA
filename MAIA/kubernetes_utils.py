@@ -373,6 +373,8 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
 
                             elif req["memory"][-1:] == "M":
                                 container_memory = int(req["memory"][:-1]) / 1024.0
+                            elif req["memory"][-1:] == "G":
+                                container_memory = int(req["memory"][:-1])
                             else:
 
                                 container_memory = int(req["memory"]) / (1024 * 1024 * 1024)
