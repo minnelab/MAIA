@@ -13,7 +13,7 @@
       when: install_k0s | default(true) | bool
     - role: maia.installation.oidc_k0s
       when: enable_oidc_k0s | default(true) | bool
-    - role: maia.installation.ca_k0s
+    - role: maia.installation.ca
       when: enable_ca | default(true) | bool
     - role: maia.installation.argocd
       when: install_argocd | default(true) | bool
