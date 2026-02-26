@@ -274,7 +274,7 @@ def main():
                     f"{key}={value}",
                 ]
             )
-    if "steps" in config_dict and "install_microk8s" in config_dict["steps"]:
+    if "steps" in config_dict and f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict["steps"]:
         try:
             run_command(install_k8s_distribution_cmd)
         except subprocess.CalledProcessError as e:
