@@ -1,0 +1,35 @@
+- name: Install k0s, enable OIDC and CA, and install ArgoCD
+  hosts: control_plane
+  become: false
+  environment:
+    PATH: "/snap/bin:{{ ansible_env.PATH }}"
+  vars:
+    kubernetes_kubectl_cmd: "k0s kubectl"
+    kubernetes_ca_crt_path: /var/lib/k0s/pki/ca.crt
+    kubernetes_ca_key_path: /var/lib/k0s/pki/ca.key
+
+  roles:
+    - role: maia.installation.k0s
+      when: install_k0s | default(true) | bool
+    - role: maia.installation.oidc_k0s
+      when: enable_oidc_k0s | default(true) | bool
+    - role: maia.installation.ca_k0s
+      when: enable_ca | default(true) | bool
+    - role: maia.installation.argocd
+      when: install_argocd | default(true) | bool
+
+  tasks:
+  - name: Only connect to k0s if connect_to_k0s is true and install_k0s is false
+    import_role:
+      name: maia.installation.k0s
+      tasks_from: connect.yml
+    when:
+      - not (install_k0s | default(true) | bool)
+      - connect_to_k0s | default(false) | bool
+  - name: Only connect to ArgoCD if connect_to_argocd is true and install_argocd is false
+    import_role:
+      name: maia.installation.argocd
+      tasks_from: connect.yml
+    when:
+      - not (install_argocd | default(true) | bool)
+      - connect_to_argocd | default(false) | bool
