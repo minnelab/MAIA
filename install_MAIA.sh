@@ -3,7 +3,7 @@
 VERSION=0.0.0
 MAIA_INSTALLATION_VERSION=0.0.0
 sudo apt update
-sudo apt install -y python3-pip ufw curl
+sudo apt install -y python3-pip ufw curl git
 sudo apt install -y jq yq apache2-utils
 if [ "$1" == "--dev" ]; then
     pip install git+https://github.com/minnelab/MAIA.git@master --break-system-packages
@@ -27,6 +27,7 @@ sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/rele
 sudo chmod +x /usr/local/bin/argocd
 
 export CONFIG_FOLDER="maia-config"
+export K8S_DISTRIBUTION="k0s"
 mkdir -p $CONFIG_FOLDER
 
 echo "Do you want to run Step 1: prepare hosts (install NVIDIA drivers, NFS & CIFS storage drivers, and configure UFW firewall for SSH and node-to-node communication)?"
@@ -64,18 +65,18 @@ select yn in "Yes" "No"; do
             ;;
     esac
 done
-echo "Do you want to run Step 3: install MicroK8s (install MicroK8s, enable OIDC authentication, create CA certificate in cert-manager, and install ArgoCD for GitOps-based application management)? (y/N): "
+echo "Do you want to run Step 3: install $K8S_DISTRIBUTION (install $K8S_DISTRIBUTION, enable OIDC authentication, create CA certificate in cert-manager, and install ArgoCD for GitOps-based application management)? (y/N): "
 select yn in "Yes" "No"; do
     case $yn in
         Yes )
-            export INSTALL_MICROK8S="yes"
-            read -p "Do you want to enable OIDC authentication for MicroK8s? (y/N): " enable_oidc_microk8s
-            read -p "Do you want to create CA certificate in cert-manager? (y/N): " create_ca_cert_manager
+            export INSTALL_K8S_DISTRIBUTION="yes"
+            read -p "Do you want to enable OIDC authentication for $K8S_DISTRIBUTION? (y/N): " enable_oidc
+            read -p "Do you want to create CA in cert-manager? (y/N): " create_ca_cert_manager
             read -p "Do you want to install ArgoCD for GitOps-based application management? (y/N): " install_argocd
             break
             ;;
         No )
-            export INSTALL_MICROK8S="no"
+            export INSTALL_K8S_DISTRIBUTION="no"
             break
             ;;
     esac
@@ -196,7 +197,6 @@ fi
 
 export PUBLIC_REGISTRY=1
 
-export K8S_DISTRIBUTION="microk8s"
 
 read -p "Enter cluster name: " CLUSTER_NAME
 export CLUSTER_NAME
@@ -210,12 +210,12 @@ prepare_hosts:
   nfs: $([ "${install_nfs,,}" = "y" ] && echo "true" || echo "false")
   cifs: $([ "${install_cifs,,}" = "y" ] && echo "true" || echo "false")
   ufw: $([ "${configure_ufw,,}" = "y" ] && echo "true" || echo "false")
-install_microk8s:
-  install_microk8s: $([ "${INSTALL_MICROK8S,,}" = "yes" ] && echo "true" || echo "false")
-  enable_oidc_microk8s: $([ "${enable_oidc_microk8s,,}" = "y" ] && echo "true" || echo "false")
-  enable_ca_microk8s: $([ "${create_ca_cert_manager,,}" = "y" ] && echo "true" || echo "false")
+install_$K8S_DISTRIBUTION:
+  install_$K8S_DISTRIBUTION: $([ "${INSTALL_K8S_DISTRIBUTION,,}" = "yes" ] && echo "true" || echo "false")
+  enable_oidc_$K8S_DISTRIBUTION: $([ "${enable_oidc,,}" = "y" ] && echo "true" || echo "false")
+  enable_ca: $([ "${create_ca_cert_manager,,}" = "y" ] && echo "true" || echo "false")
   install_argocd: $([ "${install_argocd,,}" = "y" ] && echo "true" || echo "false")
-  connect_to_microk8s: false
+  connect_to_$K8S_DISTRIBUTION: false
   connect_to_argocd: false
 install_maia_core:
   auto_sync: true
@@ -239,7 +239,7 @@ steps:
   - empty
   $(if [ "$PREPARE_HOSTS" = "yes" ]; then echo "- prepare_hosts"; fi)
   $(if [ "$CONFIGURE_HOSTS" = "yes" ]; then echo "- configure_hosts"; fi)
-  $(if [ "$INSTALL_MICROK8S" = "yes" ]; then echo "- install_microk8s"; fi)
+  $(if [ "$INSTALL_K8S_DISTRIBUTION" = "yes" ]; then echo "- install_$K8S_DISTRIBUTION"; fi)
   $(if [ "$INSTALL_MAIA_CORE" = "yes" ]; then echo "- install_maia_core"; fi)
   $(if [ "$INSTALL_MAIA_ADMIN" = "yes" ]; then echo "- install_maia_admin"; fi)
   $(if [ "$CONFIGURE_OIDC_AUTHENTICATION" = "yes" ]; then echo "- configure_oidc_authentication"; fi)
