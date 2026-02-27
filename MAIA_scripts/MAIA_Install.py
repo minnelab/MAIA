@@ -11,7 +11,7 @@ from textwrap import dedent
 import MAIA
 import json
 import yaml
-
+import tempfile
 from loguru import logger
 
 version = MAIA.__version__
@@ -293,13 +293,11 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if "install_maia_core" in config_dict:
-        for key, value in config_dict["install_maia_core"].items():
-            install_maia_core_cmd.extend(
-                [
-                    "-e",
-                    f"{key}={value}",
-                ]
-            )
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tf:
+            yaml.dump(config_dict["install_maia_core"], tf)
+            vars_file = tf.name
+
+        install_maia_core_cmd.extend(["-e", f"@{vars_file}"])
     if "steps" in config_dict and "install_maia_core" in config_dict["steps"]:
         try:
             run_command(install_maia_core_cmd)
@@ -320,13 +318,11 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if "install_maia_admin" in config_dict:
-        for key, value in config_dict["install_maia_admin"].items():
-            install_maia_admin_cmd.extend(
-                [
-                    "-e",
-                    f"{key}={value}",
-                ]
-            )
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tf:
+            yaml.dump(config_dict["install_maia_admin"], tf)
+            vars_file = tf.name
+
+        install_maia_admin_cmd.extend(["-e", f"@{vars_file}"])
     if "steps" in config_dict and "install_maia_admin" in config_dict["steps"]:
         try:
             run_command(install_maia_admin_cmd)
