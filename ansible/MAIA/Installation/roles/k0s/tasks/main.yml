@@ -63,6 +63,23 @@
   delegate_to: localhost
   run_once: true
 
+- name: Add user to k0s group
+  user:
+    name: "{{ ansible_user }}"
+    groups: k0s
+    append: yes
+    
+- name: Ensure /etc/k0s/k0s.yaml exists (create if missing)
+  ansible.builtin.stat:
+    path: /etc/k0s/k0s.yaml
+  register: k0s_yaml_file
+
+- name: Create default k0s config if missing
+  ansible.builtin.shell: |
+    k0s config create > /etc/k0s/k0s.yaml
+  when: not k0s_yaml_file.stat.exists
+  become: true
+
 - name: Read current k0s configuration
   ansible.builtin.slurp:
     src: /etc/k0s/k0s.yaml
@@ -107,6 +124,16 @@
     name: k0scontroller
     state: restarted
   become: true
+
+- name: Wait for k0s API to become available
+  ansible.builtin.shell: |
+    timeout 300 bash -c '
+      until k0s status 2>/dev/null | grep -q "Version"; do
+        sleep 5
+      done
+    '
+  register: k0s_status_wait
+  changed_when: false
 
 - name: Run additional k0s connect tasks
   import_tasks: connect.yml

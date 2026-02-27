@@ -1,5 +1,5 @@
 - name: Install k0s, enable OIDC and CA, and install ArgoCD
-  hosts: control_plane
+  hosts: control-plane
   become: false
   environment:
     PATH: "/snap/bin:{{ ansible_env.PATH }}"
