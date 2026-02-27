@@ -293,7 +293,7 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if "install_maia_core" in config_dict:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tf:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
             yaml.dump(config_dict["install_maia_core"], tf)
             vars_file = tf.name
 
@@ -318,7 +318,7 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if "install_maia_admin" in config_dict:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tf:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
             yaml.dump(config_dict["install_maia_admin"], tf)
             vars_file = tf.name
 

@@ -299,7 +299,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         jh_template["singleuser"]["extraEnv"]["INSTALL_MITK"] = "1"
         jh_template["singleuser"]["extraEnv"]["INSTALL_NAPARI"] = "1"
 
-
     # Perform base64 decoding if MINIO_ACCESS_KEY or MINIO_SECRET_KEY is not "N/A"
     if jh_template["singleuser"]["extraEnv"]["MINIO_ACCESS_KEY"] != "N/A":
         jh_template["singleuser"]["extraEnv"]["MINIO_ACCESS_KEY"] = base64.b64decode(
