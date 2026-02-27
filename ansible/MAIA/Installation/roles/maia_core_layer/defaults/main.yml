@@ -16,6 +16,7 @@ maia_core_namespaces:
   - authentication
   - maia-webhooks
   - nfs-server-provisioner
+  - local-path-storage
 
 # Enable automatic ArgoCD application synchronization
 auto_sync: true
