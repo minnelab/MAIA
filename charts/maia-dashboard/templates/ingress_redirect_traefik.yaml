@@ -31,7 +31,7 @@ metadata:
     {{- include "maia-dashboard.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: {{ .Values.namespace }}-redirect-https@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: {{ $.Values.namespace }}-redirect-https@kubernetescrd
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
