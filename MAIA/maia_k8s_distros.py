@@ -1,6 +1,6 @@
 import os
 
-dev_distros = ["microk8s", "k0s"]
+dev_distros = ["microk8s", "k0s", "k3s"]
 
 
 def get_api_port(k8s_distribution):
@@ -49,6 +49,9 @@ def get_gpu_operator_toolkit(k8s_distribution):
                 ]
             },
         }
+    elif k8s_distribution == "k3s":
+        ...
+        # TODO: Implement k3s GPU operator toolkit
     else:
         raise ValueError(f"K8S_DISTRIBUTION {k8s_distribution} not supported")
     return gpu_operator_values_toolkit
@@ -59,6 +62,8 @@ def get_storage_class(k8s_distribution):
         if k8s_distribution == "microk8s":
             storage_class = "microk8s-hostpath"
         elif k8s_distribution == "k0s":
+            storage_class = "local-path"
+        elif k8s_distribution == "k3s":
             storage_class = "local-path"
     else:
         storage_class = "local-path"
