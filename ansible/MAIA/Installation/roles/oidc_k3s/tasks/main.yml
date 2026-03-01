@@ -1,0 +1,119 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+  delegate_to: localhost
+  run_once: true
+
+- name: Extract cluster domain
+  ansible.builtin.set_fact:
+    cluster_domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Check if externalCA.cert key exists in cluster config
+  set_fact:
+    external_ca_cert: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA.cert }}"
+  when: "{{ (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0 }}"
+
+- name: Register externalCA.cert as oidc_ca_file if present
+  set_fact:
+    oidc_ca_file: "{{ external_ca_cert }}"
+  when: external_ca_cert is defined
+
+- name: Share cluster domain with target hosts
+  ansible.builtin.set_fact:
+    cluster_domain_fact: "{{ cluster_domain }}"
+  delegate_facts: true
+
+- name: Ensure k3s is installed
+  become: true
+  ansible.builtin.shell: k3s kubectl get nodes --no-headers
+  register: k3s_status_raw
+  failed_when: k3s_status_raw.rc != 0
+  changed_when: false
+
+- name: Set OIDC issuer URL
+  ansible.builtin.set_fact:
+    oidc_issuer_url: "https://{{ oidc_subdomain }}.{{ cluster_domain }}/realms/{{ oidc_realm }}"
+
+- name: Ensure k3s config directory exists
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Check if k3s config file exists
+  ansible.builtin.stat:
+    path: "{{ k3s_config_dir }}/config.yaml"
+  register: k3s_config_file
+  become: true
+
+- name: Read existing k3s configuration
+  ansible.builtin.slurp:
+    src: "{{ k3s_config_dir }}/config.yaml"
+  register: k3s_config_content
+  become: true
+  when: k3s_config_file.stat.exists
+
+- name: Set k3s config dictionary (from file or empty)
+  ansible.builtin.set_fact:
+    k3s_config: "{{ (k3s_config_content.content | default('') | b64decode | from_yaml) | default({}) }}"
+  when: k3s_config_file.stat.exists
+
+- name: Initialize empty k3s config dictionary when no config file
+  ansible.builtin.set_fact:
+    k3s_config: {}
+  when: not k3s_config_file.stat.exists
+
+- name: Get existing kube-apiserver-arg list (excluding oidc-*) and add OIDC args
+  ansible.builtin.set_fact:
+    k3s_apiserver_args: "{{ ((k3s_config.get('kube-apiserver-arg', []) | default([])) | reject('match', '^oidc-') | list) + oidc_apiserver_args_list }}"
+  vars:
+    oidc_apiserver_args_list:
+      - "oidc-issuer-url={{ oidc_issuer_url }}"
+      - "oidc-client-id={{ oidc_client_id }}"
+      - "oidc-username-claim={{ oidc_username_claim }}"
+      - "oidc-groups-claim={{ oidc_groups_claim }}"
+      - "oidc-ca-file={{ oidc_ca_file }}"
+
+- name: Update k3s config with OIDC kube-apiserver-arg
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | combine({'kube-apiserver-arg': k3s_apiserver_args}, recursive=true) }}"
+
+- name: Write back k3s config.yaml
+  ansible.builtin.copy:
+    content: "{{ k3s_config | to_nice_yaml(indent=2) }}"
+    dest: "{{ k3s_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Restart k3s service
+  ansible.builtin.service:
+    name: k3s
+    state: restarted
+  become: true
+
+- name: Wait until k3s is fully operational
+  become: true
+  ansible.builtin.shell: |
+    k3s kubectl get nodes --no-headers
+  register: k3s_status_result
+  retries: "{{ oidc_k3s_retries }}"
+  delay: "{{ oidc_k3s_retry_delay }}"
+  until: k3s_status_result.rc == 0
+
+- name: Terminate playbook if k3s is not operational
+  ansible.builtin.fail:
+    msg: "k3s did not become operational in the expected time."
+  when: k3s_status_result is failed

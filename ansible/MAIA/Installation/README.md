@@ -170,8 +170,8 @@ maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          
 
 For first-access, you can use the following credentials:
 ```bash
-username: admin@maia.se
-password [Temporary]: Admin
+username: admin@maia.io
+password [Temporary]: admin
 ```
 
 ## Installation on Linux and Windows Subsystem for Linux (WSL)
@@ -326,7 +326,7 @@ For the MAIA core and admin layers, you can select which ArgoCD applications to 
 ```yaml
 install_maia_core:
   auto_sync: true
-  maia_core_argocd_applications: ["maia-core-traefik", "maia-core-cert-manager",  "maia-core-toolkit", "maia-core-minio-operator"]
+  maia_core_argocd_applications: ["maia-core-traefik", "maia-core-local-path", "maia-core-cert-manager","maia-core-metallb",  "maia-core-toolkit", "maia-core-minio-operator"]
 
 install_maia_admin:
   auto_sync: true

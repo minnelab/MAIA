@@ -1,6 +1,6 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# defaults file for oidc_k0s
+# defaults file for oidc_k3s
 
 # OIDC username claim (JWT claim to use as username)
 oidc_username_claim: email
@@ -18,15 +18,14 @@ oidc_realm: maia
 oidc_subdomain: iam
 
 # Path to CA certificate file for OIDC verification
-# For k0s we typically use the cluster CA under the k0s data dir.
-oidc_ca_file: /var/lib/k0s/pki/ca.crt
+# For k3s we typically use the server CA under the k3s data dir.
+oidc_ca_file: /var/lib/rancher/k3s/server/tls/server-ca.crt
 
-# Path to k0s etc directory
-k0s_etc_dir: /etc/k0s
+# Path to k3s config directory (config file is {{ k3s_config_dir }}/config.yaml)
+k3s_config_dir: /etc/rancher/k3s
 
-# Number of retries when waiting for k0s to become operational
-oidc_k0s_retries: 10
+# Number of retries when waiting for k3s to become operational
+oidc_k3s_retries: 10
 
-# Delay in seconds between retries when waiting for k0s
-oidc_k0s_retry_delay: 15
-
+# Delay in seconds between retries when waiting for k3s
+oidc_k3s_retry_delay: 15

@@ -1,0 +1,65 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include k3s external variables (env.json)
+  include_vars:
+    file: "{{ config_folder }}/env.json"
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+  delegate_to: localhost
+  run_once: true
+
+- name: Extract cluster domain
+  ansible.builtin.set_fact:
+    cluster_domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required packages for k3s
+  apt:
+    name:
+      - curl
+      - sudo
+    state: present
+
+- name: Install k3s server (if not already installed)
+  ansible.builtin.shell: |
+    export INSTALL_K3S_EXEC="server --tls-san={{ cluster_domain }}"
+    {% if k3s_version != 'latest' %}
+    export INSTALL_K3S_VERSION="{{ k3s_version }}"
+    {% endif %}
+    curl -sfL https://get.k3s.io | sh -s -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Ensure k3s service is enabled and started
+  ansible.builtin.service:
+    name: k3s
+    state: started
+    enabled: yes
+
+- name: Allow firewall ports for k3s
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+  loop: "{{ k3s_firewall_ports }}"
+
+- name: Wait for k3s API to become available
+  ansible.builtin.shell: |
+    timeout 300 bash -c '
+      until k3s kubectl get nodes --no-headers 2>/dev/null | grep -q .; do
+        sleep 5
+      done
+    '
+  register: k3s_status_wait
+  changed_when: false
+
+- name: Run additional k3s connect tasks
+  import_tasks: connect.yml

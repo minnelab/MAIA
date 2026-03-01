@@ -1,0 +1,64 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Install and configure k3s, a lightweight Kubernetes distribution, on Ubuntu systems. Sets up a single-node k3s server, configures kubeconfig with local cert paths, and sets up firewall rules.
+  company: MAIA Project
+
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.1
+
+  galaxy_tags: [k3s, kubernetes, container, orchestration]
+
+dependencies: []
+
+argument_specs:
+  main:
+    description: Install and configure k3s, a lightweight Kubernetes distribution, on Ubuntu systems. Sets up a single-node k3s server, configures kubeconfig, and sets up firewall rules.
+    short_description: Install and configure k3s
+    options:
+      config_folder:
+        type: str
+        required: true
+        description: "Path to the configuration folder containing env.json (required, provides DEPLOY_KUBECONFIG)"
+      cluster_name:
+        type: str
+        required: false
+        default: cluster
+        description: "Cluster config base name (config file is {{ config_folder }}/{{ cluster_name }}.yaml)"
+      k3s_version:
+        type: str
+        required: false
+        default: latest
+        description: "k3s version to install (optional). The installer defaults to latest stable when 'latest' is used."
+      k3s_firewall_ports:
+        type: list
+        required: false
+        default: [{"port": 6443, "proto": "tcp"}, {"port": 80, "proto": "tcp"}, {"port": 443, "proto": "tcp"}]
+        elements: dict
+        description: "List of firewall ports to open for k3s (optional)"
+      k3s_enable_port_forwarding:
+        type: bool
+        required: false
+        default: true
+        description: "Enable SSH port forwarding for API access (optional)"
+      k3s_port_forward_port:
+        type: int
+        required: false
+        default: 6443
+        description: "Local port for SSH port forwarding to k3s API (optional)"
+      k3s_data_dir:
+        type: str
+        required: false
+        default: /var/lib/rancher/k3s
+        description: "k3s data directory on the target host (optional)"
+      k3s_config_dir:
+        type: str
+        required: false
+        default: /etc/rancher/k3s
+        description: "k3s config directory (kubeconfig location) on the target host (optional)"
+      rancher_local_path_provisioner_version:
+        type: str
+        required: false
+        default: v0.0.34
+        description: "Rancher local path provisioner version to install (optional)"

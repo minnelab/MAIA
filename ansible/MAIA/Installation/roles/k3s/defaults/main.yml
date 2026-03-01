@@ -1,0 +1,39 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for k3s
+
+# Cluster config filename (without .yaml). Config is {{ config_folder }}/{{ cluster_name }}.yaml.
+# Often set via env.json.
+cluster_name: cluster
+
+# k3s version to install.
+# The default installer script installs the latest stable version.
+# You can override this to pin to a specific version, e.g. "v1.28.5+k3s1".
+k3s_version: latest
+
+# Firewall ports to open for k3s
+# 6443: Kubernetes API server port (for port forwarding)
+# 80: HTTP port (for ingress)
+# 443: HTTPS port (for ingress)
+k3s_firewall_ports:
+  - port: 6443
+    proto: tcp
+  - port: 80
+    proto: tcp
+  - port: 443
+    proto: tcp
+
+# Enable SSH port forwarding for API access
+# This sets up an SSH tunnel from localhost to the k3s API server
+k3s_enable_port_forwarding: true
+
+# Port for SSH port forwarding (local port that forwards to k3s API)
+k3s_port_forward_port: 6443
+
+# k3s data directory on the target host (server TLS and data)
+k3s_data_dir: /var/lib/rancher/k3s
+
+# k3s config directory (kubeconfig location)
+k3s_config_dir: /etc/rancher/k3s
+
+rancher_local_path_provisioner_version: v0.0.34

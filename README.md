@@ -93,7 +93,7 @@ configure_hosts:
 install_microk8s:
   install_microk8s: true
   enable_oidc_microk8s: true
-  enable_ca_microk8s: true
+  enable_ca: true
   install_argocd: true
   connect_to_microk8s: false
   connect_to_argocd: false
@@ -160,8 +160,8 @@ maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          
 
 For first-access, you can use the following credentials:
 ```bash
-username: admin@maia.se
-password [Temporary]: Admin
+username: admin@maia.io
+password [Temporary]: admin
 ```
 
 ### Installation on Linux and Windows Subsystem for Linux (WSL)

@@ -50,6 +50,7 @@ maia_core_argocd_applications:
   - maia-core-cert-manager
   - maia-core-gpu-operator
   - maia-core-metallb
+  - maia-core-local-path
   - maia-core-loki
   - maia-core-tempo
   - maia-core-metrics-server
