@@ -557,6 +557,8 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
                 }
             ],
         }
+        if settings.OIDC_CA_BUNDLE and isinstance(settings.OIDC_CA_BUNDLE, str) and Path(settings.OIDC_CA_BUNDLE).exists():
+            kube_config["users"][0]["user"]["auth-provider"]["config"]["idp-certificate-authority"] = settings.OIDC_CA_BUNDLE
 
     return kube_config
 
