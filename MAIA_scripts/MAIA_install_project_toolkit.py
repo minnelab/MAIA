@@ -197,9 +197,9 @@ def deploy_maia_toolkit_api(
     mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
 
     if not minimal:
-        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"))
+        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
 
-        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"))
+        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
 
         project_form_dict["minio_access_key"] = minio_configs["console_access_key"]
         project_form_dict["minio_secret_key"] = minio_configs["console_secret_key"]

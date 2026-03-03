@@ -54,7 +54,7 @@ mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
 
 
-def generate_minio_configs(namespace):
+def generate_minio_configs(namespace, config_dict=None):
     """
     Generate configuration settings for MinIO.
 
@@ -62,7 +62,8 @@ def generate_minio_configs(namespace):
     ----------
     namespace : int or str
         The unique identifier for the project.
-
+    config_dict : dict, optional
+        A dictionary containing the custom configuration for the MinIO.
     Returns
     -------
     dict
@@ -92,6 +93,18 @@ def generate_minio_configs(namespace):
             else base64.b64encode(token_urlsafe(16).replace("-", "_").encode("ascii")).decode("ascii")
         ),
     }
+
+    if config_dict:
+        for key, value in config_dict.items():
+            if key == "minio_user":
+                minio_configs["access_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
+            if key == "minio_password":
+                minio_configs["secret_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
+
+        if key == "minio_console_access_key":
+            minio_configs["console_access_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
+        if key == "minio_console_secret_key":
+            minio_configs["console_secret_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
 
     return minio_configs
 
@@ -232,7 +245,7 @@ def get_mlflow_config_if_exists(project_id):
     return mlflow_configs
 
 
-def generate_mysql_configs(namespace):
+def generate_mysql_configs(namespace, config_dict=None):
     """
     Generate MySQL configuration dictionary.
 
@@ -240,6 +253,9 @@ def generate_mysql_configs(namespace):
     ----------
     namespace : str
         The namespace to be used as the MySQL user.
+
+    config_dict : dict, optional
+        A dictionary containing the custom configuration for the MySQL.
 
     Returns
     -------
@@ -257,6 +273,13 @@ def generate_mysql_configs(namespace):
             else "".join(filter(str.isalnum, token_urlsafe(16)))
         ),
     }
+
+    if config_dict:
+        for key, value in config_dict.items():
+            if key == "mysql_user":
+                mysql_configs["mysql_user"] = value
+            if key == "mysql_password":
+                mysql_configs["mysql_password"] = value
 
     return mysql_configs
 
@@ -1451,6 +1474,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        maia_dashboard_values["ingress"]["annotations-redirect"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "web"
         maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             ...
@@ -1740,7 +1764,14 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     # GPU Configuration
     maia_dashboard_values["gpuList"] = cluster_config_dict["gpu_list"] if "gpu_list" in cluster_config_dict else []
+    
+    # MAIA Projects Configuration
+    if "maia_projects" in cluster_config_dict:
+        maia_dashboard_values["maia_projects"] = cluster_config_dict["maia_projects"]
 
+    # CIFS
+    # MAIA Segmentation Portal
+    # GPU Booking
     Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))

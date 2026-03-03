@@ -10,7 +10,7 @@ def get_api_port(k8s_distribution):
     elif k8s_distribution == "k0s":
         port = 6443
     elif k8s_distribution == "k3s":
-        port = None
+        port = 6443
     else:
         raise ValueError(f"K8S_DISTRIBUTION {os.environ['K8S_DISTRIBUTION']} not supported")
     return port

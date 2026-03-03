@@ -685,7 +685,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         for id, _ in enumerate(jh_template["singleuser"]["profileList"]):
             jh_template["singleuser"]["profileList"][id]["kubespawner_override"]["service_account"] = "secret-writer"
 
-    jh_helm_template["resource"]["helm_release"]["jupyterhub"]["values"] = [yaml.dump(jh_template)]
     if "jupyterhub_extraEnv" in cluster_config:
         for env_key, env_value in cluster_config["jupyterhub_extraEnv"].items():
             jh_template["singleuser"]["extraEnv"][env_key] = env_value
@@ -693,6 +692,8 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         "hook": {"enabled": False},
         "continuous": {"enabled": False},
     }
+    
+    jh_helm_template["resource"]["helm_release"]["jupyterhub"]["values"] = [yaml.dump(jh_template)]
     chart_info = {}
     chart_info["chart_name"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["chart"]
     chart_info["chart_version"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["version"]

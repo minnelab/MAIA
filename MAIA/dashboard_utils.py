@@ -819,7 +819,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "project_tier": project.project_tier,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
-                    namespace_form["gpu"] = "1"
+                    namespace_form["gpu_request"] = "1"
 
                 if project.env_file != "N/A" and project.env_file is not None:
                     namespace_form["minio_env_name"] = project.env_file
