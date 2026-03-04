@@ -528,6 +528,7 @@ class ProjectChartValuesAPIView(APIView):
             disable_argocd=not auto_deploy,
             return_values_only=not auto_deploy,
             custom_config_dict=project_configuration,
+            use_in_local_cluster_token=True,
         )
         if auto_deploy:
             apps_to_sync = auto_deploy_apps
@@ -926,6 +927,7 @@ def deploy_project(
     disable_argocd=False,
     return_values_only=False,
     custom_config_dict=None,
+    use_in_local_cluster_token=False,
 ):
     argocd_cluster_id = env_settings.ARGOCD_CLUSTER
 
@@ -936,8 +938,8 @@ def deploy_project(
     if cluster_id is None:
         return {"status": 400, "message": "Cluster ID not found"}
 
-    kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=env_settings)
-    local_kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster_id, settings=env_settings)
+    kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=env_settings, in_local_cluster_token=use_in_local_cluster_token)
+    local_kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster_id, settings=env_settings, in_local_cluster_token=use_in_local_cluster_token)
     config.load_kube_config_from_dict(kubeconfig_dict)
 
     with open(Path("/tmp").joinpath("kubeconfig-project"), "w") as f:
