@@ -29,7 +29,7 @@ metadata:
   name: {{ $fullName }}-https-redirect
   labels:
     {{- include "maia-dashboard.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations-redirect }}
+  {{- with .Values.ingress.annotations_redirect }}
   annotations:
     traefik.ingress.kubernetes.io/router.middlewares: {{ $.Values.namespace }}-redirect-https@kubernetescrd
     {{- toYaml . | nindent 4 }}

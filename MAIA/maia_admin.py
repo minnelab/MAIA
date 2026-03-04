@@ -1474,7 +1474,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
-        maia_dashboard_values["ingress"]["annotations-redirect"] = {"traefik.ingress.kubernetes.io/router.entrypoints": "web"}
+        maia_dashboard_values["ingress"]["annotations_redirect"] = {"traefik.ingress.kubernetes.io/router.entrypoints": "web"}
         maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             ...
