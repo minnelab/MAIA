@@ -19,14 +19,14 @@ spec:
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         resources:
           requests:
-            cpu: {{ .Values.cpu }}
-            memory: {{ .Values.memory }}
+            cpu: {{ .Values.cpu_request }}
+            memory: {{ .Values.memory_request }}
             {{- if .Values.gpu }}
             nvidia.com/gpu: "1"
             {{- end}}
           limits:
-            cpu: {{ .Values.cpu }}
-            memory: {{ .Values.memory }}
+            cpu: {{ .Values.cpu_limit }}
+            memory: {{ .Values.memory_limit }}
             {{- if .Values.gpu }}
             nvidia.com/gpu: "1"
             {{- end}}
