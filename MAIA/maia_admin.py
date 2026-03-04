@@ -142,6 +142,7 @@ def get_minio_config_if_exists(project_id):
         secrets = v1.list_namespaced_secret(namespace=project_id.lower().replace("_", "-"))
     except client.exceptions.ApiException as e:
         if e.status == 404 or e.status == 401:
+            logger.error(f"Error listing namespaced secrets: {e}")
             return minio_configs
         else:
             raise e
@@ -240,6 +241,7 @@ def get_mlflow_config_if_exists(project_id):
         secrets = v1.list_namespaced_secret(namespace=project_id.lower().replace("_", "-"))
     except client.exceptions.ApiException as e:
         if e.status == 404 or e.status == 401:
+            logger.error(f"Error listing namespaced secrets: {e}")
             return mlflow_configs
         else:
             raise e
@@ -331,6 +333,7 @@ def get_mysql_config_if_exists(project_id):
         deploy = v1.list_namespaced_pod(namespace=project_id.lower().replace("_", "-"))
     except client.exceptions.ApiException as e:
         if e.status == 404 or e.status == 401:
+            logger.error(f"Error listing namespaced pods: {e}")
             return mlflow_configs
         else:
             raise e
