@@ -1634,6 +1634,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
             {"name": "argocd_namespace", "value": "argocd"},
             {"name": "ARGOCD_SERVER", "value": "https://argocd." + cluster_config_dict["domain"]},
+            {"name": "ARGOCD_PASSWORD", "value": os.environ["ARGOCD_PASSWORD"]},
         ]
     )
 

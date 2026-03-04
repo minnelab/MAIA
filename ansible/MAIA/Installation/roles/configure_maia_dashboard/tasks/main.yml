@@ -23,6 +23,7 @@
     --config-folder {{ config_folder }}
   environment:
     argocd_namespace: "{{ argocd_namespace }}"
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
     admin_group_ID: "{{ admin_group_ID }}"
     admin_project_chart: "{{ admin_project_chart }}"
     admin_project_repo: "{{ admin_project_repo }}"
