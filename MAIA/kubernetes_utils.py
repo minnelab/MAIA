@@ -1280,7 +1280,7 @@ def create_maia_rbac_from_context(namespace):
             namespace=namespace
         ),
         subjects=[
-            client.V1Subject(
+            client.RbacV1Subject(
                 kind="ServiceAccount",
                 name="default",
                 namespace="maia-dashboard"
