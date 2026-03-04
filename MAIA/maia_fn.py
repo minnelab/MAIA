@@ -448,15 +448,31 @@ def deploy_mysql(cluster_config, user_config, config_folder, mysql_configs):
         os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
 
+    if "MYSQL_MEMORY_REQUEST_" + namespace in os.environ:
+        memory_request = os.environ["MYSQL_MEMORY_REQUEST_" + namespace]
+    else:
+        memory_request = os.environ.get("MYSQL_MEMORY_REQUEST", "2Gi")
+    if "MYSQL_MEMORY_LIMIT_" + namespace in os.environ:
+        memory_limit = os.environ["MYSQL_MEMORY_LIMIT_" + namespace]
+    else:
+        memory_limit = os.environ.get("MYSQL_MEMORY_LIMIT", "2Gi")
+    if "MYSQL_CPU_REQUEST_" + namespace in os.environ:
+        cpu_request = os.environ["MYSQL_CPU_REQUEST_" + namespace]
+    else:
+        cpu_request = os.environ.get("MYSQL_CPU_REQUEST", "500m")
+    if "MYSQL_CPU_LIMIT_" + namespace in os.environ:
+        cpu_limit = os.environ["MYSQL_CPU_LIMIT_" + namespace]
+    else:
+        cpu_limit = os.environ.get("MYSQL_CPU_LIMIT", "500m")
     mysql_config = {
         "namespace": namespace,
         "chart_name": "mysql-db-v1",
         "docker_image": mysql_image,
         "tag": mysql_image_version,
-        "memory_request": os.environ.get("MYSQL_MEMORY_REQUEST", "2Gi"),
-        "memory_limit": os.environ.get("MYSQL_MEMORY_LIMIT", "2Gi"),
-        "cpu_request": os.environ.get("MYSQL_CPU_REQUEST", "500m"),
-        "cpu_limit": os.environ.get("MYSQL_CPU_LIMIT", "500m"),
+        "memory_request": memory_request,
+        "memory_limit": memory_limit,
+        "cpu_request": cpu_request,
+        "cpu_limit": cpu_limit,
         "deployment": True,
         "ports": {"mysql": [3306]},
         "persistent_volume": [
@@ -537,16 +553,32 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
     if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
         private_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
 
+    if "MLFLOW_MEMORY_REQUEST_" + namespace in os.environ:
+        memory_request = os.environ["MLFLOW_MEMORY_REQUEST_" + namespace]
+    else:
+        memory_request = os.environ.get("MLFLOW_MEMORY_REQUEST", "2Gi")
+    if "MLFLOW_MEMORY_LIMIT_" + namespace in os.environ:
+        memory_limit = os.environ["MLFLOW_MEMORY_LIMIT_" + namespace]
+    else:
+        memory_limit = os.environ.get("MLFLOW_MEMORY_LIMIT", "2Gi")
+    if "MLFLOW_CPU_REQUEST_" + namespace in os.environ:
+        cpu_request = os.environ["MLFLOW_CPU_REQUEST_" + namespace]
+    else:
+        cpu_request = os.environ.get("MLFLOW_CPU_REQUEST", "500m")
+    if "MLFLOW_CPU_LIMIT_" + namespace in os.environ:
+        cpu_limit = os.environ["MLFLOW_CPU_LIMIT_" + namespace]
+    else:
+        cpu_limit = os.environ.get("MLFLOW_CPU_LIMIT", "500m")
     mlflow_config = {
         "namespace": namespace,
         "chart_name": "mlflow-v1",
         "docker_image": docker_image,
         "tag": maia_mlflow_image_version,
         "deployment": True,
-        "memory_request": os.environ.get("MLFLOW_MEMORY_REQUEST", "2Gi"),
-        "memory_limit": os.environ.get("MLFLOW_MEMORY_LIMIT", "2Gi"),
-        "cpu_request": os.environ.get("MLFLOW_CPU_REQUEST", "500m"),
-        "cpu_limit": os.environ.get("MLFLOW_CPU_LIMIT", "500m"),
+        "memory_request": memory_request,
+        "memory_limit": memory_limit,
+        "cpu_request": cpu_request,
+        "cpu_limit": cpu_limit,
         "allocationTime": "180d",
         "ports": {"proxy": [80]},
         "ingress": {
@@ -652,14 +684,32 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     image_pull_secret = os.environ.get("imagePullSecrets", None)
     if "imagePullSecrets_" + namespace in os.environ:
         image_pull_secret = os.environ["imagePullSecrets_" + namespace]
+        
+    if "ORTHANC_CPU_REQUEST_" + namespace in os.environ:
+        cpu_request = os.environ["ORTHANC_CPU_REQUEST_" + namespace]
+    else:
+        cpu_request = os.environ.get("ORTHANC_CPU_REQUEST", "4000m")
+    if "ORTHANC_CPU_LIMIT_" + namespace in os.environ:
+        cpu_limit = os.environ["ORTHANC_CPU_LIMIT_" + namespace]
+    else:
+        cpu_limit = os.environ.get("ORTHANC_CPU_LIMIT", "4000m")
+        
+    if "ORTHANC_MEMORY_REQUEST_" + namespace in os.environ:
+        memory_request = os.environ["ORTHANC_MEMORY_REQUEST_" + namespace]
+    else:
+        memory_request = os.environ.get("ORTHANC_MEMORY_REQUEST", "4Gi")
+    if "ORTHANC_MEMORY_LIMIT_" + namespace in os.environ:
+        memory_limit = os.environ["ORTHANC_MEMORY_LIMIT_" + namespace]
+    else:
+        memory_limit = os.environ.get("ORTHANC_MEMORY_LIMIT", "4Gi")
     orthanc_config = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "imagePullSecret": image_pull_secret,
         "image": {"repository": docker_image, "tag": docker_version},
-        "cpu_request": os.environ.get("ORTHANC_CPU_REQUEST", "4000m"),
-        "cpu_limit": os.environ.get("ORTHANC_CPU_LIMIT", "4000m"),
-        "memory_request": os.environ.get("ORTHANC_MEMORY_REQUEST", "4Gi"),
-        "memory_limit": os.environ.get("ORTHANC_MEMORY_LIMIT", "4Gi"),
+        "cpu_request": cpu_request,
+        "cpu_limit": cpu_limit,
+        "memory_request": memory_request,
+        "memory_limit": memory_limit,
         "gpu": False,
         "orthanc_dicom_service_annotations": {},
         "ingress_annotations": {},
