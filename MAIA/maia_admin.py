@@ -138,7 +138,13 @@ def get_minio_config_if_exists(project_id):
 
     v1 = client.CoreV1Api()
     minio_configs = {"access_key": "admin"}
-    secrets = v1.list_namespaced_secret(namespace=project_id.lower().replace("_", "-"))
+    try:
+        secrets = v1.list_namespaced_secret(namespace=project_id.lower().replace("_", "-"))
+    except client.exceptions.ApiException as e:
+        if e.status == 404 or e.status == 401:
+            return minio_configs
+        else:
+            raise e
     for secret in secrets.items:
         if secret.metadata.name == "storage-user":
             for item in secret.data:
@@ -230,7 +236,13 @@ def get_mlflow_config_if_exists(project_id):
 
     v1 = client.CoreV1Api()
     mlflow_configs = {}
-    secrets = v1.list_namespaced_secret(namespace=project_id.lower().replace("_", "-"))
+    try:
+        secrets = v1.list_namespaced_secret(namespace=project_id.lower().replace("_", "-"))
+    except client.exceptions.ApiException as e:
+        if e.status == 404 or e.status == 401:
+            return mlflow_configs
+        else:
+            raise e
     for secret in secrets.items:
 
         if secret.metadata.name == project_id.lower().replace("_", "-"):
@@ -315,7 +327,13 @@ def get_mysql_config_if_exists(project_id):
 
     v1 = client.CoreV1Api()
     mlflow_configs = {}
-    deploy = v1.list_namespaced_pod(namespace=project_id.lower().replace("_", "-"))
+    try:
+        deploy = v1.list_namespaced_pod(namespace=project_id.lower().replace("_", "-"))
+    except client.exceptions.ApiException as e:
+        if e.status == 404 or e.status == 401:
+            return mlflow_configs
+        else:
+            raise e
 
     for deployment in deploy.items:
         if deployment.metadata.name.startswith(project_id.lower().replace("_", "-") + "-mysql-mkg"):
