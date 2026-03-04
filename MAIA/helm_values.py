@@ -41,7 +41,10 @@ def read_config_dict_and_generate_helm_values_dict(
         value_dict["resources"]["requests"] = {}  # type: ignore
         value_dict["resources"]["limits"] = {}  # type: ignore
         value_dict["resources"]["requests"]["memory"] = config_dict["memory_request"]
-        value_dict["resources"]["limits"]["memory"] = config_dict["memory_request"]
+        if "memory_limit" in config_dict:
+            value_dict["resources"]["limits"]["memory"] = config_dict["memory_limit"]
+        else:
+            value_dict["resources"]["limits"]["memory"] = config_dict["memory_request"]
 
     if "cpu_request" in config_dict:
         if "resources" not in value_dict:
@@ -50,7 +53,10 @@ def read_config_dict_and_generate_helm_values_dict(
             value_dict["resources"]["limits"] = {}  # type: ignore
 
         value_dict["resources"]["requests"]["cpu"] = config_dict["cpu_request"]
-        value_dict["resources"]["limits"]["cpu"] = config_dict["cpu_request"]
+        if "cpu_limit" in config_dict:
+            value_dict["resources"]["limits"]["cpu"] = config_dict["cpu_limit"]
+        else:
+            value_dict["resources"]["limits"]["cpu"] = config_dict["cpu_request"]
 
     if "allocationTime" in config_dict:
         time_multiplier = 24 * 60 * 60  # Days
