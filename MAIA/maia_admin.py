@@ -1496,6 +1496,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     maia_dashboard_values["env"].extend(
         [
             {"name": "OIDC_RP_CLIENT_ID", "value": "maia"},
+            {"name": "OIDC_RP_PUBLIC_CLIENT_ID", "value": "maia-public"},
             {"name": "OIDC_RP_CLIENT_SECRET", "value": os.environ["keycloak_client_secret"]},
             {"name": "OIDC_SERVER_URL", "value": "https://iam." + cluster_config_dict["domain"]},
             {"name": "OIDC_REALM_NAME", "value": "maia"},

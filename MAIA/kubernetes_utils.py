@@ -468,7 +468,7 @@ def get_filtered_available_nodes(gpu_dict, cpu_dict, ram_dict, gpu_request, cpu_
     )
 
 
-def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
+def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings, in_local_cluster_token=False):
     """
     Generates a Kubernetes configuration dictionary for a given user and cluster.
 
@@ -482,6 +482,8 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
         The Kubernetes namespace.
     cluster_id : str
         The cluster ID.
+    in_local_cluster_token : bool, optional
+        Whether to use the local cluster token instead of the ID token.
     settings : object
         An object containing various settings, including:
         - CLUSTER_NAMES (dict): A dictionary mapping cluster names to their IDs.
@@ -497,7 +499,11 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
     """
     cluster_apis = {k: v for v, k in settings.CLUSTER_NAMES.items()}
 
-    if cluster_apis[cluster_id] in settings.PRIVATE_CLUSTERS:
+    if cluster_apis[cluster_id] in settings.PRIVATE_CLUSTERS or in_local_cluster_token:
+        if not in_local_cluster_token:
+            token = settings.PRIVATE_CLUSTERS[cluster_apis[cluster_id]]
+        else:
+            token = open(Path("/var/run/secrets/kubernetes.io/serviceaccount/token")).read()
         kube_config = {
             "apiVersion": "v1",
             "kind": "Config",
@@ -516,7 +522,7 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
                     },
                 }
             ],
-            "users": [{"name": user_id, "user": {"token": settings.PRIVATE_CLUSTERS[cluster_apis[cluster_id]]}}],
+            "users": [{"name": user_id, "user": {"token": token}}],
         }
 
     else:
