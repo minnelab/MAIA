@@ -310,7 +310,7 @@ for root, dirs, files in os.walk(MOUNT_DIR):
     for file in files:
         if file.endswith(".yaml") or file.endswith(".yml"):
             with open(os.path.join(root, file)) as v_file:
-                v_file = yaml.safe_load(v_file)
+                v_file = yaml.load(v_file)
 
                 if "maia_dashboard" in v_file and v_file["maia_dashboard"]["enabled"]:
                     if "services" in v_file:
@@ -330,7 +330,7 @@ for root, dirs, files in os.walk(MOUNT_DIR):
                         PRIVATE_CLUSTERS[v_file["api"]] = v_file["maia_dashboard"]["token"]
         if file.endswith(".yaml"):
             with open(os.path.join(root, file)) as v_file:
-                v_file = yaml.safe_load(v_file)
+                v_file = yaml.load(v_file)
                 if "gpu_specs" in v_file:
                     for gpu in v_file["gpu_specs"]:
                         if gpu not in GPU_SPECS:
