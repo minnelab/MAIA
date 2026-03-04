@@ -399,7 +399,6 @@ def deploy_maia_toolkit_api(
     try:
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
         hydra.core.global_hydra.GlobalHydra.instance().clear()
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     cfg = hydra_compose("values.yaml")

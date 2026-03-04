@@ -336,7 +336,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 secure = os.environ["MINIO_SECURE"]
         else:
             secure = True
-        if "minio_env_name" not in user_form:
+        if "minio_env_name" not in user_form or user_form["minio_env_name"] is None:
             minio_env_name = team_id + "_env"
         else:
             minio_env_name = user_form["minio_env_name"]
