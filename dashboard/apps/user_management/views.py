@@ -513,7 +513,7 @@ class ProjectChartValuesAPIView(APIView):
             "minio_env_name": env_file,
         }
         if auto_deploy:
-            kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster, settings=env_settings)
+            kubeconfig_dict = generate_kubeconfig(id_token, username, "default", cluster, settings=env_settings, in_local_cluster_token=True)
             config.load_kube_config_from_dict(kubeconfig_dict)
             with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
                 yaml.dump(kubeconfig_dict, f)

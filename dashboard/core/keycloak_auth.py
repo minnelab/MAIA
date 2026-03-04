@@ -98,7 +98,7 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Unknown key ID")
         KEYCLOAK_REALM = settings.OIDC_REALM_NAME
         KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
-        KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
+        KEYCLOAK_CLIENT_ID = settings.OIDC_RP_PUBLIC_CLIENT_ID
         try:
             payload = jwt.decode(
                 token,
