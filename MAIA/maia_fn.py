@@ -663,6 +663,9 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         "orthanc_node_port": orthanc_port,
         "serviceType": "NodePort",
     }
+    
+    if cluster_config["shared_storage_class"] == "local-path":
+        orthanc_config["pvc"]["access_mode"] = "ReadWriteOnce"
 
     enable_mysql = True
     if enable_mysql:
