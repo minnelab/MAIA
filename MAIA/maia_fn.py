@@ -64,8 +64,12 @@ def copy_certificate_authority_secret(
     try:
         secret = api.read_namespaced_secret(name=source_secret_name, namespace=source_namespace)
     except ApiException as e:
-        logger.error(f"Exception when calling CoreV1Api->read_namespaced_secret: {e}")
-        return None
+        if e.status == 409:
+            logger.debug(f"Secret {source_secret_name} already exists in namespace {source_namespace}, skipping creation.")
+            return None
+        else:
+            logger.error(f"Exception when calling CoreV1Api->read_namespaced_secret: {e}")
+            return None
     try:
         api.create_namespaced_secret(
             namespace=namespace,
