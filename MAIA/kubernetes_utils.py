@@ -9,7 +9,7 @@ from minio import Minio
 import kubernetes
 import requests
 import yaml
-from kubernetes import config
+from kubernetes import config, client
 from kubernetes.client.rest import ApiException
 from loguru import logger
 import urllib3
@@ -1234,3 +1234,71 @@ def retrieve_json_key_for_maia_registry_authentication(request, cluster_id, sett
         os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
 
         return retrieve_json_key_for_maia_registry_authentication_from_context(namespace, secret_name, registry_url)
+
+
+def create_maia_rbac(request, cluster_id, settings, namespace):
+    id_token = request.session.get("oidc_id_token")
+    kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
+    config.load_kube_config_from_dict(kubeconfig_dict)
+    with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
+        yaml.dump(kubeconfig_dict, f)
+        os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
+
+        return create_maia_rbac_from_context(namespace)
+
+
+def create_maia_rbac_from_context(namespace):
+    rbac_api = client.RbacAuthorizationV1Api()
+    role = client.V1Role(
+        metadata=client.V1ObjectMeta(
+            name="maia-namespace-role",
+            namespace=namespace
+        ),
+        rules=[
+            client.V1PolicyRule(
+                api_groups=[""],
+                resources=["secrets", "services"],
+                verbs=["list", "create", "patch", "update", "get"]
+            )
+        ]
+    )
+
+    try:
+        print(f"Creating Role 'maia-namespace-role' in namespace '{namespace}'...")
+        rbac_api.create_namespaced_role(namespace=namespace, body=role)
+        print("Role created successfully.\n")
+    except ApiException as e:
+        if e.status == 409:
+            print("Role already exists. Skipping creation.\n")
+        else:
+            print(f"Failed to create Role: {e}\n")
+
+    # --- 2. Define and Create the RoleBinding ---
+    role_binding = client.V1RoleBinding(
+        metadata=client.V1ObjectMeta(
+            name="maia-namespace-role-binding",
+            namespace=namespace
+        ),
+        subjects=[
+            client.V1Subject(
+                kind="ServiceAccount",
+                name="default",
+                namespace="maia-dashboard"
+            )
+        ],
+        role_ref=client.V1RoleRef(
+            kind="Role",
+            name="maia-namespace-role",
+            api_group="rbac.authorization.k8s.io"
+        )
+    )
+
+    try:
+        print(f"Creating RoleBinding 'maia-namespace-role-binding' in namespace '{namespace}'...")
+        rbac_api.create_namespaced_role_binding(namespace=namespace, body=role_binding)
+        print("RoleBinding created successfully.\n")
+    except ApiException as e:
+        if e.status == 409:
+            print("RoleBinding already exists. Skipping creation.\n")
+        else:
+            print(f"Failed to create RoleBinding: {e}\n")

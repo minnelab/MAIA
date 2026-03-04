@@ -27,7 +27,7 @@ from MAIA.dashboard_utils import (
     get_pending_projects,
     upload_env_file_to_minio,
 )
-from MAIA.kubernetes_utils import create_namespace, create_namespace_from_context
+from MAIA.kubernetes_utils import create_namespace, create_namespace_from_context, create_maia_rbac_from_context, create_maia_rbac
 from rest_framework.response import Response
 from types import SimpleNamespace
 from MAIA.notifications import send_email_user_registration_to_group
@@ -519,6 +519,7 @@ class ProjectChartValuesAPIView(APIView):
                 yaml.dump(kubeconfig_dict, f)
                 os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
                 create_namespace_from_context(namespace_id=group_id.lower().replace("_", "-"))
+                create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
         values = deploy_project(
             group_id,
             id_token,
@@ -1049,7 +1050,7 @@ def deploy_view(request, group_id):
     project_form_dict, cluster_id = get_project(group_id, settings=env_settings, maia_project_model=MAIAProject)
     namespace = project_form_dict["group_ID"].lower().replace("_", "-")
     create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=env_settings)
-
+    create_maia_rbac(request=request, cluster_id=cluster_id, namespace=namespace, settings=env_settings)
     disable_argocd = False
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":
         disable_argocd = True
