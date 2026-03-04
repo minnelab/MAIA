@@ -203,6 +203,11 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "annotations": {},
             "tls": [{"hosts": [hub_address]}],
         },
+        "proxy": {
+            "service": {
+                "type": "ClusterIP",
+            }
+        },
         "hub": {
             "config": {
                 "GenericOAuthenticator": {
