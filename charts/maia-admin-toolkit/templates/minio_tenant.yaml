@@ -14,8 +14,8 @@ spec:
       type: Opaque
   {{- end }}
   exposeServices:
-    console: true
-    minio: true
+    console: false
+    minio: false
   features:
     domains:
       console: https://{{ .Values.minio.consoleDomain }}

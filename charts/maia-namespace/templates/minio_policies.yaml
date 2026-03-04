@@ -22,7 +22,12 @@ spec:
         - |
           # Configure alias to the MinIO Service
           # Service name is usually just the tenant name
-          mc alias set myminio http://minio.{{ .Values.minio.namespace }}.svc.cluster.local:80 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD;
+          echo "Setting alias to the MinIO Service";
+          # Try until mc alias set works. Sleep 10 seconds between retries.
+          until mc alias set myminio http://minio.{{ .Values.minio.namespace }}.svc.cluster.local:80 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+            echo "Failed to set MinIO alias, retrying in 10 seconds...";
+            sleep 10;
+          done
           
           # Create the policy file
           echo '{

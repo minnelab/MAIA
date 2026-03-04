@@ -12,8 +12,8 @@ spec:
   #credsSecret:
   #  name: storage-user
   exposeServices:
-    console: true
-    minio: true
+    console: false
+    minio: false
   features:
     domains:
       console: {{ .Values.minio.consoleDomain }}

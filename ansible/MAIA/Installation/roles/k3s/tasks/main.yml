@@ -61,5 +61,20 @@
   register: k3s_status_wait
   changed_when: false
 
+- name: Get all traefik-related helmchart resources in kube-system
+  ansible.builtin.shell: |
+    k3s kubectl get helmchart -n kube-system -o name | grep -E '^helmchart\.traefik|^helmchart\.traefik-crd'
+  register: traefik_helmcharts_found
+  changed_when: false
+  ignore_errors: true
+
+- name: Delete traefik helmchart resources if any found
+  ansible.builtin.shell: |
+    {% for chart in traefik_helmcharts_found.stdout_lines %}
+    k3s kubectl delete {{ chart }} -n kube-system
+    rm -rf /var/lib/rancher/k3s/server/manifests/traefik.yaml
+    {% endfor %}
+  when: traefik_helmcharts_found.stdout != ""
+  ignore_errors: true
 - name: Run additional k3s connect tasks
   import_tasks: connect.yml

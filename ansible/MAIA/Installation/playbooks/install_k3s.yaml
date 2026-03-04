@@ -5,8 +5,8 @@
     PATH: "/snap/bin:{{ ansible_env.PATH }}"
   vars:
     kubernetes_kubectl_cmd: "k3s kubectl"
-    kubernetes_ca_crt_path: /var/lib/k3s/server/tls/server-ca.crt
-    kubernetes_ca_key_path: /var/lib/k3s/server/tls/server-ca.key
+    kubernetes_ca_crt_path: /var/lib/rancher/k3s/server/tls/server-ca.crt
+    kubernetes_ca_key_path: /var/lib/rancher/k3s/server/tls/server-ca.key
 
   roles:
     - role: maia.installation.k3s
