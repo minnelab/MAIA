@@ -666,6 +666,8 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                             if path["backend"]["service"]["name"] == namespace + "-orthanc-svc":
 
                                 maia_workspace_apps["orthanc"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["orthanc"] += "/"
                                 maia_workspace_apps["ohif"] = "https://" + rule["host"] + path["path"] + "/ohif/"
 
                             if "port" in path["backend"]["service"] and "name" in path["backend"]["service"]["port"]:
@@ -692,10 +694,14 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 "mlflow"
                             ):
                                 maia_workspace_apps["mlflow"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["mlflow"] += "/"
                             if path["backend"]["service"]["name"] == namespace + "-mlflow-mkg" and path["path"].endswith(
                                 "minio-console"
                             ):
                                 maia_workspace_apps["minio_console"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["minio_console"] += "/"
 
                 for service in services["items"]:
                     for port in service["spec"]["ports"]:
