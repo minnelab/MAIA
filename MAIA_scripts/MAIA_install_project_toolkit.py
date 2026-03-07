@@ -22,11 +22,6 @@ from pyhelm3 import Client
 
 import MAIA
 from MAIA.maia_admin import (
-    create_filebrowser_values,
-    create_maia_namespace_values,
-    generate_minio_configs,
-    generate_mlflow_configs,
-    generate_mysql_configs,
     get_maia_toolkit_apps,
     install_maia_project,
 )
@@ -34,6 +29,11 @@ from MAIA.maia_fn import (
     deploy_mlflow,
     deploy_mysql,
     deploy_orthanc,
+    create_filebrowser_values,
+    create_maia_namespace_values,
+    generate_minio_configs,
+    generate_mlflow_configs,
+    generate_mysql_configs,
     copy_certificate_authority_secret,
 )
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api

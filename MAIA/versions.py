@@ -295,7 +295,7 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_MLFLOW_IMAGE_VERSION") is not None:
         maia_mlflow_image_version = os.environ.get("MAIA_MLFLOW_IMAGE_VERSION")
     else:
-        maia_mlflow_image_version = "1.0"
+        maia_mlflow_image_version = "1.1"
 
     if os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION") is not None:
         maia_filebrowser_image_version = os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION")

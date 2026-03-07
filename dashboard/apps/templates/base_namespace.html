@@ -102,13 +102,13 @@
                                     {% endif %}
                                 </div>
                                 <div class="col-md-3 col-sm-6 mb-4">
-                                    {% if maia_workspace_ingress.label_studio != "N/A" %}
-                                    <a href="{{ maia_workspace_ingress.label_studio }}" class="icon-link">
-                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/label-studio.svg" alt="" class="img-fluid icon-button"/>
+                                    {% if maia_workspace_ingress.filebrowser != "N/A" %}
+                                    <a href="{{ maia_workspace_ingress.filebrowser }}" class="icon-link">
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/FileBrowser_Logo.png" alt="" class="img-fluid icon-button"/>
                                     </a>
                                     {% else %}
                                     <a href="N/A" class="icon-link" style="pointer-events: none; opacity: 0.5;"></a>
-                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/label-studio.svg" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
+                                        <img src="{{ ASSETS_ROOT }}/img/MAIA/FileBrowser_Logo.png" alt="" class="img-fluid icon-button" style="filter: grayscale(100%);"/>
                                     </a>
                                     {% endif %}
                                 </div>
