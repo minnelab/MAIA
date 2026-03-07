@@ -1,29 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
 import os
 import subprocess
 from pathlib import Path
-from secrets import token_urlsafe
 import requests
 from loguru import logger
 import yaml
-from kubernetes import client, config
 from omegaconf import OmegaConf
 from pyhelm3 import Client
 
-from MAIA.maia_fn import (
-    generate_human_memorable_password
-)
+from MAIA.maia_fn import generate_human_memorable_password
 from MAIA.maia_k8s_distros import get_api_port
 from MAIA.versions import (
     define_maia_admin_versions,
     define_maia_project_versions,
     define_docker_image_versions,
 )
-
 
 maia_workspace_notebook_ssh_addons_image_version = define_docker_image_versions()["maia-workspace-notebook-ssh-addons"]
 maia_workspace_notebook_ssh_addons_image_name = define_docker_image_versions()["maia-workspace-notebook-ssh-addons-image-name"]
