@@ -340,7 +340,7 @@ def deploy_oauth2_proxy(cluster_config, user_config, config_folder=None):
         "oidc_groups_claim": "groups",
         "skip_jwt_bearer_tokens": True,
         "oidc_email_claim": "email",
-        "allowed_groups": ["MAIA:" + user_config["group_ID"], os.environ.get('admin_group_ID', 'MAIA:admin')],
+        "allowed_groups": ["MAIA:" + user_config["group_ID"], os.environ.get("admin_group_ID", "MAIA:admin")],
         "scope": "openid email profile",
         "redirect_url": "https://{}.{}/oauth2/callback".format(user_config["group_subdomain"], cluster_config["domain"]),
         "email_domains": ["*"],
@@ -685,7 +685,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
     image_pull_secret = os.environ.get("imagePullSecrets", None)
     if "imagePullSecrets_" + namespace in os.environ:
         image_pull_secret = os.environ["imagePullSecrets_" + namespace]
-        
+
     if "ORTHANC_CPU_REQUEST_" + namespace in os.environ:
         cpu_request = os.environ["ORTHANC_CPU_REQUEST_" + namespace]
     else:
@@ -694,7 +694,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         cpu_limit = os.environ["ORTHANC_CPU_LIMIT_" + namespace]
     else:
         cpu_limit = os.environ.get("ORTHANC_CPU_LIMIT", "4000m")
-        
+
     if "ORTHANC_MEMORY_REQUEST_" + namespace in os.environ:
         memory_request = os.environ["ORTHANC_MEMORY_REQUEST_" + namespace]
     else:
@@ -720,7 +720,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         "orthanc_node_port": orthanc_port,
         "serviceType": "NodePort",
     }
-    
+
     if cluster_config["shared_storage_class"] == "local-path":
         orthanc_config["pvc"]["access_mode"] = "ReadWriteOnce"
 

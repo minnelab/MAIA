@@ -21,8 +21,6 @@ from pyhelm3 import Client
 import MAIA
 from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import (
-    
-    
     install_maia_project,
 )
 from MAIA.maia_k8s_distros import get_ingress_class

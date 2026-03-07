@@ -6,7 +6,6 @@ Copyright (c) 2019 - present AppSeed.us
 import os
 import environ
 import yaml
-print(yaml.__file__)
 from MAIA.versions import define_maia_admin_versions
 
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]

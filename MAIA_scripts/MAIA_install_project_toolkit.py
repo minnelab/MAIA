@@ -197,9 +197,13 @@ def deploy_maia_toolkit_api(
     mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
 
     if not minimal:
-        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
+        minio_configs = generate_minio_configs(
+            namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict
+        )
 
-        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
+        mysql_configs = generate_mysql_configs(
+            namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict
+        )
 
         project_form_dict["minio_access_key"] = minio_configs["console_access_key"]
         project_form_dict["minio_secret_key"] = minio_configs["console_secret_key"]
@@ -398,7 +402,7 @@ def deploy_maia_toolkit_api(
 
     try:
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
-    except Exception as e:
+    except Exception:
         hydra.core.global_hydra.GlobalHydra.instance().clear()
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     cfg = hydra_compose("values.yaml")

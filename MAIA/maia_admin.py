@@ -438,7 +438,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         "loadBalancerIp": cluster_config.get("maia_metallb_ip", False),
         "storageClass": cluster_config["storage_class"],
     }
-    
+
     if cluster_config["shared_storage_class"] == "local-path":
         maia_namespace_values["pvc"]["access_mode"] = "ReadWriteOnce"
 
@@ -486,7 +486,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
             "storageClassName": cluster_config["storage_class"],
             "storageSize": "10Gi",
-            "admin_group_ID": os.environ.get('admin_group_ID', 'MAIA:admin'),
+            "admin_group_ID": os.environ.get("admin_group_ID", "MAIA:admin"),
             "accessKey": minio_configs["access_key"],
             "secretKey": minio_configs["secret_key"],
             "clientId": os.environ["OIDC_RP_CLIENT_ID"],
@@ -1643,7 +1643,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     # GPU Configuration
     maia_dashboard_values["gpuList"] = os.environ.get("gpu_list", [])
-    
+
     # MAIA Projects Configuration
     if "maia_projects" in os.environ:
         projects = os.environ["maia_projects"].split(",")
@@ -1780,6 +1780,7 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         "version": maia_dashboard_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
     }
+
 
 def create_rancher_values(config_folder, project_id, cluster_config_dict):
     """

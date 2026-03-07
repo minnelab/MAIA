@@ -200,11 +200,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "annotations": {},
             "tls": [{"hosts": [hub_address]}],
         },
-        "proxy": {
-            "service": {
-                "type": "ClusterIP"
-            }
-        },
+        "proxy": {"service": {"type": "ClusterIP"}},
         "hub": {
             "config": {
                 "GenericOAuthenticator": {
@@ -214,7 +210,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "userdata_params": {"state": "state"},
                     "claim_groups_key": "groups",
                     "allowed_groups": [f"MAIA:{team_id}"],
-                    "admin_groups": [os.environ.get('admin_group_ID', 'MAIA:admin')],
+                    "admin_groups": [os.environ.get("admin_group_ID", "MAIA:admin")],
                 },
                 "JupyterHub": {
                     "admin_access": True,
@@ -276,9 +272,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         jh_template["singleuser"]["extraEnv"]["SELKIES_BASIC_AUTH_PASSWORD"] = user_form["password"]
 
     if "allow_ssh_password_authentication" in user_form:
-        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = user_form[
-            "allow_ssh_password_authentication"
-        ]
+        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = user_form["allow_ssh_password_authentication"]
 
     if cluster_config.get("selfsigned", False):
         jh_template["hub"]["extraVolumes"] = [
@@ -694,7 +688,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         "hook": {"enabled": False},
         "continuous": {"enabled": False},
     }
-    
+
     jh_helm_template["resource"]["helm_release"]["jupyterhub"]["values"] = [yaml.dump(jh_template)]
     chart_info = {}
     chart_info["chart_name"] = jh_helm_template["resource"]["helm_release"]["jupyterhub"]["chart"]

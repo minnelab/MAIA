@@ -2,6 +2,8 @@ from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from django.contrib.auth.models import Group
 
 from django.conf import settings
+
+
 class HoneyCombOIDCAB(OIDCAuthenticationBackend):
     def verify_claims(self, claims):
         verified = super(HoneyCombOIDCAB, self).verify_claims(claims)

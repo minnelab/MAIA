@@ -1256,17 +1256,12 @@ def create_maia_rbac(request, cluster_id, settings, namespace):
 def create_maia_rbac_from_context(namespace):
     rbac_api = client.RbacAuthorizationV1Api()
     role = client.V1Role(
-        metadata=client.V1ObjectMeta(
-            name="maia-namespace-role",
-            namespace=namespace
-        ),
+        metadata=client.V1ObjectMeta(name="maia-namespace-role", namespace=namespace),
         rules=[
             client.V1PolicyRule(
-                api_groups=[""],
-                resources=["secrets", "services"],
-                verbs=["list", "create", "patch", "update", "get"]
+                api_groups=[""], resources=["secrets", "services"], verbs=["list", "create", "patch", "update", "get"]
             )
-        ]
+        ],
     )
 
     try:
@@ -1281,22 +1276,9 @@ def create_maia_rbac_from_context(namespace):
 
     # --- 2. Define and Create the RoleBinding ---
     role_binding = client.V1RoleBinding(
-        metadata=client.V1ObjectMeta(
-            name="maia-namespace-role-binding",
-            namespace=namespace
-        ),
-        subjects=[
-            client.RbacV1Subject(
-                kind="ServiceAccount",
-                name="default",
-                namespace="maia-dashboard"
-            )
-        ],
-        role_ref=client.V1RoleRef(
-            kind="Role",
-            name="maia-namespace-role",
-            api_group="rbac.authorization.k8s.io"
-        )
+        metadata=client.V1ObjectMeta(name="maia-namespace-role-binding", namespace=namespace),
+        subjects=[client.RbacV1Subject(kind="ServiceAccount", name="default", namespace="maia-dashboard")],
+        role_ref=client.V1RoleRef(kind="Role", name="maia-namespace-role", api_group="rbac.authorization.k8s.io"),
     )
 
     try:

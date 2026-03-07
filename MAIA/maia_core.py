@@ -969,6 +969,7 @@ def create_gpu_booking_values(config_folder, project_id):
         "chart": gpu_booking_values["chart_name"] if gpu_booking_chart_type == "helm_repo" else gpu_booking_values["path"],
     }
 
+
 def create_loginapp_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes the loginapp values configuration file for a given project and cluster configuration.
@@ -1077,6 +1078,7 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
         "version": loginapp_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "loginapp_values", "loginapp_values.yaml")),
     }
+
 
 def create_minio_operator_values(config_folder, project_id):
     """
