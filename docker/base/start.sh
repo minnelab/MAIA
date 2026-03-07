@@ -28,7 +28,7 @@ else
 fi
 
 
-python3 /workspace/generate_user_environment.py --user $user --password "$password" --authorized-keys "$ssh_publickey" --run-file-browser $RUN_FILEBROWSER --run-mlflow-server $RUN_MLFLOW_SERVER
+python3 /workspace/generate_user_environment.py --user $user --password "$password" --authorized-keys "$ssh_publickey" --run-file-browser $RUN_FILEBROWSER --run-mlflow-server $RUN_MLFLOW_SERVER &
 
 if [ $RUN_FILEBROWSER == "True" ]
 then
