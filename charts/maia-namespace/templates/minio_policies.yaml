@@ -1,4 +1,5 @@
-{{- if .Values.minio.enabled and .Values.minio.inject_policies }}
+{{- if .Values.minio.enabled }}
+{{- if .Values.minio.inject_policies }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -45,4 +46,5 @@ spec:
           
           echo "Setup complete.";
       restartPolicy: OnFailure
+{{- end }}
 {{- end }}
