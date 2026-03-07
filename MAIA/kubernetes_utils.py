@@ -702,7 +702,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 maia_workspace_apps["minio_console"] = "https://" + rule["host"] + path["path"]
                                 if not path["path"].endswith("/"):
                                     maia_workspace_apps["minio_console"] += "/"
-                            if path["backend"]["service"]["name"] == namespace + "-filebrowser":
+                            if path["backend"]["service"]["name"] == namespace + "-filebrowser-maia-filebrowser":
                                 maia_workspace_apps["filebrowser"] = "https://" + rule["host"] + path["path"]
                                 if not path["path"].endswith("/"):
                                     maia_workspace_apps["filebrowser"] += "/"
