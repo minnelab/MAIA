@@ -27,20 +27,36 @@ else
     ssh_publickey=${ssh_publickey%?}
 fi
 
-if [ $RUN_MLFLOW_SERVER == "True" ]
-then
-    envsubst '${NAMESPACE} ${MLFLOW_PATH} ${MINIO_CONSOLE_PATH}' < /etc/default.template > default
-    sudo mv default /etc/nginx/sites-enabled/
-    sudo nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
-fi
-
-
 
 python3 /workspace/generate_user_environment.py --user $user --password "$password" --authorized-keys "$ssh_publickey" --run-file-browser $RUN_FILEBROWSER --run-mlflow-server $RUN_MLFLOW_SERVER
 
 if [ $RUN_FILEBROWSER == "True" ]
 then
     filebrowser -r /home -c /config/settings.json -d /database/filebrowser.db &
+fi
+
+if [ $RUN_MLFLOW_SERVER == "True" ]
+then
+    envsubst '${MLFLOW_PATH}' < /etc/default.template > default
+    sudo mv default /etc/nginx/sites-enabled/
+    if [ $RUN_MINIO_PROXY == "True" ]
+    then
+        envsubst '${NAMESPACE} ${MINIO_CONSOLE_PATH}' < /etc/minio.conf.template > minio.conf
+        sudo mv minio.conf /etc/nginx/sites-enabled/
+        echo "Waiting for MinIO Console at http://${NAMESPACE}-console:9090/ to become active..."
+    
+        # Loop until curl successfully connects to the endpoint
+        # -s: silent, -o /dev/null: hide output, -m 2: max 2 seconds per try
+        while ! curl -s -m 2 -o /dev/null http://${NAMESPACE}-console:9090/; do
+            echo "MinIO Console is unavailable - sleeping for 2 seconds..."
+            sleep 2
+        done
+        echo "MinIO Console is up and responding!"
+    fi
+
+    
+
+    sudo nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
 fi
 
 rm generate_user_environment.py
