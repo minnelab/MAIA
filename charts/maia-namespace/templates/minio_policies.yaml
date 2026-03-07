@@ -1,4 +1,4 @@
-{{- if .Values.minio.enabled }}
+{{- if .Values.minio.enabled and .Values.minio.inject_policies }}
 apiVersion: batch/v1
 kind: Job
 metadata:

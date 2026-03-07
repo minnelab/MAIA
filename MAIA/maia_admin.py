@@ -483,6 +483,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     if minio_configs:
         maia_namespace_values["minio"] = {
             "enabled": True,
+            "inject_policies": False,
             "consoleDomain": "https://{}.{}/minio-console".format(namespace_config["group_subdomain"], cluster_config["domain"]),
             "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
             "storageClassName": cluster_config["storage_class"],
