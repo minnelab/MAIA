@@ -154,9 +154,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
     if "gpu_request" in user_form:
         gpu_request = int(user_form["gpu_request"])
 
-    if "gpu_request" in cluster_config:
-        gpu_request = int(cluster_config["gpu_request"])
-
     domain = cluster_config["domain"]
 
     if "url_type" in cluster_config:
@@ -167,7 +164,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         else:
             hub_address = None
 
-    admins = cluster_config.get("admins", [])
+    admins = user_form.get("admins", [])
 
     # Used for CIFS mount
     extra_host_volumes = []
@@ -205,7 +202,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         },
         "proxy": {
             "service": {
-                "type": "ClusterIP",
+                "type": "ClusterIP"
             }
         },
         "hub": {
@@ -217,7 +214,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "userdata_params": {"state": "state"},
                     "claim_groups_key": "groups",
                     "allowed_groups": [f"MAIA:{team_id}"],
-                    "admin_groups": [os.environ.get('admin_group_ID', 'admin')"],
+                    "admin_groups": [os.environ.get('admin_group_ID', 'MAIA:admin')],
                 },
                 "JupyterHub": {
                     "admin_access": True,
@@ -274,12 +271,12 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "ca_certs": "/usr/local/share/ca-certificates/kubernetes-ca.crt"
         }
 
-    if "password" in cluster_config:
-        jh_template["singleuser"]["extraEnv"]["PASSWD"] = cluster_config["password"]
-        jh_template["singleuser"]["extraEnv"]["SELKIES_BASIC_AUTH_PASSWORD"] = cluster_config["password"]
+    if "password" in user_form:
+        jh_template["singleuser"]["extraEnv"]["PASSWD"] = user_form["password"]
+        jh_template["singleuser"]["extraEnv"]["SELKIES_BASIC_AUTH_PASSWORD"] = user_form["password"]
 
-    if "allow_ssh_password_authentication" in cluster_config:
-        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = cluster_config[
+    if "allow_ssh_password_authentication" in user_form:
+        jh_template["singleuser"]["extraEnv"]["ALLOW_PASSWORD_AUTHENTICATION"] = user_form[
             "allow_ssh_password_authentication"
         ]
 
@@ -315,10 +312,10 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             jh_template["singleuser"]["extraEnv"]["MINIO_SECRET_KEY"]
         ).decode("utf-8")
 
-    jh_template["hub"]["activeServerLimit"] = cluster_config.get("active_server_limit", 1)
-    jh_template["hub"]["concurrentSpawnLimit"] = cluster_config.get("concurrent_spawn_limit", 1)
+    jh_template["hub"]["activeServerLimit"] = user_form.get("active_server_limit", 1)
+    jh_template["hub"]["concurrentSpawnLimit"] = user_form.get("concurrent_spawn_limit", 1)
 
-    shared_server_user = cluster_config.get("shared_server_user", "user@maia.se")
+    shared_server_user = user_form.get("shared_server_user", "user@maia.se")
     jh_template["hub"]["loadRoles"] = {
         "user": {
             "description": "Allow users to access the shared server in addition to default perms",
@@ -690,8 +687,8 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         for id, _ in enumerate(jh_template["singleuser"]["profileList"]):
             jh_template["singleuser"]["profileList"][id]["kubespawner_override"]["service_account"] = "secret-writer"
 
-    if "jupyterhub_extraEnv" in cluster_config:
-        for env_key, env_value in cluster_config["jupyterhub_extraEnv"].items():
+    if "jupyterhub_extraEnv" in user_form:
+        for env_key, env_value in user_form["jupyterhub_extraEnv"].items():
             jh_template["singleuser"]["extraEnv"][env_key] = env_value
     jh_template["prePuller"] = {
         "hook": {"enabled": False},

@@ -528,7 +528,7 @@ class ProjectChartValuesAPIView(APIView):
             project_form_dict,
             disable_argocd=not auto_deploy,
             return_values_only=not auto_deploy,
-            custom_config_dict=project_configuration,
+            custom_project_dict=project_configuration,
             use_in_local_cluster_token=True,
         )
         if auto_deploy:
@@ -927,7 +927,7 @@ def deploy_project(
     project_form_dict,
     disable_argocd=False,
     return_values_only=False,
-    custom_config_dict=None,
+    custom_project_dict=None,
     use_in_local_cluster_token=False,
 ):
     argocd_cluster_id = env_settings.ARGOCD_CLUSTER
@@ -1028,7 +1028,7 @@ def deploy_project(
             minimal=(project_form_dict["project_tier"] == "Base"),
             no_argocd=disable_argocd,
             return_values_only=return_values_only,
-            custom_config_dict=custom_config_dict,
+            custom_project_dict=custom_project_dict,
         )
         return {"status": 200, "message": msg}
 

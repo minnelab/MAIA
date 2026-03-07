@@ -12,9 +12,6 @@
   set_fact:
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
-- name: Extract rancher_password from cluster config
-  set_fact:
-    rancher_password: "{{ (cluster_config_content.content | b64decode | from_yaml).rancher_password }}"
 - name: Get Rancher token
   ansible.builtin.shell:
     cmd: |

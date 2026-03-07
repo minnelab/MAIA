@@ -21,8 +21,8 @@ from pyhelm3 import Client
 import MAIA
 from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import (
-    create_loginapp_values,
-    create_minio_operator_values,
+    
+    
     install_maia_project,
 )
 from MAIA.maia_k8s_distros import get_ingress_class
@@ -32,8 +32,10 @@ from MAIA.maia_core import (
     create_gpu_booking_values,
     create_gpu_operator_values,
     create_ingress_nginx_values,
+    create_minio_operator_values,
     create_loki_values,
     create_metallb_values,
+    create_loginapp_values,
     create_nfs_server_provisioner_values,
     create_prometheus_values,
     create_tempo_values,

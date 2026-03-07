@@ -77,6 +77,9 @@
     minio_root_password: "{{ minio_root_password }}"
     dashboard_api_secret: "{{ dashboard_api_secret }}"
     mysql_dashboard_password: "{{ mysql_dashboard_password }}"
+    keycloak_admin_password: "{{ keycloak_admin_password }}"
+    rancher_token: "{{ rancher_token }}"
+    rancher_password: "{{ rancher_password }}"
   register: maia_install_admin_output
   delegate_to: localhost
 

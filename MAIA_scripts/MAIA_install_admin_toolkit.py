@@ -27,8 +27,8 @@ from MAIA.maia_admin import (
     create_maia_admin_toolkit_values,
     create_maia_dashboard_values,
     install_maia_project,
+    create_rancher_values,
 )
-from MAIA.maia_core import create_rancher_values
 
 version = MAIA.__version__
 

@@ -707,7 +707,7 @@ The `configure_oidc_authentication.yaml` playbook runs the `configure_oidc_authe
 Rancher OIDC Preparation
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Description**: Reads the cluster configuration, extracts the `domain` and `rancher_password`, logs into Rancher at `https://mgmt.domain`, obtains a token, and accepts the Rancher EULA. This is a prerequisite step before enabling full OIDC integration with Keycloak.
+**Description**: Reads the cluster configuration, extracts the `domain`, logs into Rancher at `https://mgmt.domain`, obtains a token, and accepts the Rancher EULA. This is a prerequisite step before enabling full OIDC integration with Keycloak.
 
 **Use Cases**:
 - Initial Rancher bootstrap for MAIA clusters
@@ -750,7 +750,7 @@ The `get_kubeconfig_from_rancher_local.yaml` playbook performs the following ste
 Obtain Rancher API Token
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Description**: Reads the cluster configuration, extracts `domain` and `rancher_password`, and uses them to call the Rancher public login endpoint at `https://mgmt.domain` to obtain an authentication token. The token is stored in the cluster configuration file as `rancher_token`.
+**Description**: Reads the cluster configuration, extracts `domain`, and uses them to call the Rancher public login endpoint at `https://mgmt.domain` to obtain an authentication token. The token is stored in the env.json file as `rancher_token`.
 
 **Use Cases**:
 - Authenticating to Rancher without manual UI interaction
@@ -789,7 +789,7 @@ Generate and Save Kubeconfig
 Write Rancher Token to Cluster Config
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Description**: Writes the Rancher token to the cluster configuration file.
+**Description**: Writes the Rancher token to the env.json file.
 
 **Use Cases**:
 - Providing a Rancher token for subsequent operations

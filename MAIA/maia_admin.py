@@ -24,7 +24,6 @@ from MAIA.maia_fn import (
 from MAIA.maia_k8s_distros import get_api_port
 from MAIA.versions import (
     define_maia_admin_versions,
-    define_maia_core_versions,
     define_maia_project_versions,
     define_docker_image_versions,
 )
@@ -42,10 +41,9 @@ maia_filebrowser_chart_type = define_maia_project_versions()["maia_filebrowser_c
 maia_orthanc_image_version = define_docker_image_versions()["maia-orthanc"]
 admin_toolkit_chart_version = define_maia_admin_versions()["admin_toolkit_chart_version"]
 admin_toolkit_chart_type = define_maia_admin_versions()["admin_toolkit_chart_type"]
+rancher_chart_version = define_maia_admin_versions()["rancher_chart_version"]
 harbor_chart_version = define_maia_admin_versions()["harbor_chart_version"]
 keycloak_chart_version = define_maia_admin_versions()["keycloak_chart_version"]
-loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
-minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
 maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_chart_version"]
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
@@ -54,7 +52,7 @@ mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
 
 
-def generate_minio_configs(namespace, config_dict=None):
+def generate_minio_configs(namespace, project_config_dict=None):
     """
     Generate configuration settings for MinIO.
 
@@ -62,7 +60,7 @@ def generate_minio_configs(namespace, config_dict=None):
     ----------
     namespace : int or str
         The unique identifier for the project.
-    config_dict : dict, optional
+    project_config_dict : dict, optional
         A dictionary containing the custom configuration for the MinIO.
     Returns
     -------
@@ -94,8 +92,8 @@ def generate_minio_configs(namespace, config_dict=None):
         ),
     }
 
-    if config_dict:
-        for key, value in config_dict.items():
+    if project_config_dict:
+        for key, value in project_config_dict.items():
             if key == "minio_user":
                 minio_configs["access_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
             if key == "minio_password":
@@ -165,7 +163,7 @@ def get_minio_config_if_exists(project_id):
     return minio_configs
 
 
-def generate_mlflow_configs(namespace, config_dict=None):
+def generate_mlflow_configs(namespace, project_config_dict=None):
     """
     Generate MLflow configuration dictionary with encoded user and password.
 
@@ -174,7 +172,7 @@ def generate_mlflow_configs(namespace, config_dict=None):
     namespace : str
         The namespace to be encoded as the MLflow user.
 
-    config_dict : dict, optional
+    project_config_dict : dict, optional
         A dictionary containing the custom configuration for the MLflow.
     Returns
     -------
@@ -195,8 +193,8 @@ def generate_mlflow_configs(namespace, config_dict=None):
             else base64.b64encode(token_urlsafe(16).replace("-", "_").encode("ascii")).decode("ascii")
         ),
     }
-    if config_dict:
-        for key, value in config_dict.items():
+    if project_config_dict:
+        for key, value in project_config_dict.items():
             if key == "mlflow_user":
                 mlflow_configs["mlflow_user"] = base64.b64encode(value.encode("ascii")).decode("ascii")
             if key == "mlflow_password":
@@ -259,7 +257,7 @@ def get_mlflow_config_if_exists(project_id):
     return mlflow_configs
 
 
-def generate_mysql_configs(namespace, config_dict=None):
+def generate_mysql_configs(namespace, project_config_dict=None):
     """
     Generate MySQL configuration dictionary.
 
@@ -268,7 +266,7 @@ def generate_mysql_configs(namespace, config_dict=None):
     namespace : str
         The namespace to be used as the MySQL user.
 
-    config_dict : dict, optional
+    project_config_dict : dict, optional
         A dictionary containing the custom configuration for the MySQL.
 
     Returns
@@ -288,8 +286,8 @@ def generate_mysql_configs(namespace, config_dict=None):
         ),
     }
 
-    if config_dict:
-        for key, value in config_dict.items():
+    if project_config_dict:
+        for key, value in project_config_dict.items():
             if key == "mysql_user":
                 mysql_configs["mysql_user"] = value
             if key == "mysql_password":
@@ -444,8 +442,8 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     if cluster_config["shared_storage_class"] == "local-path":
         maia_namespace_values["pvc"]["access_mode"] = "ReadWriteOnce"
 
-    if cluster_config.get("ip_whitelist", None) and cluster_config["ssh_port_type"] == "LoadBalancer":
-        maia_namespace_values["ipWhitelist"] = cluster_config["ip_whitelist"]
+    if namespace_config.get("ip_whitelist", None) and cluster_config["ssh_port_type"] == "LoadBalancer":
+        maia_namespace_values["ipWhitelist"] = namespace_config["ip_whitelist"]
 
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_namespace_chart_type == "git_repo":
         raise ValueError("ARGOCD_DISABLED is set to True and maia_namespace_chart_type is set to git_repo, which is not allowed")
@@ -1240,7 +1238,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
                 "annotations": {},
             },
             "auth": {
-                "adminPassword": cluster_config_dict["keycloak_admin_password"],
+                "adminPassword": os.environ.get("keycloak_admin_password", ""),
             },
             "extraVolumeMounts": [
                 {
@@ -1282,154 +1280,6 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
         "repo": keycloak_values["repo_url"],
         "version": keycloak_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "keycloak_values", "keycloak_values.yaml")),
-    }
-
-
-def create_loginapp_values(config_folder, project_id, cluster_config_dict):
-    """
-    Creates and writes the loginapp values configuration file for a given project and cluster configuration.
-
-    Parameters
-    ----------
-    config_folder : str
-        The base directory where the configuration files will be stored.
-    project_id : str
-        The unique identifier for the project.
-    cluster_config_dict : dict
-        A dictionary containing cluster configuration details, including:
-            - keycloak.client_secret (str): The client secret for Keycloak.
-            - domain (str): The domain name for the cluster.
-            - ingress_class (str): The ingress class to be used (e.g., "maia-core-traefik" or "nginx").
-            - traefik_resolver (str, optional): The Traefik resolver to be used if ingress_class is "maia-core-traefik".
-
-    Returns
-    -------
-    dict
-        A dictionary containing the namespace, release name, chart name, repository URL, chart version,
-        and the path to the generated values file.
-
-    Raises
-    ------
-    KeyError
-        If required keys are missing from the cluster_config_dict.
-    OSError
-        If there is an error creating directories or writing the configuration file.
-    """
-    loginapp_values = {
-        "namespace": "authentication",
-        "repo_url": "https://storage.googleapis.com/loginapp-releases/charts/",
-        "chart_name": "loginapp",
-        "chart_version": loginapp_chart_version,
-    }
-
-    secret = token_urlsafe(16).replace("-", "_")
-    client_id = "maia"
-    client_secret = os.environ["keycloak_client_secret"]
-    issuer_url = "https://iam." + cluster_config_dict["domain"] + "/realms/maia"
-    port = get_api_port(os.environ["K8S_DISTRIBUTION"])
-    cluster_server_address = f"https://{cluster_config_dict['domain']}:{port}"
-
-    ca_file = None
-    if "rootCA" in cluster_config_dict:
-        ca_text = Path(cluster_config_dict["rootCA"]).read_text()
-        ca_file = ca_text  # .base64.b64encode(ca_text.encode()).decode()
-
-    loginapp_values.update(
-        {
-            "env": {"LOGINAPP_NAME": "MAIA Login"},
-            "configOverwrites": {"oidc": {"scopes": ["openid", "profile", "email"]}, "service": {"type": "ClusterIP"}},
-            "ingress": {
-                "enabled": True,
-                "annotations": {},
-                "tls": [{"hosts": ["login." + cluster_config_dict["domain"]]}],
-                "hosts": [{"host": "login." + cluster_config_dict["domain"], "paths": [{"path": "/", "pathType": "Prefix"}]}],
-            },
-            "config": {
-                "tls": {"enabled": False},
-                "issuerInsecureSkipVerify": True,
-                "refreshToken": True,
-                "clientRedirectURL": "https://login." + cluster_config_dict["domain"] + "/callback",
-                "secret": secret,
-                "clientID": client_id,
-                "clientSecret": client_secret,
-                "issuerURL": issuer_url,
-                "clusters": [
-                    {
-                        "server": cluster_server_address,
-                        "name": "MAIA",
-                        "insecure-skip-tls-verify": True,
-                        "certificate-authority": ca_file,
-                    }
-                ],
-            },
-        }
-    )
-
-    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        loginapp_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
-        loginapp_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            ...
-        else:
-            loginapp_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-                cluster_config_dict["traefik_resolver"]
-            )
-    elif cluster_config_dict["ingress_class"] == "nginx":
-        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            loginapp_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
-        else:
-            loginapp_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
-        loginapp_values["ingress"]["tls"][0]["secretName"] = "loginapp." + cluster_config_dict["domain"]
-
-    Path(config_folder).joinpath(project_id, "loginapp_values").mkdir(parents=True, exist_ok=True)
-    with open(Path(config_folder).joinpath(project_id, "loginapp_values", "loginapp_values.yaml"), "w") as f:
-        f.write(OmegaConf.to_yaml(loginapp_values))
-
-    return {
-        "namespace": loginapp_values["namespace"],
-        "release": f"{project_id}-loginapp",
-        "chart": loginapp_values["chart_name"],
-        "repo": loginapp_values["repo_url"],
-        "version": loginapp_values["chart_version"],
-        "values": str(Path(config_folder).joinpath(project_id, "loginapp_values", "loginapp_values.yaml")),
-    }
-
-
-def create_minio_operator_values(config_folder, project_id):
-    """
-    Creates and writes MinIO operator values to a YAML file and returns a dictionary with deployment details.
-
-    Parameters
-    ----------
-    config_folder : str
-        The path to the configuration folder.
-    project_id : str
-        The unique identifier for the project.
-
-    Returns
-    -------
-    dict
-        A dictionary containing the namespace, release name, chart name, repository URL, chart version,
-        and the path to the generated YAML values file.
-    """
-    minio_operator_values = {
-        "namespace": "minio-operator",
-        "repo_url": "https://operator.min.io",
-        "chart_name": "operator",
-        "chart_version": minio_operator_chart_version,
-    }
-
-    Path(config_folder).joinpath(project_id, "minio_operator_values").mkdir(parents=True, exist_ok=True)
-    with open(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml"), "w") as f:
-        f.write(OmegaConf.to_yaml(minio_operator_values))
-
-    return {
-        "namespace": minio_operator_values["namespace"],
-        "release": f"{project_id}-minio-operator",
-        "chart": minio_operator_values["chart_name"],
-        "repo": minio_operator_values["repo_url"],
-        "version": minio_operator_values["chart_version"],
-        "values": str(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml")),
     }
 
 
@@ -1557,11 +1407,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "ssh_hostname": (
                 cluster_config_dict["ssh_hostname"] if "ssh_hostname" in cluster_config_dict else cluster_config_dict["domain"]
             ),
-            "maia_dashboard": {"enabled": True, "token": cluster_config_dict["rancher_token"]},
+            "maia_dashboard": {"enabled": True, "token": os.environ.get("rancher_token", "")},
         }
     ]
 
-    if cluster_config_dict.get("maia_dashboard_oidc_authentication", False):
+    if os.environ.get("maia_dashboard_oidc_authentication", False):
 
         port = get_api_port(os.environ["K8S_DISTRIBUTION"])
         maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}:{port}"
@@ -1792,11 +1642,16 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         )
 
     # GPU Configuration
-    maia_dashboard_values["gpuList"] = cluster_config_dict["gpu_list"] if "gpu_list" in cluster_config_dict else []
+    maia_dashboard_values["gpuList"] = os.environ.get("gpu_list", [])
     
     # MAIA Projects Configuration
-    if "maia_projects" in cluster_config_dict:
-        maia_dashboard_values["maia_projects"] = cluster_config_dict["maia_projects"]
+    if "maia_projects" in os.environ:
+        projects = os.environ["maia_projects"].split(",")
+        maia_dashboard_values["maia_projects"] = []
+        for project in projects:
+            with open(project, "r") as f:
+                project_dict = json.load(f)
+            maia_dashboard_values["maia_projects"].append(project_dict)
 
     # CIFS
     # MAIA Segmentation Portal
@@ -1924,4 +1779,74 @@ def create_maia_dashboard_values_old(config_folder, project_id, cluster_config_d
         "repo": maia_dashboard_values["repo_url"],
         "version": maia_dashboard_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
+    }
+
+def create_rancher_values(config_folder, project_id, cluster_config_dict):
+    """
+    Generates Rancher values configuration and writes it to a YAML file.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The project identifier.
+    cluster_config_dict : dict
+        A dictionary containing cluster configuration details.
+
+    Returns
+    -------
+    dict
+        A dictionary containing Rancher deployment details including namespace, repo URL,
+        chart version, values file path, release name, and chart name.
+    """
+
+    rancher_values = {
+        "namespace": "cattle-system",
+        "repo_url": "https://releases.rancher.com/server-charts/latest",
+        "chart_name": "rancher",
+        "chart_version": rancher_chart_version,
+    }  # TODO: Change this to updated values
+
+    rancher_values.update(
+        {
+            "hostname": "mgmt." + cluster_config_dict["domain"],
+            "ingress": {"extraAnnotations": {}, "tls": {"source": "letsEncrypt"}},
+            "letsEncrypt": {
+                "email": cluster_config_dict["ingress_resolver_email"],
+                "ingress": {"class": cluster_config_dict["ingress_class"]},
+            },
+            "bootstrapPassword": os.environ.get("rancher_password", ""),
+        }
+    )
+
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        rancher_values["ingress"]["tls"]["secretName"] = None
+
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
+    elif cluster_config_dict["ingress_class"] == "nginx":
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            rancher_values["ingress"]["extraAnnotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+
+    Path(config_folder).joinpath(project_id, "rancher_values").mkdir(parents=True, exist_ok=True)
+
+    with open(Path(config_folder).joinpath(project_id, "rancher_values", "rancher_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(rancher_values))
+
+    return {
+        "namespace": rancher_values["namespace"],
+        "repo": rancher_values["repo_url"],
+        "version": rancher_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "rancher_values", "rancher_values.yaml")),
+        "release": f"{project_id}-rancher",
+        "chart": rancher_values["chart_name"],
     }

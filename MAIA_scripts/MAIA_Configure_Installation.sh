@@ -93,14 +93,8 @@ if [ -n "$CLUSTER_NAME" ]; then
       export INGRESS_RESOLVER_EMAIL="$INGRESS_RESOLVER_EMAIL_VAL"
       echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE: $INGRESS_RESOLVER_EMAIL"
     fi
-    export RANCHER_TOKEN=$(yq '.rancher_token // empty' "$CLUSTER_CONFIG_FILE")
-    if [ -n "$RANCHER_TOKEN" ]; then
-      export RANCHER_TOKEN=$(echo "${RANCHER_TOKEN}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded RANCHER_TOKEN from $CLUSTER_CONFIG_FILE: $RANCHER_TOKEN"
-    fi
   fi
-fi
-
+fi  
 
 # Required environment variables:
 # Verify required environment variables are set
@@ -225,11 +219,7 @@ else
 fi
 
 if [ -f "$CONFIG_FOLDER/env.json" ]; then
-  if [ -f "$CONFIG_FOLDER/$CLUSTER_NAME.yaml" ]; then
-    existing_rancher_password=$(yq -r '.rancher_password // empty' "$CONFIG_FOLDER/$CLUSTER_NAME.yaml")
-  else
-    existing_rancher_password=""
-  fi
+    existing_rancher_password=$(jq -r '.rancher_password // empty' "$CONFIG_FOLDER/env.json")
 else
   existing_rancher_password=""
 fi
@@ -241,14 +231,10 @@ else
 fi
 
 if [ -f "$CONFIG_FOLDER/env.json" ]; then
-  if [ -f "$CONFIG_FOLDER/$CLUSTER_NAME.yaml" ]; then
-    existing_keycloak_admin_password=$(yq -r '.keycloak_admin_password // empty' "$CONFIG_FOLDER/$CLUSTER_NAME.yaml")
-  else
-    existing_keycloak_admin_password=""
-  fi
+  existing_keycloak_admin_password=$(jq -r '.keycloak_admin_password // empty' "$CONFIG_FOLDER/env.json")
 else
   existing_keycloak_admin_password=""
-fi
+fi  
 
 if [ -n "$existing_keycloak_admin_password" ] && [ "$existing_keycloak_admin_password" != "null" ]; then
   keycloak_admin_password="$existing_keycloak_admin_password"
@@ -273,9 +259,6 @@ cluster_name: "$CLUSTER_NAME"
 k8s_distribution: "$K8S_DISTRIBUTION"
 traefik_resolver: "maiaresolver"
 traefik_dashboard_password: "$traefik_dashboard_password"
-rancher_password: "$rancher_password"
-keycloak_admin_password: "$keycloak_admin_password"
-rancher_token: "$RANCHER_TOKEN"
 rootCA: $CONFIG_FOLDER/ca.crt
 bucket_name: $BUCKET_NAME
 ssh_port_type: $SSH_PORT_TYPE
@@ -404,6 +387,9 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "core_project_version": "$CORE_PROJECT_VERSION",
   "ARGOCD_PASSWORD": "$ARGOCD_PASSWORD",
   "argocd_bcrypt_password": "$ARGOCD_BCRYPT_PASSWORD",
+  "rancher_password": "$rancher_password",
+  "keycloak_admin_password": "$keycloak_admin_password",
+  "rancher_token": "$RANCHER_TOKEN",
   "admin_project_chart": "$ADMIN_PROJECT_CHART",
   "admin_project_repo": "$ADMIN_PROJECT_REPO",
   "admin_project_version": "$ADMIN_PROJECT_VERSION",

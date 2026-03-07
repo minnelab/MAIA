@@ -157,7 +157,7 @@ def deploy_maia_toolkit_api(
     no_argocd=False,
     redeploy_enabled=True,
     return_values_only=False,
-    custom_config_dict=None,
+    custom_project_dict=None,
 ):
     # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
@@ -166,13 +166,13 @@ def deploy_maia_toolkit_api(
         if Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").exists():
             namespace_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").read_text())
             for key, value in namespace_config_dict.items():
-                cluster_config_dict[key] = value
+                project_form_dict[key] = value
                 if key == "env":
                     for env_key, env_value in value.items():
                         os.environ[env_key + "_" + namespace_id] = env_value
-    if custom_config_dict:
-        for key, value in custom_config_dict.items():
-            cluster_config_dict[key] = value
+    if custom_project_dict:
+        for key, value in custom_project_dict.items():
+            project_form_dict[key] = value
             if key == "env":
                 for env_key, env_value in value.items():
                     os.environ[env_key + "_" + namespace_id] = env_value
@@ -194,12 +194,12 @@ def deploy_maia_toolkit_api(
 
     helm_commands = []
 
-    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
+    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
 
     if not minimal:
-        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
+        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
 
-        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"), config_dict=cluster_config_dict)
+        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
 
         project_form_dict["minio_access_key"] = minio_configs["console_access_key"]
         project_form_dict["minio_secret_key"] = minio_configs["console_secret_key"]
