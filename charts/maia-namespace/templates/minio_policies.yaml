@@ -41,7 +41,7 @@ spec:
           
           # Apply the policy
           mc admin policy create myminio MAIA:{{ .Values.minio.namespace }} /tmp/{{ .Values.minio.namespace }}-policy.json;
-          mc admin policy create myminio MAIA:admin /tmp/{{ .Values.minio.namespace }}-policy.json;
+          mc admin policy create myminio {{ .Values.minio.admin_group_ID }} /tmp/{{ .Values.minio.namespace }}-policy.json;
           
           echo "Setup complete.";
       restartPolicy: OnFailure

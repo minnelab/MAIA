@@ -61,6 +61,56 @@
   register: k3s_status_wait
   changed_when: false
 
+- name: Ensure k3s config directory exists
+  ansible.builtin.file:
+    path: "{{ k3s_config_dir }}"
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Check if k3s config file exists
+  ansible.builtin.stat:
+    path: "{{ k3s_config_dir }}/config.yaml"
+  register: k3s_config_file
+  become: true
+
+- name: Read existing k3s configuration
+  ansible.builtin.slurp:
+    src: "{{ k3s_config_dir }}/config.yaml"
+  register: k3s_config_content
+  become: true
+  when: k3s_config_file.stat.exists
+
+- name: Set k3s config dictionary (from file or empty)
+  ansible.builtin.set_fact:
+    k3s_config: "{{ (k3s_config_content.content | default('') | b64decode | from_yaml) | default({}) }}"
+  when: k3s_config_file.stat.exists
+
+- name: Initialize empty k3s config dictionary when no config file
+  ansible.builtin.set_fact:
+    k3s_config: {}
+  when: not k3s_config_file.stat.exists
+
+- name: Disable traefik
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | combine({'disable': ['traefik']}, recursive=true) }}"
+
+- name: Write back k3s config.yaml
+  ansible.builtin.copy:
+    content: "{{ k3s_config | to_nice_yaml(indent=2) }}"
+    dest: "{{ k3s_config_dir }}/config.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Restart k3s service
+  ansible.builtin.service:
+    name: k3s
+    state: restarted
+  become: true
+
+
 - name: Get all traefik-related helmchart resources in kube-system
   ansible.builtin.shell: |
     k3s kubectl get helmchart -n kube-system -o name | grep -E '^helmchart\.traefik|^helmchart\.traefik-crd'
@@ -72,8 +122,9 @@
   ansible.builtin.shell: |
     {% for chart in traefik_helmcharts_found.stdout_lines %}
     k3s kubectl delete {{ chart }} -n kube-system
-    rm -rf /var/lib/rancher/k3s/server/manifests/traefik.yaml
     {% endfor %}
+    rm -rf /var/lib/rancher/k3s/server/manifests/traefik.yaml
+    k3s kubectl delete service traefik -n kube-system
   when: traefik_helmcharts_found.stdout != ""
   ignore_errors: true
 - name: Run additional k3s connect tasks

@@ -53,7 +53,7 @@
               "oidc_scope": "openid profile email",
               "oidc_verify_cert": false,
               "oidc_groups_claim": "groups",
-              "oidc_admin_group": "MAIA:admin"
+              "oidc_admin_group": "{{ admin_group_ID }}"
             }'
   register: harbor_configured
   changed_when: false

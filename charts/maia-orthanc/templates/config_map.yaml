@@ -7,10 +7,10 @@ data:
   orthanc.json: {{ .Values.orthanc_config_map.orthanc_config | toJson | quote }}
   models.json: |
     {
-      "MSP-Spleen": {"label_info": "params={\"label_info\":[{\"name\":\"spleen\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}","host":"https://spleen-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
+      "MSP-Spleen": {"label_info": "params={\"label_info\":[{\"name\":\"spleen\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}","host":"https://spleen.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
       "MSP-BraTS": {"label_info": "params={\"label_info\":[{\"name\":\"ET\",\"model_name\":\"MAIA-Segmentation-Portal\"},{\"name\":\"NETC\",\"model_name\":\"MAIA-Segmentation-Portal\"},{\"name\":\"SNFH\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}","host":"https://brats.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
       "MSP-Lymphoma": {"label_info": "params={\"label_info\":[{\"name\":\"lesion\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}", "host":"https://lymphoma-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
-      "MSP-LungNodule": {"label_info": "params={\"label_info\":[{\"name\":\"nodule\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}", "host":"https://lung-nodule-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
+      "MSP-LungNodule": {"label_info": "params={\"label_info\":[{\"name\":\"nodule\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}", "host":"https://lung-nodule-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"}
     }
   msp_models.lua: |
     function OnStableStudy(studyId, tags, metadata)

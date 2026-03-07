@@ -48,4 +48,29 @@ spec:
     - name: "mlflow"
   users:
     - name: storage-user
+  policies:
+  - name: "MAIA:{{ .Values.minio.namespace }}"
+    statements:
+      - effect: "Allow"
+        actions:
+          - "admin:*"
+      - effect: "Allow"
+        actions:
+          - "kms:*"
+      - effect: "Allow"
+        actions:
+          - "s3:*"
+        resources:
+          - "arn:aws:s3:::*"
+  - name: "{{ .Values.minio.admin_group_ID }}"
+    statements:
+      - effect: "Allow"
+        actions:
+          - "admin:*"
+      - effect: "Allow"
+        actions:
+          - "kms:*"
+      - effect: "Allow"
+        actions:
+          - "s3:*"
 {{- end }}

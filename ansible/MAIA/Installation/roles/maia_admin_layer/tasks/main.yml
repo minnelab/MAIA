@@ -67,6 +67,7 @@
   environment:
     argocd_namespace: "{{ argocd_namespace }}"
     admin_group_ID: "{{ admin_group_ID }}"
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
     admin_project_chart: "{{ admin_project_chart }}"
     admin_project_repo: "{{ admin_project_repo }}"
     admin_project_version: "{{ admin_project_version }}"
@@ -347,7 +348,7 @@
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
   when: auto_sync | bool
-- name: Add 'MAIA:admin' as minio admin policy user
+- name: Add MAIA Admin as minio admin policy user
   kubernetes.core.k8s_exec:
     namespace: maia-dashboard
     pod: admin-minio-tenant-pool-0-0
@@ -380,7 +381,7 @@
           }
         ]
       }" > /tmp/maia-admin-policy.json;
-      mc admin policy create local "MAIA:admin" /tmp/maia-admin-policy.json;
+      mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json;
       '
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
