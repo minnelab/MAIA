@@ -562,7 +562,7 @@ def register_users_in_group_in_keycloak(emails, group_id, settings) -> None:
                 if group["name"] == "MAIA:" + group_id:
                     gid = group["id"]
                     keycloak_admin.group_user_add(uid, gid)
-                elif group["name"] == "MAIA:users":
+                elif group["name"] == "MAIA:" + settings.USERS_GROUP:
                     try:
                         gid = group["id"]
                         keycloak_admin.group_user_add(uid, gid)

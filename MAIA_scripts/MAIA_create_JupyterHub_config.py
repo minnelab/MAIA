@@ -217,7 +217,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "userdata_params": {"state": "state"},
                     "claim_groups_key": "groups",
                     "allowed_groups": [f"MAIA:{team_id}"],
-                    "admin_groups": ["MAIA:admin"],
+                    "admin_groups": [os.environ.get('admin_group_ID', 'admin')"],
                 },
                 "JupyterHub": {
                     "admin_access": True,

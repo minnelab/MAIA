@@ -83,7 +83,7 @@ def search_resources(request):
 
     else:
         for group in groups:
-            if str(group) != "MAIA:users":
+            if str(group) != "MAIA:" + settings.USERS_GROUP:
 
                 namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 

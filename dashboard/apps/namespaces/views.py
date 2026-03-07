@@ -113,7 +113,7 @@ def namespace_view(request, namespace_id):
 
         else:
             for group in groups:
-                if str(group) != "MAIA:users":
+                if str(group) != "MAIA:" + settings.USERS_GROUP:
                     namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
         allocation_date = get_allocation_date_for_project(

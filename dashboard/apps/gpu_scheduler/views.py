@@ -192,7 +192,7 @@ def book_gpu(request):
     if namespaces is None or len(namespaces) == 0:
         namespaces = []
         for group in groups:
-            if str(group) != "MAIA:users":
+            if str(group) != "MAIA:" + settings.USERS_GROUP:
                 namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
     initial_data = {"user_email": email, "namespace": namespaces[0] if namespaces else None}
@@ -245,7 +245,7 @@ def gpu_booking_info(request):
 
     else:
         for group in groups:
-            if str(group) != "MAIA:users":
+            if str(group) != "MAIA:" + settings.USERS_GROUP:
                 namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
     if request.user.is_superuser:

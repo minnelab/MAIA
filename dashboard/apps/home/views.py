@@ -124,7 +124,7 @@ def index_view(request):
 
     else:
         for group in groups:
-            if str(group) != "MAIA:users":
+            if str(group) != "MAIA:" + settings.USERS_GROUP:
 
                 namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
             else:
@@ -172,7 +172,7 @@ def pages(request):
 
         else:
             for group in groups:
-                if str(group) != "MAIA:users":
+                if str(group) != "MAIA:" + settings.USERS_GROUP:
                     namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
                 else:
                     is_user = True
