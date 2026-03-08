@@ -1221,7 +1221,7 @@ def generate_orthanc_configs(project_id, project_config_dict=None):
     Generates Orthanc configuration dictionary.
     """
     orthanc_configs = get_orthanc_config_if_exists(project_id)
-    
+
     if "orthanc_config" in orthanc_configs:
         orthanc_config_str = orthanc_configs
         orthanc_config_dict = json.loads(orthanc_config_str) if isinstance(orthanc_config_str, str) else orthanc_config_str
@@ -1230,7 +1230,7 @@ def generate_orthanc_configs(project_id, project_config_dict=None):
         orthanc_configs = {
             "ae_title": ae_title,
             "mysql_password": mysql_password,
-        }    
+        }
     else:
         mysql_password = generate_human_memorable_password(16)
         ae_title = generate_random_password(16)
@@ -1246,6 +1246,7 @@ def generate_orthanc_configs(project_id, project_config_dict=None):
                 orthanc_configs["mysql_password"] = value
 
     return orthanc_configs
+
 
 def create_maia_namespace_values(namespace_config, cluster_config, config_folder, minio_configs=None, mlflow_configs=None):
     """

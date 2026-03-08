@@ -283,7 +283,9 @@ def deploy_maia_toolkit_api(
             )
         )
 
-        helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict))
+        helm_commands.append(
+            deploy_orthanc(cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict)
+        )
 
     if "JSON_KEY_PATH_" + namespace_id in os.environ:
         json_key_path = os.environ["JSON_KEY_PATH_" + namespace_id]

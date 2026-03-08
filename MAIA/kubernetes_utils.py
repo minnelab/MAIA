@@ -1265,7 +1265,9 @@ def create_maia_rbac_from_context(namespace):
         metadata=client.V1ObjectMeta(name="maia-namespace-role", namespace=namespace),
         rules=[
             client.V1PolicyRule(
-                api_groups=[""], resources=["secrets", "services", "configmaps"], verbs=["list", "create", "patch", "update", "get"]
+                api_groups=[""],
+                resources=["secrets", "services", "configmaps"],
+                verbs=["list", "create", "patch", "update", "get"],
             )
         ],
     )
