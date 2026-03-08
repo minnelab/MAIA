@@ -5,6 +5,9 @@ kind: Job
 metadata:
   name: {{ .Values.minio.namespace }}-policy-setup
   namespace: {{ .Values.minio.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded, BeforeHookCreation
 spec:
   ttlSecondsAfterFinished: 60
   template:
