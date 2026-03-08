@@ -598,7 +598,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         "env_variables": {
             "MYSQL_URL": "{}-mysql-mkg".format(namespace),
             "MYSQL_PASSWORD": mysql_config.get("mysql_password", "root"),
-            "RUN_MINIO_PROXY": True,
+            "RUN_MINIO_PROXY": "True",
             "NAMESPACE": namespace,
             "MYSQL_USER": mysql_config.get("mysql_user", "root"),
             "BUCKET_NAME": "mlflow",
@@ -1223,7 +1223,7 @@ def generate_orthanc_configs(project_id, project_config_dict=None):
     orthanc_configs = get_orthanc_config_if_exists(project_id)
 
     if "orthanc_config" in orthanc_configs:
-        orthanc_config_str = orthanc_configs
+        orthanc_config_str = orthanc_configs["orthanc_config"]
         orthanc_config_dict = json.loads(orthanc_config_str) if isinstance(orthanc_config_str, str) else orthanc_config_str
         ae_title = list(orthanc_config_dict["DicomModalities"].keys())[0]
         mysql_password = orthanc_config_dict["MySQL"]["Password"]
@@ -1381,7 +1381,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
     if minio_configs:
         maia_namespace_values["minio"] = {
             "enabled": True,
-            "inject_policies": False,
+            "inject_policies": True,
             "consoleDomain": "https://{}.{}/minio-console".format(namespace_config["group_subdomain"], cluster_config["domain"]),
             "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
             "storageClassName": cluster_config["storage_class"],
