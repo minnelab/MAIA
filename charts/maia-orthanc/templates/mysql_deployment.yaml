@@ -26,6 +26,11 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: {{ .Values.mysql.image }}:{{ .Values.mysql.tag }}
+          args:
+            - '--log-bin-trust-function-creators=1'
+            - '--character-set-server=utf8mb4'
+            - '--collation-server=utf8mb4_unicode_ci'
+            - '--default-authentication-plugin=mysql_native_password'
           env:
             - name: NVIDIA_VISIBLE_DEVICES
             - name: MYSQL_ROOT_PASSWORD
@@ -49,7 +54,7 @@ spec:
           lifecycle:
             postStart:
               exec:
-                command: ["/bin/sh", "-c", "sleep 10 && mysql -u root -p'{{ .Values.mysql.mysqlPassword }}' -sse \"SHOW DATABASES LIKE 'orthanc';\" | grep -q orthanc || mysql -u root -p'{{ .Values.mysql.mysqlPassword }}' -e \"ALTER USER 'maia-admin'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Values.mysql.mysqlPassword }}'; FLUSH PRIVILEGES; SET GLOBAL log_bin_trust_function_creators = 1; CREATE DATABASE orthanc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL PRIVILEGES ON orthanc.* TO 'maia-admin'@'%'; FLUSH PRIVILEGES;\""]
+                command: ["/bin/sh", "-c", "sleep 15 && mysql -u root -p'{{ .Values.mysql.mysqlPassword }}' -e \"ALTER USER 'maia-admin'@'%' IDENTIFIED WITH mysql_native_password BY '{{ .Values.mysql.mysqlPassword }}'; FLUSH PRIVILEGES;\""]
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

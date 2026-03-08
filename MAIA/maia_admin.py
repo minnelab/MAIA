@@ -698,7 +698,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         }
     ]
 
-    if os.environ.get("maia_dashboard_oidc_authentication", False):
+    if os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False):
 
         port = get_api_port(os.environ["K8S_DISTRIBUTION"])
         maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}:{port}"
