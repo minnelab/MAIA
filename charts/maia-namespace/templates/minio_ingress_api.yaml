@@ -8,7 +8,6 @@ metadata:
     {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: nginx
   tls:
     - hosts:
         - minio.{{ .Values.minio.ingress.host }}
