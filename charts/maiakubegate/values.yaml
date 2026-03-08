@@ -5,6 +5,13 @@
 deploy_as_job: true
 replicaCount: 1
 
+# Restart policy for job pods. Options: OnFailure, Never
+# OnFailure allows pods to restart on OOM or other failures
+restartPolicy: OnFailure
+
+# Number of retries for failed jobs
+backoffLimit: 3
+
 image:
   pullPolicy: IfNotPresent
 
