@@ -653,7 +653,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
     }
 
 
-def deploy_orthanc(cluster_config, user_config, config_folder):
+def deploy_orthanc(cluster_config, user_config, config_folder, project_config_dict=None):
     """
     Deploys Orthanc using the provided configuration.
     Parameters
@@ -674,7 +674,9 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         namespace_values = yaml.safe_load(f)
         orthanc_port = namespace_values["orthanc"]["port"]
     namespace = user_config["group_ID"].lower().replace("_", "-")
-    random_path = generate_random_password(16)
+    orthanc_configs = generate_orthanc_configs(namespace, project_config_dict)
+    ae_title = orthanc_configs["ae_title"]
+    mysql_password = orthanc_configs["mysql_password"]
     private_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
     if "MAIA_PRIVATE_REGISTRY_" + namespace in os.environ:
         private_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace]
@@ -720,8 +722,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         "orthanc_dicom_service_annotations": {},
         "ingress_annotations": {},
         "ingress_tls": {"host": ""},
-        "monai_label_path": f"monai-label-{random_path}",
-        "orthanc_path": f"orthanc-{random_path}",
+        "monai_label_path": f"monai-label-{ae_title}",
+        "orthanc_path": f"orthanc-{ae_title}",
         "orthanc_node_port": orthanc_port,
         "serviceType": "NodePort",
     }
@@ -731,7 +733,6 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
 
     enable_mysql = True
     if enable_mysql:
-        mysql_password = generate_human_memorable_password(16)
         orthanc_config["mysql"] = {
             "enabled": True,
             "mysqlRootPassword": mysql_password,
@@ -751,7 +752,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder):
         "StableAge": 5,
         "DicomModalities": {
             # f"{namespace}-xnat": [f"{namespace}-XNAT", "maia-xnat.xnat", "8104"],
-            f"{random_path}": [f"{random_path}", "maia-xnat.xnat", "8104"],
+            f"{ae_title}": [f"{ae_title}", "maia-xnat.xnat", "8104"],
             # [ "DCM4CHEE", "dcm4chee-service.services", 11115 ]
         },
         "DicomWeb": {
@@ -1185,6 +1186,66 @@ def get_mysql_config_if_exists(project_id):
 
     return mlflow_configs
 
+
+def get_orthanc_config_if_exists(project_id):
+    """
+    Retrieves Orthanc configuration from Kubernetes environment variables if they exist.
+    """
+    if "KUBECONFIG_LOCAL" not in os.environ:
+        os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+    kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
+    config.load_kube_config_from_dict(kubeconfig)
+
+    v1 = client.CoreV1Api()
+    orthanc_configs = {}
+    try:
+        # Get ConfigMaps in the given namespace (from project_id)
+        configmaps = v1.list_namespaced_config_map(namespace=project_id.lower().replace("_", "-"))
+    except client.exceptions.ApiException as e:
+        if e.status == 404 or e.status == 401 or e.status == 403:
+            logger.error(f"Error listing namespaced pods: {e}")
+            return orthanc_configs
+        else:
+            raise e
+
+    for configmap in configmaps.items:
+        if configmap.metadata.name.startswith(project_id.lower().replace("_", "-") + "-orthanc-orthanc-config"):
+            for key, value in configmap.data.items():
+                if key == "orthanc.json":
+                    orthanc_configs["orthanc_config"] = value
+    return orthanc_configs
+
+
+def generate_orthanc_configs(project_id, project_config_dict=None):
+    """
+    Generates Orthanc configuration dictionary.
+    """
+    orthanc_configs = get_orthanc_config_if_exists(project_id)
+    
+    if "orthanc_config" in orthanc_configs:
+        orthanc_config_str = orthanc_configs
+        orthanc_config_dict = json.loads(orthanc_config_str) if isinstance(orthanc_config_str, str) else orthanc_config_str
+        ae_title = list(orthanc_config_dict["DicomModalities"].keys())[0]
+        mysql_password = orthanc_config_dict["MySQL"]["Password"]
+        orthanc_configs = {
+            "ae_title": ae_title,
+            "mysql_password": mysql_password,
+        }    
+    else:
+        mysql_password = generate_human_memorable_password(16)
+        ae_title = generate_random_password(16)
+        orthanc_configs = {
+            "ae_title": ae_title,
+            "mysql_password": mysql_password,
+        }
+    if project_config_dict:
+        for key, value in project_config_dict.items():
+            if key == "ae_title":
+                orthanc_configs["ae_title"] = value
+            if key == "mysql_password":
+                orthanc_configs["mysql_password"] = value
+
+    return orthanc_configs
 
 def create_maia_namespace_values(namespace_config, cluster_config, config_folder, minio_configs=None, mlflow_configs=None):
     """
