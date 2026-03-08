@@ -7,6 +7,18 @@ metadata:
 scheduler:
   name: ""
 spec:
+  initContainers:
+    - name: wait-for-keycloak
+      image: curlimages/curl:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Keycloak OIDC endpoint to become ready..."
+          while ! curl -sSf {{ .Values.minio.openIdConfigUrl }} > /dev/null; do
+            sleep 5
+          done
+          echo "Keycloak is up! Starting MinIO..."
   configuration:
     name: storage-configuration
   #credsSecret:
@@ -33,18 +45,6 @@ spec:
         memory: 2Gi
     runtimeClassName: ""
     servers: 1
-    initContainers:
-    - name: wait-for-keycloak
-      image: curlimages/curl:latest
-      command:
-        - /bin/sh
-        - -c
-        - |
-          echo "Waiting for Keycloak OIDC endpoint to become ready..."
-          while ! curl -sSf {{ .Values.minio.openIdConfigUrl }} > /dev/null; do
-            sleep 5
-          done
-          echo "Keycloak is up! Starting MinIO..."
     volumeClaimTemplate:
       spec:
         accessModes:
