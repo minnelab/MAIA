@@ -42,7 +42,7 @@ then
     if [ $RUN_MINIO_PROXY == "True" ]
     then
         envsubst '${NAMESPACE} ${MINIO_CONSOLE_PATH}' < /etc/minio.conf.template > minio.conf
-        sudo mv minio.conf /etc/nginx/sites-enabled/
+        sudo mv minio.conf /etc/
         echo "Waiting for MinIO Console at http://${NAMESPACE}-console:9090/ to become active..."
     
         # Loop until curl successfully connects to the endpoint
