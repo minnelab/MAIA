@@ -11,4 +11,14 @@ location /${MINIO_CONSOLE_PATH}/ {
   proxy_http_version 1.1;
   proxy_set_header Upgrade $http_upgrade;
   proxy_set_header Connection "upgrade";
+
+  # --- NEW ADDITIONS FOR CROSS-ORIGIN IFRAME ---
+  
+  # 1. Strip the strict headers that MinIO sends natively
+  proxy_hide_header X-Frame-Options;
+  proxy_hide_header Content-Security-Policy;
+
+  # 2. Inject a permissive CSP that explicitly allows your Kubeflow domain
+  # The 'always' flag ensures Nginx sends this even on error pages (like 403s or 500s)
+  add_header Content-Security-Policy "default-src 'self' 'unsafe-eval' 'unsafe-inline'; frame-ancestors 'self' ${KUBEFLOW_URL};" always;
 }

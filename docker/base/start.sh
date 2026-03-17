@@ -28,20 +28,20 @@ else
 fi
 
 
-python3 /workspace/generate_user_environment.py --user $user --password "$password" --authorized-keys "$ssh_publickey" --run-file-browser $RUN_FILEBROWSER --run-mlflow-server $RUN_MLFLOW_SERVER &
-
 if [ $RUN_FILEBROWSER == "True" ]
 then
-    filebrowser -r /home -c /config/settings.json -d /database/filebrowser.db &
+    python3 /workspace/generate_user_environment.py --user $user --password "$password" --authorized-keys "$ssh_publickey" --run-file-browser $RUN_FILEBROWSER --run-mlflow-server $RUN_MLFLOW_SERVER
+    filebrowser -r /home -b $FILEBROWSER_PATH -c /config/settings.json -d /database/filebrowser.db &
 fi
 
 if [ $RUN_MLFLOW_SERVER == "True" ]
 then
+    python3 /workspace/generate_user_environment.py --user $user --password "$password" --authorized-keys "$ssh_publickey" --run-file-browser $RUN_FILEBROWSER --run-mlflow-server $RUN_MLFLOW_SERVER &
     envsubst '${MLFLOW_PATH}' < /etc/default.template > default
     sudo mv default /etc/nginx/sites-enabled/
     if [ $RUN_MINIO_PROXY == "True" ]
     then
-        envsubst '${NAMESPACE} ${MINIO_CONSOLE_PATH}' < /etc/minio.conf.template > minio.conf
+        envsubst '${NAMESPACE} ${MINIO_CONSOLE_PATH} ${KUBEFLOW_URL}' < /etc/minio.conf.template > minio.conf
         sudo mv minio.conf /etc/
         echo "Waiting for MinIO Console at http://${NAMESPACE}-console:9090/ to become active..."
     
@@ -58,8 +58,6 @@ then
 
     sudo nginx -c /etc/nginx/nginx.conf -g 'daemon off;' &
 fi
-
-rm generate_user_environment.py
 
 
 exec "$@"

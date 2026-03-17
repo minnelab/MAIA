@@ -3,6 +3,7 @@ import time
 import os
 import subprocess
 import json
+import requests
 
 with open("/mnt/models.json", "r") as f:
     models = json.load(f)
@@ -17,13 +18,46 @@ while True:
 
             for studyUID in uids:
                 outputFile = f"/tmp/{model}_pred.dcm"
-                # Run inference
-                subprocess.run([
-                    "curl", "-s", "-X", "POST",
-                    f"{MONAI_LABEL_HOST}/infer/MONetBundle?image={studyUID}&output=dicom_seg",
-                    "-F", model_info["label_info"],
-                    "--output", outputFile
-                ])
+                # Verify if Auth is enabled
+                auth = False
+                auth_enabled = requests.get(f"{MONAI_LABEL_HOST}/auth/")
+                if auth_enabled.status_code != 200:
+                    print(f"Auth is not enabled for {MONAI_LABEL_HOST}")
+                    continue
+                elif auth_enabled.json()["enabled"] == False:
+                    print(f"Auth is not enabled for {MONAI_LABEL_HOST}")
+                    continue
+                else:
+                    print(f"Auth is enabled for {MONAI_LABEL_HOST}")
+                    auth = True
+
+                if auth:
+                    username = os.environ.get("MONAI_LABEL_USERNAME", None)
+                    password = os.environ.get("MONAI_LABEL_PASSWORD", None)
+                    if username is None or password is None:
+                        print(f"Username or password is not set for {MONAI_LABEL_HOST}. Please set the MONAI_LABEL_USERNAME and MONAI_LABEL_PASSWORD environment variables.")
+                        continue
+                    token = requests.post(f"{MONAI_LABEL_HOST}/auth/token",
+                            data={"username": username, "password": password},
+                            )
+                    access_token = token.json()["access_token"]
+                    # Run inference with Authorization header
+                    subprocess.run([
+                        "curl", "-s", "-X", "POST", "-H", f"Authorization: Bearer {access_token}",
+                        f"{MONAI_LABEL_HOST}/infer/MONetBundle?image={studyUID}&output=dicom_seg",
+                        "-F", model_info["label_info"],
+                        "--output", outputFile
+                    ])
+                else:
+                    # Run inference
+                    subprocess.run([
+                        "curl", "-s", "-X", "POST",
+                        f"{MONAI_LABEL_HOST}/infer/MONetBundle?image={studyUID}&output=dicom_seg",
+                        "-F", model_info["label_info"],
+                        "--output", outputFile
+                    ])
+
+              
                 # Post result to Orthanc
                 subprocess.run([
                     "curl", "-s", "-X", "POST",
@@ -33,11 +67,3 @@ while True:
                 print(f">>> Inference completed for {studyUID}")
 
     time.sleep(2)  # check every 5 seconds
-
-
-models = {
-    "MSP-Spleen": {"label_info": "params={\"label_info\":[{\"name\":\"spleen\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}","host":"https://spleen-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
-    "MSP-BraTS": {"label_info": "params={\"label_info\":[{\"name\":\"ET\",\"model_name\":\"MAIA-Segmentation-Portal\"},{\"name\":\"NETC\",\"model_name\":\"MAIA-Segmentation-Portal\"},{\"name\":\"SNFH\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}","host":"https://brats.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
-    "MSP-Lymphoma": {"label_info": "params={\"label_info\":[{\"name\":\"lesion\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}", "host":"https://lymphoma-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
-    "MSP-LungNodule": {"label_info": "params={\"label_info\":[{\"name\":\"nodule\",\"model_name\":\"MAIA-Segmentation-Portal\"}]}", "host":"https://lung-nodule-segmentation.maia-segmentation.maia-medium.cloud.cbh.kth.se"},
-}
