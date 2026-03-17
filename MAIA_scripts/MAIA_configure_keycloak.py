@@ -97,6 +97,29 @@ def create_admin_user_and_group(
             )
 
 
+def create_public_client(server_url: str, client_secret: str):
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=server_url,
+        username="user",
+        password="",
+        realm_name="maia",
+        client_id="maia",
+        client_secret_key=client_secret,
+        verify=False,
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    keycloak_admin.create_client(
+        {
+            "name": "maia-public",
+            "clientId": "maia-public",
+            "redirectUris": ["http://localhost:8080"],
+            "publicClient": True,
+            "standardFlowEnabled": True,
+            "directAccessGrantsEnabled": True,
+        }
+    )
+
+
 def get_arg_parser():
     parser = argparse.ArgumentParser(
         description="Configure Keycloak",
@@ -113,6 +136,10 @@ def get_arg_parser():
 
 def main():
     args = get_arg_parser().parse_args()
+    create_public_client(
+        server_url=args.server_url,
+        client_secret=args.client_secret,
+    )
     create_admin_user_and_group(
         server_url=args.server_url,
         client_secret=args.client_secret,
