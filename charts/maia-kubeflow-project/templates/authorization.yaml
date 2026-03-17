@@ -10,7 +10,7 @@ spec:
             remoteIpBlocks:
               - 127.0.0.1/16
           {{- range .Values.podCIDR }}
-            - {{ . }}
+              - {{ . }}
           {{- end }}
   selector:
     matchLabels:
