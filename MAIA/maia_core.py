@@ -1152,8 +1152,7 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
         kubeflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
         kubeflow_values["chart_name"] = "maia-kubeflow"
 
-    kubeflow_values.update(
-        {
+    kubeflow_values["kubeflow_values"] = {
             "oidcClientId": "kubeflow-oidc-authservice",
             "oidcClientSecret": token_urlsafe(16).replace("-", "_"),
             "domain": "kubeflow." + cluster_config_dict["domain"],
@@ -1168,26 +1167,26 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
                 "annotations": {},
             },
         }
-    )
+
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
-        kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             ...
         else:
-            kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
                 cluster_config_dict["traefik_resolver"]
             )
     elif cluster_config_dict["ingress_class"] == "nginx":
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            kubeflow_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
         else:
-            kubeflow_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
-        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
-        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
-        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
-        kubeflow_values["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
+        kubeflow_values["kubeflow_values"]["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
 
     Path(config_folder).joinpath(project_id, "kubeflow_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "kubeflow_values", "kubeflow_values.yaml"), "w") as f:
