@@ -39,4 +39,6 @@ spec:
       server: {{ .Values.destination_server }}
     - namespace: {{ .Values.maia_dashboard_values.namespace }}
       server: {{ .Values.destination_server }}
+    - namespace: cert-manager
+      server: {{ .Values.destination_server }}
   sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}
