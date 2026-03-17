@@ -1,0 +1,89 @@
+{{- /*
+Only create AuthorizationPolicies once the target namespace exists.
+This avoids failures when the namespace (managed elsewhere, e.g. by Kubeflow)
+has not yet been created at the time this chart is installed.
+*/ -}}
+{{- $ns := .Values.namespace | default .Release.Namespace -}}
+{{- if (lookup "v1" "Namespace" "" $ns) }}
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-minio
+  namespace: {{ $ns }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+              - 127.0.0.1/16
+          {{- range .Values.podCIDR }}
+            - {{ . }}
+          {{- end }}
+  selector:
+    matchLabels:
+      v1.min.io/console: {{ $ns }}-console
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-mlflow
+  namespace: {{ $ns }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+  selector:
+    matchLabels:
+      app: {{ $ns }}-mlflow
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-orthanc
+  namespace:  {{.Values.namespace}}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+      to:
+        - operation:
+            ports: ["80"]
+    - from:
+        - source:
+            remoteIpBlocks:
+              - 0.0.0.0/0
+      to:
+        - operation:
+            ports: ["4242"]
+  selector:
+    matchLabels:
+      app-name:  {{.Values.namespace}}-orthanc
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-filebrowser
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["80"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: maia-filebrowser 
+{{- end }}

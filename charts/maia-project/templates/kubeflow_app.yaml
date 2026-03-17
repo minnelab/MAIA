@@ -1,0 +1,24 @@
+{{- if .Values.kubeflow_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-kubeflow
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    {{- if .Values.kubeflow_values.path }}
+    path: {{ .Values.kubeflow_values.path }}
+    {{- else }}
+    chart: {{ .Values.kubeflow_values.chart_name }}
+    {{- end }}
+    repoURL: {{.Values.kubeflow_values.repo_url}}
+    targetRevision: {{ .Values.kubeflow_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-kubeflow
+      valuesObject:
+      {{ .Values.kubeflow_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Release.Name }}
+{{- end }}

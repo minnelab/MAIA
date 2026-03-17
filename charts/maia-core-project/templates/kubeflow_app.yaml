@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name:  {{ .Release.Name }}-kubeflow
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    repoURL: 'https://github.com/minnelab/manifests.git'
+    targetRevision: HEAD
+    path: 'argo-apps'
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.argo_namespace }}

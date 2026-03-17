@@ -17,7 +17,7 @@ maia_core_namespaces:
   - maia-webhooks
   - nfs-server-provisioner
   - local-path-storage
-
+  - kubeflow
 # Enable automatic ArgoCD application synchronization
 auto_sync: true
 
@@ -59,3 +59,4 @@ maia_core_argocd_applications:
   - maia-core-minio-operator
   - maia-core-nfs-provisioner
   - maia-core-prometheus
+  - maia-core-kubeflow

@@ -1,0 +1,86 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: mlflow-redirect-{{ .Values.namespace }}
+  namespace: kubeflow
+spec:
+  gateways:
+    - kubeflow-gateway
+  hosts:
+    - '*'
+  http:
+    - match:
+        - uri:
+            prefix: /{{ .Values.namespace }}/mlflow/
+      rewrite:
+        uri: /mlflow/
+      route:
+        - destination:
+            host: {{ .Values.namespace }}-mlflow-mkg.{{ .Values.namespace }}.svc.cluster.local
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: minio-console-redirect-{{ .Values.namespace }}
+  namespace: kubeflow
+spec:
+  gateways:
+    - kubeflow-gateway
+  hosts:
+    - '*'
+  http:
+    - match:
+        - uri:
+            prefix: /minio-console-{{ .Values.namespace }}/
+      headers:
+        response:
+           remove:
+            - x-frame-options
+            - content-security-policy 
+      route:
+        - destination:
+            host: {{ .Values.namespace }}-mlflow-mkg.{{ .Values.namespace }}.svc.cluster.local 
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: ohif-redirect-{{ .Values.namespace }}
+  namespace: kubeflow
+spec:
+  gateways:
+    - kubeflow-gateway
+  hosts:
+    - '*'
+  http:
+    - match:
+        - uri:
+            prefix: /orthanc-{{ .Values.namespace }}/
+      route:
+        - destination:
+            host: {{ .Values.namespace }}-orthanc-svc.{{ .Values.namespace }}.svc.cluster.local
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: filebrowser-redirect-{{ .Values.namespace }}
+  namespace: kubeflow
+spec:
+  gateways:
+    - kubeflow-gateway
+  hosts:
+    - '*'
+  http:
+    - match:
+        - uri:
+            prefix: /filebrowser-{{ .Values.namespace }}/
+      route:
+        - destination:
+            host: {{ .Values.namespace }}-filebrowser-maia-filebrowser.{{ .Values.namespace }}.svc.cluster.local
+            port:
+              number: 80

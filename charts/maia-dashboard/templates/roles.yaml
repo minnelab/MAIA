@@ -1,0 +1,106 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dashboard-default-binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: maia-dashboard
+roleRef:
+  kind: ClusterRole
+  name: dashboard-default-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dashboard-default-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: [ "create"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings","roles"]
+  verbs: [ "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dashboard-default-role
+  namespace: argocd
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: [ "list", "create", "patch", "update","get","delete"]
+- apiGroups: ["argoproj.io"]
+  resources: ["appprojects", "applications"]
+  verbs: ["list", "get", "create","patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-default-role-binding
+  namespace: argocd
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: maia-dashboard
+roleRef:
+  kind: Role
+  name: dashboard-default-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-manager-ca-role
+  namespace: cert-manager
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: [ "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-manager-ca-role-binding
+  namespace: cert-manager
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: maia-dashboard
+roleRef:
+  kind: Role
+  name: cert-manager-ca-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: maia-namespace-role
+rules:
+  - verbs:
+      - list
+      - create
+      - patch
+      - update
+      - get
+    apiGroups:
+      - ''
+    resources:
+      - secrets
+      - services
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: maia-namespace-role-binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: maia-dashboard
+roleRef:
+  kind: ClusterRole
+  name: maia-namespace-role
+  apiGroup: rbac.authorization.k8s.io

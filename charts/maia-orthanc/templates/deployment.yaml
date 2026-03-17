@@ -37,6 +37,12 @@ spec:
             value: /{{ .Values.monai_label_path }}
           - name: ORTHANC_DICOMWEB_ADDRESS
             value: "http://localhost:8042/dicom-web"
+          {{- if .Values.monai_label_auth.enabled }}
+          - name: MONAI_LABEL_USERNAME
+            value: {{ .Values.monai_label_auth.username }}
+          - name: MONAI_LABEL_PASSWORD
+            value: {{ .Values.monai_label_auth.password }}
+          {{- end }}
         volumeMounts:
         - mountPath: /dev/shm
           name: cache-volume

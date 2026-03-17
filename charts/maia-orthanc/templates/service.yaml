@@ -32,6 +32,12 @@ spec:
   {{- if $.Values.loadBalancerIp }}
   loadBalancerIP: {{ $.Values.loadBalancerIp }}
   {{- end }}
+    {{- if $.Values.ipWhitelist }}
+  loadBalancerSourceRanges:
+  {{- range $.Values.ipWhitelist }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
   ports:
     - protocol: TCP
       {{- if eq .Values.serviceType "LoadBalancer" }}
