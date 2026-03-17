@@ -697,7 +697,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 if not path["path"].endswith("/"):
                                     maia_workspace_apps["mlflow"] += "/"
                             if path["backend"]["service"]["name"] == namespace + "-mlflow-mkg" and path["path"].endswith(
-                                "minio-console"
+                                "minio-console-" + namespace
                             ):
                                 maia_workspace_apps["minio_console"] = "https://" + rule["host"] + path["path"]
                                 if not path["path"].endswith("/"):

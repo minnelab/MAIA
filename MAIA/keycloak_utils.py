@@ -42,7 +42,7 @@ def get_access_token(keycloak_url, keycloak_client_secret, ca_cert):
     return r.json()
 
 
-def get_id_token(keycloak_url, keycloak_client_secret, username, password, ca_cert):
+def get_id_token(keycloak_url, keycloak_client_secret, username, password, ca_cert, realm="maia", client_id="maia"):
     """
     Get an ID token from Keycloak.
 
@@ -58,7 +58,10 @@ def get_id_token(keycloak_url, keycloak_client_secret, username, password, ca_ce
         The password for the Keycloak user.
     ca_cert : str
         The path to the CA certificate.
-
+    realm : str
+        The realm to use for the Keycloak client.
+    client_id : str
+        The client ID to use for the Keycloak client.
     Returns
     -------
     dict
@@ -69,10 +72,10 @@ def get_id_token(keycloak_url, keycloak_client_secret, username, password, ca_ce
     requests.exceptions.RequestException
         If the request to Keycloak fails.
     """
-    url = f"{keycloak_url}/realms/maia/protocol/openid-connect/token"
+    url = f"{keycloak_url}/realms/{realm}/protocol/openid-connect/token"
     data = {
         "grant_type": "password",
-        "client_id": "maia",
+        "client_id": client_id,
         "client_secret": keycloak_client_secret,
         "username": username,
         "password": password,

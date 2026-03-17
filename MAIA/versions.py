@@ -86,7 +86,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
     else:
-        core_project_chart_version = "1.1.1"
+        core_project_chart_version = "1.2.0"
 
     if os.environ.get("LOGINAPP_CHART_VERSION") is not None:
         loginapp_chart_version = os.environ.get("LOGINAPP_CHART_VERSION")
@@ -207,7 +207,7 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_PROJECT_CHART_VERSION") is not None:
         maia_project_chart_version = os.environ.get("MAIA_PROJECT_CHART_VERSION")
     else:
-        maia_project_chart_version = "1.8.1"
+        maia_project_chart_version = "1.9.0"
 
     if os.environ.get("MAIA_NAMESPACE_CHART_TYPE") is not None:
         maia_namespace_chart_type = os.environ.get("MAIA_NAMESPACE_CHART_TYPE")
@@ -223,6 +223,16 @@ def define_maia_project_versions():
         maia_orthanc_chart_type = os.environ.get("MAIA_ORTHANC_CHART_TYPE")
     else:
         maia_orthanc_chart_type = "git_repo"  # or "helm_repo"
+        
+    if os.environ.get("MAIA_KUBEFLOW_CHART_VERSION") is not None:
+        maia_kubeflow_chart_version = os.environ.get("MAIA_KUBEFLOW_CHART_VERSION")
+    else:
+        maia_kubeflow_chart_version = "master"  # "1.0.0"
+
+    if os.environ.get("MAIA_KUBEFLOW_CHART_TYPE") is not None:
+        maia_kubeflow_chart_type = os.environ.get("MAIA_KUBEFLOW_CHART_TYPE")
+    else:
+        maia_kubeflow_chart_type = "git_repo"  # or "helm_repo"
 
     return {
         "maia_namespace_chart_version": maia_namespace_chart_version,
@@ -232,6 +242,8 @@ def define_maia_project_versions():
         "maia_namespace_chart_type": maia_namespace_chart_type,
         "maia-orthanc-chart_version": maia_orthanc_chart_version,
         "maia-orthanc-chart_type": maia_orthanc_chart_type,
+        "maia-kubeflow-chart_version": maia_kubeflow_chart_version,
+        "maia-kubeflow-chart_type": maia_kubeflow_chart_type,
     }
 
 
@@ -295,12 +307,12 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_MLFLOW_IMAGE_VERSION") is not None:
         maia_mlflow_image_version = os.environ.get("MAIA_MLFLOW_IMAGE_VERSION")
     else:
-        maia_mlflow_image_version = "1.1"
+        maia_mlflow_image_version = "1.2"
 
     if os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION") is not None:
         maia_filebrowser_image_version = os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION")
     else:
-        maia_filebrowser_image_version = "1.0"
+        maia_filebrowser_image_version = "1.1"
 
     if os.environ.get("MAIA_GPU_BOOKING_ADMISSION_CONTROLLER_IMAGE_VERSION") is not None:
         maia_gpu_booking_admission_controller_image_version = os.environ.get(

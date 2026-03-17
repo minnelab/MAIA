@@ -22,6 +22,7 @@ from omegaconf import OmegaConf
 from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
 
 from MAIA.versions import define_docker_image_versions, define_maia_docker_versions, define_maia_project_versions
+from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
 
 mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
@@ -37,6 +38,8 @@ maia_namespace_chart_type = define_maia_project_versions()["maia_namespace_chart
 maia_filebrowser_image_version = define_docker_image_versions()["maia-filebrowser"]
 maia_filebrowser_chart_version = define_maia_project_versions()["maia_filebrowser_chart_version"]
 maia_filebrowser_chart_type = define_maia_project_versions()["maia_filebrowser_chart_type"]
+maia_kubeflow_chart_version = define_maia_project_versions()["maia-kubeflow-chart_version"]
+maia_kubeflow_chart_type = define_maia_project_versions()["maia-kubeflow-chart_type"]
 
 
 def generate_random_password(length=12):
@@ -607,7 +610,8 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
             "AWS_SECRET_ACCESS_KEY": base64.b64decode(minio_config.get("console_secret_key", "minio")).decode("utf-8"),
             "MLFLOW_S3_ENDPOINT_URL": "http://minio:80",
             "MLFLOW_PATH": "mlflow",
-            "MINIO_CONSOLE_PATH": "minio-console",
+            "MINIO_CONSOLE_PATH": f"minio-console- {namespace}",
+            "KUBEFLOW_URL": "https://kubeflow." + cluster_config["domain"],
         },
     }
 
@@ -728,6 +732,12 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         "serviceType": "NodePort",
     }
 
+    if "MONAI_LABEL_AUTH_USERNAME_" + namespace in os.environ and "MONAI_LABEL_AUTH_PASSWORD_" + namespace in os.environ:
+        orthanc_config["monai_label_auth"] = {
+            "enabled": True,
+            "username": os.environ["MONAI_LABEL_AUTH_USERNAME_" + namespace],
+            "password": os.environ["MONAI_LABEL_AUTH_PASSWORD_" + namespace],
+        }
     if cluster_config["shared_storage_class"] == "local-path":
         orthanc_config["pvc"]["access_mode"] = "ReadWriteOnce"
 
@@ -810,6 +820,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         )
         orthanc_config["orthanc_node_port"] = {"loadBalancer": orthanc_port}
         orthanc_config["loadBalancerIp"] = cluster_config.get("maia_metallb_ip", False)
+        if project_config_dict and "ip_whitelist" in project_config_dict:
+            orthanc_config["ipWhitelist"] = project_config_dict["ip_whitelist"]
         orthanc_config["serviceType"] = "LoadBalancer"
     if "nginx_cluster_issuer" in cluster_config:
         orthanc_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
@@ -845,6 +857,103 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         "values": str(Path(config_folder).joinpath(user_config["group_ID"], "orthanc_values", "orthanc_values.yaml")),
     }
 
+
+def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_config_dict=None, minimal=True):
+    """
+    Deploy a Kubeflow project using the provided configuration.
+    Parameters
+    ----------
+    cluster_config : dict
+        Dictionary containing the cluster configuration.
+    user_config : dict
+        Dictionary containing the user configuration.
+    config_folder : str or Path
+        Path to the configuration folder.
+    project_config_dict : dict, optional
+        Dictionary containing the project configuration.
+    Returns
+    -------
+    dict
+        A dictionary containing deployment details such as namespace, release, chart, repo, version, and values file path.
+    """
+    helm_template = create_jupyterhub_config_api(project_config_dict, cluster_config, config_folder, minimal=minimal)
+    
+    jh_template_file = helm_template["values"]
+    with open(jh_template_file, "r") as f:
+        jh_template = yaml.safe_load(f)
+        
+    extra_env = []
+    for key, value in jh_template["singleuser"]["extraEnv"].items():
+        extra_env.append({
+            "name": key,
+            "value": value
+        })
+    if "environment" in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]:
+        for k,v in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["environment"].items():
+            extra_env.append({
+                "name": k,
+                "value": v
+            })
+    extra_resource_limits = {}
+    for k,v in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["extra_resource_limits"].items():
+        extra_resource_limits[k] = v
+    
+    namespace = user_config["group_ID"].lower().replace("_", "-")
+    if "KUBECONFIG_LOCAL" not in os.environ:
+        os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+    kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
+    config.load_kube_config_from_dict(kubeconfig)
+
+    v1 = client.CoreV1Api()
+    podCIDR = []
+    nodes = v1.list_node(watch=False)
+    for node in nodes.items:
+        podCIDR.append(node.spec.pod_cidr)
+    podCIDR = list(set(podCIDR))
+    
+    ipList = []
+    if project_config_dict and "ip_whitelist" in project_config_dict:
+        ipList = project_config_dict["ip_whitelist"]
+    ipList.extend(podCIDR)
+    kubeflow_config = {
+        "namespace": namespace,
+        "owner": user_config["users"][0],
+        "user_email": user_config["users"][0],
+        "user_id": convert_username_to_jupyterhub_username(user_config["users"][0]),
+        "podCIDR": podCIDR,
+        "ipList": ipList,
+        "cpu": jh_template["singleuser"]["cpu"],
+        "memory": jh_template["singleuser"]["memory"],
+        "extraEnv": extra_env,
+        "extraResourceLimits": extra_resource_limits,
+        "image": jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["image"],
+        "homeMountPath": jh_template["singleuser"]["storage"]["homeMountPath"],
+        "homePVC": "claim-" + convert_username_to_jupyterhub_username(user_config["users"][0]),
+        "extraVolumes": jh_template["singleuser"]["storage"]["extraVolumes"],
+        "extraVolumeMounts": jh_template["singleuser"]["storage"]["extraVolumeMounts"],
+    }
+    kubeflow_config["chart_version"] = maia_kubeflow_chart_version
+    if maia_kubeflow_chart_type == "helm_repo":
+        kubeflow_config["chart_name"] = "maia-kubeflow"
+        kubeflow_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+    else:
+        kubeflow_config["path"] = "charts/maia-kubeflow"
+        kubeflow_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+
+    Path(config_folder).joinpath(user_config["group_ID"], "kubeflow_values").mkdir(parents=True, exist_ok=True)
+
+    with open(Path(config_folder).joinpath(user_config["group_ID"], "kubeflow_values", "kubeflow_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(kubeflow_config))
+
+    return {
+        "namespace": user_config["group_ID"].lower().replace("_", "-"),
+        "release": user_config["group_ID"].lower().replace("_", "-") + "-kubeflow",
+        "chart": kubeflow_config["chart_name"] if maia_kubeflow_chart_type == "helm_repo" else kubeflow_config["path"],
+        "repo": kubeflow_config["repo_url"],
+        "version": kubeflow_config["chart_version"],
+        "values": str(Path(config_folder).joinpath(user_config["group_ID"], "kubeflow_values", "kubeflow_values.yaml")),
+    }
+    
 
 def gpu_list_from_nodes():
     """
@@ -1382,7 +1491,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         maia_namespace_values["minio"] = {
             "enabled": True,
             "inject_policies": True,
-            "consoleDomain": "https://{}.{}/minio-console".format(namespace_config["group_subdomain"], cluster_config["domain"]),
+            "consoleDomain": "https://{}.{}/minio-console-{}".format(namespace_config["group_subdomain"], cluster_config["domain"],namespace_config["group_subdomain"]),
             "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
             "storageClassName": cluster_config["storage_class"],
             "storageSize": "10Gi",
@@ -1397,7 +1506,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "ingress": {
                 "annotations": {},
                 "host": "{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
-                "path": "minio-console",
+                "path": "minio-console-{}".format(namespace_config["group_subdomain"]),
                 "port": 80,
                 "serviceName": f"{namespace}-mlflow-mkg",
             },
@@ -1425,11 +1534,11 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
                 cluster_config["traefik_resolver"]
             )
         if cluster_config["url_type"] == "subpath":
-            maia_namespace_values["minio"]["consoleDomain"] = "https://{}/{}-minio-console".format(
+            maia_namespace_values["minio"]["consoleDomain"] = "https://{}/minio-console-{}".format(
                 cluster_config["domain"], namespace_config["group_ID"].lower().replace("_", "-")
             )
             maia_namespace_values["minio"]["ingress"]["host"] = "{}".format(cluster_config["domain"])
-            maia_namespace_values["minio"]["ingress"]["path"] = "{}-minio-console".format(
+            maia_namespace_values["minio"]["ingress"]["path"] = "minio-console-{}".format(
                 namespace_config["group_ID"].lower().replace("_", "-")
             )
 
@@ -1543,6 +1652,7 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         {"name": "n_users", "value": "1"},
         {"name": "user", "value": username},
         {"name": "password", "value": pw},
+        {"name": "FILEBROWSER_PATH", "value": "/filebrowser-{}".format(namespace_id)},
     ]
 
     maia_filebrowser_values["volumeMounts"] = [
@@ -1608,7 +1718,7 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         "hosts": [
             {
                 "host": "drive.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
-                "paths": [{"path": "/", "pathType": "ImplementationSpecific"}],
+                "paths": [{"path": f"/filebrowser-{namespace_id}", "pathType": "ImplementationSpecific"}],
             }
         ],
         "tls": [{"hosts": ["drive.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
