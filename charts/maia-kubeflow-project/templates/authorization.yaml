@@ -86,4 +86,24 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: maia-filebrowser 
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-nvflare-dashboard
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["8443"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name : maia-nvflare-dashboard     
 {{- end }}
