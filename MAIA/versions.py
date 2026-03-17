@@ -223,7 +223,7 @@ def define_maia_project_versions():
         maia_orthanc_chart_type = os.environ.get("MAIA_ORTHANC_CHART_TYPE")
     else:
         maia_orthanc_chart_type = "git_repo"  # or "helm_repo"
-        
+
     if os.environ.get("MAIA_KUBEFLOW_CHART_VERSION") is not None:
         maia_kubeflow_chart_version = os.environ.get("MAIA_KUBEFLOW_CHART_VERSION")
     else:

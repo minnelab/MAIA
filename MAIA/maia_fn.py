@@ -877,27 +877,21 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
         A dictionary containing deployment details such as namespace, release, chart, repo, version, and values file path.
     """
     helm_template = create_jupyterhub_config_api(project_config_dict, cluster_config, config_folder, minimal=minimal)
-    
+
     jh_template_file = helm_template["values"]
     with open(jh_template_file, "r") as f:
         jh_template = yaml.safe_load(f)
-        
+
     extra_env = []
     for key, value in jh_template["singleuser"]["extraEnv"].items():
-        extra_env.append({
-            "name": key,
-            "value": value
-        })
+        extra_env.append({"name": key, "value": value})
     if "environment" in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]:
-        for k,v in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["environment"].items():
-            extra_env.append({
-                "name": k,
-                "value": v
-            })
+        for k, v in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["environment"].items():
+            extra_env.append({"name": k, "value": v})
     extra_resource_limits = {}
-    for k,v in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["extra_resource_limits"].items():
+    for k, v in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["extra_resource_limits"].items():
         extra_resource_limits[k] = v
-    
+
     namespace = user_config["group_ID"].lower().replace("_", "-")
     if "KUBECONFIG_LOCAL" not in os.environ:
         os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
@@ -910,7 +904,7 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
     for node in nodes.items:
         podCIDR.append(node.spec.pod_cidr)
     podCIDR = list(set(podCIDR))
-    
+
     ipList = []
     if project_config_dict and "ip_whitelist" in project_config_dict:
         ipList = project_config_dict["ip_whitelist"]
@@ -953,7 +947,7 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
         "version": kubeflow_config["chart_version"],
         "values": str(Path(config_folder).joinpath(user_config["group_ID"], "kubeflow_values", "kubeflow_values.yaml")),
     }
-    
+
 
 def gpu_list_from_nodes():
     """
@@ -1491,7 +1485,9 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         maia_namespace_values["minio"] = {
             "enabled": True,
             "inject_policies": True,
-            "consoleDomain": "https://{}.{}/minio-console-{}".format(namespace_config["group_subdomain"], cluster_config["domain"],namespace_config["group_subdomain"]),
+            "consoleDomain": "https://{}.{}/minio-console-{}".format(
+                namespace_config["group_subdomain"], cluster_config["domain"], namespace_config["group_subdomain"]
+            ),
             "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
             "storageClassName": cluster_config["storage_class"],
             "storageSize": "10Gi",
