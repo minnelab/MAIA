@@ -957,10 +957,10 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
     }
     kubeflow_config["chart_version"] = maia_kubeflow_chart_version
     if maia_kubeflow_chart_type == "helm_repo":
-        kubeflow_config["chart_name"] = "maia-kubeflow"
+        kubeflow_config["chart_name"] = "maia-kubeflow-project"
         kubeflow_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
     else:
-        kubeflow_config["path"] = "charts/maia-kubeflow"
+        kubeflow_config["path"] = "charts/maia-kubeflow-project"
         kubeflow_config["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
 
     Path(config_folder).joinpath(user_config["group_ID"], "kubeflow_values").mkdir(parents=True, exist_ok=True)
