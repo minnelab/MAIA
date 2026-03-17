@@ -152,7 +152,10 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
 
     gpu_request = 0
     if "gpu_request" in user_form:
-        gpu_request = int(user_form["gpu_request"])
+        try:
+            gpu_request = int(user_form["gpu_request"])
+        except ValueError:
+            gpu_request = 0
 
     domain = cluster_config["domain"]
 
