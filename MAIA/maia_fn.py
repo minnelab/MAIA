@@ -1405,7 +1405,7 @@ def get_nvflare_dashboard_config_if_exists(project_id):
     return nvflare_dashboard_configs
 
 
-def generate_nvflare_dashboard_configs(project_id):
+def generate_nvflare_dashboard_configs(project_id, project_config_dict=None):
     """
     Generates NVFlare Dashboard configuration dictionary.
     """
@@ -1413,9 +1413,16 @@ def generate_nvflare_dashboard_configs(project_id):
     if "admin_username" in nvflare_dashboard_configs and "admin_password" in nvflare_dashboard_configs:
         return nvflare_dashboard_configs["admin_username"], nvflare_dashboard_configs["admin_password"]
     else:
-        admin_username = generate_random_password(16)
-        admin_password = generate_random_password(16)
-        return admin_username, admin_password
+        if project_config_dict:
+            for key, value in project_config_dict.items():
+                if key == "nvflare_dashboard_admin_username":
+                    nvflare_dashboard_configs["admin_username"] = value
+                if key == "nvflare_dashboard_admin_password":
+                    nvflare_dashboard_configs["admin_password"] = value
+        else:
+            nvflare_dashboard_configs["admin_username"] = generate_random_password(16)
+            nvflare_dashboard_configs["admin_password"] = generate_random_password(16)
+    return nvflare_dashboard_configs["admin_username"], nvflare_dashboard_configs["admin_password"]
 
 
 def create_maia_namespace_values(namespace_config, cluster_config, config_folder, minio_configs=None, mlflow_configs=None):
