@@ -39,6 +39,7 @@ from MAIA.maia_fn import (
     create_nvflare_dashboard_values,
 )
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
+
 version = MAIA.__version__
 
 

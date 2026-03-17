@@ -97,7 +97,7 @@ def define_maia_core_versions():
         minio_operator_chart_version = os.environ.get("MINIO_OPERATOR_CHART_VERSION")
     else:
         minio_operator_chart_version = "6.0.4"
-        
+
     if os.environ.get("KUBEFLOW_CHART_VERSION") is not None:
         kubeflow_chart_version = os.environ.get("KUBEFLOW_CHART_VERSION")
     else:
@@ -419,7 +419,7 @@ def define_docker_image_versions():
         maia_orthanc_image = os.environ.get("MAIA_ORTHANC_IMAGE")
     else:
         maia_orthanc_image = "maia-orthanc"
-        
+
     if os.environ.get("MAIA_NVFLARE_DASHBOARD_IMAGE") is not None:
         maia_nvflare_dashboard_image_version = os.environ.get("MAIA_NVFLARE_DASHBOARD_IMAGE_VERSION")
     else:

@@ -1119,6 +1119,7 @@ def create_minio_operator_values(config_folder, project_id):
         "values": str(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml")),
     }
 
+
 def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes Kubeflow values to a YAML file and returns a dictionary with deployment details.
@@ -1135,7 +1136,7 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
             - ingress_class (str): The ingress class to be used (e.g., "maia-core-traefik" or "nginx").
             - traefik_resolver (str, optional): The Traefik resolver to be used if ingress_class is "maia-core-traefik".
     """
-    
+
     kubeflow_values = {
         "namespace": "kubeflow",
         "chart_version": kubeflow_chart_version,
@@ -1150,7 +1151,7 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
     elif kubeflow_chart_type == "helm_repo":
         kubeflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
         kubeflow_values["chart_name"] = "maia-kubeflow"
-    
+
     kubeflow_values.update(
         {
             "oidcClientId": "kubeflow-oidc-authservice",
@@ -1168,14 +1169,16 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
             },
         }
     )
-    
+
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             ...
         else:
-            kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config_dict["traefik_resolver"]
+            kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
     elif cluster_config_dict["ingress_class"] == "nginx":
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             kubeflow_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
@@ -1183,13 +1186,13 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
             kubeflow_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
         kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
         kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
-        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"     
+        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
         kubeflow_values["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
-    
+
     Path(config_folder).joinpath(project_id, "kubeflow_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "kubeflow_values", "kubeflow_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(kubeflow_values))
-        
+
     return {
         "namespace": kubeflow_values["namespace"],
         "release": f"{project_id}-kubeflow",
