@@ -509,7 +509,7 @@ class ProjectChartValuesAPIView(APIView):
                 "cpu": [str(int(int(cpu_limit) / 2)), cpu_limit],
             },
             "project_tier": project_tier,
-            "gpu": gpu,
+            "gpu_request": gpu,
             "minio_env_name": env_file,
         }
         if auto_deploy:
