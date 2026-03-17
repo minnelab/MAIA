@@ -686,7 +686,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                             ):
                                 nvflare_dashboards.append(
                                     {
-                                        "name": ingress["metadata"]["name"][: -len("-maia-nvflare-dashboard")],
+                                        "name": ingress["metadata"]["name"][: -len("-nvflare-dashboard")],
                                         "url": "https://" + rule["host"] + path["path"],
                                     }
                                 )

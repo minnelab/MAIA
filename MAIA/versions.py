@@ -86,7 +86,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
     else:
-        core_project_chart_version = "1.2.0"
+        core_project_chart_version = "1.2.1"
 
     if os.environ.get("LOGINAPP_CHART_VERSION") is not None:
         loginapp_chart_version = os.environ.get("LOGINAPP_CHART_VERSION")
@@ -97,6 +97,16 @@ def define_maia_core_versions():
         minio_operator_chart_version = os.environ.get("MINIO_OPERATOR_CHART_VERSION")
     else:
         minio_operator_chart_version = "6.0.4"
+        
+    if os.environ.get("KUBEFLOW_CHART_VERSION") is not None:
+        kubeflow_chart_version = os.environ.get("KUBEFLOW_CHART_VERSION")
+    else:
+        kubeflow_chart_version = "master"  # "1.0.0"
+
+    if os.environ.get("KUBEFLOW_CHART_TYPE") is not None:
+        kubeflow_chart_type = os.environ.get("KUBEFLOW_CHART_TYPE")
+    else:
+        kubeflow_chart_type = "git_repo"  # or "helm_repo"
 
     return {
         "prometheus_chart_version": prometheus_chart_version,
@@ -118,6 +128,8 @@ def define_maia_core_versions():
         "minio_operator_chart_version": minio_operator_chart_version,
         "local_path_chart_version": local_path_chart_version,
         "local_path_chart_type": local_path_chart_type,
+        "kubeflow_chart_version": kubeflow_chart_version,
+        "kubeflow_chart_type": kubeflow_chart_type,
     }
 
 
@@ -234,6 +246,16 @@ def define_maia_project_versions():
     else:
         maia_kubeflow_chart_type = "git_repo"  # or "helm_repo"
 
+    if os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_VERSION") is not None:
+        maia_nvflare_dashboard_chart_version = os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_VERSION")
+    else:
+        maia_nvflare_dashboard_chart_version = "master"  # "1.0.0"
+
+    if os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_TYPE") is not None:
+        maia_nvflare_dashboard_chart_type = os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_TYPE")
+    else:
+        maia_nvflare_dashboard_chart_type = "git_repo"  # or "helm_repo"
+
     return {
         "maia_namespace_chart_version": maia_namespace_chart_version,
         "maia_filebrowser_chart_version": maia_filebrowser_chart_version,
@@ -244,6 +266,8 @@ def define_maia_project_versions():
         "maia-orthanc-chart_type": maia_orthanc_chart_type,
         "maia-kubeflow-chart_version": maia_kubeflow_chart_version,
         "maia-kubeflow-chart_type": maia_kubeflow_chart_type,
+        "maia-nvflare-dashboard-chart_version": maia_nvflare_dashboard_chart_version,
+        "maia-nvflare-dashboard-chart_type": maia_nvflare_dashboard_chart_type,
     }
 
 
@@ -395,6 +419,11 @@ def define_docker_image_versions():
         maia_orthanc_image = os.environ.get("MAIA_ORTHANC_IMAGE")
     else:
         maia_orthanc_image = "maia-orthanc"
+        
+    if os.environ.get("MAIA_NVFLARE_DASHBOARD_IMAGE") is not None:
+        maia_nvflare_dashboard_image_version = os.environ.get("MAIA_NVFLARE_DASHBOARD_IMAGE_VERSION")
+    else:
+        maia_nvflare_dashboard_image_version = "2.4.0"
 
     return {
         "maia-kube": maia_kube_image_version,
@@ -421,4 +450,5 @@ def define_docker_image_versions():
         "mysql": mysql_image_version,
         "mysql_image": mysql_image,
         "maia-orthanc-image": maia_orthanc_image,
+        "maia-nvflare-dashboard": maia_nvflare_dashboard_image_version,
     }

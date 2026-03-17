@@ -36,8 +36,9 @@ from MAIA.maia_fn import (
     generate_mysql_configs,
     copy_certificate_authority_secret,
     deploy_kubeflow_project,
+    create_nvflare_dashboard_values,
 )
-
+from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
 version = MAIA.__version__
 
 
@@ -250,12 +251,31 @@ def deploy_maia_toolkit_api(
             cert_name="public.crt",
             key_name="private.key",
         )
-
-    helm_commands.append(
-        deploy_kubeflow_project(
-            cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict, minimal=minimal
+    deploy_kubeflow = os.environ.get("DEPLOY_KUBEFLOW_" + namespace_id, "False") == "True"
+    deploy_nvflare_dashboard = os.environ.get("DEPLOY_NVFLARE_DASHBOARD_" + namespace_id, "False") == "True"
+    if deploy_nvflare_dashboard:
+        helm_commands.append(
+            create_nvflare_dashboard_values(
+                project_form_dict,
+                cluster_config_dict,
+                config_folder,
+            )
         )
-    )
+    if deploy_kubeflow:
+        helm_commands.append(
+            deploy_kubeflow_project(
+                cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict, minimal=minimal
+            )
+        )
+    else:
+        helm_commands.append(
+            create_jupyterhub_config_api(
+                project_form_dict,
+                cluster_config_dict,
+                config_folder,
+                minimal=minimal,
+            )
+        )
     helm_commands.append(
         create_filebrowser_values(
             project_form_dict,
@@ -380,9 +400,6 @@ def deploy_maia_toolkit_api(
         "defaults": [
             "_self_",
             {"maia_namespace_values": "namespace_values"},
-            # {"jupyterhub_values": "jupyterhub_values"},
-            # {"jupyterhub_chart_info": "jupyterhub_chart_info"},
-            {"kubeflow_values": "kubeflow_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "group_ID": f"MAIA:{group_id}",
@@ -395,6 +412,13 @@ def deploy_maia_toolkit_api(
         ],
     }
     values["defaults"].append({"maia_filebrowser_values": "maia_filebrowser_values"})
+    if deploy_kubeflow:
+        values["defaults"].append({"kubeflow_values": "kubeflow_values"})
+    else:
+        values["defaults"].append({"jupyterhub_values": "jupyterhub_values"})
+        values["defaults"].append({"jupyterhub_chart_info": "jupyterhub_chart_info"})
+    if deploy_nvflare_dashboard:
+        values["defaults"].append({"maia_nvflare_dashboard_values": "maia_nvflare_dashboard_values"})
     if private_maia_registry:
         values["sourceRepos"].append(private_maia_registry)
     if not minimal:

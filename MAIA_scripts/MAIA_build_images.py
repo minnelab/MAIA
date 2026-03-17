@@ -212,8 +212,21 @@ def build_maia_images(
         )
     helm_commands = []
     if build_custom_images is None:
-        # MAIA-Lab
-        # dashboard-devel
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-nvflare-dashboard",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-nvflare-dashboard",
+                build_versions["maia-nvflare-dashboard"],
+                "docker/Flare-Dashboard",
+                registry_credentials=registry_credentials,
+            )
+        )
         helm_commands.append(
             deploy_maia_kaniko(
                 "mkg-kaniko",
@@ -596,6 +609,7 @@ def build_maia_images(
                 {"maia_xnat_values": "maia_xnat_values"},
                 {"maia_orthanc_values": "maia_orthanc_values"},
                 {"maia_mlflow_values": "maia_mlflow_values"},
+                {"maia_nvflare_dashboard_values": "maia_nvflare_dashboard_values"},
             ]
         )
         values["defaults"].extend(

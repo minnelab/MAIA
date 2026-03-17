@@ -30,6 +30,8 @@ local_path_chart_version = define_maia_core_versions()["local_path_chart_version
 local_path_chart_type = define_maia_core_versions()["local_path_chart_type"]
 loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
 minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
+kubeflow_chart_version = define_maia_core_versions()["kubeflow_chart_version"]
+kubeflow_chart_type = define_maia_core_versions()["kubeflow_chart_type"]
 logger = loguru.logger
 
 
@@ -1115,4 +1117,84 @@ def create_minio_operator_values(config_folder, project_id):
         "repo": minio_operator_values["repo_url"],
         "version": minio_operator_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml")),
+    }
+
+def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and writes Kubeflow values to a YAML file and returns a dictionary with deployment details.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The unique identifier for the project.
+    cluster_config_dict : dict
+        A dictionary containing cluster configuration details, including:
+            - domain (str): The domain name for the cluster.
+            - ingress_class (str): The ingress class to be used (e.g., "maia-core-traefik" or "nginx").
+            - traefik_resolver (str, optional): The Traefik resolver to be used if ingress_class is "maia-core-traefik".
+    """
+    
+    kubeflow_values = {
+        "namespace": "kubeflow",
+        "chart_version": kubeflow_chart_version,
+    }
+
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and kubeflow_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and kubeflow_chart_type is set to git_repo, which is not allowed")
+
+    if kubeflow_chart_type == "git_repo":
+        kubeflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        kubeflow_values["path"] = "charts/maia-kubeflow"
+    elif kubeflow_chart_type == "helm_repo":
+        kubeflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        kubeflow_values["chart_name"] = "maia-kubeflow"
+    
+    kubeflow_values.update(
+        {
+            "oidcClientId": "kubeflow-oidc-authservice",
+            "oidcClientSecret": token_urlsafe(16).replace("-", "_"),
+            "domain": "kubeflow." + cluster_config_dict["domain"],
+            "keycloakIssuerUrl": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+            "keycloakClientId": "maia",
+            "keycloakClientSecret": os.environ["keycloak_client_secret"],
+            "cookieSecret": token_urlsafe(16).replace("-", "_"),
+            "sslInsecureSkipVerify": True,
+            "ingress": {
+                "enabled": True,
+                "className": cluster_config_dict["ingress_class"],
+                "annotations": {},
+            },
+        }
+    )
+    
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            kubeflow_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config_dict["traefik_resolver"]
+    elif cluster_config_dict["ingress_class"] == "nginx":
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            kubeflow_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            kubeflow_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        kubeflow_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"     
+        kubeflow_values["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
+    
+    Path(config_folder).joinpath(project_id, "kubeflow_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "kubeflow_values", "kubeflow_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(kubeflow_values))
+        
+    return {
+        "namespace": kubeflow_values["namespace"],
+        "release": f"{project_id}-kubeflow",
+        "chart": kubeflow_values["chart_name"] if kubeflow_chart_type == "helm_repo" else kubeflow_values["path"],
+        "repo": kubeflow_values["repo_url"],
+        "version": kubeflow_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "kubeflow_values", "kubeflow_values.yaml")),
     }

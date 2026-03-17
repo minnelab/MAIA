@@ -40,6 +40,9 @@ maia_filebrowser_chart_version = define_maia_project_versions()["maia_filebrowse
 maia_filebrowser_chart_type = define_maia_project_versions()["maia_filebrowser_chart_type"]
 maia_kubeflow_chart_version = define_maia_project_versions()["maia-kubeflow-chart_version"]
 maia_kubeflow_chart_type = define_maia_project_versions()["maia-kubeflow-chart_type"]
+maia_nvflare_dashboard_chart_version = define_maia_project_versions()["maia-nvflare-dashboard-chart_version"]
+maia_nvflare_dashboard_chart_type = define_maia_project_versions()["maia-nvflare-dashboard-chart_type"]
+maia_nvflare_dashboard_image_version = define_docker_image_versions()["maia-nvflare-dashboard"]
 
 
 def generate_random_password(length=12):
@@ -403,13 +406,20 @@ def deploy_oauth2_proxy(cluster_config, user_config, config_folder=None):
         oauth2_proxy_config["ingress"]["tls"][0]["hosts"] = [cluster_config["domain"]]
         oauth2_proxy_config["ingress"]["path"] = "/oauth2-{}".format(user_config["group_subdomain"])
     if "nginx_cluster_issuer" in cluster_config:
-        oauth2_proxy_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            oauth2_proxy_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            oauth2_proxy_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
     if "traefik_resolver" in cluster_config:
         oauth2_proxy_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         oauth2_proxy_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        oauth2_proxy_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
-            "traefik_resolver"
-        ]
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            ...
+        else:
+
+            oauth2_proxy_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
+                "traefik_resolver"
+            ]
 
     oauth2_proxy_config["chart_name"] = "oauth2-proxy"
     oauth2_proxy_config["chart_version"] = "7.7.8"
@@ -622,14 +632,21 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         mlflow_config["env_variables"]["MINIO_CONSOLE_PATH"] = "{}-minio-console".format(user_config["group_subdomain"])
 
     if "nginx_cluster_issuer" in cluster_config:
-        mlflow_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
         mlflow_config["ingress"]["tlsSecretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            mlflow_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+            
+        else:
+            mlflow_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
     if "traefik_resolver" in cluster_config:
         mlflow_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         mlflow_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        mlflow_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
-            "traefik_resolver"
-        ]
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            ...
+        else:
+            mlflow_config["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
+                "traefik_resolver"
+            ]
 
     if private_registry is not None:
         mlflow_config["image_pull_secret"] = private_registry.replace(".", "-").replace("/", "-")
@@ -824,13 +841,19 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
             orthanc_config["ipWhitelist"] = project_config_dict["ip_whitelist"]
         orthanc_config["serviceType"] = "LoadBalancer"
     if "nginx_cluster_issuer" in cluster_config:
-        orthanc_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            orthanc_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            orthanc_config["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config["nginx_cluster_issuer"]
         orthanc_config["ingress_tls"]["secretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
         orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
         orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
         orthanc_config["ingress_annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
     if "traefik_resolver" in cluster_config:
-        orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            ...
+        else:
+            orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
             "traefik_resolver"
@@ -1350,7 +1373,46 @@ def generate_orthanc_configs(project_id, project_config_dict=None):
 
     return orthanc_configs
 
+def get_nvflare_dashboard_config_if_exists(project_id):
+    """
+    Retrieves NVFlare Dashboard configuration from Kubernetes environment variables if they exist.
+    """
+    if "KUBECONFIG_LOCAL" not in os.environ:
+        os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+    kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
+    config.load_kube_config_from_dict(kubeconfig)
+    v1 = client.CoreV1Api()
+    nvflare_dashboard_configs = {}
+    try:
+        deploy = v1.list_namespaced_pod(namespace=project_id.lower().replace("_", "-"))
+    except client.exceptions.ApiException as e:
+        if e.status == 404 or e.status == 401 or e.status == 403:
+            logger.error(f"Error listing namespaced pods: {e}")
+            return nvflare_dashboard_configs
+        else:
+            raise e
+    for deploy in deploy.items:
+        if deploy.metadata.name.startswith(project_id.lower().replace("_", "-") + "-nvflare-dashboard"):
+            envs = deploy.spec.containers[0].env
+            for env in envs:
+                if env.name == "ADMIN_USERNAME":
+                    nvflare_dashboard_configs["admin_username"] = env.value
+                if env.name == "ADMIN_PASSWORD":
+                    nvflare_dashboard_configs["admin_password"] = env.value
+    return nvflare_dashboard_configs
 
+def generate_nvflare_dashboard_configs(project_id):
+    """
+    Generates NVFlare Dashboard configuration dictionary.
+    """
+    nvflare_dashboard_configs = get_nvflare_dashboard_config_if_exists(project_id)
+    if "admin_username" in nvflare_dashboard_configs and "admin_password" in nvflare_dashboard_configs:
+        return nvflare_dashboard_configs["admin_username"], nvflare_dashboard_configs["admin_password"]
+    else:
+        admin_username = generate_random_password(16)
+        admin_password = generate_random_password(16)
+        return admin_username, admin_password
+    
 def create_maia_namespace_values(namespace_config, cluster_config, config_folder, minio_configs=None, mlflow_configs=None):
     """
     Create MAIA namespace values for deployment.
@@ -1514,21 +1576,28 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             }
 
         if "nginx_cluster_issuer" in cluster_config:
-            maia_namespace_values["minio"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
-                "nginx_cluster_issuer"
-            ]
+            if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+                maia_namespace_values["minio"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+            else:
+                maia_namespace_values["minio"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
+                    "nginx_cluster_issuer"
+                ]
             maia_namespace_values["minio"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "10g"
             maia_namespace_values["minio"]["ingress"]["tlsSecretName"] = "{}.{}-tls".format(
                 namespace_config["group_subdomain"], cluster_config["domain"]
             )
         if "traefik_resolver" in cluster_config:
+            if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+                ...
+            else:
+                maia_namespace_values["minio"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config["traefik_resolver"]
+            )
             maia_namespace_values["minio"]["ingress"]["annotations"][
                 "traefik.ingress.kubernetes.io/router.entrypoints"
             ] = "websecure"
             maia_namespace_values["minio"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-            maia_namespace_values["minio"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-                cluster_config["traefik_resolver"]
-            )
+
         if cluster_config["url_type"] == "subpath":
             maia_namespace_values["minio"]["consoleDomain"] = "https://{}/minio-console-{}".format(
                 cluster_config["domain"], namespace_config["group_ID"].lower().replace("_", "-")
@@ -1720,9 +1789,12 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         "tls": [{"hosts": ["drive.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
     }
     if "nginx_cluster_issuer" in cluster_config:
-        maia_filebrowser_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
-            "nginx_cluster_issuer"
-        ]
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            maia_filebrowser_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            maia_filebrowser_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
+                "nginx_cluster_issuer"
+            ]
         maia_filebrowser_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "10g"
         maia_filebrowser_values["ingress"]["tls"][0]["secretName"] = "{}.{}-tls".format(
             namespace_config["group_subdomain"], cluster_config["domain"]
@@ -1730,9 +1802,12 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
     if "traefik_resolver" in cluster_config:
         maia_filebrowser_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         maia_filebrowser_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        maia_filebrowser_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-            cluster_config["traefik_resolver"]
-        )
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            ...
+        else:
+            maia_filebrowser_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config["traefik_resolver"]
+            )
 
     maia_filebrowser_values["storageClass"] = cluster_config["storage_class"]
     Path(config_folder).joinpath(namespace_config["group_ID"], "maia_filebrowser_values").mkdir(parents=True, exist_ok=True)
@@ -1754,4 +1829,84 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         "values": str(
             Path(config_folder).joinpath(namespace_config["group_ID"], "maia_filebrowser_values", "maia_filebrowser_values.yaml")
         ),
+    }
+    
+def create_nvflare_dashboard_values(namespace_config, cluster_config, config_folder):
+    """
+    Create and write configuration values for deploying the MAIA NVFlare Dashboard Helm chart.
+    This function generates a dictionary of configuration values required to deploy the MAIA NVFlare Dashboard
+    application in a Kubernetes namespace. It handles image configuration, environment variables, volume
+    mounts, CIFS volume setup, and ingress settings for both NGINX and Traefik ingress controllers. The
+    resulting configuration is written to a YAML file in the specified config folder.
+    """
+    namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
+    maia_nvflare_dashboard_values = {
+        "chart_version": maia_nvflare_dashboard_chart_version,
+        "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
+    }
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
+    maia_nvflare_dashboard_values["image"] = {
+        "repository": f"{default_registry}/maia-nvflare-dashboard",
+        "tag": maia_nvflare_dashboard_image_version,
+    }
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and maia_nvflare_dashboard_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and maia_nvflare_dashboard_chart_type is set to git_repo, which is not allowed")
+    if maia_nvflare_dashboard_chart_type == "helm_repo":
+        maia_nvflare_dashboard_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        maia_nvflare_dashboard_values["chart_name"] = "maia-nvflare-dashboard"
+    elif maia_nvflare_dashboard_chart_type == "git_repo":
+        maia_nvflare_dashboard_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        maia_nvflare_dashboard_values["path"] = "charts/maia-nvflare-dashboard"
+    
+    admin_username, admin_password = generate_nvflare_dashboard_configs(namespace_config["group_ID"])
+    maia_nvflare_dashboard_values["env"] = [
+        {"name": "ADMIN_USERNAME", "value": admin_username},
+        {"name": "ADMIN_PASSWORD", "value": admin_password},
+        {"name": "NVFL_CREDENTIAL", "value": f"{admin_username}:{admin_password}"},
+    ]
+    maia_nvflare_dashboard_values["ingress"] = {
+        "enabled": True,
+        "annotations": {},
+        "hosts": [
+            {
+                "host": "dashboard.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
+                "paths": [{"path": "/", "pathType": "ImplementationSpecific"}],
+            }
+        ],
+        "tls": [{"hosts": ["dashboard.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
+    }
+    if "nginx_cluster_issuer" in cluster_config:
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            maia_nvflare_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            maia_nvflare_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
+            "nginx_cluster_issuer"
+        ]
+        maia_nvflare_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "10g"
+        maia_nvflare_dashboard_values["ingress"]["tls"][0]["secretName"] = "{}.{}-tls".format(
+            namespace_config["group_subdomain"], cluster_config["domain"]
+        )
+    if "traefik_resolver" in cluster_config:
+        maia_nvflare_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        maia_nvflare_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            ...
+        else:
+            maia_nvflare_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config["traefik_resolver"]
+            )
+    
+    Path(config_folder).joinpath(namespace_config["group_ID"], "maia_nvflare_dashboard_values").mkdir(parents=True, exist_ok=True)
+    with open(
+        Path(config_folder).joinpath(namespace_config["group_ID"], "maia_nvflare_dashboard_values", "maia_nvflare_dashboard_values.yaml"), "w"
+    ) as f:
+        f.write(OmegaConf.to_yaml(maia_nvflare_dashboard_values))
+    
+    return {
+        "namespace": maia_nvflare_dashboard_values["namespace"],
+        "release": f"{namespace_id}-nvflare-dashboard",
+        "chart": maia_nvflare_dashboard_values["chart_name"] if maia_nvflare_dashboard_chart_type == "helm_repo" else maia_nvflare_dashboard_values["path"],
+        "repo": maia_nvflare_dashboard_values["repo_url"],
+        "version": maia_nvflare_dashboard_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(namespace_config["group_ID"], "maia_nvflare_dashboard_values", "maia_nvflare_dashboard_values.yaml")),
     }
