@@ -6,6 +6,10 @@ ARG NVF_VERSION=2.4.0rc6
 ENV NVF_BRANCH=${NVF_VERSION}
 
 COPY blob.py /opt/NVFlare/nvflare/dashboard/application/blob.py
+COPY start.sh /opt/start.sh
+RUN chmod 755 /opt/start.sh
+
+COPY default.template /etc/default.template
 #RUN python3 -m pip install -U pip
 #RUN python3 -m pip install -U setuptools
 
@@ -18,3 +22,4 @@ COPY blob.py /opt/NVFlare/nvflare/dashboard/application/blob.py
 #RUN pip install -e NVFlare
 
 #CMD ["sh", "-c","nvflare dashboard --start --local -f /tmp/nvflare --cred $ADMIN_USERNAME:$ADMIN_PASSWORD"]
+ENTRYPOINT ["bash", "/opt/start.sh"]
