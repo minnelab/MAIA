@@ -35,6 +35,7 @@ from MAIA.maia_fn import (
     generate_mlflow_configs,
     generate_mysql_configs,
     copy_certificate_authority_secret,
+    deploy_kubeflow_project,
 )
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
 
@@ -251,8 +252,9 @@ def deploy_maia_toolkit_api(
             key_name="private.key",
         )
 
-    helm_commands.append(create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal))
-
+    helm_commands.append(
+            deploy_kubeflow_project(cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict, minimal=minimal)
+        )
     helm_commands.append(
         create_filebrowser_values(
             project_form_dict,
@@ -377,8 +379,9 @@ def deploy_maia_toolkit_api(
         "defaults": [
             "_self_",
             {"maia_namespace_values": "namespace_values"},
-            {"jupyterhub_values": "jupyterhub_values"},
-            {"jupyterhub_chart_info": "jupyterhub_chart_info"},
+            #{"jupyterhub_values": "jupyterhub_values"},
+            #{"jupyterhub_chart_info": "jupyterhub_chart_info"},
+            {"kubeflow_values": "kubeflow_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "group_ID": f"MAIA:{group_id}",
@@ -386,8 +389,8 @@ def deploy_maia_toolkit_api(
         "sourceRepos": [
             "https://minnelab.github.io/MAIA/",
             "https://github.com/minnelab/MAIA.git",
-            "https://hub.jupyter.org/helm-chart/",
-            "https://oauth2-proxy.github.io/manifests",
+            #"https://hub.jupyter.org/helm-chart/",
+            #"https://oauth2-proxy.github.io/manifests",
         ],
     }
     values["defaults"].append({"maia_filebrowser_values": "maia_filebrowser_values"})
