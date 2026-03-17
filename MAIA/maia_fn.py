@@ -622,7 +622,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
             "AWS_SECRET_ACCESS_KEY": base64.b64decode(minio_config.get("console_secret_key", "minio")).decode("utf-8"),
             "MLFLOW_S3_ENDPOINT_URL": "http://minio:80",
             "MLFLOW_PATH": "mlflow",
-            "MINIO_CONSOLE_PATH": f"minio-console- {namespace}",
+            "MINIO_CONSOLE_PATH": f"minio-console-{namespace}",
             "KUBEFLOW_URL": "https://kubeflow." + cluster_config["domain"],
         },
     }
@@ -756,6 +756,10 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
             "enabled": True,
             "username": os.environ["MONAI_LABEL_AUTH_USERNAME_" + namespace],
             "password": os.environ["MONAI_LABEL_AUTH_PASSWORD_" + namespace],
+        }
+    else:
+        orthanc_config["monai_label_auth"] = {
+            "enabled": False,
         }
     if cluster_config["shared_storage_class"] == "local-path":
         orthanc_config["pvc"]["access_mode"] = "ReadWriteOnce"
