@@ -1,10 +1,3 @@
-{{- /*
-Only create AuthorizationPolicies once the target namespace exists.
-This avoids failures when the namespace (managed elsewhere, e.g. by Kubeflow)
-has not yet been created at the time this chart is installed.
-*/ -}}
-{{- $ns := .Values.namespace | default .Release.Namespace -}}
-{{- if (lookup "v1" "Namespace" "" $ns) }}
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -106,4 +99,3 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name : maia-nvflare-dashboard     
-{{- end }}
