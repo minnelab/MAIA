@@ -2,7 +2,7 @@ apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-external-minio
-  namespace: {{ $ns }}
+  namespace: {{ .Values.namespace }}
 spec:
   rules:
     - from:
@@ -14,13 +14,13 @@ spec:
           {{- end }}
   selector:
     matchLabels:
-      v1.min.io/console: {{ $ns }}-console
+      v1.min.io/console: {{ .Values.namespace }}-console
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-external-mlflow
-  namespace: {{ $ns }}
+  namespace: {{ .Values.namespace }}
 spec:
   rules:
     - from:
@@ -31,7 +31,7 @@ spec:
           {{- end }}
   selector:
     matchLabels:
-      app: {{ $ns }}-mlflow
+      app: {{ .Values.namespace }}-mlflow
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
