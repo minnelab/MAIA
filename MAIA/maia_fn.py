@@ -1885,7 +1885,7 @@ def create_nvflare_dashboard_values(namespace_config, cluster_config, config_fol
         )
         maia_nvflare_dashboard_values["path"] = "charts/maia-nvflare-dashboard"
 
-    admin_username, admin_password = generate_nvflare_dashboard_configs(namespace_config["group_ID"])
+    admin_username, admin_password = generate_nvflare_dashboard_configs(namespace_config["group_ID"], namespace_config)
     maia_nvflare_dashboard_values["env"] = [
         {"name": "ADMIN_USERNAME", "value": admin_username},
         {"name": "ADMIN_PASSWORD", "value": admin_password},
@@ -1896,11 +1896,11 @@ def create_nvflare_dashboard_values(namespace_config, cluster_config, config_fol
         "annotations": {},
         "hosts": [
             {
-                "host": "dashboard.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
+                "host": "nvflare.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
                 "paths": [{"path": "/", "pathType": "ImplementationSpecific"}],
             }
         ],
-        "tls": [{"hosts": ["dashboard.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
+        "tls": [{"hosts": ["nvflare.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
     }
     if "nginx_cluster_issuer" in cluster_config:
         if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
