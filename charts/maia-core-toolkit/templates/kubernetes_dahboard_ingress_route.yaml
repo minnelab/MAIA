@@ -42,7 +42,6 @@ kind: Middleware
 metadata:
   name: kubernetes-dashboard-replace-path
   namespace: kube-system
-  resourceVersion: '49075'
 spec:
   replacePathRegex:
     regex: ^/dashboard/(.*)
