@@ -23,4 +23,5 @@ COPY default.template /etc/default.template
 #RUN pip install -e NVFlare
 
 #CMD ["sh", "-c","nvflare dashboard --start --local -f /tmp/nvflare --cred $ADMIN_USERNAME:$ADMIN_PASSWORD"]
+CMD ["/usr/local/bin/python3", "nvflare/dashboard/wsgi.py"]
 ENTRYPOINT ["bash", "/opt/start.sh"]

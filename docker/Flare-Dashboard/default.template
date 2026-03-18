@@ -49,6 +49,16 @@ server {
             sub_filter '="/js/' '="${INGRESS_PATH}/js/';
             sub_filter '="/css/' '="${INGRESS_PATH}/css/';
             sub_filter '="/_next/' '="${INGRESS_PATH}/_next/';
+
+
+            # 3. NEW: Javascript API Rewrites
+            # Fixed the typo in the first line
+            sub_filter '"/api/' '"${INGRESS_PATH}/api/';
+            sub_filter "'/api/" "'${INGRESS_PATH}/api/";
+
+            # (Optional) If your network tab shows requests going to /project/...
+            sub_filter '"/project/' '"${INGRESS_PATH}/project/';
+            sub_filter "'/project/" "'${INGRESS_PATH}/project/";
             
             # Apply to all occurrences, not just the first one
             sub_filter_once off;
