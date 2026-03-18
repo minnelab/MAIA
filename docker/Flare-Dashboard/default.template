@@ -59,7 +59,9 @@ server {
             # (Optional) If your network tab shows requests going to /project/...
             sub_filter '"/project/' '"${INGRESS_PATH}/project/';
             sub_filter "'/project/" "'${INGRESS_PATH}/project/";
-            
+
+            sub_filter '"/project-configuration' '"${INGRESS_PATH}/project-configuration';
+            sub_filter "'/project-configuration" "'${INGRESS_PATH}/project-configuration";
             # Apply to all occurrences, not just the first one
             sub_filter_once off;
             
