@@ -84,23 +84,3 @@ spec:
             host: {{ .Values.namespace }}-filebrowser-maia-filebrowser.{{ .Values.namespace }}.svc.cluster.local
             port:
               number: 80
----
-apiVersion: networking.istio.io/v1
-kind: VirtualService
-metadata:
-  name: flare-dashboard-redirect-{{ .Values.namespace }}
-  namespace: kubeflow
-spec:
-  gateways:
-    - kubeflow-gateway
-  hosts:
-    - '*'
-  http:
-    - match:
-        - uri:
-            prefix: /nvflare-{{ .Values.namespace }}/
-      route:
-        - destination:
-            host: {{ .Values.namespace }}-nvflare-dashboard.{{ .Values.namespace }}.svc.cluster.local
-            port:
-              number: 80
