@@ -62,6 +62,29 @@ server {
 
             sub_filter '"/project-configuration' '"${INGRESS_PATH}/project-configuration';
             sub_filter "'/project-configuration" "'${INGRESS_PATH}/project-configuration";
+
+            # --- Dashboard & Root ---
+            sub_filter '"/"' '"${INGRESS_PATH}/"';
+            sub_filter "'/'" "'${INGRESS_PATH}/'";
+
+            sub_filter '"/user-dashboard' '"${INGRESS_PATH}/user-dashboard';
+            sub_filter "'/user-dashboard" "'${INGRESS_PATH}/user-dashboard";
+
+            sub_filter '"/project-admin-dashboard' '"${INGRESS_PATH}/project-admin-dashboard';
+            sub_filter "'/project-admin-dashboard" "'${INGRESS_PATH}/project-admin-dashboard";
+
+            sub_filter '"/site-dashboard' '"${INGRESS_PATH}/site-dashboard';
+            sub_filter "'/site-dashboard" "'${INGRESS_PATH}/site-dashboard";
+
+            # --- Configuration & Utility ---
+            sub_filter '"/server-config' '"${INGRESS_PATH}/server-config';
+            sub_filter "'/server-config" "'${INGRESS_PATH}/server-config";
+
+            sub_filter '"/downloads' '"${INGRESS_PATH}/downloads';
+            sub_filter "'/downloads" "'${INGRESS_PATH}/downloads";
+
+            sub_filter '"/logout' '"${INGRESS_PATH}/logout';
+            sub_filter "'/logout" "'${INGRESS_PATH}/logout";
             # Apply to all occurrences, not just the first one
             sub_filter_once off;
             
