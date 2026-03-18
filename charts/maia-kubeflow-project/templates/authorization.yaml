@@ -95,7 +95,7 @@ spec:
           {{- end }}
     - to:
       - operation:
-          ports: ["8443"]
+          ports: ["80"]
   selector:
     matchLabels:
       app.kubernetes.io/name : maia-nvflare-dashboard     
