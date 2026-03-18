@@ -64,8 +64,8 @@ server {
             sub_filter "'/project-configuration" "'${INGRESS_PATH}/project-configuration";
 
             # --- Dashboard & Root ---
-            sub_filter '"/"' '"${INGRESS_PATH}/"';
-            sub_filter "'/'" "'${INGRESS_PATH}/'";
+            #sub_filter '"/"' '"${INGRESS_PATH}/"';
+            #sub_filter "'/'" "'${INGRESS_PATH}/'";
 
             sub_filter '"/user-dashboard' '"${INGRESS_PATH}/user-dashboard';
             sub_filter "'/user-dashboard" "'${INGRESS_PATH}/user-dashboard";
