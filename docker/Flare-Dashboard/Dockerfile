@@ -8,7 +8,8 @@ ENV NVF_BRANCH=${NVF_VERSION}
 COPY blob.py /opt/NVFlare/nvflare/dashboard/application/blob.py
 COPY start.sh /opt/start.sh
 RUN chmod 755 /opt/start.sh
-
+RUN apt update && apt install -y nginx gettext-base
+RUN apt -y install build-essential 
 COPY default.template /etc/default.template
 #RUN python3 -m pip install -U pip
 #RUN python3 -m pip install -U setuptools
