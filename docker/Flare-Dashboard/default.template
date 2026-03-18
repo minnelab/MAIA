@@ -48,12 +48,13 @@ server {
             sub_filter '="/assets/' '="${INGRESS_PATH}/assets/';
             sub_filter '="/js/' '="${INGRESS_PATH}/js/';
             sub_filter '="/css/' '="${INGRESS_PATH}/css/';
+            sub_filter '="/_next/' '="${INGRESS_PATH}/_next/';
             
             # Apply to all occurrences, not just the first one
             sub_filter_once off;
             
             # Only waste CPU cycles parsing HTML files, ignore images/binary
-            sub_filter_types text/html;
+            sub_filter_types text/html application/javascript application/x-javascript text/javascript;
             
             # Ensure gzip is off for proxied requests so sub_filter can read the HTML
             proxy_set_header Accept-Encoding "";
