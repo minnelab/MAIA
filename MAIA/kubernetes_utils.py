@@ -950,7 +950,7 @@ def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):
             if e.status == 409:
                 print(f"{kind} '{name}' already exists. Skipping.")
             else:
-                print(f"Failed to create {kind} '{name}': {e.reason}")
+                print(f"Failed to create {kind} '{name}': {e}")
 
     # Create ServiceAccounts
     for sa in service_accounts:
@@ -1477,17 +1477,17 @@ def create_maia_rbac_from_context(namespace):
         rules=[
             client.V1PolicyRule(
                 api_groups=[""],
-                resources=["secrets", "services", "configmaps"],
+                resources=["secrets", "services", "configmaps", "serviceaccounts"],
                 verbs=["list", "create", "patch", "update", "get"],
             ),
             client.V1PolicyRule(
                 api_groups=["rbac.authorization.k8s.io"],
-                resources=["RoleBindings"],
+                resources=["rolebindings"],
                 verbs=["create"],
             ),
             client.V1PolicyRule(
                 api_groups=["security.istio.io"],
-                resources=["AuthorizationPolicies"],
+                resources=["authorizationpolicies"],
                 verbs=["create"],
             ),
         ],
