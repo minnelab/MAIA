@@ -77,19 +77,19 @@ def get_arg_parser():
         default=None,
         help="Steps to run. Default: None. If provided, only the specified steps will be run, overriding the steps in the config.yaml file.",
     )
-    
+
     pars.add_argument(
         "--upgrade-maia-core",
         action="store_true",
         help="Upgrade MAIA core. Default: False. If provided, the MAIA core will be upgraded.",
     )
-    
+
     pars.add_argument(
         "--upgrade-maia-admin",
         action="store_true",
         help="Upgrade MAIA admin. Default: False. If provided, the MAIA admin will be upgraded.",
     )
-    
+
     pars.add_argument(
         "--upgrade-maia-dashboard",
         action="store_true",
