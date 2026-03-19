@@ -77,6 +77,24 @@ def get_arg_parser():
         default=None,
         help="Steps to run. Default: None. If provided, only the specified steps will be run, overriding the steps in the config.yaml file.",
     )
+    
+    pars.add_argument(
+        "--upgrade-maia-core",
+        action="store_true",
+        help="Upgrade MAIA core. Default: False. If provided, the MAIA core will be upgraded.",
+    )
+    
+    pars.add_argument(
+        "--upgrade-maia-admin",
+        action="store_true",
+        help="Upgrade MAIA admin. Default: False. If provided, the MAIA admin will be upgraded.",
+    )
+    
+    pars.add_argument(
+        "--upgrade-maia-dashboard",
+        action="store_true",
+        help="Upgrade MAIA dashboard. Default: False. If provided, the MAIA dashboard will be upgraded.",
+    )
 
     pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
@@ -117,6 +135,15 @@ def main():
 
     if args.steps:
         config_dict["steps"] = args.steps
+    if args.upgrade_maia_core:
+        config_dict["steps"] = ["install_maia_core"]
+        config_dict["install_maia_core"] = {"auto_sync": False}
+    if args.upgrade_maia_admin:
+        config_dict["steps"] = ["install_maia_admin"]
+        config_dict["install_maia_admin"] = {"auto_sync": False}
+    if args.upgrade_maia_dashboard:
+        config_dict["steps"] = ["configure_maia_dashboard"]
+        config_dict["configure_maia_dashboard"] = {"auto_sync": False}
     playbooks_dir = "maia.installation"
 
     # Step 1: Install Ansible collection
