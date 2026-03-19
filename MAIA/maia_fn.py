@@ -1364,7 +1364,7 @@ def generate_orthanc_configs(project_id, project_config_dict=None):
         }
     else:
         mysql_password = generate_human_memorable_password(16)
-        ae_title = generate_random_password(16)
+        ae_title = project_id.lower().replace("_", "-")
         orthanc_configs = {
             "ae_title": ae_title,
             "mysql_password": mysql_password,
