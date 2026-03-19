@@ -11,9 +11,7 @@ spec:
   http:
     - match:
         - uri:
-            prefix: /{{ .Values.namespace }}/mlflow/
-      rewrite:
-        uri: /mlflow/
+            prefix: /{{ .Values.namespace }}-mlflow/
       route:
         - destination:
             host: {{ .Values.namespace }}-mlflow-mkg.{{ .Values.namespace }}.svc.cluster.local
