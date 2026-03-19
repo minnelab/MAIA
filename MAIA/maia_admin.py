@@ -634,6 +634,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "mysql": {"enabled": True, "image": mysql_image, "tag": mysql_image_version},
         }
     )
+    if cluster_config_dict["url_type"] == "subpath":
+        maia_dashboard_values["ingress"]["hosts"][0]["host"] = cluster_config_dict["domain"]
+        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = cluster_config_dict["domain"]
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
