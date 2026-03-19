@@ -411,7 +411,7 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "admin_project_version": "$ADMIN_PROJECT_VERSION",
   "minio_admin_password": "$minio_admin_password",
   "minio_root_password": "$minio_root_password",
-  "mysql_dashboard_password": "$mysql_dashboard_password"
+  "mysql_dashboard_password": "$mysql_dashboard_password",
   "admin_email": "$admin_email"
 }
 EOF
