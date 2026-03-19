@@ -504,7 +504,7 @@ class ProjectChartValuesAPIView(APIView):
             description,
             supervisor,
         )
-        
+
         project_form_dict = {
             "group_ID": group_id,
             "group_subdomain": group_id.lower().replace("_", "-"),
@@ -525,11 +525,17 @@ class ProjectChartValuesAPIView(APIView):
             with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
                 yaml.dump(kubeconfig_dict, f)
                 os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
-                if "env" in project_configuration and "DEPLOY_KUBEFLOW" in project_configuration["env"] and project_configuration["env"]["DEPLOY_KUBEFLOW"] == "True":
+                if (
+                    "env" in project_configuration
+                    and "DEPLOY_KUBEFLOW" in project_configuration["env"]
+                    and project_configuration["env"]["DEPLOY_KUBEFLOW"] == "True"
+                ):
                     kubeflow_namespace = True
                 else:
                     kubeflow_namespace = False
-                create_namespace_from_context(namespace_id=group_id.lower().replace("_", "-"), kubeflow_namespace=kubeflow_namespace, owner_email=users[0])
+                create_namespace_from_context(
+                    namespace_id=group_id.lower().replace("_", "-"), kubeflow_namespace=kubeflow_namespace, owner_email=users[0]
+                )
                 create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
         values = deploy_project(
             group_id,
@@ -1067,11 +1073,22 @@ def deploy_view(request, group_id):
     project_form_dict, cluster_id = get_project(group_id, settings=env_settings, maia_project_model=MAIAProject)
     users = project_form_dict["users"]
     namespace = project_form_dict["group_ID"].lower().replace("_", "-")
-    if "env" in project_form_dict and "DEPLOY_KUBEFLOW" in project_form_dict["env"] and project_form_dict["env"]["DEPLOY_KUBEFLOW"] == "True":
+    if (
+        "env" in project_form_dict
+        and "DEPLOY_KUBEFLOW" in project_form_dict["env"]
+        and project_form_dict["env"]["DEPLOY_KUBEFLOW"] == "True"
+    ):
         kubeflow_namespace = True
     else:
         kubeflow_namespace = False
-    create_namespace(request=request, cluster_id=cluster_id, namespace_id=namespace, settings=env_settings, kubeflow_namespace=kubeflow_namespace, owner_email=users[0])
+    create_namespace(
+        request=request,
+        cluster_id=cluster_id,
+        namespace_id=namespace,
+        settings=env_settings,
+        kubeflow_namespace=kubeflow_namespace,
+        owner_email=users[0],
+    )
     create_maia_rbac(request=request, cluster_id=cluster_id, namespace=namespace, settings=env_settings)
     disable_argocd = False
     if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True":

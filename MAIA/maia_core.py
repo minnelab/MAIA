@@ -1167,7 +1167,7 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
             "annotations": {},
         },
     }
-    
+
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         kubeflow_values["kubeflow_values"]["sslInsecureSkipVerify"] = True
 
