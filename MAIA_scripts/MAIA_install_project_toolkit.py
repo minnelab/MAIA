@@ -163,6 +163,10 @@ def deploy_maia_toolkit_api(
 ):
     # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
+    # Unset all the environment variables ending with _namespace_id
+    for key in os.environ:
+        if key.endswith("_" + namespace_id):
+            os.environ.pop(key)
     if "CLUSTER_CONFIG_PATH" in os.environ:
         cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
         if Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").exists():
