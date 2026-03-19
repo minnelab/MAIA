@@ -2,6 +2,35 @@
 
 VERSION=0.0.0
 MAIA_INSTALLATION_VERSION=0.0.0
+# Parse arguments for config_folder, k8s_distro, and admin_email. Fallback to defaults if not provided.
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --config-folder)
+      CONFIG_FOLDER="$2"
+      shift 2
+      ;;
+    --k8s-distro)
+      K8S_DISTRIBUTION="$2"
+      shift 2
+      ;;
+    --admin-email)
+      ADMIN_EMAIL="$2"
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+# Set defaults if variables are still unset
+: "${CONFIG_FOLDER:=maia-config}"
+: "${K8S_DISTRIBUTION:=k3s}"
+: "${ADMIN_EMAIL:=admin@maia.io}"
+
+export CONFIG_FOLDER="maia-config"
+export K8S_DISTRIBUTION="k0s"
+export ADMIN_EMAIL="admin@maia.io"
 sudo apt update
 sudo apt install -y python3-pip ufw curl git
 sudo apt install -y jq yq apache2-utils
@@ -26,8 +55,7 @@ ARGOCD_VS=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/lates
 sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$ARGOCD_VS/argocd-linux-amd64
 sudo chmod +x /usr/local/bin/argocd
 
-export CONFIG_FOLDER="maia-config"
-export K8S_DISTRIBUTION="k0s"
+
 mkdir -p $CONFIG_FOLDER
 
 echo "Do you want to run Step 1: prepare hosts (install NVIDIA drivers, NFS & CIFS storage drivers, and configure UFW firewall for SSH and node-to-node communication)?"
@@ -235,6 +263,7 @@ env:
   CLUSTER_NAME: $CLUSTER_NAME
   INGRESS_RESOLVER_EMAIL: $INGRESS_RESOLVER_EMAIL
   K8S_DISTRIBUTION: $K8S_DISTRIBUTION
+  ADMIN_EMAIL: $ADMIN_EMAIL
 steps:
   - empty
   $(if [ "$PREPARE_HOSTS" = "yes" ]; then echo "- prepare_hosts"; fi)

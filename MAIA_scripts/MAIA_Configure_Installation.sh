@@ -371,6 +371,22 @@ else
   mysql_dashboard_password=$(openssl rand -hex 12)
 fi
 
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  existing_admin_email=$(jq -r '.admin_email' "$CONFIG_FOLDER/env.json")
+else
+  existing_admin_email=""
+fi
+
+if [ -n "$existing_admin_email" ] && [ "$existing_admin_email" != "null" ]; then
+  admin_email="$existing_admin_email"
+else
+  if [ -n "$ADMIN_EMAIL" ]; then
+    admin_email="$ADMIN_EMAIL"
+  else
+    admin_email="admin@maia.io"
+  fi
+fi
+
 cat <<EOF > $CONFIG_FOLDER/env.json
 {
   "MAIA_PRIVATE_REGISTRY": "$MAIA_PRIVATE_REGISTRY",
@@ -396,6 +412,7 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "minio_admin_password": "$minio_admin_password",
   "minio_root_password": "$minio_root_password",
   "mysql_dashboard_password": "$mysql_dashboard_password"
+  "admin_email": "$admin_email"
 }
 EOF
 
