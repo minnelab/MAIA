@@ -373,6 +373,8 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     users = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     memory_limit = serializers.CharField(max_length=100)
     cpu_limit = serializers.CharField(max_length=100)
+    cpu_request = serializers.CharField(max_length=100)
+    memory_request = serializers.CharField(max_length=100)
     project_tier = serializers.CharField(max_length=100)
     gpu = serializers.CharField(max_length=100)
     env_file = serializers.FileField(required=False, allow_empty_file=True)
@@ -422,6 +424,8 @@ class ProjectChartValuesAPIView(APIView):
         users = validated_data["users"]
         memory_limit = validated_data["memory_limit"]
         cpu_limit = validated_data["cpu_limit"]
+        cpu_request = validated_data["cpu_request"]
+        memory_request = validated_data["memory_request"]
         project_tier = validated_data["project_tier"]
         gpu = validated_data["gpu"]
         env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
@@ -500,13 +504,14 @@ class ProjectChartValuesAPIView(APIView):
             description,
             supervisor,
         )
+        
         project_form_dict = {
             "group_ID": group_id,
             "group_subdomain": group_id.lower().replace("_", "-"),
             "users": users,
             "resources_limits": {
-                "memory": [str(int(int(memory_limit[: -len(" Gi")]) / 2)) + " Gi", memory_limit],
-                "cpu": [str(int(int(cpu_limit) / 2)), cpu_limit],
+                "memory": [memory_request, memory_limit],
+                "cpu": [cpu_request, cpu_limit],
             },
             "project_tier": project_tier,
             "gpu_request": gpu,
