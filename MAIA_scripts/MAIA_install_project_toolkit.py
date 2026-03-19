@@ -422,6 +422,7 @@ def deploy_maia_toolkit_api(
     else:
         values["defaults"].append({"jupyterhub_values": "jupyterhub_values"})
         values["defaults"].append({"jupyterhub_chart_info": "jupyterhub_chart_info"})
+        values["sourceRepos"].append("https://hub.jupyter.org/helm-chart/")
     if deploy_nvflare_dashboard:
         values["defaults"].append({"maia_nvflare_dashboard_values": "maia_nvflare_dashboard_values"})
     if private_maia_registry:
