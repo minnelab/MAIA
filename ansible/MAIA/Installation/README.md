@@ -234,8 +234,8 @@ The GPG_KEY is the path to the GPG key that will be used to sign the commits.
 If you want to deploy MAIA-Admin without Rancher, you can set in your config.yaml file the following variable, to force the user OIDC authentication for the MAIA Dashboard to connect with the k8s cluster (by default, the connection is done through Rancher).
 
 ```yaml
-cluster_config_extra_env:
-  maia_dashboard_oidc_authentication: true
+env:
+  MAIA_DASHBOARD_OIDC_AUTHENTICATION: true
 ```
 
 ### Move Let's Encrypt staging to production
@@ -252,7 +252,28 @@ env:
 
 2. Remove the rootCA environment variable from the ArgoCD `argocd-cm` ConfigMap, entry `oidc.config`.
 
-3. Remove the `--oidc-ca-file` configuration from the apiserver args (kube-apiserver) and restart the kubernetes service. In microk8s, you can find the apiserver-args in the `/var/snap/microk8s/current/args/kube-apiserver` file, while in k0s, you can find it in the `/var/lib/k0s/pki/admin.conf` file.
+3. Remove the `--oidc-ca-file` configuration from the apiserver args (kube-apiserver) and restart the kubernetes service. In microk8s, you can find the apiserver-args in the `/var/snap/microk8s/current/args/kube-apiserver` file, while in k0s, you can find it in the `/etc/k0s/k0s.yaml` file, in k3s, you can find it in the `/etc/rancher/k3s/config.yaml` file.
+
+4. From the `maia-admin-maia-dashboard` ConfigMap in the `maia-dashboard` namespace, edit the <cluster_name>.yaml file and set the selfsigned variable to False:
+
+```yaml
+selfsigned: false
+```
+
+From the `<cluster_name>.yaml` file in the config folder, set the `staging_certificates` variable to False and delete the `externalCA` variable:
+
+```yaml
+staging_certificates: false
+externalCA: null
+```
+
+5. Restart the kubernetes service.
+
+6. From the `maia-admin-maia-dashboard` ConfigMap in the `maia-dashboard` namespace, edit the <cluster_name>.yaml file and set the selfsigned variable to False:
+
+```yaml
+selfsigned: false
+```
 
 ### Set MAIA Registry
 
@@ -326,7 +347,7 @@ For the MAIA core and admin layers, you can select which ArgoCD applications to 
 ```yaml
 install_maia_core:
   auto_sync: true
-  maia_core_argocd_applications: ["maia-core-traefik", "maia-core-local-path", "maia-core-cert-manager","maia-core-metallb",  "maia-core-toolkit", "maia-core-minio-operator"]
+  maia_core_argocd_applications: ["maia-core-traefik", "maia-core-local-path", "maia-core-cert-manager","maia-core-metallb",  "maia-core-toolkit", "maia-core-minio-operator", "maia-core-kubeflow"]
 
 install_maia_admin:
   auto_sync: true
@@ -340,7 +361,160 @@ To override the default cluster configuration, you can set the following variabl
 ```yaml
 cluster_config_extra_env:
   shared_storage_class: microk8s-hostpath
+  jupyterhub_username_claim: "email"
   port_range:
   - 32000
   - 32767
+```
+
+### Project Configuration:
+
+To add a project to the MAIA Dashboard, you can set the following variables in your <project_id>.yaml file (or JSON file):
+
+```yaml
+name: <project_id>
+  <key>: <value>
+  env:
+    <env_key>: <env_value>
+```
+
+and the following variables in your config.yaml file:
+
+```yaml
+env:
+  maia_projects: "<path/to/project_id_1>.yaml,<path/to/project_id_2>.yaml,<path/to/project_id_3>.yaml"
+```
+
+#### Enable CIFS shared storage support
+
+Use to enable the CIFS shared storage support for the project, creating a CIFS secret in the namespace for the CIFS encryption public key, CIFS volumes will be mounted to the JupyterHub and FileBrowser Apps.
+
+```yaml
+env:
+  enable_cifs: true
+```
+
+#### MLflow and FileBrowser App Credentials
+
+```yaml
+mlflow_user: "<mlflow_user>"
+mlflow_password: "<mlflow_password>"
+```
+
+#### MinIO App Credentials
+
+```yaml
+minio_user: "<minio_user>"
+minio_password: "<minio_password>"
+minio_console_access_key: "<minio_console_access_key>"
+minio_console_secret_key: "<minio_console_secret_key>"
+```
+
+#### MySQL App Credentials
+
+For both the MySQL deployments associated with MLFlow and Orthanc. For the Orthanc MySQL deployment, the user is `maia-admin` and the password is the same as the one for the MLFlow MySQL database.
+
+```yaml
+mysql_user: "<mysql_user>"
+mysql_password: "<mysql_password>"
+```
+
+#### Load Balancer IP Whitelist
+
+Use to whitelist the IP addresses that will be allowed to access the project services. Specifically, if the Orthanc and SSH Services are deployed as LoadBalancer, the IP addresses will be allowed to access the Orthanc and SSH Services. The IP addresses will be also allowed to access the Kubeflow project through the Authorization Policies, if Kubeflow is deployed.
+
+```yaml
+ip_whitelist:
+  - "<ip_address>"
+  - "<ip_address>"
+```
+
+#### Override default GPU request
+
+Use to override the default GPU request for the project. 
+
+```yaml
+gpu_request: <gpu_request>
+```
+
+
+#### JupyterHub Configuration
+
+```yaml
+admins:  # List of admin emails for the JupyterHub Environment
+  - "<admin_email>"
+  - "<admin_email>"
+
+password: "<password>" # Default assigned password set for all the users in the JupyterHub Environment
+allow_ssh_password_authentication: "True" # Allow SSH password authentication for the JupyterHub Environment
+active_server_limit: 1 # Active server limit for the JupyterHub Environment
+concurrent_spawn_limit: 1 # Concurrent spawn limit for the JupyterHub Environment
+shared_server_user: "<shared_server_user>" # Shared server user for the JupyterHub Environment
+jupyterhub_extraEnv:
+  INSTALL_SLICER: "1" # Install Slicer for the JupyterHub Environment
+```
+
+#### Resources Limits and Requests
+
+```yaml
+env:
+  ORTHANC_CPU_REQUEST: "4000m"
+  ORTHANC_CPU_LIMIT: "4000m"
+  ORTHANC_MEMORY_REQUEST: "4Gi"
+  ORTHANC_MEMORY_LIMIT: "4Gi"
+  MLFLOW_CPU_REQUEST: "500m"
+  MLFLOW_CPU_LIMIT: "500m"
+  MLFLOW_MEMORY_REQUEST: "2Gi"
+  MLFLOW_MEMORY_LIMIT: "2Gi"
+  MYSQL_CPU_REQUEST: "500m"
+  MYSQL_CPU_LIMIT: "500m"
+  MYSQL_MEMORY_REQUEST: "2Gi"
+  MYSQL_MEMORY_LIMIT: "2Gi"
+```
+
+#### MONAI Label Authentication for Orthanc
+
+To be set only if the MONAI Label servers linked to the Orthanc deployment are protected by authentication.
+
+```yaml
+env:
+  MONAI_LABEL_AUTH_USERNAME: <username>
+  MONAI_LABEL_AUTH_PASSWORD: <password>
+```
+
+#### MONAI Label Models for Orthanc
+
+To set the MONAI Label models for the Orthanc deployment, you can set the following environment variable in your config.yaml file:
+
+```yaml
+monai_label_models:
+  <model_name>:
+    label_info:
+      params:
+        label_info:
+          - name: <label_1_name>
+            model_name: <model_name>
+          - name: <label_2_name>
+            model_name: <model_name>
+    host: <host>
+```
+
+#### NVFlare Dashboard
+
+To enable the NVFlare Dashboard for the project, you can set the following environment variables in your config.yaml file:
+
+```yaml
+env:
+  DEPLOY_NVFLARE_DASHBOARD: "True"
+  nvflare_dashboard_admin_username: <username>
+  nvflare_dashboard_admin_password: <password>
+```
+
+#### Kubeflow Project
+
+To deploy the project as a Kubeflow project, you can set the following environment variable in your config.yaml file:
+
+```yaml
+env:
+  DEPLOY_KUBEFLOW: "True"
 ```

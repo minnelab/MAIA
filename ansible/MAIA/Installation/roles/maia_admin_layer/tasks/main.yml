@@ -109,7 +109,7 @@
 - name: Create MAIA Realm Import Config Map for keycloak
   ansible.builtin.command: >
     kubectl create configmap -n keycloak maia-realm-import --from-file=MAIA_realm.json={{ config_folder }}/MAIA_realm.json
-  when: configmap_check.rc != 0 and auto_sync | bool
+  when: auto_sync | bool and configmap_check.rc != 0
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
@@ -138,7 +138,6 @@
   register: argocd_cli_login
   changed_when: false
   delegate_to: localhost
-  when: auto_sync | bool
   
 
 - name: Show ArgoCD CLI login output
@@ -160,11 +159,10 @@
   changed_when: false
   failed_when: false
   delegate_to: localhost
-  when: auto_sync | bool
+
 - name: Set keycloak_synced fact if app is synced
   ansible.builtin.set_fact:
     keycloak_synced: "{{ keycloak_app_status.stdout == 'Succeeded' }}"
-  when: auto_sync | bool
 
 - name: Sync maia-admin-keycloak ArgoCD application
   ansible.builtin.shell: |
