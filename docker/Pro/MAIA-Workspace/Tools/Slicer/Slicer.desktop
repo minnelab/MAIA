@@ -2,7 +2,7 @@
 [Desktop Entry]
 Comment[en_US]=
 Comment=
-Exec=$HOME/Documents/Slicer-5.8.1-linux-amd64/Slicer
+Exec=$HOME/Documents/Slicer-5.10.0-linux-amd64/Slicer
 GenericName[en_US]=
 GenericName=
 Icon=/etc/300px-3DSlicerLogo-app-icon512.svg.png

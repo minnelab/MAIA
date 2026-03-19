@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-if [ -d $HOME/Documents/Slicer-5.10.0-2025-11-10-linux-amd64 ]; then
+if [ -d $HOME/Documents/Slicer-5.10.0-linux-amd64 ]; then
     echo "Slicer is already installed."
     exit 0
 fi
@@ -13,7 +13,7 @@ sudo cp /etc/slicer.tar.gz $HOME/Documents/
 
 tar -xf $HOME/Documents/slicer.tar.gz -C $HOME/Documents/
 
-$HOME/Documents/Slicer-5.10.0-2025-11-10-linux-amd64/Slicer --python-script /home/maia-user/Tutorials/Slicer_Extensions.py &
+$HOME/Documents/Slicer-5.10.0-linux-amd64/Slicer --python-script /home/maia-user/Tutorials/Slicer_Extensions.py &
 
 cp /etc/Slicer.desktop $HOME/Desktop/
 
