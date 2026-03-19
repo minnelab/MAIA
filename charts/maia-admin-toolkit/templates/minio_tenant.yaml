@@ -13,7 +13,7 @@ spec:
         - -c
         - |
           echo "Waiting for Keycloak OIDC endpoint to become ready..."
-          while ! curl -sSf {{ .Values.minio.openIdConfigUrl }} > /dev/null; do
+          while ! curl -k -sSf {{ .Values.minio.openIdConfigUrl }} > /dev/null; do
             sleep 5
           done
           echo "Keycloak is up! Starting MinIO..."
