@@ -110,7 +110,7 @@ def main():
                     logger.info(f"Setting environment variable {key} to {value}")
                     if key == "INGRESS_RESOLVER_EMAIL" and value != "" and value is not None:
                         os.environ[key] = value
-                    else:
+                    elif value is not None and value != "":
                         os.environ[key] = value
     else:
         config_dict = {}
