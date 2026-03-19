@@ -845,6 +845,134 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
     return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards
 
 
+def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):
+    """
+    Creates ServiceAccounts, RoleBindings, and an Istio AuthorizationPolicy 
+    for a Kubeflow profile namespace.
+    """
+    # Initialize K8s API clients
+    core_api = client.CoreV1Api()
+    rbac_api = client.RbacAuthorizationV1Api()
+    custom_api = client.CustomObjectsApi()
+
+    # Define the common owner reference linking these to the Kubeflow Profile
+    owner_ref = [{
+        "apiVersion": "kubeflow.org/v1",
+        "kind": "Profile",
+        "name": namespace,
+        "uid": uid,
+        "controller": True,
+        "blockOwnerDeletion": True
+    }]
+
+    # --- 1. Define Resource Manifests (as Python Dictionaries) ---
+    
+    service_accounts = [
+        {
+            "apiVersion": "v1",
+            "kind": "ServiceAccount",
+            "metadata": {"name": "default-editor", "namespace": namespace, "ownerReferences": owner_ref}
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "ServiceAccount",
+            "metadata": {"name": "default-viewer", "namespace": namespace, "ownerReferences": owner_ref}
+        }
+    ]
+
+    role_bindings = [
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "name": "namespaceAdmin", "namespace": namespace, 
+                "ownerReferences": owner_ref,
+                "annotations": {"role": "admin", "user": owner}
+            },
+            "subjects": [{"kind": "User", "apiGroup": "rbac.authorization.k8s.io", "name": owner}],
+            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "kubeflow-admin"}
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {"name": "default-editor", "namespace": namespace, "ownerReferences": owner_ref},
+            "subjects": [{"kind": "ServiceAccount", "name": "default-editor", "namespace": namespace}],
+            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "kubeflow-edit"}
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {"name": "default-viewer", "namespace": namespace, "ownerReferences": owner_ref},
+            "subjects": [{"kind": "ServiceAccount", "name": "default-viewer", "namespace": namespace}],
+            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "kubeflow-view"}
+        }
+    ]
+
+    auth_policy = {
+        "apiVersion": "security.istio.io/v1beta1",
+        "kind": "AuthorizationPolicy",
+        "metadata": {
+            "name": "ns-owner-access-istio", 
+            "namespace": namespace,
+            "ownerReferences": owner_ref,
+            "annotations": {"role": "admin", "user": owner}
+        },
+        "spec": {
+            "rules": [
+                {
+                    "from": [{
+                        "source": {
+                            "principals": [
+                                "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account",
+                                "cluster.local/ns/kubeflow/sa/ml-pipeline-ui"
+                            ]
+                        }
+                    }],
+                    "when": [{"key": "request.headers[kubeflow-userid]", "values": [owner]}]
+                },
+                {"when": [{"key": "source.namespace", "values": [namespace]}]},
+                {"to": [{"operation": {"paths": ["/healthz", "/metrics", "/wait-for-drain"]}}]},
+                {
+                    "from": [{"source": {"principals": ["cluster.local/ns/kubeflow/sa/notebook-controller-service-account"]}}],
+                    "to": [{"operation": {"methods": ["GET"], "paths": ["*/api/kernels"]}}]
+                }
+            ]
+        }
+    }
+
+    # --- 2. Create the Resources in K8s ---
+
+    def create_resource(api_call, name, kind, **kwargs):
+        try:
+            api_call(**kwargs)
+            print(f"Created {kind}: {name}")
+        except ApiException as e:
+            if e.status == 409:
+                print(f"{kind} '{name}' already exists. Skipping.")
+            else:
+                print(f"Failed to create {kind} '{name}': {e.reason}")
+
+    # Create ServiceAccounts
+    for sa in service_accounts:
+        create_resource(core_api.create_namespaced_service_account, sa["metadata"]["name"], "ServiceAccount", namespace=namespace, body=sa)
+
+    # Create RoleBindings
+    for rb in role_bindings:
+        create_resource(rbac_api.create_namespaced_role_binding, rb["metadata"]["name"], "RoleBinding", namespace=namespace, body=rb)
+
+    # Create AuthorizationPolicy (Custom Object)
+    create_resource(
+        custom_api.create_namespaced_custom_object, 
+        auth_policy["metadata"]["name"], 
+        "AuthorizationPolicy",
+        group="security.istio.io",
+        version="v1beta1",
+        namespace=namespace,
+        plural="authorizationpolicies",
+        body=auth_policy
+    )
+
+
 def get_profile_uid(profile_name: str) -> str:
     """
     Reads the UID of a Kubeflow Profile given its name.
@@ -884,7 +1012,7 @@ def get_profile_uid(profile_name: str) -> str:
         return None
 
 
-def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
+def create_namespace_from_context(namespace_id, kubeflow_namespace=False, owner_email=None):
     """
     Create a Kubernetes namespace using the provided namespace ID.
 
@@ -894,7 +1022,8 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
         The ID of the namespace to be created.
     kubeflow_namespace : bool, optional
         Flag indicating if the namespace is a Kubeflow namespace. Defaults to False.
-    
+    owner_email : str, optional
+        The email of the owner of the namespace. Defaults to None.
     Returns
     -------
     None
@@ -962,10 +1091,12 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
                 logger.info(f"Labels added to namespace {namespace_id} successfully")
             except ApiException as e:
                 logger.error(f"Exception when patching namespace labels: {e}")
+        if owner_email is not None:
+            create_kubeflow_profile_resources(namespace=namespace_id, owner=owner_email, uid=namespace_uid)
     else:
         logger.info(f"Namespace {namespace_id} is not a Kubeflow namespace, skipping labels addition")
 
-def create_namespace(request, settings, namespace_id, cluster_id, kubeflow_namespace=False):
+def create_namespace(request, settings, namespace_id, cluster_id, kubeflow_namespace=False, owner_email=None):
     """
     Creates a Kubernetes namespace using the provided request, settings, namespace ID, and cluster ID.
 
@@ -996,7 +1127,7 @@ def create_namespace(request, settings, namespace_id, cluster_id, kubeflow_names
         yaml.dump(kubeconfig_dict, f)
         os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
 
-        create_namespace_from_context(namespace_id, kubeflow_namespace=kubeflow_namespace)
+        create_namespace_from_context(namespace_id, kubeflow_namespace=kubeflow_namespace, owner_email=owner_email)
 
 
 def create_cifs_secret_from_context(namespace, user_id, username, password, public_key):
