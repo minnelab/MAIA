@@ -1160,13 +1160,16 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
         "keycloakClientId": "maia",
         "keycloakClientSecret": os.environ["keycloak_client_secret"],
         "cookieSecret": token_urlsafe(16).replace("-", "_"),
-        "sslInsecureSkipVerify": True,
+        "sslInsecureSkipVerify": False,
         "ingress": {
             "enabled": True,
             "className": cluster_config_dict["ingress_class"],
             "annotations": {},
         },
     }
+    
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        kubeflow_values["kubeflow_values"]["sslInsecureSkipVerify"] = True
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         kubeflow_values["kubeflow_values"]["ingress"]["annotations"][

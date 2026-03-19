@@ -603,7 +603,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
         "ports": {"proxy": [80]},
         "ingress": {
             "enabled": True,
-            "path": "mlflow",
+            "path": "{}-mlflow".format(user_config["group_subdomain"]),
             "host": f"{user_config['group_subdomain']}.{cluster_config['domain']}",
             "port": 80,
             "annotations": {},
@@ -628,10 +628,8 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
     }
 
     if cluster_config["url_type"] == "subpath":
-        mlflow_config["ingress"]["path"] = "{}-mlflow".format(user_config["group_subdomain"])
         mlflow_config["ingress"]["host"] = cluster_config["domain"]
         mlflow_config["env_variables"]["MLFLOW_PATH"] = "{}-mlflow".format(user_config["group_subdomain"])
-        mlflow_config["env_variables"]["MINIO_CONSOLE_PATH"] = "{}-minio-console".format(user_config["group_subdomain"])
 
     if "nginx_cluster_issuer" in cluster_config:
         mlflow_config["ingress"]["tlsSecretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
@@ -1808,6 +1806,9 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         ],
         "tls": [{"hosts": ["{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
     }
+    if cluster_config["url_type"] == "subpath":
+        maia_filebrowser_values["ingress"]["hosts"][0]["host"] = cluster_config["domain"]
+        maia_filebrowser_values["ingress"]["tls"][0]["hosts"][0] = cluster_config["domain"]
     if "nginx_cluster_issuer" in cluster_config:
         if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
             maia_filebrowser_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
