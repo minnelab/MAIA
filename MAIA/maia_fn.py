@@ -1802,11 +1802,11 @@ def create_filebrowser_values(namespace_config, cluster_config, config_folder, m
         "annotations": {},
         "hosts": [
             {
-                "host": "drive.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
+                "host": "{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
                 "paths": [{"path": f"/filebrowser-{namespace_id}", "pathType": "ImplementationSpecific"}],
             }
         ],
-        "tls": [{"hosts": ["drive.{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
+        "tls": [{"hosts": ["{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"])]}],
     }
     if "nginx_cluster_issuer" in cluster_config:
         if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
