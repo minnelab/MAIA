@@ -108,7 +108,7 @@ def main():
             for key, value in config_dict["env"].items():
                 if key != "MAIA_PRIVATE_REGISTRY":
                     logger.info(f"Setting environment variable {key} to {value}")
-                    if key == "INGRESS_RESOLVER_EMAIL" and value != "":
+                    if key == "INGRESS_RESOLVER_EMAIL" and value != "" and value is not None:
                         os.environ[key] = value
                     else:
                         os.environ[key] = value
