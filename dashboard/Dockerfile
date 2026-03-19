@@ -7,10 +7,11 @@ USER root
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ARG MAIA_DASHBOARD_PATH="/etc/MAIA-Dashboard"
+ARG MAIA_VERSION=v2.4.5rc2
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 WORKDIR /etc
-RUN git clone --branch v2.4.4 --single-branch https://github.com/minnelab/MAIA.git
+RUN git clone --branch $MAIA_VERSION --single-branch https://github.com/minnelab/MAIA.git
 RUN mkdir /etc/MAIA-Dashboard
 WORKDIR /etc/MAIA-Dashboard
 RUN cp /etc/MAIA/dashboard/requirements.txt /etc/MAIA-Dashboard
@@ -38,6 +39,7 @@ RUN if [ "$DEVEL" = "1" ]; then \
 fi
 WORKDIR $MAIA_DASHBOARD_PATH
 
+ENV MAIA_VERSION=$MAIA_VERSION
 ENTRYPOINT ["bash", "start-script.sh"]
 # gunicorn
 CMD [ "python", "manage.py", "runserver", "0.0.0.0:8000","--insecure"]
