@@ -621,7 +621,7 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
             "AWS_ACCESS_KEY_ID": base64.b64decode(minio_config.get("console_access_key", "minio")).decode("utf-8"),
             "AWS_SECRET_ACCESS_KEY": base64.b64decode(minio_config.get("console_secret_key", "minio")).decode("utf-8"),
             "MLFLOW_S3_ENDPOINT_URL": "http://minio:80",
-            "MLFLOW_PATH": "mlflow",
+            "MLFLOW_PATH": "{}-mlflow".format(user_config["group_subdomain"]),
             "MINIO_CONSOLE_PATH": f"minio-console-{namespace}",
             "KUBEFLOW_URL": "https://kubeflow." + cluster_config["domain"],
         },
@@ -629,7 +629,6 @@ def deploy_mlflow(cluster_config, user_config, config_folder, mysql_config=None,
 
     if cluster_config["url_type"] == "subpath":
         mlflow_config["ingress"]["host"] = cluster_config["domain"]
-        mlflow_config["env_variables"]["MLFLOW_PATH"] = "{}-mlflow".format(user_config["group_subdomain"])
 
     if "nginx_cluster_issuer" in cluster_config:
         mlflow_config["ingress"]["tlsSecretName"] = "{}.{}-tls".format(user_config["group_subdomain"], cluster_config["domain"])
