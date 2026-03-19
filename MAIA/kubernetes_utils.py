@@ -845,7 +845,46 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
     return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards
 
 
-def create_namespace_from_context(namespace_id):
+def get_profile_uid(profile_name: str) -> str:
+    """
+    Reads the UID of a Kubeflow Profile given its name.
+    
+    Args:
+        profile_name (str): The name of the Profile resource.
+        
+    Returns:
+        str: The UID of the resource, or None if not found/error.
+    """
+    # 2. Initialize the CustomObjectsApi
+    custom_api = client.CustomObjectsApi()
+
+    # 3. Define the CRD target parameters
+    group = "kubeflow.org"
+    version = "v1"
+    plural = "profiles"
+
+    try:
+        # 4. Fetch the cluster-scoped custom object
+        profile_resource = custom_api.get_cluster_custom_object(
+            group=group,
+            version=version,
+            plural=plural,
+            name=profile_name
+        )
+        
+        # 5. Extract the UID from the metadata
+        uid = profile_resource.get("metadata", {}).get("uid")
+        return uid
+
+    except ApiException as e:
+        if e.status == 404:
+            print(f"Profile '{profile_name}' not found.")
+        else:
+            print(f"An API error occurred: {e.reason} ({e.status})")
+        return None
+
+
+def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
     """
     Create a Kubernetes namespace using the provided namespace ID.
 
@@ -853,7 +892,9 @@ def create_namespace_from_context(namespace_id):
     ----------
     namespace_id : str
         The ID of the namespace to be created.
-
+    kubeflow_namespace : bool, optional
+        Flag indicating if the namespace is a Kubeflow namespace. Defaults to False.
+    
     Returns
     -------
     None
@@ -883,6 +924,41 @@ def create_namespace_from_context(namespace_id):
             logger.debug(f"Namespace {namespace_id} created successfully")
         except ApiException as e:
             logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
+
+    if kubeflow_namespace:
+        namespace_uid = get_profile_uid(namespace_id)
+        # Add the specified labels to the namespace if this is a Kubeflow namespace
+        # The label "kubernetes.io/metadata.name" is usually the namespace name, so set it dynamically
+        labels = {
+            "app.kubernetes.io/part-of": "kubeflow-profile",
+            "istio-injection": "enabled",
+            "katib.kubeflow.org/metrics-collector-injection": "enabled",
+            "pipelines.kubeflow.org/enabled": "true",
+            "serving.kubeflow.org/inferenceservice": "enabled"
+        }
+        # Patch the namespace to add these labels
+        body = {
+            "metadata": {
+                "labels": labels,
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kubeflow.org/v1",
+                        "kind": "Profile",
+                        "name": namespace_id,
+                        "uid": namespace_uid,
+                        "controller": True,
+                        "blockOwnerDeletion": True
+                    }
+                ]
+            }
+        }
+        with kubernetes.client.ApiClient() as api_client:
+            api_instance = kubernetes.client.CoreV1Api(api_client)
+            try:
+                api_instance.patch_namespace(name=namespace_id, body=body)
+                logger.debug(f"Labels added to namespace {namespace_id} successfully")
+            except ApiException as e:
+                logger.error(f"Exception when patching namespace labels: {e}")
 
 
 def create_namespace(request, settings, namespace_id, cluster_id):
