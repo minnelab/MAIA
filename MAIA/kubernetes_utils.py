@@ -906,24 +906,26 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
         If there is an error when calling the Kubernetes CoreV1Api to create the namespace.
     """
     # Check if the namespace already exists before trying to create it
+    skip_creation = False
     with kubernetes.client.ApiClient() as api_client:
         api_instance = kubernetes.client.CoreV1Api(api_client)
         try:
             api_instance.read_namespace(name=namespace_id)
             logger.info(f"Namespace {namespace_id} already exists.")
-            return
+            skip_creation = True
         except kubernetes.client.exceptions.ApiException as e:
             if e.status != 404:
                 logger.error(f"Exception when checking for existing namespace: {e}")
                 raise
-    with kubernetes.client.ApiClient() as api_client:
-        api_instance = kubernetes.client.CoreV1Api(api_client)
-        body = kubernetes.client.V1Namespace(metadata=kubernetes.client.V1ObjectMeta(name=namespace_id))
-        try:
-            _ = api_instance.create_namespace(body)
-            logger.debug(f"Namespace {namespace_id} created successfully")
-        except ApiException as e:
-            logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
+    if not skip_creation:
+        with kubernetes.client.ApiClient() as api_client:
+            api_instance = kubernetes.client.CoreV1Api(api_client)
+            body = kubernetes.client.V1Namespace(metadata=kubernetes.client.V1ObjectMeta(name=namespace_id))
+            try:
+                _ = api_instance.create_namespace(body)
+                logger.debug(f"Namespace {namespace_id} created successfully")
+            except ApiException as e:
+                logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
 
     if kubeflow_namespace:
         logger.info(f"Adding Kubeflow labels to namespace {namespace_id}")
