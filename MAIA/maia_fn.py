@@ -43,6 +43,8 @@ maia_kubeflow_chart_type = define_maia_project_versions()["maia-kubeflow-chart_t
 maia_nvflare_dashboard_chart_version = define_maia_project_versions()["maia-nvflare-dashboard-chart_version"]
 maia_nvflare_dashboard_chart_type = define_maia_project_versions()["maia-nvflare-dashboard-chart_type"]
 maia_nvflare_dashboard_image_version = define_docker_image_versions()["maia-nvflare-dashboard"]
+maia_lab_pro_image_version = define_docker_image_versions()["maia-lab-pro"]
+maia_lab_image_version = define_docker_image_versions()["maia-lab"]
 
 
 def generate_random_password(length=12):
@@ -948,7 +950,7 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
         "memory": jh_template["singleuser"]["memory"],
         "extraEnv": extra_env,
         "extraResourceLimits": extra_resource_limits,
-        "image": jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["image"],
+        "image": f"ghcr.io/minnelab/maia-lab-pro:{maia_lab_pro_image_version}",
         "homeMountPath": jh_template["singleuser"]["storage"]["homeMountPath"],
         "homePVC": "claim-" + convert_username_to_jupyterhub_username(user_config["users"][0]),
         "extraVolumes": jh_template["singleuser"]["storage"]["extraVolumes"],
