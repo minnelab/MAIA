@@ -2,7 +2,7 @@
 
 helm repo add maia https://minnelab.github.io/MAIA/
 helm repo update
-pip install maia-toolkit
+pip install --pre --upgrade maia-toolkit
 
 
 python manage.py makemigrations authentication
