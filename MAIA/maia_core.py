@@ -1153,34 +1153,37 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
         kubeflow_values["chart_name"] = "maia-kubeflow"
 
     kubeflow_values["kubeflow_values"] = {
-            "oidcClientId": "kubeflow-oidc-authservice",
-            "oidcClientSecret": token_urlsafe(16).replace("-", "_"),
-            "domain": "kubeflow." + cluster_config_dict["domain"],
-            "keycloakIssuerUrl": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
-            "keycloakClientId": "maia",
-            "keycloakClientSecret": os.environ["keycloak_client_secret"],
-            "cookieSecret": token_urlsafe(16).replace("-", "_"),
-            "sslInsecureSkipVerify": True,
-            "ingress": {
-                "enabled": True,
-                "className": cluster_config_dict["ingress_class"],
-                "annotations": {},
-            },
-        }
-
+        "oidcClientId": "kubeflow-oidc-authservice",
+        "oidcClientSecret": token_urlsafe(16).replace("-", "_"),
+        "domain": "kubeflow." + cluster_config_dict["domain"],
+        "keycloakIssuerUrl": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+        "keycloakClientId": "maia",
+        "keycloakClientSecret": os.environ["keycloak_client_secret"],
+        "cookieSecret": token_urlsafe(16).replace("-", "_"),
+        "sslInsecureSkipVerify": True,
+        "ingress": {
+            "enabled": True,
+            "className": cluster_config_dict["ingress_class"],
+            "annotations": {},
+        },
+    }
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
+            "traefik.ingress.kubernetes.io/router.entrypoints"
+        ] = "websecure"
         kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             ...
         else:
-            kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-                cluster_config_dict["traefik_resolver"]
-            )
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
+                "traefik.ingress.kubernetes.io/router.tls.certresolver"
+            ] = cluster_config_dict["traefik_resolver"]
     elif cluster_config_dict["ingress_class"] == "nginx":
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
+                "cert-manager.io/cluster-issuer"
+            ] = "kubernetes-ca-issuer"
         else:
             kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
         kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"

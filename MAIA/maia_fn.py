@@ -1892,7 +1892,7 @@ def create_nvflare_dashboard_values(namespace_config, cluster_config, config_fol
         {"name": "ADMIN_USERNAME", "value": admin_username},
         {"name": "ADMIN_PASSWORD", "value": admin_password},
         {"name": "NVFL_CREDENTIAL", "value": f"{admin_username}:{admin_password}"},
-        #{"name": "INGRESS_PATH", "value": "/nvflare-{}".format(namespace_id)},
+        # {"name": "INGRESS_PATH", "value": "/nvflare-{}".format(namespace_id)},
     ]
     maia_nvflare_dashboard_values["ingress"] = {
         "enabled": True,
