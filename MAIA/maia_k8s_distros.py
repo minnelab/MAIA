@@ -50,8 +50,14 @@ def get_gpu_operator_toolkit(k8s_distribution):
             },
         }
     elif k8s_distribution == "k3s":
-        ...
-        # TODO: Implement k3s GPU operator toolkit
+        gpu_operator_values_toolkit = {
+            "env": [
+                {"name": "CONTAINERD_CONFIG", "value": "/var/lib/rancher/k3s/agent/etc/containerd/config.toml"},
+                {"name": "CONTAINERD_SOCKET", "value": "/run/k3s/containerd/containerd.sock"},
+                {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
+                {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
+            ]
+        }
     else:
         raise ValueError(f"K8S_DISTRIBUTION {k8s_distribution} not supported")
     return gpu_operator_values_toolkit
