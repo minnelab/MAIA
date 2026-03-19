@@ -912,7 +912,7 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
     with open(jh_template_file, "r") as f:
         jh_template = yaml.safe_load(f)
 
-    extra_env = []
+    extra_env = [{"name": "JUPYTERHUB_USER", "value": user_config["users"][0]}]
     for key, value in jh_template["singleuser"]["extraEnv"].items():
         extra_env.append({"name": key, "value": value})
     if "environment" in jh_template["singleuser"]["profileList"][0]["kubespawner_override"]:
