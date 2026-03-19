@@ -926,6 +926,7 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
             logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
 
     if kubeflow_namespace:
+        logger.info(f"Adding Kubeflow labels to namespace {namespace_id}")
         namespace_uid = get_profile_uid(namespace_id)
         # Add the specified labels to the namespace if this is a Kubeflow namespace
         # The label "kubernetes.io/metadata.name" is usually the namespace name, so set it dynamically
@@ -956,12 +957,13 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False):
             api_instance = kubernetes.client.CoreV1Api(api_client)
             try:
                 api_instance.patch_namespace(name=namespace_id, body=body)
-                logger.debug(f"Labels added to namespace {namespace_id} successfully")
+                logger.info(f"Labels added to namespace {namespace_id} successfully")
             except ApiException as e:
                 logger.error(f"Exception when patching namespace labels: {e}")
+    else:
+        logger.info(f"Namespace {namespace_id} is not a Kubeflow namespace, skipping labels addition")
 
-
-def create_namespace(request, settings, namespace_id, cluster_id):
+def create_namespace(request, settings, namespace_id, cluster_id, kubeflow_namespace=False):
     """
     Creates a Kubernetes namespace using the provided request, settings, namespace ID, and cluster ID.
 
@@ -992,7 +994,7 @@ def create_namespace(request, settings, namespace_id, cluster_id):
         yaml.dump(kubeconfig_dict, f)
         os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
 
-        create_namespace_from_context(namespace_id)
+        create_namespace_from_context(namespace_id, kubeflow_namespace=kubeflow_namespace)
 
 
 def create_cifs_secret_from_context(namespace, user_id, username, password, public_key):
