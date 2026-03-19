@@ -26,6 +26,12 @@
   failed_when: create_cert_manager_ns.rc != 0 and 'AlreadyExists' not in (create_cert_manager_ns.stderr | default(''))
   changed_when: "'Created' in (create_cert_manager_ns.stdout | default(''))"
 
+- name: Ensure istio-system namespace exists
+  become: true
+  ansible.builtin.command: "{{ kubernetes_kubectl_cmd }} create namespace istio-system"
+  register: create_istio_system_ns
+  failed_when: create_istio_system_ns.rc != 0 and 'AlreadyExists' not in (create_istio_system_ns.stderr | default(''))
+  changed_when: "'Created' in create_istio_system_ns.stdout"
 
 - name: Create kubernetes-ca secret in cert-manager namespace
   become: true
@@ -38,6 +44,16 @@
   changed_when: "'Created' in create_secret.stdout"
   ignore_errors: true
 
+
+- name: Create kubernetes-ca configmap in istio-system namespace
+  become: true
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} -n istio-system
+    create configmap internal-ca --from-file=ca.pem={{ kubernetes_ca_crt_path }}
+  register: create_configmap
+  failed_when: create_configmap.rc != 0 and 'AlreadyExists' not in (create_configmap.stderr | default(''))
+  changed_when: "'Created' in create_configmap.stdout"
+  ignore_errors: true
 
 - name: Show secret creation result
   ansible.builtin.debug:

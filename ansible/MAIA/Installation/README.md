@@ -518,3 +518,14 @@ To deploy the project as a Kubeflow project, you can set the following environme
 env:
   DEPLOY_KUBEFLOW: "True"
 ```
+
+#### Email to Username Map
+
+Used to set the username when registering a new user in Keycloak.
+
+```yaml
+email_to_username_map:
+  "email_1": "username_1"
+  "email_2": "username_2"
+  "email_3": "username_3"
+```
