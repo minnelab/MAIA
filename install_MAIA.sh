@@ -28,9 +28,6 @@ done
 : "${K8S_DISTRIBUTION:=k3s}"
 : "${ADMIN_EMAIL:=admin@maia.io}"
 
-export CONFIG_FOLDER="maia-config"
-export K8S_DISTRIBUTION="k0s"
-export ADMIN_EMAIL="admin@maia.io"
 sudo apt update
 sudo apt install -y python3-pip ufw curl git
 sudo apt install -y jq yq apache2-utils

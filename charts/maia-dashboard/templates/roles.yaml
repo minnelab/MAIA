@@ -91,6 +91,37 @@ rules:
       - secrets
       - services
       - configmaps
+      - namespaces
+      - serviceaccounts
+  - verbs:
+    - list
+    - get
+    apiGroups:
+      - kubeflow.org
+    resources:
+      - profiles
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+    
+  # 2. Permission to BIND the specific Kubeflow ClusterRoles (This solves your 403 error)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles"]
+    verbs: ["bind"]
+    resourceNames: 
+      - "kubeflow-admin"
+      - "kubeflow-edit"
+      - "kubeflow-view"
+
+  # 3. Permission to create the ServiceAccounts
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+  # 4. Permission to create the Istio AuthorizationPolicies
+  - apiGroups: ["security.istio.io"]
+    resources: ["authorizationpolicies"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
