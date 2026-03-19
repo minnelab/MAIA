@@ -1479,7 +1479,17 @@ def create_maia_rbac_from_context(namespace):
                 api_groups=[""],
                 resources=["secrets", "services", "configmaps"],
                 verbs=["list", "create", "patch", "update", "get"],
-            )
+            ),
+            client.V1PolicyRule(
+                api_groups=["rbac.authorization.k8s.io"],
+                resources=["RoleBindings"],
+                verbs=["create"],
+            ),
+            client.V1PolicyRule(
+                api_groups=["security.istio.io"],
+                resources=["AuthorizationPolicies"],
+                verbs=["create"],
+            ),
         ],
     )
 
