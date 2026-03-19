@@ -819,6 +819,8 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         }
 
     orthanc_config.update({"orthanc_config_map": {"enabled": True, "orthanc_config": orthanc_custom_config}})
+    if project_config_dict and "monai_label_models" in project_config_dict:
+        orthanc_config["orthanc_config_map"]["models_json"] = project_config_dict["monai_label_models"]
 
     domain = cluster_config["domain"]
     group_subdomain = user_config["group_subdomain"]
