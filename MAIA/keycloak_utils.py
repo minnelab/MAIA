@@ -86,6 +86,34 @@ def get_id_token(keycloak_url, keycloak_client_secret, username, password, ca_ce
     return r.json()
 
 
+def get_group_id_in_keycloak(group_name, settings) -> str:
+    """
+    Retrieve the ID of a group in Keycloak.
+
+    Parameters
+    ----------
+    group_name : str
+        The name of the group to retrieve the ID of.
+    settings : object
+        An object containing the Keycloak server settings. It should have the following attributes:
+        - OIDC_SERVER_URL: str, the URL of the Keycloak server.
+    """
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=settings.OIDC_SERVER_URL,
+        username=settings.OIDC_USERNAME,
+        password="",
+        realm_name=settings.OIDC_REALM_NAME,
+        client_id=settings.OIDC_RP_CLIENT_ID,
+        client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    groups = keycloak_admin.get_groups()
+    for group in groups:
+        if group["name"] == group_name:
+            return group["id"]
+    return None
+
 def get_users_in_group_in_keycloak(group_id, settings) -> list[str]:
     """
     Retrieve users in a group in Keycloak.
