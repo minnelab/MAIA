@@ -1004,7 +1004,7 @@ def create_kubeflow_profile(namespace: str, owner: str):
                 "kind": "User",
                 "name": owner,
             }
-        }
+        },
     }
     try:
         custom_api = client.CustomObjectsApi()

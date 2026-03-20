@@ -11,6 +11,7 @@ from apps.models import Book
 from django.conf import settings
 from rest_framework.throttling import UserRateThrottle
 
+
 class BookView(APIView):
 
     permission_classes = (IsAuthenticatedOrReadOnly,)
