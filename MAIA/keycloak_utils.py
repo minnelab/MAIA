@@ -114,6 +114,7 @@ def get_group_id_in_keycloak(group_name, settings) -> str:
             return group["id"]
     return None
 
+
 def get_users_in_group_in_keycloak(group_id, settings) -> list[str]:
     """
     Retrieve users in a group in Keycloak.
