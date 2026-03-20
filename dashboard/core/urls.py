@@ -19,7 +19,7 @@ urlpatterns = [
     # Django admin route
     path("maia/", include("apps.authentication.urls")),  # Auth routes - login / register
     # ADD NEW Routes HERE
-    path("api/", include("apps.api.urls")),  # API Generator Routes
+    path("maia/api/", include("apps.api.urls")),  # API Generator Routes
     path("", include("apps.dyn_datatables.urls")),  # Dynamic DB Routes
     # Leave `Home.Urls` as last the last line
     path("maia/", include("apps.home.urls")),  # Generic Routing
