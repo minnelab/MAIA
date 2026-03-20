@@ -982,6 +982,49 @@ def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):
     )
 
 
+def create_kubeflow_profile(namespace: str, owner: str):
+    """
+    Creates a Kubeflow Profile in the specified namespace.
+
+    Parameters
+    ----------
+    namespace : str
+        The namespace to create the Kubeflow Profile in.
+    owner : str
+        The owner of the Kubeflow Profile.
+    """
+    profile = {
+        "apiVersion": "kubeflow.org/v1",
+        "kind": "Profile",
+        "metadata": {
+            "name": namespace,
+        },
+        "spec": {
+            "owner": {
+                "kind": "User",
+                "name": owner,
+            }
+        }
+    }
+    try:
+        custom_api = client.CustomObjectsApi()
+        custom_api.create_namespaced_custom_object(
+            group="kubeflow.org",
+            version="v1",
+            namespace=namespace,
+            plural="profiles",
+            body=profile,
+        )
+    except ApiException as e:
+        if e.status == 409:
+            print(f"Profile '{namespace}' already exists. Skipping.")
+            return
+        else:
+            print(f"Failed to create profile '{namespace}': {e}")
+            return
+    return
+
+
 def get_profile_uid(profile_name: str) -> str:
     """
     Reads the UID of a Kubeflow Profile given its name.
@@ -1062,6 +1105,7 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False, owner_
 
     if kubeflow_namespace:
         logger.info(f"Adding Kubeflow labels to namespace {namespace_id}")
+        create_kubeflow_profile(namespace=namespace_id, owner=owner_email)
         namespace_uid = get_profile_uid(namespace_id)
         # Add the specified labels to the namespace if this is a Kubeflow namespace
         # The label "kubernetes.io/metadata.name" is usually the namespace name, so set it dynamically

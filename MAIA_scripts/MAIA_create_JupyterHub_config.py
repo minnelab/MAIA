@@ -449,10 +449,15 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         "limit": resources_limits["memory"][1],
         "guarantee": resources_limits["memory"][0],
     }
-
+    cpu_values = []
+    for cpu_value in resources_limits["cpu"]:
+        try:
+            cpu_values.append(float(cpu_value))
+        except ValueError:
+            cpu_values.append(cpu_value)
     jh_template["singleuser"]["cpu"] = {
-        "limit": float(resources_limits["cpu"][1]),
-        "guarantee": float(resources_limits["cpu"][0]),
+        "limit": cpu_values[1],
+        "guarantee": cpu_values[0],
     }
 
     for extra_volume in extra_volumes:
