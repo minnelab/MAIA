@@ -1,0 +1,533 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Notification Center {% endblock title %}
+
+{% block stylesheets %}
+<style>
+  .recipient-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #e8f4fd;
+    border: 1px solid #bee3f8;
+    border-radius: 20px;
+    padding: 3px 10px;
+    margin: 3px;
+    font-size: 0.82rem;
+    color: #2c5282;
+  }
+  .recipient-tag .remove-tag {
+    cursor: pointer;
+    margin-left: 6px;
+    color: #718096;
+    font-weight: bold;
+  }
+  .recipient-tag .remove-tag:hover { color: #e53e3e; }
+  #recipient-tags-container {
+    min-height: 40px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 6px;
+    background: #fff;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: flex-start;
+  }
+  .template-preview {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px;
+    min-height: 80px;
+    font-size: 0.85rem;
+    color: #4a5568;
+  }
+  .send-status-box {
+    display: none;
+    margin-top: 12px;
+  }
+  .select2-container--default .select2-selection--multiple {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    min-height: 40px;
+  }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<section class="min-vh-100 mb-8">
+  <div class="page-header align-items-start min-vh-20 pt-5 pb-8 m-3 border-radius-lg"
+       style="background-image: url('{{ ASSETS_ROOT }}/img/maia_background.jpg');">
+    <span class="mask bg-gradient-dark opacity-6"></span>
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-6 text-center mx-auto">
+          <h1 class="text-white mb-2 mt-5">Notification Center</h1>
+          <p class="text-white opacity-8">Send emails to users and groups from Keycloak</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container py-4">
+    <div class="row">
+
+      <!-- Left panel: Recipients -->
+      <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+          <div class="card-header pb-0">
+            <h6 class="mb-0"><i class="fa fa-users me-2 text-primary"></i>Recipients</h6>
+          </div>
+          <div class="card-body">
+
+            <!-- Quick-add by email -->
+            <label class="form-label text-xs font-weight-bold text-uppercase">Add individual email</label>
+            <div class="input-group mb-3">
+              <input type="email" id="manual-email-input" class="form-control form-control-sm"
+                     placeholder="user@example.com">
+              <button class="btn btn-sm btn-outline-primary" type="button" id="btn-add-manual-email">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+
+            <!-- Group selector -->
+            <label class="form-label text-xs font-weight-bold text-uppercase mt-2">Add by Keycloak group</label>
+            <div id="group-list-container" class="mb-3">
+              <div class="text-xs text-muted" id="groups-loading">
+                <i class="fa fa-spinner fa-spin me-1"></i>Loading groups...
+              </div>
+              <select id="group-select" class="form-select form-select-sm" style="display:none;">
+                <option value="">-- Select a group --</option>
+              </select>
+              <button class="btn btn-sm btn-outline-secondary mt-2 w-100" type="button" id="btn-add-group"
+                      style="display:none;">
+                <i class="fa fa-users me-1"></i>Add all users in group
+              </button>
+            </div>
+
+            <!-- User search -->
+            <label class="form-label text-xs font-weight-bold text-uppercase mt-2">Search Keycloak users</label>
+            <div class="input-group mb-3">
+              <input type="text" id="user-search-input" class="form-control form-control-sm"
+                     placeholder="Search by email...">
+            </div>
+            <div id="user-search-results" class="mb-3"
+                 style="max-height:150px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:4px; display:none;">
+            </div>
+
+            <!-- Selected recipients display -->
+            <label class="form-label text-xs font-weight-bold text-uppercase mt-2">
+              Selected recipients (<span id="recipient-count">0</span>)
+            </label>
+            <div id="recipient-tags-container"></div>
+
+            <button class="btn btn-sm btn-outline-danger mt-2 w-100" type="button" id="btn-clear-recipients">
+              <i class="fa fa-times me-1"></i>Clear all
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel: Email composer -->
+      <div class="col-lg-8 mb-4">
+        <div class="card">
+          <div class="card-header pb-0">
+            <h6 class="mb-0"><i class="fa fa-envelope me-2 text-primary"></i>Compose Email</h6>
+          </div>
+          <div class="card-body">
+
+            <!-- Template selector -->
+            <div class="mb-3">
+              <label class="form-label text-xs font-weight-bold text-uppercase">Email template</label>
+              <select id="template-select" class="form-select form-select-sm">
+                <option value="custom">Custom email</option>
+                <option value="project_approved">Project Approved</option>
+                <option value="user_added_to_group">User Added to Group</option>
+                <option value="account_approved">Account Approved</option>
+                <option value="confirm_join_project">Confirm Request to Join Project</option>
+                <option value="confirm_new_project">Confirm New Project Request</option>
+              </select>
+            </div>
+
+            <!-- Template-specific fields (shown/hidden based on template) -->
+            <div id="template-fields">
+
+              <!-- Custom email fields -->
+              <div id="fields-custom">
+                <div class="mb-3">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Subject</label>
+                  <input type="text" id="custom-subject" class="form-control form-control-sm"
+                         placeholder="Email subject" value="MAIA Notification">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">
+                    Body <span class="text-muted">(HTML or plain text)</span>
+                  </label>
+                  <textarea id="custom-body" class="form-control form-control-sm" rows="8"
+                            placeholder="Write your email content here..."></textarea>
+                </div>
+              </div>
+
+              <!-- Predefined template fields -->
+              <div id="fields-predefined" style="display:none;">
+                <div class="mb-3" id="field-project-name-wrap">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Project / Group name</label>
+                  <input type="text" id="field-project-name" class="form-control form-control-sm"
+                         placeholder="e.g. my-research-project">
+                </div>
+                <div class="mb-3" id="field-dashboard-url-wrap">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Dashboard URL <span class="text-muted">(optional)</span></label>
+                  <input type="text" id="field-dashboard-url" class="form-control form-control-sm"
+                         placeholder="https://maia.example.com/maia/">
+                </div>
+                <div class="mb-3" id="field-support-link-wrap">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Support link <span class="text-muted">(optional)</span></label>
+                  <input type="text" id="field-support-link" class="form-control form-control-sm"
+                         placeholder="https://discord.gg/...">
+                </div>
+                <div class="mb-3" id="field-login-url-wrap" style="display:none;">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Login URL <span class="text-muted">(optional)</span></label>
+                  <input type="text" id="field-login-url" class="form-control form-control-sm"
+                         placeholder="https://maia.example.com/maia/login/">
+                </div>
+                <div class="mb-3" id="field-temp-password-wrap" style="display:none;">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Temporary password</label>
+                  <input type="text" id="field-temp-password" class="form-control form-control-sm"
+                         placeholder="Generated temporary password">
+                </div>
+
+                <!-- Preview -->
+                <div class="mb-3">
+                  <label class="form-label text-xs font-weight-bold text-uppercase">Preview</label>
+                  <div class="template-preview" id="template-preview-box">
+                    Select a template and fill in the fields to see a preview.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Send button & status -->
+            <div class="d-flex align-items-center gap-3">
+              <button class="btn btn-primary" type="button" id="btn-send-email">
+                <i class="fa fa-paper-plane me-2"></i>Send Email
+              </button>
+              <div id="send-spinner" style="display:none;">
+                <i class="fa fa-spinner fa-spin text-secondary"></i>
+                <span class="text-xs text-secondary ms-1">Sending...</span>
+              </div>
+            </div>
+
+            <div class="send-status-box alert" id="send-status-alert" role="alert"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+(function () {
+  'use strict';
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const selectedEmails = new Set();
+  let allUsers = [];
+  let allGroups = [];
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function getCsrfToken() {
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1].trim() : '';
+  }
+
+  function addRecipient(email) {
+    if (!email || selectedEmails.has(email)) return;
+    selectedEmails.add(email);
+    renderTags();
+  }
+
+  function removeRecipient(email) {
+    selectedEmails.delete(email);
+    renderTags();
+  }
+
+  function renderTags() {
+    const container = document.getElementById('recipient-tags-container');
+    const count = document.getElementById('recipient-count');
+    container.innerHTML = '';
+    selectedEmails.forEach(email => {
+      const tag = document.createElement('span');
+      tag.className = 'recipient-tag';
+      tag.innerHTML = `${email} <span class="remove-tag" data-email="${email}">&times;</span>`;
+      container.appendChild(tag);
+    });
+    count.textContent = selectedEmails.size;
+
+    // Bind remove buttons
+    container.querySelectorAll('.remove-tag').forEach(btn => {
+      btn.addEventListener('click', () => removeRecipient(btn.dataset.email));
+    });
+  }
+
+  // ── Load Keycloak data ─────────────────────────────────────────────────────
+  function loadRecipients() {
+    fetch('/maia/user-management/notifications/recipients/', {
+      headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      allUsers = data.users || [];
+      allGroups = data.groups || [];
+
+      // Populate group select
+      const groupSelect = document.getElementById('group-select');
+      allGroups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.name;
+        groupSelect.appendChild(opt);
+      });
+
+      document.getElementById('groups-loading').style.display = 'none';
+      groupSelect.style.display = '';
+      document.getElementById('btn-add-group').style.display = '';
+    })
+    .catch(err => {
+      document.getElementById('groups-loading').innerHTML =
+        '<span class="text-danger"><i class="fa fa-exclamation-triangle me-1"></i>Failed to load Keycloak data.</span>';
+      console.error(err);
+    });
+  }
+
+  // ── User search ────────────────────────────────────────────────────────────
+  document.getElementById('user-search-input').addEventListener('input', function () {
+    const query = this.value.toLowerCase().trim();
+    const results = document.getElementById('user-search-results');
+    if (!query) { results.style.display = 'none'; results.innerHTML = ''; return; }
+
+    const matches = allUsers.filter(u =>
+      u.email.toLowerCase().includes(query) || (u.username || '').toLowerCase().includes(query)
+    ).slice(0, 10);
+
+    if (!matches.length) {
+      results.style.display = 'none'; results.innerHTML = ''; return;
+    }
+
+    results.innerHTML = matches.map(u =>
+      `<div class="user-search-item p-1 px-2 text-xs" style="cursor:pointer;border-radius:4px;"
+            data-email="${u.email}"
+            onmouseover="this.style.background='#edf2f7'"
+            onmouseout="this.style.background=''">
+         <i class="fa fa-user me-1 text-secondary"></i>${u.email}
+       </div>`
+    ).join('');
+    results.style.display = '';
+
+    results.querySelectorAll('.user-search-item').forEach(el => {
+      el.addEventListener('click', () => {
+        addRecipient(el.dataset.email);
+        document.getElementById('user-search-input').value = '';
+        results.style.display = 'none';
+        results.innerHTML = '';
+      });
+    });
+  });
+
+  // ── Manual email add ───────────────────────────────────────────────────────
+  document.getElementById('btn-add-manual-email').addEventListener('click', () => {
+    const input = document.getElementById('manual-email-input');
+    const email = input.value.trim();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      addRecipient(email);
+      input.value = '';
+    } else {
+      input.classList.add('is-invalid');
+      setTimeout(() => input.classList.remove('is-invalid'), 1500);
+    }
+  });
+  document.getElementById('manual-email-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btn-add-manual-email').click(); }
+  });
+
+  // ── Group add ──────────────────────────────────────────────────────────────
+  document.getElementById('btn-add-group').addEventListener('click', () => {
+    const groupSelect = document.getElementById('group-select');
+    const groupId = groupSelect.value;
+    if (!groupId) return;
+
+    const btn = document.getElementById('btn-add-group');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Loading...';
+
+    // We resolve group members server-side during send; but for display,
+    // we show a group tag instead. We store the group ID in a separate set.
+    // For simplicity, just add the group ID as a special tag.
+    const groupName = groupSelect.options[groupSelect.selectedIndex].text;
+    const pseudoEmail = `__group__:${groupId}:${groupName}`;
+    addRecipient(pseudoEmail);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-users me-1"></i>Add all users in group';
+  });
+
+  // ── Clear all ──────────────────────────────────────────────────────────────
+  document.getElementById('btn-clear-recipients').addEventListener('click', () => {
+    selectedEmails.clear();
+    renderTags();
+  });
+
+  // ── Template switching ─────────────────────────────────────────────────────
+  const ACCOUNT_APPROVED = 'account_approved';
+  const templateSelect = document.getElementById('template-select');
+
+  function updateTemplateFields() {
+    const val = templateSelect.value;
+    const isCustom = val === 'custom';
+    document.getElementById('fields-custom').style.display = isCustom ? '' : 'none';
+    document.getElementById('fields-predefined').style.display = isCustom ? 'none' : '';
+
+    if (!isCustom) {
+      const isAccountApproved = val === ACCOUNT_APPROVED;
+      document.getElementById('field-login-url-wrap').style.display = isAccountApproved ? '' : 'none';
+      document.getElementById('field-temp-password-wrap').style.display = isAccountApproved ? '' : 'none';
+      document.getElementById('field-project-name-wrap').style.display = isAccountApproved ? 'none' : '';
+      document.getElementById('field-dashboard-url-wrap').style.display = isAccountApproved ? '' : '';
+      updatePreview();
+    }
+  }
+
+  function updatePreview() {
+    const val = templateSelect.value;
+    const preview = document.getElementById('template-preview-box');
+    const projectName = document.getElementById('field-project-name').value || '&lt;project_name&gt;';
+    const dashUrl = document.getElementById('field-dashboard-url').value || '&lt;dashboard_url&gt;';
+    const supportLink = document.getElementById('field-support-link').value || '&lt;support_link&gt;';
+    const loginUrl = document.getElementById('field-login-url').value || '&lt;login_url&gt;';
+    const tempPass = document.getElementById('field-temp-password').value || '&lt;temp_password&gt;';
+
+    const previews = {
+      project_approved: `<b>Subject:</b> ${projectName} Project Approved<br><br>
+        Welcome to MAIA!<br>Your project <b>${projectName}</b> has been approved. Access at:
+        <a href="${dashUrl}namespaces/${projectName}">${dashUrl}namespaces/${projectName}</a><br>
+        Support: <a href="${supportLink}">${supportLink}</a>`,
+
+      user_added_to_group: `<b>Subject:</b> ${projectName} Registration Approved<br><br>
+        Welcome to MAIA!<br>Your request to join <b>${projectName}</b> has been approved. Access at:
+        <a href="${dashUrl}namespaces/${projectName}">${dashUrl}namespaces/${projectName}</a><br>
+        Support: <a href="${supportLink}">${supportLink}</a>`,
+
+      account_approved: `<b>Subject:</b> Your MAIA Account has been approved<br><br>
+        Welcome to MAIA!<br>Your account is approved. Log in at: <a href="${loginUrl}">${loginUrl}</a><br>
+        Temporary password: <b>${tempPass}</b><br>Please change your password after logging in.`,
+
+      confirm_join_project: `<b>Subject:</b> Confirmation of your request to join MAIA project ${projectName}<br><br>
+        Welcome to MAIA!<br>Your request to join <b>${projectName}</b> is being processed.
+        You will receive a confirmation once approved.<br>
+        Support: <a href="${supportLink}">${supportLink}</a>`,
+
+      confirm_new_project: `<b>Subject:</b> Confirmation of your request to register ${projectName}<br><br>
+        Welcome to MAIA!<br>Your request to register project <b>${projectName}</b> is being processed.
+        You will receive a confirmation once approved.<br>
+        Support: <a href="${supportLink}">${supportLink}</a>`,
+    };
+
+    preview.innerHTML = previews[val] || 'No preview available.';
+  }
+
+  templateSelect.addEventListener('change', updateTemplateFields);
+  ['field-project-name', 'field-dashboard-url', 'field-support-link', 'field-login-url', 'field-temp-password'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+  updateTemplateFields();
+
+  // ── Send email ─────────────────────────────────────────────────────────────
+  document.getElementById('btn-send-email').addEventListener('click', () => {
+    const templateType = templateSelect.value;
+
+    // Separate real emails from group pseudo-tags
+    const recipientEmails = [];
+    const recipientGroupIds = [];
+    selectedEmails.forEach(e => {
+      if (e.startsWith('__group__:')) {
+        const parts = e.split(':');
+        recipientGroupIds.push(parts[1]);
+      } else {
+        recipientEmails.push(e);
+      }
+    });
+
+    if (!recipientEmails.length && !recipientGroupIds.length) {
+      showStatus('danger', 'Please add at least one recipient.');
+      return;
+    }
+
+    const payload = {
+      template_type: templateType,
+      recipient_emails: recipientEmails,
+      recipient_group_ids: recipientGroupIds,
+    };
+
+    if (templateType === 'custom') {
+      payload.subject = document.getElementById('custom-subject').value.trim();
+      payload.body = document.getElementById('custom-body').value.trim();
+      if (!payload.subject || !payload.body) {
+        showStatus('danger', 'Subject and body are required for custom emails.');
+        return;
+      }
+    } else {
+      payload.project_name = document.getElementById('field-project-name').value.trim();
+      payload.dashboard_url = document.getElementById('field-dashboard-url').value.trim();
+      payload.support_link = document.getElementById('field-support-link').value.trim();
+      payload.login_url = document.getElementById('field-login-url').value.trim();
+      payload.temp_password = document.getElementById('field-temp-password').value.trim();
+    }
+
+    // Show spinner
+    document.getElementById('btn-send-email').disabled = true;
+    document.getElementById('send-spinner').style.display = '';
+    document.getElementById('send-status-alert').style.display = 'none';
+
+    fetch('/maia/user-management/notifications/send/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('btn-send-email').disabled = false;
+      document.getElementById('send-spinner').style.display = 'none';
+      if (data.error) {
+        showStatus('danger', 'Error: ' + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error)));
+      } else {
+        let msg = data.message || 'Email sent successfully.';
+        if (data.success && data.success.length) msg += '<br>Sent to: ' + data.success.join(', ');
+        if (data.failed && data.failed.length) msg += '<br><b>Failed:</b> ' + data.failed.join(', ');
+        showStatus(data.failed && data.failed.length ? 'warning' : 'success', msg);
+      }
+    })
+    .catch(err => {
+      document.getElementById('btn-send-email').disabled = false;
+      document.getElementById('send-spinner').style.display = 'none';
+      showStatus('danger', 'Request failed: ' + err.message);
+      console.error(err);
+    });
+  });
+
+  function showStatus(type, msg) {
+    const alert = document.getElementById('send-status-alert');
+    alert.className = `send-status-box alert alert-${type}`;
+    alert.innerHTML = msg;
+    alert.style.display = '';
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  loadRecipients();
+})();
+</script>
+{% endblock javascripts %}

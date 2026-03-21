@@ -15,6 +15,8 @@ from apps.user_management.views import (
     UserManagementAPICreateGroupView,
     UserManagementAPIDeleteGroupView,
     UserManagementAPIListPendingGroupsView,
+    NotificationAPIGetRecipientsView,
+    NotificationAPISendEmailView,
 )
 
 urlpatterns = [
@@ -36,4 +38,7 @@ urlpatterns = [
     path("delete-group-view/<str:group_id>", views.delete_group_view),
     path("remove-user-from-group/<str:email>", views.remove_user_from_group_view),
     path("delete-user-view/<str:email>", views.delete_user_view),
+    path("notifications/", views.notification_center_view, name="notification_center"),
+    path("notifications/recipients/", NotificationAPIGetRecipientsView.as_view(), name="notification_recipients"),
+    path("notifications/send/", NotificationAPISendEmailView.as_view(), name="notification_send"),
 ]

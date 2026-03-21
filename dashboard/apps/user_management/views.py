@@ -30,7 +30,13 @@ from MAIA.dashboard_utils import (
 from MAIA.kubernetes_utils import create_namespace, create_namespace_from_context, create_maia_rbac_from_context, create_maia_rbac
 from rest_framework.response import Response
 from types import SimpleNamespace
-from MAIA.notifications import send_email_user_registration_to_group
+from MAIA.notifications import send_email_user_registration_to_group, send_custom_notification_email
+from MAIA.notifications import (
+    send_email_approved_project_registration,
+    confirm_request_registration_to_project,
+    confirm_request_registration_for_group,
+    send_email_approved_registration_email,
+)
 from MAIA.keycloak_utils import (
     get_user_ids,
     register_users_in_group_in_keycloak,
@@ -41,6 +47,7 @@ from MAIA.keycloak_utils import (
     get_maia_users_from_keycloak,
     get_groups_in_keycloak,
     get_user_username_from_email,
+    get_users_in_group_in_keycloak,
 )
 import urllib3
 import yaml
@@ -934,6 +941,217 @@ def register_group_view(request, group_id):
     else:
         html_template = loader.get_template("home/page-500.html")
         return HttpResponse(html_template.render({"message": result["message"]}, request))
+
+
+@login_required(login_url="/maia/login/")
+def notification_center_view(request):
+    if not request.user.is_superuser:
+        html_template = loader.get_template("home/page-500.html")
+        return HttpResponse(html_template.render({}, request))
+
+    if "BACKEND" in os.environ:
+        backend = os.environ["BACKEND"]
+    else:
+        backend = "default"
+
+    context = {
+        "BACKEND": backend,
+        "user": ["admin"],
+        "username": request.user.username + " [ADMIN]",
+        "segment": "notification-center",
+    }
+    html_template = loader.get_template("notification_center.html")
+    return HttpResponse(html_template.render(context, request))
+
+
+class NotificationAPIGetRecipientsView(APIView):
+    """Return all Keycloak users and groups for the notification center."""
+
+    permission_classes = [IsAdminUser]
+    throttle_classes = [UserRateThrottle]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            keycloak_users = get_maia_users_from_keycloak(settings=env_settings)
+            users = [{"email": u["email"], "username": u.get("username", u["email"])} for u in keycloak_users if u.get("email")]
+
+            keycloak_groups = get_groups_in_keycloak(settings=env_settings)
+            # keycloak_groups is {group_name: group_id}
+            groups = [{"name": name, "id": gid} for name, gid in keycloak_groups.items()]
+
+            return Response({"users": users, "groups": groups}, status=200)
+        except Exception as e:
+            logger.error(f"Error fetching recipients: {e}")
+            return Response({"error": str(e)}, status=500)
+
+
+class NotificationSendEmailSerializer(serializers.Serializer):
+    TEMPLATE_CHOICES = [
+        "custom",
+        "project_approved",
+        "user_added_to_group",
+        "account_approved",
+        "confirm_join_project",
+        "confirm_new_project",
+    ]
+
+    template_type = serializers.ChoiceField(choices=TEMPLATE_CHOICES)
+    # Recipients can be explicit emails
+    recipient_emails = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True, default=list)
+    # Or resolved from Keycloak group IDs
+    recipient_group_ids = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True, default=list)
+
+    # For custom emails
+    subject = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    body = serializers.CharField(required=False, allow_blank=True, default="")
+
+    # Template-specific fields
+    project_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    dashboard_url = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    support_link = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    login_url = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    temp_password = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+
+
+class NotificationAPISendEmailView(APIView):
+    """Send notification emails to selected users/groups."""
+
+    permission_classes = [IsAdminUser]
+    throttle_classes = [UserRateThrottle]
+
+    def _resolve_recipients(self, recipient_emails, recipient_group_ids):
+        """Combine explicit emails with emails from specified groups."""
+        all_emails = set(recipient_emails)
+        for group_id in recipient_group_ids:
+            try:
+                group_emails = get_users_in_group_in_keycloak(group_id=group_id, settings=env_settings)
+                all_emails.update(group_emails)
+            except Exception as e:
+                logger.error(f"Error fetching users for group {group_id}: {e}")
+        return list(all_emails)
+
+    def _build_html_body(self, template_type, validated_data, recipient_email):
+        project_name = validated_data.get("project_name", "")
+        dashboard_url = validated_data.get("dashboard_url") or getattr(env_settings, "HOSTNAME", "") + "/maia/"
+        support_link = validated_data.get("support_link") or getattr(env_settings, "SUPPORT_URL", "")
+        login_url = validated_data.get("login_url") or dashboard_url
+        temp_password = validated_data.get("temp_password", "")
+
+        if template_type == "project_approved":
+            return (
+                f"<html><body>"
+                f"<p>Welcome to MAIA!</p>"
+                f"<p>Your project <b>{project_name}</b> has been approved and you can now access the project workspace at:<br>"
+                f'<a href="{dashboard_url}namespaces/{project_name}">{dashboard_url}namespaces/{project_name}</a></p>'
+                f"<p>In the project workspace page you can find all the links and applications available for your project.</p>"
+                f"<br><p>If you have any questions or need further assistance, feel free to join our Discord community:<br>"
+                f'<a href="{support_link}">{support_link}</a></p>'
+                f"<p>Best regards,</p><p>The MAIA Admin Team</p>"
+                f"</body></html>"
+            ), f"{project_name} Project Approved"
+
+        elif template_type == "user_added_to_group":
+            return (
+                f"<html><body>"
+                f"<p>Welcome to MAIA!</p>"
+                f"<p>Your request to join the group <b>{project_name}</b> has been approved and you can now access the project workspace at:<br>"
+                f'<a href="{dashboard_url}namespaces/{project_name}">{dashboard_url}namespaces/{project_name}</a></p>'
+                f"<p>In the project workspace page you can find all the links and applications available for your project.</p>"
+                f"<br><p>If you have any questions or need further assistance, feel free to join our Discord community:<br>"
+                f'<a href="{support_link}">{support_link}</a></p>'
+                f"<p>Best regards,</p><p>The MAIA Admin Team</p>"
+                f"</body></html>"
+            ), f"{project_name} Registration Approved"
+
+        elif template_type == "account_approved":
+            return (
+                f"<html><body>"
+                f"<p>Welcome to MAIA!</p>"
+                f'<p>Your MAIA account has been approved and you can now log in at: <a href="{login_url}">{login_url}</a></p>'
+                f"<p>Your temporary password is: {temp_password}</p>"
+                f"<p>Please change your password after logging in.</p>"
+                f"<br><p>Best regards,</p><p>The MAIA Admin Team</p>"
+                f"</body></html>"
+            ), "Your MAIA Account has been approved"
+
+        elif template_type == "confirm_join_project":
+            return (
+                f"<html><body>"
+                f"<p>Welcome to MAIA!</p>"
+                f"<p>Your request to join the group <b>{project_name}</b> is now being processed. You will receive a confirmation email once your request is approved.</p>"
+                f"<br><p>If you have any questions or need further assistance, feel free to join our Discord community:<br>"
+                f'<a href="{support_link}">{support_link}</a></p>'
+                f"<p>Best regards,</p><p>The MAIA Admin Team</p>"
+                f"</body></html>"
+            ), f"Confirmation of your request to join the MAIA project {project_name}"
+
+        elif template_type == "confirm_new_project":
+            return (
+                f"<html><body>"
+                f"<p>Welcome to MAIA!</p>"
+                f"<p>Your request to register a new project <b>{project_name}</b> is now being processed. You will receive a confirmation email once your request is approved.</p>"
+                f"<br><p>If you have any questions or need further assistance, feel free to join our Discord community:<br>"
+                f'<a href="{support_link}">{support_link}</a></p>'
+                f"<p>Best regards,</p><p>The MAIA Admin Team</p>"
+                f"</body></html>"
+            ), f"Confirmation of your request to register a new MAIA project {project_name}"
+
+        else:  # custom
+            body = validated_data.get("body", "")
+            subject = validated_data.get("subject", "MAIA Notification")
+            # Wrap plain text body in basic HTML if it doesn't look like HTML
+            if body and not body.strip().startswith("<"):
+                html_body = f"<html><body><p>{body.replace(chr(10), '<br>')}</p><br><p>Best regards,</p><p>The MAIA Admin Team</p></body></html>"
+            elif body:
+                html_body = body
+            else:
+                html_body = "<html><body><p>Best regards,</p><p>The MAIA Admin Team</p></body></html>"
+            return html_body, subject
+
+    def post(self, request, *args, **kwargs):
+        serializer = NotificationSendEmailSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors}, status=400)
+
+        validated_data = serializer.validated_data
+        template_type = validated_data["template_type"]
+        recipient_emails = validated_data.get("recipient_emails", [])
+        recipient_group_ids = validated_data.get("recipient_group_ids", [])
+
+        if not recipient_emails and not recipient_group_ids:
+            return Response({"error": "At least one recipient email or group must be specified."}, status=400)
+
+        all_recipients = self._resolve_recipients(recipient_emails, recipient_group_ids)
+        if not all_recipients:
+            return Response({"error": "No valid recipients found."}, status=400)
+
+        # Build email content - use a single body for all recipients (or per-recipient for templates)
+        try:
+            html_body, subject = self._build_html_body(template_type, validated_data, None)
+        except Exception as e:
+            return Response({"error": f"Failed to build email body: {e}"}, status=400)
+
+        try:
+            result = send_custom_notification_email(
+                recipients=all_recipients,
+                subject=subject,
+                html_body=html_body,
+                smtp_sender_email=env_settings.SMTP_SENDER_EMAIL,
+                smtp_server=env_settings.SMTP_SERVER,
+                smtp_port=env_settings.SMTP_PORT,
+                smtp_password=env_settings.SMTP_PASSWORD,
+            )
+            return Response(
+                {
+                    "message": f"Emails sent: {len(result['success'])}, failed: {len(result['failed'])}",
+                    "success": result["success"],
+                    "failed": result["failed"],
+                },
+                status=200,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send notification emails: {e}")
+            return Response({"error": str(e)}, status=500)
 
 
 def deploy_project(

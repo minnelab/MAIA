@@ -194,6 +194,66 @@ def confirm_request_registration_for_group(
         return False
 
 
+def send_custom_notification_email(
+    recipients, subject, html_body, smtp_sender_email, smtp_server, smtp_port, smtp_password
+):
+    """Send a custom notification email to a list of recipients.
+
+    Parameters
+    ----------
+    recipients : list[str]
+        List of recipient email addresses.
+    subject : str
+        Email subject.
+    html_body : str
+        HTML body of the email.
+    smtp_sender_email : str
+        SMTP sender email address.
+    smtp_server : str
+        SMTP server hostname.
+    smtp_port : int
+        SMTP server port.
+    smtp_password : str
+        SMTP password.
+
+    Returns
+    -------
+    dict
+        A dict with keys 'success' (list of emails sent) and 'failed' (list of emails that failed).
+    """
+    if not smtp_server or not smtp_sender_email or not smtp_password:
+        raise ValueError("Missing required email environment variables.")
+
+    success = []
+    failed = []
+
+    _ = ssl.create_default_context()
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_sender_email, smtp_password)
+            for recipient in recipients:
+                try:
+                    message = MIMEMultipart()
+                    message["Subject"] = subject
+                    message["From"] = f"MAIA Admin Team <{smtp_sender_email}>"
+                    message["To"] = recipient
+                    message.attach(MIMEText(html_body, "html"))
+                    server.sendmail(smtp_sender_email, recipient, message.as_string())
+                    logger.success(f"Custom notification email sent to {recipient}")
+                    success.append(recipient)
+                except Exception as e:
+                    logger.error(f"Failed to send email to {recipient}: {e}")
+                    failed.append(recipient)
+    except Exception as smtp_error:
+        logger.error(f"SMTP connection error: {smtp_error}")
+        raise
+
+    return {"success": success, "failed": failed}
+
+
 def send_email_approved_registration_email(
     email, temp_password, login_url, smtp_sender_email, smtp_server, smtp_port, smtp_password
 ):
