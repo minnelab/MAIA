@@ -1,0 +1,282 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %} MAIA Agent API & MCP Server {% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-header pb-0 d-flex align-items-center">
+          <h5 class="mb-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor"
+              class="me-2" viewBox="0 0 16 16">
+              <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5ZM3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.58 26.58 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.933.933 0 0 1-.765.935c-.845.147-2.34.346-4.235.346-1.895 0-3.39-.2-4.235-.346A.933.933 0 0 1 3 9.219V8.062Zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a24.767 24.767 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25.286 25.286 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.134Z"/>
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
+            </svg>
+            MAIA Agent API &amp; MCP Server
+          </h5>
+          <span class="badge bg-gradient-success ms-2">Active</span>
+        </div>
+        <div class="card-body">
+          <p class="text-sm text-secondary mb-0">
+            Connect an AI agent or any MCP-compatible client to manage users and projects
+            through natural-language commands.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Endpoint cards ---- -->
+  <div class="row mb-4">
+
+    <!-- Generic REST chat endpoint -->
+    <div class="col-xl-4 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">
+            <span class="badge bg-gradient-info me-1">POST</span>
+            Generic REST Agent
+          </h6>
+          <code class="text-xs">/maia/agent/chat/</code>
+        </div>
+        <div class="card-body">
+          <p class="text-sm">Send a plain-text command and receive the agent's response.
+            Supports multi-turn conversation via the <code>history</code> field.</p>
+          <pre class="bg-gray-100 p-3 rounded text-xs" style="white-space:pre-wrap">POST /maia/agent/chat/
+X-Agent-Token: &lt;AGENT_API_TOKEN&gt;
+Content-Type: application/json
+
+{
+  "message": "List all users",
+  "history": []
+}</pre>
+          <p class="text-xs text-secondary mt-2 mb-0">
+            Response: <code>{"response": "...", "history": [...]}</code>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mattermost endpoint -->
+    <div class="col-xl-4 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">
+            <span class="badge bg-gradient-warning me-1">POST</span>
+            Mattermost Integration
+          </h6>
+          <code class="text-xs">/maia/agent/mattermost/</code>
+        </div>
+        <div class="card-body">
+          <p class="text-sm">Configure as a Mattermost <em>Outgoing Webhook</em> or
+            <em>Slash Command</em> integration. The agent posts results back
+            to the channel.</p>
+          <p class="text-sm font-weight-bold mb-1">Mattermost setup:</p>
+          <ol class="text-sm ps-3 mb-2">
+            <li>Go to <strong>Integrations → Outgoing Webhooks</strong></li>
+            <li>Set Callback URL to<br>
+              <code>https://&lt;your-host&gt;/maia/agent/mattermost/</code></li>
+            <li>Set the token to match <code>AGENT_API_TOKEN</code></li>
+            <li>Optionally set a trigger word, e.g. <code>maia</code></li>
+          </ol>
+          <p class="text-xs text-secondary mb-0">
+            Or use a Slash Command with the same URL and token.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- HTTP MCP endpoint -->
+    <div class="col-xl-4 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">
+            <span class="badge bg-gradient-primary me-1">POST</span>
+            HTTP MCP Server
+          </h6>
+          <code class="text-xs">/maia/agent/mcp/</code>
+        </div>
+        <div class="card-body">
+          <p class="text-sm">Stateless JSON-RPC 2.0 endpoint implementing the
+            <a href="https://modelcontextprotocol.io" target="_blank">Model Context Protocol</a>.
+            Connect any MCP-aware client or agent framework.</p>
+          <pre class="bg-gray-100 p-3 rounded text-xs" style="white-space:pre-wrap">POST /maia/agent/mcp/
+X-Agent-Token: &lt;AGENT_API_TOKEN&gt;
+Content-Type: application/json
+
+{"jsonrpc":"2.0","id":1,
+ "method":"tools/list","params":{}}</pre>
+          <p class="text-xs text-secondary mt-2 mb-0">
+            Methods: <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ---- Standalone MCP server ---- -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">Standalone MCP Server (stdio transport)</h6>
+        </div>
+        <div class="card-body">
+          <p class="text-sm">
+            The file <code>mcp_server/maia_mcp_server.py</code> is a full MCP server that
+            connects to this dashboard via its REST API.  Use it with Claude Desktop,
+            Cursor, Windsurf, or any other MCP client.
+          </p>
+          <p class="text-sm font-weight-bold mb-1">Claude Desktop — <code>claude_desktop_config.json</code>:</p>
+          <pre class="bg-gray-100 p-3 rounded text-xs" style="white-space:pre-wrap">{
+  "mcpServers": {
+    "maia-admin": {
+      "command": "python",
+      "args": ["/path/to/MAIA/mcp_server/maia_mcp_server.py"],
+      "env": {
+        "MAIA_API_URL": "https://{{ hostname }}/",
+        "MAIA_API_TOKEN": "&lt;admin-DRF-token&gt;"
+      }
+    }
+  }
+}</pre>
+          <p class="text-sm mt-2">
+            To obtain a DRF token for an admin user run (inside the dashboard container):
+          </p>
+          <pre class="bg-gray-100 p-3 rounded text-xs">python manage.py shell -c "
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+u = User.objects.get(username='&lt;admin-username&gt;')
+token, _ = Token.objects.get_or_create(user=u)
+print(token.key)"</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Available tools ---- -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">Available Admin Tools</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tool</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Description</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Required params</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code class="text-xs">list_users</code></td>
+                  <td class="text-sm">List all platform users with group assignments</td>
+                  <td class="text-xs text-secondary">—</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">create_user</code></td>
+                  <td class="text-sm">Create a user and register in Keycloak</td>
+                  <td class="text-xs text-secondary">email, username, first_name, last_name</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">update_user</code></td>
+                  <td class="text-sm">Update a user's group/namespace assignments</td>
+                  <td class="text-xs text-secondary">email, namespace</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">delete_user</code></td>
+                  <td class="text-sm">Delete a user from the platform</td>
+                  <td class="text-xs text-secondary">email</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">list_projects</code></td>
+                  <td class="text-sm">List all research projects / groups</td>
+                  <td class="text-xs text-secondary">—</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">list_pending_projects</code></td>
+                  <td class="text-sm">List projects pending admin approval</td>
+                  <td class="text-xs text-secondary">—</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">create_project</code></td>
+                  <td class="text-sm">Create a project with Kubernetes namespace &amp; GPU quota</td>
+                  <td class="text-xs text-secondary">group_id, gpu, date, memory_limit, cpu_limit, cluster, project_tier</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">delete_project</code></td>
+                  <td class="text-sm">Delete a project and remove members from Keycloak group</td>
+                  <td class="text-xs text-secondary">group_id</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Configuration ---- -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">Environment Variables</h6>
+        </div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Variable</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Description</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code class="text-xs">ANTHROPIC_API_KEY</code></td>
+                  <td class="text-sm">Anthropic API key used by the Agent API</td>
+                  <td>
+                    {% if anthropic_configured %}
+                      <span class="badge bg-gradient-success">Set</span>
+                    {% else %}
+                      <span class="badge bg-gradient-danger">Not set</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">AGENT_API_TOKEN</code></td>
+                  <td class="text-sm">Shared secret protecting the Agent API and MCP endpoint</td>
+                  <td>
+                    {% if agent_token_configured %}
+                      <span class="badge bg-gradient-success">Set</span>
+                    {% else %}
+                      <span class="badge bg-gradient-warning">Not set (open access — set in production)</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">AGENT_MODEL</code></td>
+                  <td class="text-sm">Claude model used by the Agent API</td>
+                  <td><code class="text-xs">{{ agent_model }}</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

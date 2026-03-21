@@ -62,6 +62,14 @@ OPENWEBAI_MODEL = env("OPENWEBAI_MODEL", default="llama3:latest")
 ARGOCD_SERVER = env("ARGOCD_SERVER", default=None)
 ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
 ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)
+
+# Agent API / MCP Server settings
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
+# Claude model used by the Agent API (override via env var)
+AGENT_MODEL = env("AGENT_MODEL", default="claude-sonnet-4-6")
+# Shared secret that protects the Agent API and HTTP MCP endpoint.
+# Set this to a strong random string in production (required).
+AGENT_API_TOKEN = env("AGENT_API_TOKEN", default=None)
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
 
@@ -104,6 +112,7 @@ INSTALLED_APPS = [
     "mozilla_django_oidc",  # Load after auth
     "bootstrap5",
     "apps.gpu_scheduler",
+    "apps.agent_api",
 ]
 
 MIDDLEWARE = [
