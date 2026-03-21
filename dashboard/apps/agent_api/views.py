@@ -261,6 +261,114 @@ class AgentMattermostView(APIView):
 # ---------------------------------------------------------------------------
 
 
+class AgentAdminChatView(APIView):
+    """
+    Session-based chat endpoint for the dashboard admin chat UI.
+
+    Requires the requesting user to be authenticated AND a superuser —
+    no extra token needed because the Django session already proves identity.
+
+    POST /maia/agent/admin-chat/
+        {"message": "..."}
+        → {"response": "...", "history_length": N}
+
+    DELETE /maia/agent/admin-chat/   (clear conversation)
+        → {"cleared": true}
+    """
+
+    permission_classes = [AllowAny]  # auth enforced manually below
+
+    SESSION_KEY = "agent_chat_history"
+
+    def _require_admin(self, request):
+        if not request.user.is_authenticated or not request.user.is_superuser:
+            return Response({"error": "Admin login required"}, status=403)
+        return None
+
+    def post(self, request, *args, **kwargs):
+        deny = self._require_admin(request)
+        if deny:
+            return deny
+
+        api_key, model, _ = _get_config()
+        if not api_key:
+            return Response(
+                {"error": "ANTHROPIC_API_KEY is not configured on the server"},
+                status=503,
+            )
+
+        message = request.data.get("message", "").strip()
+        if not message:
+            return Response({"error": "'message' field is required"}, status=400)
+
+        # Load history from session (contains only JSON-serialisable content)
+        history = request.session.get(self.SESSION_KEY, [])
+
+        try:
+            response_text, updated_history = _run_agent(
+                message, history, model, api_key
+            )
+        except Exception as exc:
+            logger.error(f"Admin chat agent error: {exc}")
+            return Response({"error": str(exc)}, status=500)
+
+        # Persist only the serialisable portions (strings/dicts, not SDK objects)
+        request.session[self.SESSION_KEY] = _serialise_history(updated_history)
+        request.session.modified = True
+
+        return Response(
+            {
+                "response": response_text,
+                "history_length": len(request.session[self.SESSION_KEY]),
+            }
+        )
+
+    def delete(self, request, *args, **kwargs):
+        deny = self._require_admin(request)
+        if deny:
+            return deny
+        request.session.pop(self.SESSION_KEY, None)
+        request.session.modified = True
+        return Response({"cleared": True})
+
+
+def _serialise_history(history: list) -> list:
+    """
+    Convert a message list that may contain Anthropic SDK objects into plain
+    JSON-serialisable dicts so they can be stored in the Django session.
+    """
+    serialisable = []
+    for msg in history:
+        role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
+        content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
+
+        if isinstance(content, str):
+            serialisable.append({"role": role, "content": content})
+        elif isinstance(content, list):
+            clean_blocks = []
+            for block in content:
+                if isinstance(block, dict):
+                    clean_blocks.append(block)
+                elif hasattr(block, "type"):
+                    b = {"type": block.type}
+                    if hasattr(block, "text"):
+                        b["text"] = block.text
+                    if hasattr(block, "id"):
+                        b["id"] = block.id
+                    if hasattr(block, "name"):
+                        b["name"] = block.name
+                    if hasattr(block, "input"):
+                        b["input"] = block.input
+                    if hasattr(block, "tool_use_id"):
+                        b["tool_use_id"] = block.tool_use_id
+                    if hasattr(block, "content"):
+                        b["content"] = block.content
+                    clean_blocks.append(b)
+            serialisable.append({"role": role, "content": clean_blocks})
+        # Skip messages with non-serialisable content silently
+    return serialisable
+
+
 class MCPServerView(APIView):
     """
     Minimal MCP server implemented over plain HTTP (JSON-RPC 2.0 subset).
