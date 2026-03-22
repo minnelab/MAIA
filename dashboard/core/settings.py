@@ -19,6 +19,7 @@ env = environ.Env(
 )
 
 DASHBOARD_VERSION = maia_dashboard_image_version
+MAIA_VERSION = os.environ.get("MAIA_VERSION", "N/A")
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 CORE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

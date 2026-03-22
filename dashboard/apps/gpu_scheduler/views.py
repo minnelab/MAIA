@@ -222,6 +222,7 @@ def book_gpu(request):
     context = {
         "namespaces": namespaces,
         "dashboard_version": settings.DASHBOARD_VERSION,
+        "MAIA_VERSION": settings.MAIA_VERSION,
         "form": form,
         "msg": msg,
         "success": success,
@@ -278,6 +279,7 @@ def gpu_booking_info(request):
     context = {
         "namespaces": namespaces,
         "dashboard_version": settings.DASHBOARD_VERSION,
+        "MAIA_VERSION": settings.MAIA_VERSION,
         "bookings": bookings_dict,
         "total_days": total_days,
     }

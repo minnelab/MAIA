@@ -58,6 +58,7 @@ def login_view(request):
         {
             "BACKEND": backend,
             "dashboard_version": settings.DASHBOARD_VERSION,
+            "MAIA_VERSION": settings.MAIA_VERSION,
             "form": form,
             "msg": msg,
             "GITHUB_AUTH": GITHUB_AUTH,
@@ -179,7 +180,7 @@ def register_user(request, api=False):
         return render(
             request,
             "accounts/register.html",
-            {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+            {"dashboard_version": settings.DASHBOARD_VERSION, "MAIA_VERSION": settings.MAIA_VERSION, "form": form, "msg": msg, "success": success},
         )
 
 
@@ -215,7 +216,7 @@ def send_maia_email(request):
     return render(
         request,
         "accounts/send_maia_info.html",
-        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+        {"dashboard_version": settings.DASHBOARD_VERSION, "MAIA_VERSION": settings.MAIA_VERSION, "form": form, "msg": msg, "success": success},
     )
 
 
@@ -328,6 +329,7 @@ def register_project(request, api=False):
             "accounts/register_project.html",
             {
                 "dashboard_version": settings.DASHBOARD_VERSION,
+                "MAIA_VERSION": settings.MAIA_VERSION,
                 "minio_available": minio_available,
                 "form": form,
                 "msg": msg,
