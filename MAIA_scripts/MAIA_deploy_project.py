@@ -135,6 +135,12 @@ def get_arg_parser():
         required=True,
         help="JSON configuration file used to extract the project configuration.",
     )
+    pars.add_argument(
+        "--dashboard-url",
+        type=str,
+        required=True,
+        help="Dashboard URL to use for authentication and deployment.",
+    )
 
     return pars
 
@@ -142,8 +148,7 @@ def get_arg_parser():
 def main():
     args = get_arg_parser().parse_args()
     project_config_file = args.project_config_file
-
-    dashboard_url = "https://maia-eurecom.fr"
+    dashboard_url = args.dashboard_url
     ca_cert = False
     well_known_url = f"{dashboard_url}/maia/api/well-known/"
     response = requests.get(well_known_url, verify=ca_cert)
