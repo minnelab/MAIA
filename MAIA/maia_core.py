@@ -375,6 +375,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         core_toolkit_values.update(
             {"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}}
         )
+        if cluster_config_dict["k8s_distribution"] == "k3s":
+            core_toolkit_values.update({"k3s_coredns": {"enabled": True}})
+        else:
+            core_toolkit_values.update({"k3s_coredns": {"enabled": False}})
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 
@@ -382,6 +386,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         core_toolkit_values.update(
             {"cluster_domain": cluster_config_dict["domain"], "coredns_mappings": cluster_config_dict["coredns_mappings"]}
         )
+        if cluster_config_dict["k8s_distribution"] == "k3s":
+            core_toolkit_values.update({"k3s_coredns_mappings": {"enabled": True}})
+        else:
+            core_toolkit_values.update({"k3s_coredns_mappings": {"enabled": False}})
 
     Path(config_folder).joinpath(project_id, "core_toolkit_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:
