@@ -732,7 +732,7 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         memory_limit = os.environ["ORTHANC_MEMORY_LIMIT_" + namespace]
     else:
         memory_limit = os.environ.get("ORTHANC_MEMORY_LIMIT", "4Gi")
-        
+
     if "ORTHANC_MYSQL_CPU_REQUEST_" + namespace in os.environ:
         mysql_cpu_request = os.environ["ORTHANC_MYSQL_CPU_REQUEST_" + namespace]
     else:
