@@ -100,7 +100,17 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     admin_group_id = os.environ["admin_group_ID"]
     project_id = "maia-admin"
 
-    cluster_address = os.environ.get("MAIA_ADMIN_ARGOCD_DESTINATION_CLUSTER_ADDRESS", "https://kubernetes.default.svc")  # TODO: Change this to make it configurable
+    cluster_address = os.environ.get(
+        "MAIA_ADMIN_ARGOCD_DESTINATION_CLUSTER_ADDRESS", "https://kubernetes.default.svc"
+    )  # TODO: Change this to make it configurable
+    if "CLUSTER_YAML_CONFIGS" in os.environ:
+        cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
+        for cluster_file in cluster_files:
+            with open(cluster_file, "r") as f:
+                cluster_config_dict = yaml.safe_load(f)
+            if cluster_config_dict["argocd_destination_cluster_address"] == cluster_address:
+                cluster_config_dict = cluster_config_dict
+                break
 
     if "ingress_class" not in cluster_config_dict:
         if "k8s_distribution" in cluster_config_dict:

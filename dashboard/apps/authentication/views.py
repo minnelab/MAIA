@@ -180,7 +180,13 @@ def register_user(request, api=False):
         return render(
             request,
             "accounts/register.html",
-            {"dashboard_version": settings.DASHBOARD_VERSION, "MAIA_VERSION": settings.MAIA_VERSION, "form": form, "msg": msg, "success": success},
+            {
+                "dashboard_version": settings.DASHBOARD_VERSION,
+                "MAIA_VERSION": settings.MAIA_VERSION,
+                "form": form,
+                "msg": msg,
+                "success": success,
+            },
         )
 
 
@@ -216,7 +222,13 @@ def send_maia_email(request):
     return render(
         request,
         "accounts/send_maia_info.html",
-        {"dashboard_version": settings.DASHBOARD_VERSION, "MAIA_VERSION": settings.MAIA_VERSION, "form": form, "msg": msg, "success": success},
+        {
+            "dashboard_version": settings.DASHBOARD_VERSION,
+            "MAIA_VERSION": settings.MAIA_VERSION,
+            "form": form,
+            "msg": msg,
+            "success": success,
+        },
     )
 
 
