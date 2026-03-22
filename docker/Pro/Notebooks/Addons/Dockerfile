@@ -45,7 +45,7 @@ RUN chmod 777 /etc/Matlab.desktop && \
     chmod a+x /etc/Matlab.desktop
 
 RUN pip install jupyterlab_nvdashboard --break-system-packages && \
-    pip install jupyter_app_launcher jupyter-resource-usage --break-system-packages
+    pip install jupyter-collaboration jupyter_app_launcher jupyter-resource-usage --break-system-packages
 #RUN pip install "elyra[all]"
 COPY start.sh /opt/start.sh
 
