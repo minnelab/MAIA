@@ -732,6 +732,23 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         memory_limit = os.environ["ORTHANC_MEMORY_LIMIT_" + namespace]
     else:
         memory_limit = os.environ.get("ORTHANC_MEMORY_LIMIT", "4Gi")
+        
+    if "ORTHANC_MYSQL_CPU_REQUEST_" + namespace in os.environ:
+        mysql_cpu_request = os.environ["ORTHANC_MYSQL_CPU_REQUEST_" + namespace]
+    else:
+        mysql_cpu_request = os.environ.get("ORTHANC_MYSQL_CPU_REQUEST", "500m")
+    if "ORTHANC_MYSQL_CPU_LIMIT_" + namespace in os.environ:
+        mysql_cpu_limit = os.environ["ORTHANC_MYSQL_CPU_LIMIT_" + namespace]
+    else:
+        mysql_cpu_limit = os.environ.get("ORTHANC_MYSQL_CPU_LIMIT", "500m")
+    if "ORTHANC_MYSQL_MEMORY_REQUEST_" + namespace in os.environ:
+        mysql_memory_request = os.environ["ORTHANC_MYSQL_MEMORY_REQUEST_" + namespace]
+    else:
+        mysql_memory_request = os.environ.get("ORTHANC_MYSQL_MEMORY_REQUEST", "2Gi")
+    if "ORTHANC_MYSQL_MEMORY_LIMIT_" + namespace in os.environ:
+        mysql_memory_limit = os.environ["ORTHANC_MYSQL_MEMORY_LIMIT_" + namespace]
+    else:
+        mysql_memory_limit = os.environ.get("ORTHANC_MYSQL_MEMORY_LIMIT", "2Gi")
     orthanc_config = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "imagePullSecret": image_pull_secret,
@@ -773,6 +790,10 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
             "mysqlDatabase": "orthanc",
             "image": mysql_image,
             "tag": mysql_image_version,
+            "cpu_request": mysql_cpu_request,
+            "cpu_limit": mysql_cpu_limit,
+            "memory_request": mysql_memory_request,
+            "memory_limit": mysql_memory_limit,
         }
 
     if private_registry is not None:
