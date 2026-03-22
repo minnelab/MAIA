@@ -533,3 +533,21 @@ email_to_username_map:
   "email_2": "username_2"
   "email_3": "username_3"
 ```
+
+#### Host Aliases
+
+Used to set the host aliases for the MAIA Dashboard pod, in case the CoreDNS cannot resolve the hostnames:
+
+```yaml
+env:
+  HOST_ALIASES: '[{"ip": "<IP_ADDRESS>", "hostnames": ["<hostname_1>", "<hostname_2>"]}]'
+```
+
+#### Custom Clusters Configuration
+
+Used to set the custom clusters configuration for the MAIA Dashboard, when adding new clusters to the MAIA Dashboard.
+
+```yaml
+env:
+  CLUSTER_YAML_CONFIGS: "<path/to/cluster_1>.yaml,<path/to/cluster_2>.yaml,<path/to/cluster_3>.yaml"
+```
