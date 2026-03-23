@@ -311,7 +311,7 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
     else:
-        maia_dashboard_image_version = "2.4.5"
+        maia_dashboard_image_version = "2.5.0"
 
     if os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION") is not None:
         monai_toolkit_image_version = os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION")
