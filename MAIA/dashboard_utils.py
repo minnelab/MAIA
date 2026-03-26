@@ -395,6 +395,7 @@ def send_webhook_message(username, namespace, url, project_registration=False):
         data["embeds"][0]["title"] = "MAIA Project Registration Request"
         data["text"] = f"{username} is requesting a MAIA account and a new project registration for {namespace}."
 
+    data["content"] = data["text"]
     result = requests.post(url, json=data)
 
     try:
