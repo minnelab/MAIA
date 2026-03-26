@@ -856,6 +856,17 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
         maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
 
+    if os.environ.get("DEV_TAG") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DEV_TAG", "value": os.environ["DEV_TAG"]},
+            ]
+        )
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MAIA_VERSION", "value": os.environ["DEV_TAG"]},
+            ]
+        )
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
         [
