@@ -546,7 +546,7 @@ class ProjectChartValuesAPIView(APIView):
             disable_argocd=not auto_deploy,
             return_values_only=not auto_deploy,
             custom_project_dict=project_configuration,
-            use_in_local_cluster_token=True,
+            use_in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
         )
         if auto_deploy:
             apps_to_sync = auto_deploy_apps
