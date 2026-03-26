@@ -12,6 +12,7 @@ ARG DEV_BRANCH=master
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 WORKDIR /etc
+ENV MAIA_VERSION=${MAIA_VERSION}
 RUN git clone --branch $MAIA_VERSION --single-branch https://github.com/minnelab/MAIA.git
 RUN mkdir /etc/MAIA-Dashboard
 WORKDIR /etc/MAIA-Dashboard
