@@ -229,6 +229,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "startTimeout": 7200,
             "allowPrivilegeEscalation": True,
             "uid": 1000,
+            "extraPodConfig": {"securityContext": {"fsGroupChangePolicy": "OnRootMismatch"}},
             "networkPolicy": {"enabled": False},
             "defaultUrl": "/lab/tree/Welcome.ipynb",
             "extraEnv": {
