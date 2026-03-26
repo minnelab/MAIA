@@ -162,6 +162,7 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
 
     jh_template = {
         "cull": {"enabled": False},
+        "prePuller": {"continuous": {"enabled": False}, "hook": {"enabled": False}},
         "ingress": {"enabled": True, "hosts": [hub_address], "annotations": {}, "tls": [{"hosts": [hub_address]}]},
         "hub": {
             "config": {
@@ -182,6 +183,7 @@ def create_jupyterhub_config_api(form, maia_config_file, cluster_config_file, co
             "startTimeout": 7200,
             "allowPrivilegeEscalation": True,
             "uid": 1000,
+            "extraPodConfig": {"securityContext": {"fsGroupChangePolicy": "OnRootMismatch"}},
             "networkPolicy": {"enabled": False},
             "defaultUrl": "/lab/tree/Welcome.ipynb",
             "extraEnv": {
