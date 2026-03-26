@@ -1,4 +1,5 @@
 ARG BASE_IMAGE
+ARG MAIA_VERSION
 FROM $BASE_IMAGE
 
 
@@ -7,8 +8,6 @@ USER root
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ARG MAIA_DASHBOARD_PATH="/etc/MAIA-Dashboard"
-ARG MAIA_VERSION=master 
-#v2.5.0
 ARG DEV_BRANCH=master
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
