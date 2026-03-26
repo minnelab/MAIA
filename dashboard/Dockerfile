@@ -8,6 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ARG MAIA_DASHBOARD_PATH="/etc/MAIA-Dashboard"
 ARG MAIA_VERSION=v2.5.0
+ARG DEV_BRANCH=master
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 WORKDIR /etc
@@ -32,6 +33,8 @@ ARG DEVEL=0
 RUN if [ "$DEVEL" = "1" ]; then \
     cd /etc && \
     git clone https://github.com/minnelab/MAIA.git && \
+    git checkout $DEV_BRANCH && \
+    git pull && \
     cd /etc/MAIA/dashboard && \
     mv /etc/MAIA-Dashboard/start-script_dev.sh start-script.sh && \
     chmod 777 start-script.sh && \

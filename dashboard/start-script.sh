@@ -2,8 +2,12 @@
 
 helm repo add maia https://minnelab.github.io/MAIA/
 helm repo update
-pip install --pre --upgrade maia-toolkit==$MAIA_VERSION
 
+if [ -n "$DEV_TAG" ]; then
+    pip install git+https://github.com/minnelab/MAIA.git@$DEV_TAG
+else
+    pip install --pre --upgrade maia-toolkit==$MAIA_VERSION
+fi
 
 python manage.py makemigrations authentication
 python manage.py makemigrations gpu_scheduler
