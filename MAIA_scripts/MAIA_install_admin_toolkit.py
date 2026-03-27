@@ -106,6 +106,8 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     if "CLUSTER_YAML_CONFIGS" in os.environ:
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
         for cluster_file in cluster_files:
+            if not os.path.isabs(cluster_file):
+                cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
             with open(cluster_file, "r") as f:
                 cluster_config_dict = yaml.safe_load(f)
             if cluster_config_dict["argocd_destination_cluster_address"] == cluster_address:
