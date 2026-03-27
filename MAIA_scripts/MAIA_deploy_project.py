@@ -110,7 +110,7 @@ def get_token_with_password(username, password, ca_cert, token_url, client_id, e
         data.update(extra_data)
     response = requests.post(token_url, data=data, verify=ca_cert)
     response.raise_for_status()
-    return response.json().get("access_token")
+    return response.json().get("id_token")
 
 
 # --- Step 4: Exchange Code for Token ---
@@ -193,7 +193,6 @@ def main():
             token = get_token_with_password(
                 os.environ.get("MAIA_USERNAME"), os.environ.get("MAIA_PASSWORD"), ca_cert, TOKEN_URL, CLIENT_ID
             )
-            print(token)
         else:
             code = get_authorization_code(challenge, AUTH_URL, CLIENT_ID, REDIRECT_URI, PORT)
             if code:
