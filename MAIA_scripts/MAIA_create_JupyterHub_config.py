@@ -456,6 +456,13 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             cpu_values.append(float(cpu_value))
         except ValueError:
             cpu_values.append(cpu_value)
+    for i, cpu_value in enumerate(cpu_values):
+        if isinstance(cpu_value, str) and cpu_value.endswith("m"):
+            try:
+                numeric_value = float(cpu_value[:-1]) / 1000.0
+                cpu_values[i] = numeric_value
+            except ValueError:
+                pass  # If the value can't be converted, leave it as is
     jh_template["singleuser"]["cpu"] = {
         "limit": cpu_values[1],
         "guarantee": cpu_values[0],
