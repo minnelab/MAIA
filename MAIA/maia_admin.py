@@ -974,6 +974,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         projects = os.environ["maia_projects"].split(",")
         maia_dashboard_values["maia_projects"] = []
         for project in projects:
+            # If the project path is not absolute, expand it relative to the config_folder
+            if not os.path.isabs(project):
+                project = str(Path(config_folder).joinpath(project).resolve())
             with open(project, "r") as f:
                 project_dict = json.load(f)
             maia_dashboard_values["maia_projects"].append(project_dict)
