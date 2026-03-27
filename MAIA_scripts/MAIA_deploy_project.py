@@ -94,6 +94,25 @@ def get_authorization_code(code_challenge, AUTH_URL, CLIENT_ID, REDIRECT_URI, PO
     return CallbackHandler.auth_code
 
 
+def get_token_with_password(username, password, ca_cert, token_url, client_id, extra_data=None):
+    """
+    Obtain an OIDC token using username and password authentication (Resource Owner Password Credentials grant).
+    """
+    data = {
+        "grant_type": "password",
+        "client_id": "maia",
+        "client_secret": os.environ.get("CLIENT_SECRET"),
+        "username": username,
+        "password": password,
+        "scope": "openid",
+    }
+    if extra_data:
+        data.update(extra_data)
+    response = requests.post(token_url, data=data, verify=ca_cert)
+    response.raise_for_status()
+    return response.json().get("access_token")
+
+
 # --- Step 4: Exchange Code for Token ---
 def fetch_token(auth_code, code_verifier, ca_cert, TOKEN_URL, CLIENT_ID, REDIRECT_URI):
     data = {
@@ -153,7 +172,7 @@ def main():
     well_known_url = f"{dashboard_url}/maia/api/well-known/"
     response = requests.get(well_known_url, verify=ca_cert)
     response.raise_for_status()
-    print(response.text)
+
     well_known_data = response.json()
     KEYCLOAK_URL = well_known_data["issuer"]
     CLIENT_ID = well_known_data["client_id"]
@@ -167,21 +186,27 @@ def main():
         # 1. Generate secrets
         verifier, challenge = generate_pkce_pair()
 
-        # 2 & 3. Get the code via browser
-        code = get_authorization_code(challenge, AUTH_URL, CLIENT_ID, REDIRECT_URI, PORT)
-
-        if code:
-            logger.info("\nAuthorization code received! Exchanging for token...")
-            # 4. Swap code for tokens
-            tokens = fetch_token(code, verifier, ca_cert, TOKEN_URL, CLIENT_ID, REDIRECT_URI)
-            token = tokens.get("id_token")
-            resp = deploy_project(
-                token=token, dashboard_url=dashboard_url, ca_cert=ca_cert, project_config_file=project_config_file
+        logger.info("\nAuthorization code received! Exchanging for token...")
+        # 4. Swap code for tokens
+        if os.environ.get("MAIA_USERNAME") and os.environ.get("MAIA_PASSWORD") and os.environ.get("CLIENT_SECRET"):
+            logger.info("Using username and password authentication")
+            token = get_token_with_password(
+                os.environ.get("MAIA_USERNAME"), os.environ.get("MAIA_PASSWORD"), ca_cert, TOKEN_URL, CLIENT_ID
             )
-            if "values" in resp and resp["values"] != "":
-                project_id = json.load(open(project_config_file))["group_id"]
-                with open(f"{project_id}-values.yaml", "w") as f:
-                    yaml.dump(resp, f)
+            print(token)
+        else:
+            code = get_authorization_code(challenge, AUTH_URL, CLIENT_ID, REDIRECT_URI, PORT)
+            if code:
+                tokens = fetch_token(code, verifier, ca_cert, TOKEN_URL, CLIENT_ID, REDIRECT_URI)
+                token = tokens.get("id_token")
+            else:
+                logger.error("No code received")
+                raise Exception("No code received")
+        resp = deploy_project(token=token, dashboard_url=dashboard_url, ca_cert=ca_cert, project_config_file=project_config_file)
+        if "values" in resp and resp["values"] != "":
+            project_id = json.load(open(project_config_file))["group_id"]
+            with open(f"{project_id}-values.yaml", "w") as f:
+                yaml.dump(resp, f)
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         raise Exception(f"An error occurred: {e}")
