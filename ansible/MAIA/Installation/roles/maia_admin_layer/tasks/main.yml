@@ -23,8 +23,8 @@
 
 - name: Ensure DEPLOY_KUBECONFIG is absolute
   ansible.builtin.set_fact:
-    DEPLOY_KUBECONFIG: "{{ str(Path(config_folder).joinpath((cluster_config_content.content | b64decode | from_yaml).DEPLOY_KUBECONFIG).resolve()) }}"
-  when: DEPLOY_KUBECONFIG is defined and DEPLOY_KUBECONFIG is not absolute
+    DEPLOY_KUBECONFIG: "{{ str(Path(config_folder).joinpath(DEPLOY_KUBECONFIG).resolve()) }}"
+  when: DEPLOY_KUBECONFIG is defined and not Path(DEPLOY_KUBECONFIG).is_absolute()
   delegate_to: localhost
 
 - name: Create namespaces
