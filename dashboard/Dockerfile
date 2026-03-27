@@ -1,5 +1,4 @@
 ARG BASE_IMAGE
-ARG MAIA_VERSION
 FROM $BASE_IMAGE
 
 
@@ -9,10 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ARG MAIA_DASHBOARD_PATH="/etc/MAIA-Dashboard"
 ARG DEV_BRANCH=master
+ARG MAIA_VERSION
 RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 WORKDIR /etc
-ENV MAIA_VERSION=${MAIA_VERSION}
 RUN git clone --single-branch --branch $MAIA_VERSION  https://github.com/minnelab/MAIA.git
 RUN mkdir /etc/MAIA-Dashboard
 WORKDIR /etc/MAIA-Dashboard
