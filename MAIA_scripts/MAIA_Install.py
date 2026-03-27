@@ -95,6 +95,12 @@ def get_arg_parser():
         action="store_true",
         help="Upgrade MAIA dashboard. Default: False. If provided, the MAIA dashboard will be upgraded.",
     )
+    
+    pars.add_argument(
+        "--auto-sync",
+        action="store_true",
+        help="Auto sync. Default: False. If provided, the auto sync will be enabled.",
+    )
 
     pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
@@ -137,13 +143,13 @@ def main():
         config_dict["steps"] = args.steps
     if args.upgrade_maia_core:
         config_dict["steps"] = ["install_maia_core"]
-        config_dict["install_maia_core"] = {"auto_sync": False}
+        config_dict["install_maia_core"] = {"auto_sync": args.auto_sync}
     if args.upgrade_maia_admin:
         config_dict["steps"] = ["install_maia_admin"]
-        config_dict["install_maia_admin"] = {"auto_sync": False}
+        config_dict["install_maia_admin"] = {"auto_sync": args.auto_sync}
     if args.upgrade_maia_dashboard:
         config_dict["steps"] = ["configure_maia_dashboard"]
-        config_dict["configure_maia_dashboard"] = {"auto_sync": False}
+        config_dict["configure_maia_dashboard"] = {"auto_sync": args.auto_sync}
     playbooks_dir = "maia.installation"
 
     # Step 1: Install Ansible collection
