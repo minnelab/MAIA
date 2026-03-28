@@ -899,14 +899,20 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             ]
         )
     ### MinIO Configuration
+    minio_console_url = f"https://minio.{dashboard_domain}/browser/maia-envs"
+    if os.environ.get("MINIO_CONSOLE_URL") is not None:
+        minio_console_url = os.environ["MINIO_CONSOLE_URL"]
+    minio_url = "minio:80"
+    if os.environ.get("MINIO_URL") is not None:
+        minio_url = os.environ["MINIO_URL"]
     maia_dashboard_values["env"].extend(
         [
-            {"name": "MINIO_URL", "value": "minio:80"},
+            {"name": "MINIO_URL", "value": minio_url},
             {"name": "MINIO_ACCESS_KEY", "value": "maia-admin"},
             {"name": "MINIO_SECRET_KEY", "value": os.environ["minio_admin_password"]},
             {"name": "MINIO_SECURE", "value": "False"},
             {"name": "BUCKET_NAME", "value": "maia-envs"},
-            {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{dashboard_domain}/browser/maia-envs"},
+            {"name": "MINIO_CONSOLE_URL", "value": minio_console_url},
         ]
     )
 
