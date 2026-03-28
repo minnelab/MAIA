@@ -878,6 +878,12 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "MAIA_VERSION", "value": os.environ["DEV_TAG"]},
             ]
         )
+    if os.environ.get("CIFS_SERVER") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "CIFS_SERVER", "value": os.environ["CIFS_SERVER"]},
+            ]
+        )
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
         [
