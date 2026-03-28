@@ -429,7 +429,9 @@ class ProjectChartValuesAPIView(APIView):
             memory_request = validated_data["memory_request"]
             project_tier = validated_data["project_tier"]
             gpu = validated_data["gpu"]
-            env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
+            env_file = (
+                validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
+            )
             cluster = validated_data["cluster"]
             date = validated_data["date"]
             supervisor = validated_data["supervisor"]
@@ -540,7 +542,9 @@ class ProjectChartValuesAPIView(APIView):
                     else:
                         kubeflow_namespace = False
                     create_namespace_from_context(
-                        namespace_id=group_id.lower().replace("_", "-"), kubeflow_namespace=kubeflow_namespace, owner_email=users[0]
+                        namespace_id=group_id.lower().replace("_", "-"),
+                        kubeflow_namespace=kubeflow_namespace,
+                        owner_email=users[0],
                     )
                     create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
             values = deploy_project(

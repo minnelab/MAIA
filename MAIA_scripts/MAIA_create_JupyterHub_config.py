@@ -358,7 +358,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         try:
             if minio_env_name.endswith(".zip"):
                 settings_dict = {
-                    "MINIO_PUBLIC_URL": os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"],
+                    "MINIO_PUBLIC_URL": (
+                        os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
+                    ),
                     "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
                     "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
                     "MINIO_PUBLIC_SECURE": public_secure,
