@@ -893,10 +893,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         else:
             public_key = ""
         maia_dashboard_values["cifs_public_key"] = public_key
-            [
-                {"name": "CIFS_PUBLIC_KEY", "value": public_key},
-            ]
-        )
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
         [
