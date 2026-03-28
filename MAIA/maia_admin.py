@@ -915,6 +915,13 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "MINIO_CONSOLE_URL", "value": minio_console_url},
         ]
     )
+    
+    if "MINIO_PUBLIC_URL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_PUBLIC_URL", "value": os.environ["MINIO_PUBLIC_URL"]},
+            ]
+        )
 
     ## MONAI Toolkit Image and Orthanc
     maia_dashboard_values["env"].extend(
