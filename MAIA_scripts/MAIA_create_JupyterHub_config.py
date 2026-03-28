@@ -377,7 +377,6 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     else:
                         jh_template["singleuser"]["extraEnv"]["PIP_ENV"] = str(file_string)
         except Exception as e:
-            logger.exception(e)
             logger.error(f"Error reading {minio_env_name} from MinIO bucket {os.environ['BUCKET_NAME']}: {e}")
     if "url_type" in cluster_config:
         if cluster_config["url_type"] == "subpath":
