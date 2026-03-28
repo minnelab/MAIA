@@ -5,5 +5,5 @@ metadata:
   name: cifs-encryption-public-key
 data:
   public-key.pem: |-
-    {{- .Values.cifs_public_key | nindent 4 }}
+    {{ .Values.cifs_public_key | b64enc | nindent 4 }}
 {{- end }}
