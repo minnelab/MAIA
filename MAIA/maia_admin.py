@@ -926,7 +926,8 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["env"].extend(
             [
                 {"name": "MINIO_PUBLIC_SECURE", "value": os.environ["MINIO_PUBLIC_SECURE"]},
-    
+            ]
+        )
     if "MINIO_PUBLIC_URL" in os.environ:
         maia_dashboard_values["env"].extend(
             [
