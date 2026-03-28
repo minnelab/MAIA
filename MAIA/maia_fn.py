@@ -1658,9 +1658,13 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
 
     enable_cifs = namespace_config.get("extra_configs", {}).get("enable_cifs", False)
     if enable_cifs and "CIFS_SERVER" in os.environ:
+        if "CIFS_PUBLIC_KEY" in os.environ:
+            public_key = open(os.environ["CIFS_PUBLIC_KEY"], "r").read()
+        else:
+            public_key = ""
         maia_namespace_values["cifs"] = {
             "enabled": True,
-            "encryption": {"publicKey": os.environ.get("CIFS_PUBLIC_KEY", "")},
+            "encryption": {"publicKey": public_key},
         }  # base64 encoded}
     namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
     Path(config_folder).joinpath(namespace_config["group_ID"], "maia_namespace_values").mkdir(parents=True, exist_ok=True)

@@ -95,7 +95,7 @@ def get_arg_parser():
         action="store_true",
         help="Upgrade MAIA dashboard. Default: False. If provided, the MAIA dashboard will be upgraded.",
     )
-    
+
     pars.add_argument(
         "--auto-sync",
         action="store_true",

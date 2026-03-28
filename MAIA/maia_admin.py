@@ -893,6 +893,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         else:
             public_key = ""
         maia_dashboard_values["cifs_public_key"] = public_key
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "CIFS_PUBLIC_KEY", "value": "/var/cifs/public-key.pem"},
+            ]
+        )
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
         [
@@ -1015,7 +1020,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
             with open(cluster_file, "r") as f:
                 cluster_config_dict = yaml.safe_load(f)
-                maia_dashboard_values["clusters"].append(cluster_config_dict)   
+                maia_dashboard_values["clusters"].append(cluster_config_dict)
 
     # CIFS
     # MAIA Segmentation Portal
