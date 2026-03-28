@@ -336,6 +336,15 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 secure = os.environ["MINIO_SECURE"]
         else:
             secure = True
+        if "MINIO_PUBLIC_SECURE" in os.environ:
+            if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
+                public_secure = False
+            elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
+                public_secure = True
+            else:
+                public_secure = os.environ["MINIO_PUBLIC_SECURE"]
+        else:
+            public_secure = secure
         if "minio_env_name" not in user_form or user_form["minio_env_name"] is None:
             minio_env_name = team_id + "_env"
         else:
@@ -352,7 +361,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                     "MINIO_PUBLIC_URL": os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"],
                     "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
                     "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
-                    "MINIO_PUBLIC_SECURE": secure,
+                    "MINIO_PUBLIC_SECURE": public_secure,
                     "BUCKET_NAME": os.environ["BUCKET_NAME"],
                 }
                 settings = SimpleNamespace(**settings_dict)
