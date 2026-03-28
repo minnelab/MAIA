@@ -40,7 +40,7 @@ MAX_MEMORY = env("MAX_MEMORY", default=7)
 MAX_CPU = env("MAX_CPU", default=5)
 
 MINIO_URL = env("MINIO_URL")
-MINIO_PUBLIC_URL = env("MINIO_PUBLIC_URL", default="N/A")
+MINIO_PUBLIC_URL = env("MINIO_PUBLIC_URL", default=MINIO_URL)
 MINIO_ACCESS_KEY = env("MINIO_ACCESS_KEY", default="N/A")
 MINIO_SECRET_KEY = env("MINIO_SECRET_KEY", default="N/A")
 MINIO_SECURE = env("MINIO_SECURE", default=True)
