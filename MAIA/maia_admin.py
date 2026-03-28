@@ -725,17 +725,14 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             ]
         )
 
+    argocd_cluster = cluster_config_dict["cluster_name"]
+    if os.environ.get("ARGOCD_CLUSTER") is not None:
+        argocd_cluster = os.environ["ARGOCD_CLUSTER"]
     maia_dashboard_values["env"].extend(
         [
-            {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
+            {"name": "ARGOCD_CLUSTER", "value": argocd_cluster},
         ]
     )
-    if os.environ.get("ARGOCD_CLUSTER") is not None:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "ARGOCD_CLUSTER", "value": os.environ["ARGOCD_CLUSTER"]},
-            ]
-        )
 
     # Access Project Pages
 
