@@ -884,6 +884,19 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 {"name": "CIFS_SERVER", "value": os.environ["CIFS_SERVER"]},
             ]
         )
+    if os.environ.get("CIFS_PUBLIC_KEY") is not None:
+        if "CIFS_PUBLIC_KEY" in os.environ:
+            if Path(os.environ["CIFS_PUBLIC_KEY"]).exists():
+                public_key = open(os.environ["CIFS_PUBLIC_KEY"], "r").read()
+            else:
+                public_key = open(Path(config_folder).joinpath(os.environ["CIFS_PUBLIC_KEY"]), "r").read()
+        else:
+            public_key = ""
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "CIFS_PUBLIC_KEY", "value": public_key},
+            ]
+        )
     ### MinIO Configuration
     maia_dashboard_values["env"].extend(
         [
