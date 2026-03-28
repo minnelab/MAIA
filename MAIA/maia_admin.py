@@ -911,10 +911,21 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "MINIO_ACCESS_KEY", "value": "maia-admin"},
             {"name": "MINIO_SECRET_KEY", "value": os.environ["minio_admin_password"]},
             {"name": "MINIO_SECURE", "value": "False"},
+            {"name": "MINIO_PUBLIC_SECURE", "value": "False"},
             {"name": "BUCKET_NAME", "value": "maia-envs"},
             {"name": "MINIO_CONSOLE_URL", "value": minio_console_url},
         ]
     )
+    if "MINIO_SECURE" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_SECURE", "value": os.environ["MINIO_SECURE"]},
+            ]
+        )
+    if "MINIO_PUBLIC_SECURE" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_PUBLIC_SECURE", "value": os.environ["MINIO_PUBLIC_SECURE"]},
     
     if "MINIO_PUBLIC_URL" in os.environ:
         maia_dashboard_values["env"].extend(
