@@ -402,173 +402,177 @@ class ProjectChartValuesAPIView(APIView):
     throttle_classes = [UserRateThrottle]
 
     def post(self, request, *args, **kwargs):
-        serializer = ProjectChartValuesSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({"error": serializer.errors}, status=400)
+        try:
+            serializer = ProjectChartValuesSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({"error": serializer.errors}, status=400)
 
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return Response({"error": "Missing Authorization header"}, status=401)
+            auth_header = request.headers.get("Authorization")
+            if not auth_header:
+                return Response({"error": "Missing Authorization header"}, status=401)
 
-        # Expecting "Bearer <token>"
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            return Response({"error": "Invalid Authorization header format"}, status=401)
+            # Expecting "Bearer <token>"
+            parts = auth_header.split()
+            if len(parts) != 2 or parts[0].lower() != "bearer":
+                return Response({"error": "Invalid Authorization header format"}, status=401)
 
-        id_token = parts[1]
+            id_token = parts[1]
 
-        validated_data = serializer.validated_data
+            validated_data = serializer.validated_data
 
-        group_id = validated_data["group_id"]
-        username = validated_data["username"]
-        users = validated_data["users"]
-        memory_limit = validated_data["memory_limit"]
-        cpu_limit = validated_data["cpu_limit"]
-        cpu_request = validated_data["cpu_request"]
-        memory_request = validated_data["memory_request"]
-        project_tier = validated_data["project_tier"]
-        gpu = validated_data["gpu"]
-        env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
-        cluster = validated_data["cluster"]
-        date = validated_data["date"]
-        supervisor = validated_data["supervisor"]
-        description = validated_data["description"]
-        auto_deploy = validated_data["auto_deploy"]
-        auto_deploy_apps = (
-            validated_data["auto_deploy_apps"]
-            if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None
-            else []
-        )
-        project_configuration = (
-            validated_data["project_configuration"]
-            if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
-            else None
-        )
-        email_to_username_map = validated_data.get("email_to_username_map", None)
-        if request.FILES:
-            env_file = request.FILES["env_file"]
-            if "MINIO_SECURE" in os.environ:
-                if os.environ["MINIO_SECURE"].lower() == "false":
-                    secure = False
-                elif os.environ["MINIO_SECURE"].lower() == "true":
+            group_id = validated_data["group_id"]
+            username = validated_data["username"]
+            users = validated_data["users"]
+            memory_limit = validated_data["memory_limit"]
+            cpu_limit = validated_data["cpu_limit"]
+            cpu_request = validated_data["cpu_request"]
+            memory_request = validated_data["memory_request"]
+            project_tier = validated_data["project_tier"]
+            gpu = validated_data["gpu"]
+            env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
+            cluster = validated_data["cluster"]
+            date = validated_data["date"]
+            supervisor = validated_data["supervisor"]
+            description = validated_data["description"]
+            auto_deploy = validated_data["auto_deploy"]
+            auto_deploy_apps = (
+                validated_data["auto_deploy_apps"]
+                if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None
+                else []
+            )
+            project_configuration = (
+                validated_data["project_configuration"]
+                if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
+                else None
+            )
+            email_to_username_map = validated_data.get("email_to_username_map", None)
+            if request.FILES:
+                env_file = request.FILES["env_file"]
+                if "MINIO_SECURE" in os.environ:
+                    if os.environ["MINIO_SECURE"].lower() == "false":
+                        secure = False
+                    elif os.environ["MINIO_SECURE"].lower() == "true":
+                        secure = True
+                    else:
+                        secure = os.environ["MINIO_SECURE"]
+                else:
                     secure = True
+                if "MINIO_PUBLIC_SECURE" in os.environ:
+                    if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
+                        public_secure = False
+                    elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
+                        public_secure = True
+                    else:
+                        public_secure = os.environ["MINIO_PUBLIC_SECURE"]
                 else:
-                    secure = os.environ["MINIO_SECURE"]
-            else:
-                secure = True
-            if "MINIO_PUBLIC_SECURE" in os.environ:
-                if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
-                    public_secure = False
-                elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
-                    public_secure = True
-                else:
-                    public_secure = os.environ["MINIO_PUBLIC_SECURE"]
-            else:
-                public_secure = secure
-            settings_dict = {
-                "MINIO_URL": os.environ["MINIO_URL"],
-                "MINIO_PUBLIC_URL": (
-                    os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
-                ),
-                "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
-                "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
-                "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
-                "MINIO_SECURE": secure,
-                "BUCKET_NAME": os.environ["BUCKET_NAME"],
-            }
-            settings = SimpleNamespace(**settings_dict)
-            filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
-            if not success:
-                return Response({"error": filename}, status=400)
-            env_file = filename
-        for user in users:
-            if not MAIAUser.objects.filter(email=user).exists():
-                username = email_to_username_map.get(user, user)
-                create_user_service(user, username, "", "", f"{group_id},{user_group}")
-        if not MAIAUser.objects.filter(email=supervisor).exists():
-            username = email_to_username_map.get(supervisor, supervisor)
-            create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
-        if supervisor not in users:
-            users = [supervisor] + users
-        create_group_service(
-            group_id,
-            gpu,
-            date,
-            memory_limit,
-            cpu_limit,
-            env_file,
-            cluster,
-            project_tier,
-            supervisor,
-            users,
-            description,
-            supervisor,
-        )
+                    public_secure = secure
+                settings_dict = {
+                    "MINIO_URL": os.environ["MINIO_URL"],
+                    "MINIO_PUBLIC_URL": (
+                        os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
+                    ),
+                    "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
+                    "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
+                    "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
+                    "MINIO_SECURE": secure,
+                    "BUCKET_NAME": os.environ["BUCKET_NAME"],
+                }
+                settings = SimpleNamespace(**settings_dict)
+                filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
+                if not success:
+                    return Response({"error": filename}, status=400)
+                env_file = filename
+            for user in users:
+                if not MAIAUser.objects.filter(email=user).exists():
+                    username = email_to_username_map.get(user, user)
+                    create_user_service(user, username, "", "", f"{group_id},{user_group}")
+            if not MAIAUser.objects.filter(email=supervisor).exists():
+                username = email_to_username_map.get(supervisor, supervisor)
+                create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
+            if supervisor not in users:
+                users = [supervisor] + users
+            create_group_service(
+                group_id,
+                gpu,
+                date,
+                memory_limit,
+                cpu_limit,
+                env_file,
+                cluster,
+                project_tier,
+                supervisor,
+                users,
+                description,
+                supervisor,
+            )
 
-        project_form_dict = {
-            "group_ID": group_id,
-            "group_subdomain": group_id.lower().replace("_", "-"),
-            "users": users,
-            "resources_limits": {
-                "memory": [memory_request, memory_limit],
-                "cpu": [cpu_request, cpu_limit],
-            },
-            "project_tier": project_tier,
-            "gpu_request": gpu,
-            "minio_env_name": env_file,
-        }
-        if auto_deploy:
-            kubeconfig_dict = generate_kubeconfig(
+            project_form_dict = {
+                "group_ID": group_id,
+                "group_subdomain": group_id.lower().replace("_", "-"),
+                "users": users,
+                "resources_limits": {
+                    "memory": [memory_request, memory_limit],
+                    "cpu": [cpu_request, cpu_limit],
+                },
+                "project_tier": project_tier,
+                "gpu_request": gpu,
+                "minio_env_name": env_file,
+            }
+            if auto_deploy:
+                kubeconfig_dict = generate_kubeconfig(
+                    id_token,
+                    username,
+                    "default",
+                    cluster,
+                    settings=env_settings,
+                    in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
+                )
+                config.load_kube_config_from_dict(kubeconfig_dict)
+                with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
+                    yaml.dump(kubeconfig_dict, f)
+                    os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
+                    if (
+                        "env" in project_configuration
+                        and "DEPLOY_KUBEFLOW" in project_configuration["env"]
+                        and project_configuration["env"]["DEPLOY_KUBEFLOW"] == "True"
+                    ):
+                        kubeflow_namespace = True
+                    else:
+                        kubeflow_namespace = False
+                    create_namespace_from_context(
+                        namespace_id=group_id.lower().replace("_", "-"), kubeflow_namespace=kubeflow_namespace, owner_email=users[0]
+                    )
+                    create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
+            values = deploy_project(
+                group_id,
                 id_token,
                 username,
-                "default",
                 cluster,
-                settings=env_settings,
-                in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
+                project_form_dict,
+                disable_argocd=not auto_deploy,
+                return_values_only=not auto_deploy,
+                custom_project_dict=project_configuration,
+                use_in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
             )
-            config.load_kube_config_from_dict(kubeconfig_dict)
-            with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
-                yaml.dump(kubeconfig_dict, f)
-                os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
-                if (
-                    "env" in project_configuration
-                    and "DEPLOY_KUBEFLOW" in project_configuration["env"]
-                    and project_configuration["env"]["DEPLOY_KUBEFLOW"] == "True"
-                ):
-                    kubeflow_namespace = True
-                else:
-                    kubeflow_namespace = False
-                create_namespace_from_context(
-                    namespace_id=group_id.lower().replace("_", "-"), kubeflow_namespace=kubeflow_namespace, owner_email=users[0]
-                )
-                create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
-        values = deploy_project(
-            group_id,
-            id_token,
-            username,
-            cluster,
-            project_form_dict,
-            disable_argocd=not auto_deploy,
-            return_values_only=not auto_deploy,
-            custom_project_dict=project_configuration,
-            use_in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
-        )
-        if auto_deploy:
-            apps_to_sync = auto_deploy_apps
-            url = f"{env_settings.ARGOCD_SERVER}/api/v1/session"
-            response = requests.post(url, json={"username": "admin", "password": env_settings.ARGOCD_PASSWORD}, verify=False)
-            response.raise_for_status()
+            if auto_deploy:
+                apps_to_sync = auto_deploy_apps
+                url = f"{env_settings.ARGOCD_SERVER}/api/v1/session"
+                response = requests.post(url, json={"username": "admin", "password": env_settings.ARGOCD_PASSWORD}, verify=False)
+                response.raise_for_status()
 
-            TOKEN = response.json()["token"]
+                TOKEN = response.json()["token"]
 
-            apps = get_maia_toolkit_apps(group_id, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
+                apps = get_maia_toolkit_apps(group_id, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
 
-            for app in apps_to_sync:
-                for a in apps:
-                    if f"{group_id}-{app}" == a["name"]:
-                        sync_argocd_app(group_id, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
+                for app in apps_to_sync:
+                    for a in apps:
+                        if f"{group_id}-{app}" == a["name"]:
+                            sync_argocd_app(group_id, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
 
-        return Response({"values": values["message"]}, status=200)
+            return Response({"values": values["message"]}, status=200)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"error": str(e)}, status=500)
 
 
 # Create your views here.
