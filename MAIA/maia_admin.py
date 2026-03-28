@@ -892,7 +892,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 public_key = open(Path(config_folder).joinpath(os.environ["CIFS_PUBLIC_KEY"]), "r").read()
         else:
             public_key = ""
-        maia_dashboard_values["env"].extend(
+        maia_dashboard_values["cifs_public_key"] = public_key
             [
                 {"name": "CIFS_PUBLIC_KEY", "value": public_key},
             ]

@@ -1,0 +1,8 @@
+{{- if .Values.cifs_public_key }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cifs-encryption-public-key
+data:
+  public-key.pem: {{ .Values.cifs_public_key }}
+{{- end }}
