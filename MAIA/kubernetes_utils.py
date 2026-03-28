@@ -29,6 +29,8 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
             object_name,
             expires=timedelta(hours=168),  # Link valid for 7 days
         )
+        logger.info(f"MinIO public URL: {settings.MINIO_PUBLIC_URL}")
+        logger.info(f"MinIO shareable link: {url}")
         return url
 
     except Exception:
@@ -45,6 +47,8 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
             object_name,
             expires=timedelta(hours=168),  # Link valid for 7 days
         )
+        logger.info(f"MinIO public URL: {settings.MINIO_PUBLIC_URL}")
+        logger.info(f"MinIO shareable link: {url}")
         return url
 
 
