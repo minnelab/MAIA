@@ -41,4 +41,8 @@ spec:
       server: {{ .Values.dashboard_destination_server }}
     - namespace: cert-manager
       server: {{ .Values.destination_server }}
+    - namespace: argocd
+      server: {{ .Values.dashboard_destination_server }}
+    - namespace: cert-manager
+      server: {{ .Values.dashboard_destination_server }}
   sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}
