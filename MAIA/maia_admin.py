@@ -314,6 +314,22 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             },
         }
     )
+    
+    if "CLUSTER_YAML_CONFIGS" in os.environ:
+        clusters = []
+        cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
+        for cluster_file in cluster_files:
+            if not os.path.isabs(cluster_file):
+                cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
+            with open(cluster_file, "r") as f:
+                cluster_config_dict_temp = yaml.safe_load(f)
+                clusters.append({
+                    "name": cluster_config_dict_temp["cluster_name"],
+                    "server": cluster_config_dict_temp["api"],
+                    "token": cluster_config_dict_temp.get("maia_dashboard", {}).get("token", ""),
+                })
+
+    admin_toolkit_values["argocd"]["additional_clusters"] = clusters
 
     if "externalCA" in cluster_config_dict:
         admin_toolkit_values["minio"]["externalCA"] = {}
