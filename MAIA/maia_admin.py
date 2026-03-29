@@ -268,13 +268,17 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
         admin_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
         admin_toolkit_values["path"] = "charts/maia-admin-toolkit"
 
+    realm_name = os.environ.get("KEYCLOAK_REALM_NAME", "maia")
+    keycloak_domain = cluster_config_dict["domain"]
+    if "KEYCLOAK_DOMAIN" in os.environ:
+        keycloak_domain = os.environ["KEYCLOAK_DOMAIN"]
     admin_toolkit_values.update(
         {
             "argocd": {
                 "enabled": True,
                 "argocd_namespace": "argocd",
                 "argocd_domain": "argocd." + cluster_config_dict["domain"],
-                "keycloak_issuer_url": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+                "keycloak_issuer_url": "https://iam." + keycloak_domain + "/realms/" + realm_name,
                 "keycloak_client_id": "maia",
                 "keycloak_client_secret": os.environ["keycloak_client_secret"],
             },
