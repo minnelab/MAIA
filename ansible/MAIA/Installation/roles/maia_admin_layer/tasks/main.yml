@@ -23,8 +23,9 @@
 
 - name: Ensure DEPLOY_KUBECONFIG is absolute
   ansible.builtin.set_fact:
-    DEPLOY_KUBECONFIG: "{{ str(Path(config_folder).joinpath(DEPLOY_KUBECONFIG).resolve()) }}"
-  when: DEPLOY_KUBECONFIG is defined and not Path(DEPLOY_KUBECONFIG).is_absolute()
+    DEPLOY_KUBECONFIG: >-
+      {{ DEPLOY_KUBECONFIG if DEPLOY_KUBECONFIG is match('^/') else (config_folder ~ '/' ~ DEPLOY_KUBECONFIG) }}
+  when: DEPLOY_KUBECONFIG is defined and (DEPLOY_KUBECONFIG is not match('^/'))
   delegate_to: localhost
 
 - name: Create namespaces
