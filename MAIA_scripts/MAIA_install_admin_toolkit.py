@@ -103,16 +103,22 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     cluster_address = os.environ.get(
         "MAIA_ADMIN_ARGOCD_DESTINATION_CLUSTER_ADDRESS", "https://kubernetes.default.svc"
     )  # TODO: Change this to make it configurable
+    dashboard_cluster_address = os.environ.get(
+        "MAIA_ADMIN_DASHBOARD_CLUSTER_ADDRESS", cluster_address
+    )
+    cluster_config_dict = None
+    cluster_config_dict_dashboard = None
     if "CLUSTER_YAML_CONFIGS" in os.environ:
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
         for cluster_file in cluster_files:
             if not os.path.isabs(cluster_file):
                 cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
             with open(cluster_file, "r") as f:
-                cluster_config_dict = yaml.safe_load(f)
-            if cluster_config_dict["argocd_destination_cluster_address"] == cluster_address:
-                cluster_config_dict = cluster_config_dict
-                break
+                cluster_config_dict_temp = yaml.safe_load(f)
+            if cluster_config_dict_temp["argocd_destination_cluster_address"] == cluster_address:
+                cluster_config_dict = cluster_config_dict_temp
+            if cluster_config_dict_temp["argocd_destination_cluster_address"] == dashboard_cluster_address:
+                cluster_config_dict_dashboard = cluster_config_dict_temp
 
     if "ingress_class" not in cluster_config_dict:
         if "k8s_distribution" in cluster_config_dict:
@@ -121,6 +127,14 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     if "storage_class" not in cluster_config_dict:
         if "k8s_distribution" in cluster_config_dict:
             cluster_config_dict["storage_class"] = get_storage_class(cluster_config_dict["k8s_distribution"])
+            
+    if "ingress_class" not in cluster_config_dict_dashboard:
+        if "k8s_distribution" in cluster_config_dict_dashboard:
+            cluster_config_dict_dashboard["ingress_class"] = get_ingress_class(cluster_config_dict_dashboard["k8s_distribution"])
+
+    if "storage_class" not in cluster_config_dict_dashboard:
+        if "k8s_distribution" in cluster_config_dict_dashboard:
+            cluster_config_dict_dashboard["storage_class"] = get_storage_class(cluster_config_dict_dashboard["k8s_distribution"])
 
     helm_commands = []
 
@@ -128,7 +142,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     helm_commands.append(create_keycloak_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_rancher_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_dict))
-    helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard))
 
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
@@ -242,6 +256,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
         "argo_namespace": os.environ["argocd_namespace"],
         "admin_group_ID": admin_group_id,
         "destination_server": f"{cluster_address}",
+        "dashboard_destination_server": f"{dashboard_cluster_address}",
         "sourceRepos": [
             "https://minnelab.github.io/MAIA/",
             "https://github.com/minnelab/MAIA.git",
