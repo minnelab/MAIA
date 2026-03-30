@@ -894,6 +894,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["env"].append({"name": "SERVER", "value": "beta.maia." + dashboard_domain})
 
     if os.environ.get("DEV_TAG") is not None:
         maia_dashboard_values["env"].extend(
