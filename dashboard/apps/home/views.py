@@ -200,7 +200,12 @@ def pages(request):
         namespaces = []
         is_user = False
         if request.user.is_superuser:
-            namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            keycloak_groups = get_groups_in_keycloak(settings)
+            for group in keycloak_groups:
+                group_name = keycloak_groups[group]
+                if group_name.lower().replace("_", "-") in namespaces_global:
+                    namespaces.append(group_name)
 
         else:
             for group in groups:

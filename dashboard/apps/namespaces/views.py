@@ -13,6 +13,7 @@ from MAIA.kubernetes_utils import get_namespace_details
 from MAIA.dashboard_utils import get_allocation_date_for_project, get_project, register_cluster_for_project_in_db
 import datetime
 from django.conf import settings
+from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
 @register.filter
@@ -109,7 +110,12 @@ def namespace_view(request, namespace_id):
 
         namespaces = []
         if request.user.is_superuser:
-            namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            keycloak_groups = get_groups_in_keycloak(settings)
+            for group in keycloak_groups:
+                group_name = keycloak_groups[group]
+                if group_name.lower().replace("_", "-") in namespaces_global:
+                    namespaces.append(group_name)
 
         else:
             for group in groups:
