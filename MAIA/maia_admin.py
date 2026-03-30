@@ -691,7 +691,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
         else:
             maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_issuer_name
-        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "maia." + dashboard_domain
 
     # Authentication
     realm_name = os.environ.get("KEYCLOAK_REALM_NAME", "maia")
@@ -893,6 +893,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         chart_folder = "maia_dashboard_values_dev"
         maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "beta.maia." + dashboard_domain
 
     if os.environ.get("DEV_TAG") is not None:
         maia_dashboard_values["env"].extend(
