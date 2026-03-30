@@ -141,7 +141,15 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     helm_commands.append(create_rancher_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard))
-    helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard, dev_mode=True))
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ):
+        helm_commands.append(
+            create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard, dev_mode=True)
+        )
 
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
