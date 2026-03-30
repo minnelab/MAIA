@@ -851,25 +851,25 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
     )
 
     # Dev Branch
-    if os.environ.get("DEV_BRANCH") is not None:
+    if os.environ.get("DEV_BRANCH") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
             ]
         )
-    if os.environ.get("GIT_EMAIL") is not None:
+    if os.environ.get("GIT_EMAIL") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
             ]
         )
-    if os.environ.get("GIT_NAME") is not None:
+    if os.environ.get("GIT_NAME") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
             ]
         )
-    if os.environ.get("GPG_KEY") is not None:
+    if os.environ.get("GPG_KEY") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "GPG_KEY", "value": "/var/keys/gpg.key"},
