@@ -1,139 +1,217 @@
 {% extends 'layouts/base-fullscreen.html' %}
 
-{% block title %} Sign UP {% endblock title %}
+{% block title %} Sign Up {% endblock title %}
 
-<!-- Specific CSS goes HERE -->
 {% block stylesheets %}
 <style>
-  .page-header {
-    background-image: url('{{ ASSETS_ROOT }}/img/shutterstock/shutterstock_1941321493.jpg');
+  .auth-hero {
+    background-image: url('{{ ASSETS_ROOT }}/img/MAIA/MAIA_room.png');
   }
-  .hidden {
-    visibility: hidden;
+
+  .auth-card {
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.14);
+    border: none;
   }
+
+  .auth-card-header {
+    border-radius: 16px 16px 0 0 !important;
+    padding: 24px 28px 16px;
+    background: linear-gradient(310deg, #2152ff, #21d4fd) !important;
+  }
+
+  .auth-card-title {
+    font-size: 1.3rem; font-weight: 700; color: #fff; margin: 0;
+  }
+  .auth-card-subtitle { font-size: 0.82rem; color: rgba(255,255,255,.75); margin-top: 3px; }
+
+  .form-group-label {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8392ab; margin-bottom: 5px; display: block;
+  }
+
+  .auth-field { margin-bottom: 18px; }
+
+  .form-control, .form-select {
+    border-radius: 8px !important;
+    border: 1px solid #e9ecef !important;
+    padding: 10px 14px !important;
+    font-size: 0.85rem !important;
+    transition: border-color .15s, box-shadow .15s !important;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: #5e72e4 !important;
+    box-shadow: 0 0 0 3px rgba(94,114,228,.15) !important;
+  }
+
+  .auth-btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px 20px; border-radius: 10px;
+    background: linear-gradient(310deg, #2152ff, #21d4fd);
+    color: #fff; font-weight: 700; font-size: 0.88rem;
+    border: none; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(33,82,255,.4);
+    transition: box-shadow .2s, transform .15s;
+  }
+  .auth-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(33,82,255,.5);
+    color: #fff;
+  }
+
+  .auth-btn-secondary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 11px 20px; border-radius: 10px;
+    background: #f8f9fa; color: #344767;
+    font-weight: 600; font-size: 0.85rem;
+    text-decoration: none;
+    border: 1px solid #e9ecef;
+    transition: background .15s, box-shadow .15s, transform .12s;
+  }
+  .auth-btn-secondary:hover {
+    background: #fff; transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.09);
+    text-decoration: none; color: #344767;
+  }
+
+  .error-text { font-size: 0.78rem; color: #f5365c; margin-top: 4px; display: block; }
+
+  .success-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(310deg, #2dce89, #2dcecc);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: 0 6px 24px rgba(45,206,137,.35);
+  }
+  .success-icon i { color: #fff; font-size: 1.8rem; }
 </style>
 {% endblock stylesheets %}
 
 {% block content %}
 
-  <div class="container position-sticky z-index-sticky top-1">
-    <div class="row">
-      <div class="col-12">
-
-        {% include "includes/navigation-fullscreen.html" %}
-
-      </div>
+<div class="container position-sticky z-index-sticky top-1">
+  <div class="row">
+    <div class="col-12">
+      {% include "includes/navigation-fullscreen.html" %}
     </div>
   </div>
+</div>
 
-  <main class="main-content mt-0">
+<main class="main-content mt-0">
+  <section class="min-vh-100 mb-8">
 
-    <section class="min-vh-100 mb-8">
-      <div class="page-header align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg">
-        <span class="mask bg-gradient-dark opacity-6"></span>
-        <div class="container">
-          <div class="row justify-content-center">
-            <div class="col-lg-5 text-center mx-auto">
-              <h1 class="text-white mb-2 mt-5">Welcome!</h1>
-            </div>
+    <!-- Hero banner -->
+    <div class="page-header auth-hero align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg">
+      <span class="mask bg-gradient-dark opacity-6"></span>
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-6 text-center mx-auto">
+            <h1 class="text-white mb-2 mt-5">Join a Project</h1>
+            <p class="text-white mb-0" style="opacity:.75; font-size:.9rem;">
+              Request access to an existing MAIA workspace
+            </p>
           </div>
         </div>
       </div>
-      <div class="container">
-        <div class="row mt-lg-n10 mt-md-n11 mt-n10">
-          <div class="col-xl-4 col-lg-5 col-md-7 mx-auto">
-            <div class="card z-index-0">
+    </div>
 
-              <div class="card-header text-center pt-4">
-                <h5>Sign UP</h5>
+    <!-- Card overlapping hero -->
+    <div class="container">
+      <div class="row mt-lg-n10 mt-md-n11 mt-n10">
+        <div class="col-xl-4 col-lg-5 col-md-7 mx-auto">
+          <div class="card auth-card z-index-0">
+
+            <div class="card-header auth-card-header">
+              <div class="auth-card-title">
+                <i class="fas fa-user-plus me-2" style="opacity:.85;"></i>Sign Up
+              </div>
+              <div class="auth-card-subtitle">Add your details and select a project</div>
+            </div>
+
+            <div class="card-body px-4 pt-3 pb-4">
+
+              {% if success %}
+
+              <!-- Success state -->
+              <div class="text-center py-3">
+                <div class="success-icon"><i class="fas fa-check"></i></div>
+                <h6 class="font-weight-bold text-dark mb-1">Request Submitted!</h6>
+                <p class="text-sm text-secondary mb-4">
+                  Your access request has been sent. You will be notified once it is approved.
+                </p>
+                <a href="{% url 'login' %}" class="auth-btn-primary">
+                  <i class="fas fa-sign-in-alt"></i> Back to Sign In
+                </a>
               </div>
 
-              <div class="row px-xl-5 px-sm-4 px-3">
-                
-                <div class="mt-2 position-relative text-center">
-                  <p class="text-sm font-weight-bold mb-2 text-secondary text-border d-inline z-index-2 px-3">
-                    {% if msg %}
-                      <span class="text-danger">{{ msg | safe }}</span>
-                    {% else %}
-                      Add your credentials and select an existing project to join.
-                    {% endif %}  
-                  </p>
+              {% else %}
+
+              <!-- Error message -->
+              {% if msg %}
+              <div style="background:#fff5f5; border:1px solid #fed7d7; border-radius:10px; padding:10px 14px; margin-bottom:16px; color:#c53030; font-size:.82rem; display:flex; align-items:flex-start; gap:8px;">
+                <i class="fas fa-exclamation-circle" style="margin-top:2px; flex-shrink:0;"></i>
+                <span>{{ msg|safe }}</span>
+              </div>
+              {% endif %}
+
+              <form method="post" action="" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="auth-field">
+                  <label class="form-group-label">Username</label>
+                  {{ form.username }}
+                  {% if form.username.errors %}
+                    <span class="error-text">{{ form.username.errors }}</span>
+                  {% endif %}
                 </div>
 
+                <div class="auth-field">
+                  <label class="form-group-label">Email</label>
+                  {{ form.email }}
+                  {% if form.email.errors %}
+                    <span class="error-text">{{ form.email.errors }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="auth-field">
+                  <label class="form-group-label">Existing Project</label>
+                  {{ form.namespace }}
+                  {% if form.namespace.errors %}
+                    <span class="error-text">{{ form.namespace.errors }}</span>
+                  {% endif %}
+                </div>
+
+                <div style="display:none;">
+                  {{ form.password1 }}
+                  {{ form.password2 }}
+                </div>
+
+                <button type="submit" name="register" class="auth-btn-primary mb-2">
+                  <i class="fas fa-paper-plane"></i> Submit Request
+                </button>
+
+              </form>
+
+              <div class="text-center mt-3">
+                <span class="text-xs text-secondary">Already have access?</span>
+                <a href="{% url 'login' %}" class="text-xs font-weight-bold ms-1" style="color:#2152ff;">Sign In</a>
+                <span class="text-xs text-secondary ms-2">&middot;</span>
+                <a href="{% url 'register_project' %}" class="text-xs font-weight-bold ms-1" style="color:#5e72e4;">Register a New Project</a>
               </div>
 
-              <div class="card-body">
-
-                {% if success %} 
-                
-                  <p class="text-sm mt-3 mb-0 text-center"> 
-                    <div class="text-center">
-                      <a href="{% url 'login' %}" class="btn bg-gradient-dark w-100 my-4 mb-2">Sign IN</a>
-                    </div> 
-                  </p>
-
-                {% else %}
-
-                  <form role="form text-left" method="post" action="" enctype="multipart/form-data">
-
-                      {% csrf_token %}
-
-                      <label>Username</label>
-                      <div class="mb-3">
-                        {{ form.username }}
-                      </div>
-                      <span class="text-danger">{{ form.username.errors }}</span>
-
-                      <label>Email</label>
-                      <div class="mb-3">
-                        {{ form.email }}
-                      </div>
-                      <span class="text-danger">{{ form.email.errors }}</span>
-
-                      <label>Existing Project</label>
-                      <div class="mb-3">
-                        {{ form.namespace }}
-                      </div>
-                      <span class="text-danger">{{ form.namespace.errors }}</span>
-
-                      
-                      <div class="mb-3 hidden">
-                        {{ form.password1 }}
-                      </div>
-                      <span class="text-danger">{{ form.password1.errors }}</span>
-
-                      
-                      <div class="mb-3 hidden">
-                        {{ form.password2 }}
-                      </div>
-                      <span class="text-danger">{{ form.password2.errors }}</span>
-
-
-                      
-                      <div class="text-center">
-                        <button type="submit" name="register" class="btn bg-gradient-dark w-100 my-4 mb-2">Sign UP</button>
-                      </div>
-
-                      <div class="text-center">
-                        <a href="{% url 'login' %}" class="btn bg-gradient-secondary w-100 mt-4 mb-0">Sign IN</a>
-                      </div>                
-
-                  </form>
-
-                {% endif %}
-
-              </div>
+              {% endif %}
             </div>
+
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
     {% include "includes/footer-fullscreen.html" %}
 
-  </main>
+  </section>
+</main>
 
 {% endblock content %}
 
-<!-- Specific JS goes HERE --> 
 {% block javascripts %}{% endblock javascripts %}
