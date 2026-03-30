@@ -884,13 +884,13 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         or os.environ.get("GIT_EMAIL") is not None
         or os.environ.get("GIT_NAME") is not None
         or os.environ.get("GPG_KEY") is not None
-    ) and dev_mode == True:
+    ) and dev_mode:
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
         maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
         chart_folder = "maia_dashboard_values_dev"
         maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
-        
+
     if os.environ.get("DEV_TAG") is not None:
         maia_dashboard_values["env"].extend(
             [
