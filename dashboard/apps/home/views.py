@@ -7,6 +7,7 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.template.defaultfilters import register
 from MAIA.kubernetes_utils import get_namespaces, get_cluster_status
+from MAIA.keycloak_utils import get_groups_in_keycloak
 import urllib3
 import os
 from django.http import JsonResponse
@@ -108,20 +109,51 @@ def index_view(request):
         )
     except Exception:
         return redirect("/maia/login/")
+
+    # Per-cluster and global health stats for the dashboard
+    cluster_stats = {}
+    for cluster_name, nodes in cluster_dict.items():
+        cs = {"total": len(nodes), "ready": 0, "maintenance": 0, "not_ready": 0}
+        for node in nodes:
+            node_status = status.get(node, [])
+            is_ready = len(node_status) > 0 and str(node_status[0]) == "True"
+            in_maintenance = len(node_status) > 1 and bool(node_status[1])
+            if is_ready and in_maintenance:
+                cs["maintenance"] += 1
+            elif is_ready:
+                cs["ready"] += 1
+            else:
+                cs["not_ready"] += 1
+        cs["health_pct"] = round(100 * cs["ready"] / cs["total"]) if cs["total"] > 0 else 0
+        cluster_stats[cluster_name] = cs
+    global_stats = {
+        "clusters": len(cluster_dict),
+        "total": sum(s["total"] for s in cluster_stats.values()),
+        "ready": sum(s["ready"] for s in cluster_stats.values()),
+        "maintenance": sum(s["maintenance"] for s in cluster_stats.values()),
+        "not_ready": sum(s["not_ready"] for s in cluster_stats.values()),
+    }
+
     context = {
         "segment": "index",
         "status": status,
         "id_token": id_token,
         "clusters": cluster_dict,
         "external_links": settings.CLUSTER_LINKS,
+        "cluster_stats": cluster_stats,
+        "global_stats": global_stats,
     }
     groups = request.user.groups.all()
 
     namespaces = []
     is_user = False
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
-
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
     else:
         for group in groups:
             if str(group) != "MAIA:" + settings.USERS_GROUP:
