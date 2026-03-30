@@ -447,7 +447,7 @@ class ProjectChartValuesAPIView(APIView):
                 if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
                 else None
             )
-            email_to_username_map = validated_data.get("email_to_username_map", None)
+            email_to_username_map = validated_data.get("email_to_username_map", {})
             if request.FILES:
                 env_file = request.FILES["env_file"]
                 if "MINIO_SECURE" in os.environ:

@@ -183,7 +183,7 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_PROJECT_CHART_VERSION") is not None:
         admin_project_chart_version = os.environ.get("ADMIN_PROJECT_CHART_VERSION")
     else:
-        admin_project_chart_version = "1.2.1"
+        admin_project_chart_version = "1.2.2"
 
     return {
         "rancher_chart_version": rancher_chart_version,

@@ -592,7 +592,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict):
+def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict, dev_mode=False):
     """
     Create MAIA dashboard values for Helm chart deployment.
 
@@ -604,7 +604,8 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         The project identifier.
     cluster_config_dict : dict
         Dictionary containing cluster configuration details.
-
+    dev_mode : bool
+        Whether to use the development mode.
     Returns
     -------
     dict
@@ -877,15 +878,19 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         with open(os.environ["GPG_KEY"], "r") as f:
             maia_dashboard_values["gpg_key"] = f.read()
 
+    chart_folder = "maia_dashboard_values"
     if (
         os.environ.get("DEV_BRANCH") is not None
         or os.environ.get("GIT_EMAIL") is not None
         or os.environ.get("GIT_NAME") is not None
         or os.environ.get("GPG_KEY") is not None
-    ):
+    ) and dev_mode == True:
         maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
         maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
-
+        chart_folder = "maia_dashboard_values_dev"
+        maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
+        
     if os.environ.get("DEV_TAG") is not None:
         maia_dashboard_values["env"].extend(
             [
@@ -1079,8 +1084,8 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
     # CIFS
     # MAIA Segmentation Portal
     # GPU Booking
-    Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
-    with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
+    Path(config_folder).joinpath(project_id, chart_folder).mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, chart_folder, f"{chart_folder}.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
 
     return {
@@ -1091,7 +1096,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         ),
         "repo": maia_dashboard_values["repo_url"],
         "version": maia_dashboard_values["chart_version"],
-        "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
+        "values": str(Path(config_folder).joinpath(project_id, chart_folder, f"{chart_folder}.yaml")),
     }
 
 
