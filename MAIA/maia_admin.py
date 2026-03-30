@@ -875,8 +875,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                 {"name": "GPG_KEY", "value": "/var/keys/gpg.key"},
             ]
         )
-        with open(os.environ["GPG_KEY"], "r") as f:
-            maia_dashboard_values["gpg_key"] = f.read()
+        if Path(os.environ["GPG_KEY"]).exists():
+            gpg_key = open(os.environ["GPG_KEY"], "r").read()
+        else:
+            gpg_key = open(Path(config_folder).joinpath(os.environ["GPG_KEY"]), "r").read()
+        maia_dashboard_values["gpg_key"] = gpg_key
 
     chart_folder = "maia_dashboard_values"
     if (
