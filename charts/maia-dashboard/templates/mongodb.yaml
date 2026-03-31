@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mongo
+  name: {{ include "maia-dashboard.fullname" . }}-mongodb
 spec:
   selector:
     matchLabels:
-      app: mongo
+      app: {{ include "maia-dashboard.fullname" . }}-mongodb
   template:
     metadata:
       labels:
-        app: mongo
+        app: {{ include "maia-dashboard.fullname" . }}-mongodb
     spec:
       volumes:
       - name: mongo-data
         persistentVolumeClaim:
-          claimName: mongo-pvc
+          claimName: {{ include "maia-dashboard.fullname" . }}-mongodb-pvc
       containers:
       - name: mongodb
         image: mongo:5.0
@@ -72,11 +72,10 @@ data:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mongo-pvc
+  name: {{ include "maia-dashboard.fullname" . }}-mongodb-pvc
 spec:
   accessModes:
     - ReadWriteOnce
-  volumeName: mongo-pv
   storageClassName: {{ .Values.mongodb.storageClass }}
   resources:
     requests:
@@ -85,11 +84,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongo
+  name: {{ include "maia-dashboard.fullname" . }}-mongodb
 spec:
   ports:
     - port: 27017
       targetPort: 27017
   selector:
-    app: mongo
+    app: {{ include "maia-dashboard.fullname" . }}-mongodb
 {{- end }}
