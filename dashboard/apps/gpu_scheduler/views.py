@@ -21,6 +21,7 @@ import os
 import yaml
 from apps.models import MAIAProject
 from loguru import logger
+from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
@@ -187,7 +188,13 @@ def book_gpu(request):
     namespaces = []
 
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
 
     if namespaces is None or len(namespaces) == 0:
         namespaces = []
@@ -242,7 +249,12 @@ def gpu_booking_info(request):
     groups = request.user.groups.all()
     namespaces = []
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
 
     else:
         for group in groups:

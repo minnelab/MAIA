@@ -668,7 +668,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         project_model.objects.create(namespace=group_id, cluster=cluster, memory_limit="2 Gi", cpu_limit="2")
 
 
-def update_user_table(form, user_model, maia_user_model, project_model):
+def update_user_table(form, user_model, maia_user_model):
     """
     Updates user and project information based on the cleaned data from a form.
 
@@ -680,8 +680,6 @@ def update_user_table(form, user_model, maia_user_model, project_model):
         The user model to query and update user information.
     maia_user_model : Model
         The MAIA user model to query and update namespace information.
-    project_model : Model
-        The project model to query and update project information.
     Notes
     -----
     - The function processes entries in the form's cleaned data to update user namespaces and project details.
@@ -727,33 +725,6 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                             #    else:
                             #        namespaces.append(namespace)
                             maia_user_model.objects.create(id=user_id, namespace=namespace)
-        for project_entry in project_entries:
-            if entry.startswith(project_entry + "_"):
-                namespace = entry[len(project_entry + "_") :]
-                namespace_list.append(namespace)
-
-    for namespace in namespace_list:
-        # namespaced_entries = [entry for entry in form.cleaned_data if entry.endswith(namespace)]
-        if project_model.objects.filter(namespace=namespace).exists():
-            project_model.objects.filter(namespace=namespace).update(
-                memory_limit=form.cleaned_data["memory_limit_" + namespace],
-                cpu_limit=form.cleaned_data["cpu_limit_" + namespace],
-                date=form.cleaned_data["date_" + namespace],
-                cluster=form.cleaned_data["cluster_" + namespace],
-                gpu=form.cleaned_data["gpu_" + namespace],
-                project_tier=form.cleaned_data["project_tier_" + namespace],
-            )
-        else:
-            project_model.objects.create(
-                namespace=namespace,
-                memory_limit=form.cleaned_data["memory_limit_" + namespace],
-                cpu_limit=form.cleaned_data["cpu_limit_" + namespace],
-                date=form.cleaned_data["date_" + namespace],
-                cluster=form.cleaned_data["cluster_" + namespace],
-                gpu=form.cleaned_data["gpu_" + namespace],
-                project_tier=form.cleaned_data["project_tier_" + namespace],
-            )
-
 
 def get_project(group_id, settings, maia_project_model, is_namespace_style=False):
     """

@@ -1,7 +1,7 @@
 import os
 from rest_framework import serializers
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template import loader
 from django.conf import settings as env_settings
 import requests
@@ -62,6 +62,73 @@ import datetime
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 user_group = env_settings.USERS_GROUP
+
+
+def _serialize_groups_dict_for_json(maia_groups_dict):
+    """Convert maia_groups_dict to a JSON-serializable dict (e.g. date -> ISO string)."""
+    result = {}
+    for namespace, data in maia_groups_dict.items():
+        result[namespace] = {}
+        for key, value in data.items():
+            if isinstance(value, (datetime.date, datetime.datetime)):
+                result[namespace][key] = value.isoformat()
+            else:
+                result[namespace][key] = value
+    return result
+
+
+_UPDATABLE_GROUP_FIELDS = {"cpu_limit", "memory_limit", "cluster", "gpu", "project_tier", "description", "supervisor", "email"}
+
+
+def _enrich_user_list(user_list):
+    """Attach namespace_status list to each user dict for template rendering.
+
+    Each entry is {'name': str, 'status': 'registered' | 'pending' | 'remove'}.
+    """
+    for user in user_list:
+        pending = user["is_registered_in_groups"] if user["is_registered_in_groups"] != 1 else []
+        to_remove = user["remove_from_group"] if user["remove_from_group"] != 0 else []
+        requested = [ns.strip() for ns in user["namespace"].split(",") if ns.strip()] if user.get("namespace") else []
+
+        namespace_status = []
+        for ns in requested:
+            namespace_status.append({"name": ns, "status": "pending" if ns in pending else "registered"})
+        for ns in to_remove:
+            namespace_status.append({"name": ns, "status": "remove"})
+
+        user["namespace_status"] = namespace_status
+    return user_list
+
+
+@login_required(login_url="/maia/login/")
+def update_group_json_view(request, namespace):
+    if not request.user.is_superuser:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    try:
+        project = MAIAProject.objects.get(namespace=namespace)
+    except MAIAProject.DoesNotExist:
+        return JsonResponse({"error": f"Project '{namespace}' not found"}, status=404)
+
+    for field in _UPDATABLE_GROUP_FIELDS:
+        if field in data:
+            setattr(project, field, data[field])
+
+    if "date" in data:
+        try:
+            project.date = datetime.date.fromisoformat(data["date"])
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid date format; expected YYYY-MM-DD"}, status=400)
+
+    project.save()
+    return JsonResponse({"message": "Project updated successfully"})
 
 
 def group_id_validator(value):
@@ -712,6 +779,7 @@ def index(request):
                     x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
                 ),
             )
+            _enrich_user_list(sorted_user_list)
             if "BACKEND" in os.environ:
                 backend = os.environ["BACKEND"]
             else:
@@ -721,6 +789,8 @@ def index(request):
                 "user_table": sorted_user_list,
                 "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
                 "maia_groups_dict": maia_groups_dict,
+                "maia_groups_dict_json": json.dumps(_serialize_groups_dict_for_json(maia_groups_dict)),
+                "project_argo_status_json": json.dumps(project_argo_status),
                 "form": UserTableForm(request.POST),
                 "project_argo_status": project_argo_status,
                 "argocd_url": argocd_url,
@@ -732,7 +802,7 @@ def index(request):
             form = UserTableForm(request.POST)
 
             if form.is_valid():
-                update_user_table(form, User, MAIAUser, MAIAProject)
+                update_user_table(form, User, MAIAUser)
             else:
                 ...
                 logger.info(f"Form is not valid: {form.errors}")
@@ -763,8 +833,9 @@ def index(request):
                 x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
             ),
         )
+        _enrich_user_list(sorted_user_list)
 
-        user_form = UserTableForm(users=sorted_user_list, projects=maia_groups_dict)
+        user_form = UserTableForm(users=sorted_user_list)
         if "BACKEND" in os.environ:
             backend = os.environ["BACKEND"]
         else:
@@ -773,6 +844,8 @@ def index(request):
             "BACKEND": backend,
             "user_table": sorted_user_list,
             "maia_groups_dict": maia_groups_dict,
+            "maia_groups_dict_json": json.dumps(_serialize_groups_dict_for_json(maia_groups_dict)),
+            "project_argo_status_json": json.dumps(project_argo_status),
             "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
             "form": user_form,
             "user": ["admin"],

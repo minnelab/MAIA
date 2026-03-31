@@ -145,7 +145,7 @@ def namespace_view(request, namespace_id):
 
         context = {
             "maia_workspace_ingress": maia_workspace_apps,
-            "namespace": namespace_id.lower().replace("_", "-"),
+            "namespace": namespace_id,
             # "pods":pods, "nodes": nodes,
             "remote_desktop_dict": remote_desktop_dict,
             "allocation_date": allocation_date,
