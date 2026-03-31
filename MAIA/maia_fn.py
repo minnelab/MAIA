@@ -174,13 +174,13 @@ def get_ssh_port_dict(port_type, namespace, port_range, maia_metallb_ip=None):
                 if svc.status.load_balancer.ingress is not None:
                     if svc.spec.type == "LoadBalancer" and svc.status.load_balancer.ingress[0].ip == maia_metallb_ip:
                         for port in svc.spec.ports:
-                            if (port.name == "ssh" and svc.metadata.namespace == namespace) or (
-                                port.name == "orthanc-dicom" and svc.metadata.namespace == namespace
-                            ):
-                                if svc.metadata.name.endswith("-ssh"):
-                                    used_port.append({svc.metadata.name[: -len("-ssh")]: int(port.port)})
-                                else:
-                                    used_port.append({svc.metadata.name: int(port.port)})
+                            #if (port.name == "ssh" and svc.metadata.namespace == namespace) or (
+                            #    port.name == "orthanc-dicom" and svc.metadata.namespace == namespace
+                            #):
+                            if svc.metadata.name.endswith("-ssh"):
+                                used_port.append({svc.metadata.name[: -len("-ssh")]: int(port.port)})
+                            else:
+                                used_port.append({svc.metadata.name: int(port.port)})
             elif port_type == "NodePort":
                 if svc.spec.type == "NodePort" and svc.metadata.namespace == namespace:
                     for port in svc.spec.ports:
@@ -243,8 +243,8 @@ def get_ssh_ports(n_requested_ports, port_type, ip_range, maia_metallb_ip=None):
                 if svc.status.load_balancer.ingress is not None:
                     if svc.spec.type == "LoadBalancer" and svc.status.load_balancer.ingress[0].ip == maia_metallb_ip:
                         for port in svc.spec.ports:
-                            if port.name == "ssh" or port.name == "orthanc-dicom":
-                                used_port.append(int(port.port))
+                            #if port.name == "ssh" or port.name == "orthanc-dicom":
+                            used_port.append(int(port.port))
             elif port_type == "NodePort":
                 if svc.spec.type == "NodePort":
                     for port in svc.spec.ports:
