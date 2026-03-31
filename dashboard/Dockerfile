@@ -31,8 +31,7 @@ RUN chmod 777 /etc/MAIA-Dashboard/start-script.sh
 
 ARG DEVEL=0
 RUN if [ "$DEVEL" = "1" ]; then \
-    cd /etc && \
-    git clone https://github.com/minnelab/MAIA.git && \
+    cd /etc/MAIA && \
     git checkout $DEV_BRANCH && \
     git pull && \
     cd /etc/MAIA/dashboard && \

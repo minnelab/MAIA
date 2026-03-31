@@ -4,7 +4,8 @@ helm repo add maia https://minnelab.github.io/MAIA/
 helm repo update
 
 cd /etc/MAIA/
-git checkout $DEV_BRANCH
+git fetch origin $DEV_BRANCH:refs/remotes/origin/$DEV_BRANCH
+git checkout -b $DEV_BRANCH origin/$DEV_BRANCH
 git pull
 
 pip install -e .
