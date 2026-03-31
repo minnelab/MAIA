@@ -724,6 +724,18 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
         ]
     )
+    if "mongodb_dashboard_password" in os.environ:
+        db_password = os.environ["mongodb_dashboard_password"]
+    else:
+        db_password = generate_human_memorable_password()
+    # MongoDB Configuration
+    maia_dashboard_values["mongodb"] = {
+        "enabled": True,
+        "user": "maia-admin",
+        "password": db_password,
+        "name": "mongodb",
+        "host": "mongo",
+    }
 
     # Cluster Access
     maia_dashboard_values["clusters"] = [
