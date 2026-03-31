@@ -735,6 +735,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         "password": db_password,
         "name": "mongodb",
         "host": "mongo",
+        "storageClass": cluster_config_dict["shared_storage_class"] if "shared_storage_class" in cluster_config_dict else cluster_config_dict["storage_class"],
     }
 
     # Cluster Access

@@ -77,6 +77,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   volumeName: mongo-pv
+  storageClassName: {{ .Values.mongodb.storageClass }}
   resources:
     requests:
       storage: 10Gi
