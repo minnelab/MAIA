@@ -94,7 +94,7 @@ def namespace_view(request, namespace_id):
         if request.user.is_superuser:
             is_admin = True
         maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards = (
-            get_namespace_details(settings, id_token, namespace_id, user_id, is_admin=is_admin)
+            get_namespace_details(settings, id_token, namespace_id.lower().replace("_", "-"), user_id, is_admin=is_admin)
         )
 
         if len(remote_desktop_dict) == 0:
@@ -123,12 +123,12 @@ def namespace_view(request, namespace_id):
                     namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
         allocation_date = get_allocation_date_for_project(
-            maia_project_model=MAIAProject, group_id=namespace_id, is_namespace_style=True
+            maia_project_model=MAIAProject, group_id=namespace_id.lower().replace("_", "-"), is_namespace_style=True
         )
         if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
             cluster_config_dict = {"ssh_hostname": "localhost"}
         else:
-            _, cluster_id = get_project(namespace_id, settings=settings, maia_project_model=MAIAProject, is_namespace_style=True)
+            _, cluster_id = get_project(namespace_id.lower().replace("_", "-"), settings=settings, maia_project_model=MAIAProject, is_namespace_style=True)
 
             cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
 
@@ -136,7 +136,7 @@ def namespace_view(request, namespace_id):
                 cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(cluster_id + ".yaml").read_text())
             else:
                 if len(deployed_clusters) > 0:
-                    register_cluster_for_project_in_db(MAIAProject, settings, namespace_id, deployed_clusters[0])
+                    register_cluster_for_project_in_db(MAIAProject, settings, namespace_id.lower().replace("_", "-"), deployed_clusters[0])
                     cluster_config_dict = yaml.safe_load(
                         Path(cluster_config_path).joinpath(deployed_clusters[0] + ".yaml").read_text()
                     )
@@ -145,7 +145,7 @@ def namespace_view(request, namespace_id):
 
         context = {
             "maia_workspace_ingress": maia_workspace_apps,
-            "namespace": namespace_id,
+            "namespace": namespace_id.lower().replace("_", "-"),
             # "pods":pods, "nodes": nodes,
             "remote_desktop_dict": remote_desktop_dict,
             "allocation_date": allocation_date,
