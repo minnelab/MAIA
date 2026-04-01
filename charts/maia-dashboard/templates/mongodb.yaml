@@ -37,13 +37,13 @@ spec:
             valueFrom:
               configMapKeyRef:
                 key: DB_USER
-                name: mongoprops
+                name: {{ include "maia-dashboard.fullname" . }}-mongodb-config
                 optional: false
           - name: "MONGO_INITDB_ROOT_PASSWORD"
             valueFrom:
               secretKeyRef:
                 key: DB_PASSWORD
-                name: mongosecrets
+                name: {{ include "maia-dashboard.fullname" . }}-mongodb-secrets
                 optional: false
           - name: wiredTigerCacheSizeGB
             value: "0.25"
@@ -53,7 +53,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mongoprops
+  name: {{ include "maia-dashboard.fullname" . }}-mongodb-config
 data:
   DB_USER: {{ .Values.mongodb.user }}
   DB_HOST: {{ .Values.mongodb.host }}
@@ -64,7 +64,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: mongosecrets
+  name: {{ include "maia-dashboard.fullname" . }}-mongodb-secrets
 type: Opaque
 data:
   DB_PASSWORD: {{ .Values.mongodb.password | b64enc }}
