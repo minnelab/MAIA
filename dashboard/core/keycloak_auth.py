@@ -4,7 +4,11 @@ import requests
 import jwt
 import time
 from django.conf import settings
-from apps.models import MAIAUser, User
+from apps.models import User
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser
+else:
+    from apps.models import MAIAUser
 import threading
 from loguru import logger
 

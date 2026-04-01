@@ -5,9 +5,13 @@ Copyright (c) 2019 - present AppSeed.us
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from apps.models import MAIAUser, MAIAProject
+from apps.models import  MAIAProject
 from .models import MAIAInfo
 from django.conf import settings
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser
+else:
+    from apps.models import MAIAUser
 from MAIA.keycloak_utils import get_groups_in_keycloak
 
 

@@ -5,6 +5,7 @@ import threading
 from datetime import datetime, timezone
 from bson import ObjectId
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from loguru import logger
 
 # ─── collection ───────────────────────────────────────────────────────────────
@@ -30,8 +31,10 @@ class _FakeField:
     with forms/models internals that expect .name, .attname, etc.
     Implements __lt__ for sorting compatibility with Django forms/models.
     Also provides a simple .formfield method for Django form compatibility.
+    Also provides has_default() method for Django compatibility.
+    Provides save_form_data for model form compatibility.
     """
-    def __init__(self, name):
+    def __init__(self, name, blank=False, default=None):
         self.name = name
         self.attname = name
         self.is_relation = False
@@ -39,6 +42,11 @@ class _FakeField:
         self.many_to_many = False
         self.editable = True
         self.remote_field = None
+        self.blank = blank
+
+        # For compatibility with Django fields
+        self.default = default
+        self._has_default = default is not None
 
     def __lt__(self, other):
         # Allow Django's `sorted()`/ordering to work by name
@@ -46,20 +54,28 @@ class _FakeField:
             return self.name < other.name
         return NotImplemented
 
+    def has_default(self):
+        return self._has_default
+
     def formfield(self, **kwargs):
-        # Provide a very simple dummy formfield for Django admin/forms compatibility
         from django import forms
+        # Determine blank status: accept kwarg override but default to self.blank
+        blank = kwargs.get('blank', self.blank)
         # Attempt to guess field type by name
         if self.name == "email":
-            return forms.EmailField(required=not kwargs.get('blank', False))
+            return forms.EmailField(required=not blank)
         elif self.name == "username":
-            return forms.CharField(required=not kwargs.get('blank', False))
+            return forms.CharField(required=not blank)
         elif self.name in {"is_active", "is_staff", "is_superuser", "is_anonymous", "is_authenticated"}:
             return forms.BooleanField(required=False)
         elif self.name in {"last_login", "date_joined", "created_at", "updated_at"}:
             return forms.DateTimeField(required=False)
         else:
-            return forms.CharField(required=not kwargs.get('blank', False))
+            return forms.CharField(required=not blank)
+
+    # For Django model/form compatibility: apply cleaned_data value to the instance
+    def save_form_data(self, instance, data):
+        setattr(instance, self.name, data)
 
 class _MAIAUserMeta:
     """
@@ -378,13 +394,13 @@ class MAIAUser:
 
     _meta = _MAIAUserMeta()  # <-- This will satisfy Django forms/models.py expectations
 
-    REQUIRED_FIELDS = ["email", "namespace"]
+    REQUIRED_FIELDS = ["email", "namespace", "username"]
     USERNAME_FIELD  = "email"
 
     def __init__(
         self,
-        email,
-        namespace,
+        email = None,
+        namespace = "",
         password        = None,
         username        = None,
         is_active       = True,
@@ -413,6 +429,92 @@ class MAIAUser:
         self.updated_at        = datetime.now(timezone.utc)
         for k, v in extra_fields.items():
             setattr(self, k, v)
+
+        # Track clean/validation errors for form use
+        self._errors = {}
+
+    # ── Add Django-compatible unique_error_message for form compatibility ─────
+    def unique_error_message(self, model_class, unique_check):
+        """
+        Provide a Django-compatible unique_error_message hook,
+        so that django.contrib.admin and forms handle unique errors gracefully.
+        Returns a string message for backward compatibility with code paths
+        expecting a `error_list` attribute on the result.
+        """
+        if not unique_check:
+            return ""
+        field = unique_check[0]
+        if field == "username":
+            msg = "A user with that username already exists."
+        else:
+            msg = "A user with this value already exists."
+        # Return just the message string, not ValidationError object, for compatibility
+        return msg
+
+    # ── Django-compatible clean/full_clean stubs for ModelForm compatibility ──
+    def clean(self):
+        """
+        This method is called during form/model validation.
+        Accumulate validation errors in self._errors.
+        """
+        # Custom validation logic (add as needed)
+        self._errors = {}
+
+    def full_clean(self, exclude=None, validate_unique=True):
+        """Stub method to support Django ModelForm compatibility.
+
+        Args:
+            exclude: Fields to exclude from validation.
+            validate_unique: Whether to validate uniqueness.
+        Returns:
+            cleaned_data: Always returns cleaned_data dict with email, username, namespace.
+        Raises:
+            ValidationError: If there are validation errors (but always returns cleaned data).
+        """
+        self.clean()
+        unique_errors = self.validate_unique(exclude=exclude) or {}
+
+        if unique_errors:
+            # Merge unique errors to main errors dict
+            self._errors.update(unique_errors)
+
+        # Determine if there's a validation error to handle just before raising.
+        if self._errors:
+            # Preserve submitted values so form.cleaned_data still contains
+            # user input when validation fails (e.g. unique constraint errors).
+            error = ValidationError(self._errors)
+            raise error
+
+        # Otherwise, normal cleaned_data
+        cleaned_data = {
+            "email": self.email,
+            "username": self.username,
+            "namespace": self.namespace,
+        }
+
+        return cleaned_data
+
+    # ── Add Django-compatible validate_unique for ModelForm compatibility ──────
+    def validate_unique(self, exclude=None):
+        """
+        Django-compatible method to check for unique field violations.
+        Used by ModelForms and Django admin.
+        Attaches errors to the instance for form display and prevents submission if errors exist.
+        """
+        unique_errors = {}
+
+        exclude = set(exclude or [])
+
+        # Only check if not excluded
+        if 'username' not in exclude and self.username:
+            qs = type(self).objects.filter(username=self.username)
+            if self.id is not None:
+                qs = qs.exclude(id=self.id)
+            if qs.exists():
+                unique_errors["username"] = self.unique_error_message(type(self), ["username"])
+        # Other unique checks can be added if needed
+
+        return unique_errors
 
     # ── password ──────────────────────────────────────────────────────────────
     def set_password(self, raw_password):
@@ -556,3 +658,361 @@ class MAIAUser:
 
     def __hash__(self):
         return hash(self.id)
+
+
+# ─── MAIAProject collection ───────────────────────────────────────────────────
+_projects_col = None
+_projects_col_lock = threading.Lock()
+
+
+def get_projects_collection():
+    global _projects_col
+    if _projects_col is None:
+        with _projects_col_lock:
+            if _projects_col is None:
+                _projects_col = settings.MONGO_DB["maia_projects"]
+                _projects_col.create_index("group_id", unique=True)
+                _projects_col.create_index("username")
+                _projects_col.create_index("users")
+                _projects_col.create_index("cluster")
+    return _projects_col
+
+
+class _MAIAProjectMeta:
+    def __init__(self):
+        self.model_name = "maiaproject"
+        self.app_label = "dashboard"
+        field_names = [
+            "id",
+            "group_id",
+            "username",
+            "users",
+            "email_to_username_map",
+            "memory_limit",
+            "cpu_limit",
+            "memory_request",
+            "cpu_request",
+            "project_tier",
+            "gpu",
+            "cluster",
+            "date",
+            "supervisor",
+            "description",
+            "auto_deploy",
+            "auto_deploy_apps",
+            "project_configuration",
+            "created_at",
+            "updated_at",
+        ]
+        self.fields = [_FakeField(name) for name in field_names]
+        self.concrete_fields = self.fields
+        self.private_fields = []
+        self.many_to_many = []
+        self.many_to_one = []
+
+    @property
+    def object_name(self):
+        return "MAIAProject"
+
+    @property
+    def verbose_name(self):
+        return "MAIA Project"
+
+    @property
+    def verbose_name_plural(self):
+        return "MAIA Projects"
+
+    def get_fields(self):
+        return self.fields
+
+
+class MAIAProjectQuerySet:
+    def __init__(self, query=None, projection=None, sort=None, limit_val=None, skip_val=None):
+        self._query = query or {}
+        self._projection = projection
+        self._sort = sort
+        self._limit_val = limit_val
+        self._skip_val = skip_val
+        self._cache = None
+
+    def _clone(self, **overrides):
+        return MAIAProjectQuerySet(
+            query=overrides.get("query", dict(self._query)),
+            projection=overrides.get("projection", self._projection),
+            sort=overrides.get("sort", self._sort),
+            limit_val=overrides.get("limit_val", self._limit_val),
+            skip_val=overrides.get("skip_val", self._skip_val),
+        )
+
+    def _fetch(self):
+        if self._cache is None:
+            col = get_projects_collection()
+            cursor = col.find(self._query, self._projection)
+            if self._sort:
+                cursor = cursor.sort(self._sort)
+            if self._skip_val:
+                cursor = cursor.skip(self._skip_val)
+            if self._limit_val:
+                cursor = cursor.limit(self._limit_val)
+            self._cache = [MAIAProject._from_doc(d) for d in cursor]
+        return self._cache
+
+    def filter(self, **kwargs):
+        q = {**self._query, **MAIAProject._build_query(kwargs)}
+        return self._clone(query=q)
+
+    def exclude(self, **kwargs):
+        q = dict(self._query)
+        for k, v in MAIAProject._build_query(kwargs).items():
+            q[k] = {"$ne": v}
+        return self._clone(query=q)
+
+    def order_by(self, *fields):
+        sort = []
+        for f in fields:
+            sort.append((f[1:], -1) if f.startswith("-") else (f, 1))
+        return self._clone(sort=sort)
+
+    def values(self, *fields):
+        proj = {f: 1 for f in fields} if fields else None
+        cursor = get_projects_collection().find(self._query, proj)
+        return [{k: v for k, v in doc.items() if k != "_id"} for doc in cursor]
+
+    def first(self):
+        results = self._fetch()
+        return results[0] if results else None
+
+    def all(self):
+        return self._clone()
+
+    def exists(self):
+        return get_projects_collection().count_documents(self._query, limit=1) > 0
+
+    def count(self):
+        return get_projects_collection().count_documents(self._query)
+
+    def update(self, **kwargs):
+        if not kwargs:
+            return 0
+        kwargs["updated_at"] = datetime.now(timezone.utc)
+        result = get_projects_collection().update_many(self._query, {"$set": kwargs})
+        return result.modified_count
+
+    def delete(self):
+        result = get_projects_collection().delete_many(self._query)
+        return result.deleted_count, {"MAIAProject": result.deleted_count}
+
+    def get(self, **kwargs):
+        qs = self.filter(**kwargs) if kwargs else self
+        results = qs._fetch()
+        if len(results) == 0:
+            raise MAIAProject.DoesNotExist("MAIAProject matching query does not exist.")
+        if len(results) > 1:
+            raise MAIAProject.MultipleObjectsReturned("get() returned more than one MAIAProject.")
+        return results[0]
+
+    def create(self, **kwargs):
+        project = MAIAProject(**kwargs)
+        project.save()
+        return project
+
+    def update_or_create(self, defaults=None, **kwargs):
+        col = get_projects_collection()
+        query = MAIAProject._build_query(kwargs)
+        now = datetime.now(timezone.utc)
+        set_payload = {**kwargs, **(defaults or {}), "updated_at": now}
+        set_on_insert = {"created_at": now}
+        result = col.find_one_and_update(
+            query,
+            {"$set": set_payload, "$setOnInsert": set_on_insert},
+            upsert=True,
+            return_document=True,
+        )
+        return MAIAProject._from_doc(result), result is None
+
+    def __iter__(self):
+        return iter(self._fetch())
+
+    def __len__(self):
+        return len(self._fetch())
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            qs = self._clone(
+                skip_val=key.start or 0,
+                limit_val=(key.stop - (key.start or 0)) if key.stop else None,
+            )
+            return qs._fetch()
+        return self._fetch()[key]
+
+
+class MAIAProjectManager:
+    def get_queryset(self):
+        return MAIAProjectQuerySet()
+
+    def __getattr__(self, name):
+        return getattr(self.get_queryset(), name)
+
+    def create(self, **kwargs):
+        return self.get_queryset().create(**kwargs)
+
+
+class MAIAProject:
+    DoesNotExist = DoesNotExist
+    MultipleObjectsReturned = MultipleObjectsReturned
+    objects = MAIAProjectManager()
+    _meta = _MAIAProjectMeta()
+
+    def __init__(
+        self,
+        group_id=None,
+        username=None,
+        users=None,
+        memory_limit="16 Gi",
+        cpu_limit="4",
+        memory_request="8 Gi",
+        cpu_request="2",
+        project_tier="Base",
+        gpu="1",
+        cluster="maia-small",
+        date=None,
+        supervisor=None,
+        description=None,
+        auto_deploy=True,
+        auto_deploy_apps=None,
+        project_configuration=None,
+        email_to_username_map=None,
+        id=None,
+        created_at=None,
+        updated_at=None,
+        **extra_fields,
+    ):
+        self.id = id
+        self.group_id = (group_id or "").strip()
+        self.username = username.lower().strip() if username else None
+        self.users = users or []
+        self.email_to_username_map = email_to_username_map or {}
+        self.memory_limit = memory_limit
+        self.cpu_limit = cpu_limit
+        self.memory_request = memory_request
+        self.cpu_request = cpu_request
+        self.project_tier = project_tier
+        self.gpu = gpu
+        self.cluster = cluster
+        self.date = date
+        self.supervisor = supervisor
+        self.description = description
+        self.auto_deploy = auto_deploy
+        self.auto_deploy_apps = auto_deploy_apps or []
+        self.project_configuration = project_configuration or {}
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or datetime.now(timezone.utc)
+        for k, v in extra_fields.items():
+            setattr(self, k, v)
+
+    def _to_doc(self):
+        doc = {
+            "group_id": self.group_id,
+            "username": self.username,
+            "users": self.users,
+            "email_to_username_map": self.email_to_username_map,
+            "memory_limit": self.memory_limit,
+            "cpu_limit": self.cpu_limit,
+            "memory_request": self.memory_request,
+            "cpu_request": self.cpu_request,
+            "project_tier": self.project_tier,
+            "gpu": self.gpu,
+            "cluster": self.cluster,
+            "date": self.date,
+            "supervisor": self.supervisor,
+            "description": self.description,
+            "auto_deploy": self.auto_deploy,
+            "auto_deploy_apps": self.auto_deploy_apps,
+            "project_configuration": self.project_configuration,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+        if self.id:
+            doc["_id"] = self.id
+        return doc
+
+    @classmethod
+    def _from_doc(cls, doc):
+        d = dict(doc)
+        id_val = d.pop("_id", None)
+        return cls(
+            id=id_val,
+            group_id=d.pop("group_id", ""),
+            username=d.pop("username", None),
+            users=d.pop("users", []),
+            email_to_username_map=d.pop("email_to_username_map", {}),
+            memory_limit=d.pop("memory_limit", "16 Gi"),
+            cpu_limit=d.pop("cpu_limit", "4"),
+            memory_request=d.pop("memory_request", "8 Gi"),
+            cpu_request=d.pop("cpu_request", "2"),
+            project_tier=d.pop("project_tier", "Base"),
+            gpu=d.pop("gpu", "1"),
+            cluster=d.pop("cluster", "maia-small"),
+            date=d.pop("date", None),
+            supervisor=d.pop("supervisor", None),
+            description=d.pop("description", None),
+            auto_deploy=d.pop("auto_deploy", True),
+            auto_deploy_apps=d.pop("auto_deploy_apps", []),
+            project_configuration=d.pop("project_configuration", {}),
+            created_at=d.pop("created_at", None),
+            updated_at=d.pop("updated_at", None),
+            **d,
+        )
+
+    @classmethod
+    def _build_query(cls, kwargs):
+        operators = {
+            "gt": "$gt",
+            "gte": "$gte",
+            "lt": "$lt",
+            "lte": "$lte",
+            "ne": "$ne",
+            "in": "$in",
+            "nin": "$nin",
+            "exists": "$exists",
+        }
+        aliases = {"id": "_id"}
+        query = {}
+        for key, value in kwargs.items():
+            parts = key.split("__")
+            field = aliases.get(parts[0], parts[0])
+            op = parts[1] if len(parts) > 1 else None
+            if op in {"iexact", "icontains"}:
+                query[field] = {"$regex": value, "$options": "i"}
+            elif op == "contains":
+                query[field] = {"$regex": value}
+            elif op == "startswith":
+                query[field] = {"$regex": f"^{value}"}
+            elif op == "endswith":
+                query[field] = {"$regex": f"{value}$"}
+            elif op == "isnull":
+                query[field] = None if value else {"$ne": None}
+            elif op in operators:
+                query[field] = {operators[op]: value}
+            else:
+                query[field] = value
+        return query
+
+    def save(self):
+        col = get_projects_collection()
+        self.updated_at = datetime.now(timezone.utc)
+        doc = self._to_doc()
+        if self.id:
+            col.update_one({"_id": self.id}, {"$set": doc})
+        else:
+            result = col.insert_one(doc)
+            self.id = result.inserted_id
+        return self
+
+    def delete(self):
+        if self.id:
+            get_projects_collection().delete_one({"_id": self.id})
+            self.id = None
+
+    def __str__(self):
+        return f"MAIAProject({self.group_id}, owner={self.username})"
