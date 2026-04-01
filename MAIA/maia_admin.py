@@ -662,7 +662,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             "storageClass": cluster_config_dict["storage_class"],
             "image": {"repository": f"{default_registry}/maia-dashboard", "tag": maia_dashboard_image_version},
             "dashboard": {"local_config_path": "/mnt/dashboard-config"},
-            "mysql": {"enabled": True, "image": mysql_image, "tag": mysql_image_version},
         }
     )
     if cluster_config_dict["url_type"] == "subpath":
@@ -724,6 +723,86 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
         ]
     )
+
+    chart_folder = "maia_dashboard_values"
+    db_service_name_prefix = "maia-admin-maia-dashboard-"
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ) and dev_mode:
+        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
+        maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
+        chart_folder = "maia_dashboard_values_dev"
+        maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["env"].append({"name": "SERVER", "value": "beta.maia." + dashboard_domain})
+        db_service_name_prefix = "maia-admin-maia-dashboard-dev-"
+
+    if "dashboard_db_engine" in os.environ and os.environ["dashboard_db_engine"] == "mongodb":
+        db_engine = "mongodb"
+        if "mongodb_dashboard_password" in os.environ:
+            db_password = os.environ["mongodb_dashboard_password"]
+        else:
+            db_password = generate_human_memorable_password()
+        maia_dashboard_values["mongodb"] = {
+            "enabled": True,
+            "user": "maia-admin",
+            "password": db_password,
+            "name": "mongodb",
+            "host": "mongo",
+            "storageClass": (
+                cluster_config_dict["shared_storage_class"]
+                if "shared_storage_class" in cluster_config_dict
+                else cluster_config_dict["storage_class"]
+            ),
+        }
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DB_ENGINE", "value": "djongo"},
+                {"name": "DB_NAME", "value": "mongodb"},
+                {"name": "DB_HOST", "value": db_service_name_prefix + db_engine},
+                {"name": "DB_PORT", "value": "27017"},
+                {"name": "DB_USERNAME", "value": "maia-admin"},
+                {"name": "DB_PASS", "value": db_password},
+            ]
+        )
+    elif "dashboard_db_engine" in os.environ and os.environ["dashboard_db_engine"] == "sqlite":
+        db_engine = "sqlite"
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DB_ENGINE", "value": "sqlite"},
+            ]
+        )
+    else:
+        db_engine = "mysql"
+        maia_dashboard_values["mysql"] = {"enabled": True, "image": mysql_image, "tag": mysql_image_version}
+
+        if "mysql_dashboard_password" in os.environ:
+            db_password = os.environ["mysql_dashboard_password"]
+        else:
+            db_password = generate_human_memorable_password()
+        mysql_service_name = db_service_name_prefix + db_engine
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DB_ENGINE", "value": "mysql"},
+                {"name": "DB_NAME", "value": "mysql"},
+                {"name": "DB_HOST", "value": mysql_service_name},
+                {"name": "DB_PORT", "value": "3306"},
+                {"name": "DB_USERNAME", "value": "maia-admin"},
+                {"name": "DB_PASS", "value": db_password},
+            ]
+        )
+        maia_dashboard_values["mysql"].update(
+            {
+                "mysqlRootPassword": db_password,
+                "mysqlUser": "maia-admin",
+                "mysqlPassword": db_password,
+                "mysqlDatabase": "mysql",
+            }
+        )
 
     # Cluster Access
     maia_dashboard_values["clusters"] = [
@@ -881,21 +960,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             gpg_key = open(Path(config_folder).joinpath(os.environ["GPG_KEY"]), "r").read()
         maia_dashboard_values["gpg_key"] = gpg_key
 
-    chart_folder = "maia_dashboard_values"
-    if (
-        os.environ.get("DEV_BRANCH") is not None
-        or os.environ.get("GIT_EMAIL") is not None
-        or os.environ.get("GIT_NAME") is not None
-        or os.environ.get("GPG_KEY") is not None
-    ) and dev_mode:
-        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
-        maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
-        chart_folder = "maia_dashboard_values_dev"
-        maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
-        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
-        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "beta.maia." + dashboard_domain
-        maia_dashboard_values["env"].append({"name": "SERVER", "value": "beta.maia." + dashboard_domain})
-
     if os.environ.get("DEV_TAG") is not None:
         maia_dashboard_values["env"].extend(
             [
@@ -987,33 +1051,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             {"name": "MAIA_REGISTRY", "value": os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")},
         ]
     )
-
-    ## MySQL Configuration
-
-    if "mysql_dashboard_password" in os.environ:
-        db_password = os.environ["mysql_dashboard_password"]
-    else:
-        db_password = generate_human_memorable_password()
-
-    maia_dashboard_values["env"].extend(
-        [
-            {"name": "DB_ENGINE", "value": "mysql"},
-            {"name": "DB_NAME", "value": "mysql"},
-            {"name": "DB_HOST", "value": "maia-admin-maia-dashboard-mysql"},
-            {"name": "DB_PORT", "value": "3306"},
-            {"name": "DB_USERNAME", "value": "maia-admin"},
-            {"name": "DB_PASS", "value": db_password},
-        ]
-    )
-    maia_dashboard_values["mysql"].update(
-        {
-            "mysqlRootPassword": db_password,
-            "mysqlUser": "maia-admin",
-            "mysqlPassword": db_password,
-            "mysqlDatabase": "mysql",
-        }
-    )
-
     # Email Notification Systen
 
     if (

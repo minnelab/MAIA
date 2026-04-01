@@ -120,7 +120,7 @@ dashboard:
   local_db_path: /etc/MAIA-Dashboard/db
 
 ## For private registry to pull image from
-dockerRegistrySecretName: registry.maia.com
+#dockerRegistrySecretName: registry.maia.com
 dockerRegistryUsername: registry_private_user
 dockerRegistryPassword: registry_private_password
 dockerRegistryEmail: admin@maia.com

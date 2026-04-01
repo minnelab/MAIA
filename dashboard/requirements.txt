@@ -34,3 +34,4 @@ pytest
 pytest-env
 pytest-django
 loguru
+djongo

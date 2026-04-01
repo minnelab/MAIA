@@ -687,7 +687,34 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 },
             }
         )
-
+    if "node_selector" in user_form:
+        k = list(user_form["node_selector"].keys())[0]
+        v = user_form["node_selector"][k]
+        jh_template["singleuser"]["profileList"].append(
+            {
+                "display_name": f"MAIA Workspace v{maia_workspace_version} [Node: {k}: {v}]",
+                "description": "MAIA Workspace with Python 3.10, Anaconda and SSH Connection",
+                "default": True,
+                "kubespawner_override": {
+                    "image": f"{maia_workspace_image}:{maia_workspace_version}",
+                    "start_timeout": 7200,
+                    "http_timeout": 7200,
+                    # mem_limit
+                    # cpu_limit
+                    # mem_guarantee
+                    # cpu_guarantee
+                    "nodeSelector": {k: v},
+                    "extra_resource_limits": {},
+                    # "container_security_context": {
+                    # "privileged": True, ## Remove
+                    # "procMount": "unmasked",
+                    # "seccompProfile": {
+                    #    "type": "Unconfined"
+                    # }
+                    # }
+                },
+            },
+        )
     if gpu_request > 0:
         for profile in jh_template["singleuser"]["profileList"]:
             if (
