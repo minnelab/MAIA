@@ -738,7 +738,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "beta.maia." + dashboard_domain
-        maia_dashboard_values["env"].append({"name": "SERVER", "value": "beta.maia." + dashboard_domain})
+        for env_var in maia_dashboard_values["env"]:
+            if env_var["name"] == "SERVER":
+                env_var["value"] = "beta.maia." + dashboard_domain
         db_service_name_prefix = "maia-admin-maia-dashboard-dev-"
 
     if "dashboard_db_engine" in os.environ and os.environ["dashboard_db_engine"] == "mongodb":
