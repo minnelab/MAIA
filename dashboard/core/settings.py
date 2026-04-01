@@ -7,6 +7,7 @@ import os
 import environ
 import yaml
 from MAIA.versions import define_maia_admin_versions
+from pymongo import MongoClient
 
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 
@@ -159,16 +160,11 @@ if os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mysql":
             "PORT": os.getenv("DB_PORT", 3306),
         },
     }
-elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "djongo":
-    DATABASES = {
-        "default": {
-            "ENGINE": "djongo",
-            "NAME": os.getenv("DB_NAME", "appseed_db"),
-            "CLIENT": {
-                "host": f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}',
-            },
-        }
-    }
+elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mongodb":
+    MONGO_CLIENT = MongoClient(
+        f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}'
+    )
+    MONGO_DB = MONGO_CLIENT[os.getenv("DB_NAME", "appseed_db")]
 else:
     print("INFO: Using local sqlite database at " + str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")))
     DATABASES = {

@@ -761,7 +761,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         }
         maia_dashboard_values["env"].extend(
             [
-                {"name": "DB_ENGINE", "value": "djongo"},
+                {"name": "DB_ENGINE", "value": "mongodb"},
                 {"name": "DB_NAME", "value": "mongodb"},
                 {"name": "DB_HOST", "value": db_service_name_prefix + db_engine},
                 {"name": "DB_PORT", "value": "27017"},
