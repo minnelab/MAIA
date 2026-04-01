@@ -161,7 +161,9 @@ if os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mysql":
         },
     }
 elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mongodb":
-    MONGO_CLIENT = MongoClient(f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}')
+    MONGO_CLIENT = MongoClient(
+        f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}'
+    )
     MONGO_DB = MONGO_CLIENT[os.getenv("DB_NAME", "appseed_db")]
 else:
     print("INFO: Using local sqlite database at " + str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")))
