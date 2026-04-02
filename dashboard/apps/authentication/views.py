@@ -11,6 +11,7 @@ from .forms import LoginForm, SignUpForm, RegisterProjectForm, MAIAInfoForm
 from MAIA.dashboard_utils import send_webhook_message, verify_minio_availability, send_maia_info_email, upload_env_file_to_minio
 from core.settings import GITHUB_AUTH
 from django.conf import settings
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAUser, MAIAProject
 else:
@@ -99,9 +100,9 @@ def register_user(request, api=False):
                     form.instance.namespace = f"{namespace},{settings.USERS_GROUP}"
                 form.save()
                 username = form.cleaned_data.get("username")
-                raw_password = form.cleaned_data.get("password1")
+                # raw_password = form.cleaned_data.get("password1")
                 namespace = form.cleaned_data.get("namespace")
-                #user = authenticate(username=username, password=raw_password)
+                # user = authenticate(username=username, password=raw_password)
 
                 user = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
                 user.is_active = False
@@ -150,7 +151,7 @@ def register_user(request, api=False):
                             if settings.WEBHOOK_URL is not None:
                                 send_webhook_message(
                                     username=form.cleaned_data.get("email"), namespace=namespace, url=settings.WEBHOOK_URL
-                                 )
+                                )
                             confirm_request_registration_to_project(
                                 project_name=requested_namespace,
                                 user_email=form.cleaned_data.get("email"),
@@ -180,7 +181,9 @@ def register_user(request, api=False):
             form = SignUpForm()
 
         if api:
-            return Response({"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+            )
         else:
             return render(
                 request,
@@ -196,6 +199,7 @@ def register_user(request, api=False):
     except Exception as e:
         logger.exception(e)
         return Response({"msg": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @login_required(login_url="/maia/login/")
 def send_maia_email(request):

@@ -4,8 +4,6 @@ Copyright (c) 2019 - present AppSeed.us
 """
 
 from django import forms
-from django.conf import settings
-import datetime
 
 
 class UserTableForm(forms.Form):
@@ -15,7 +13,6 @@ class UserTableForm(forms.Form):
             super(UserTableForm, self).__init__()
         else:
             super(UserTableForm, self).__init__(*args, **kwargs)
-
 
         # maia_groups = get_groups_in_keycloak(settings= settings)
         # pending_projects = get_pending_projects(settings=settings, maia_project_model=MAIAProject)

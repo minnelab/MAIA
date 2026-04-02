@@ -7,6 +7,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import MAIAInfo
 from django.conf import settings
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAUser, MAIAProject
 else:
@@ -135,6 +136,17 @@ class RegisterProjectForm(forms.ModelForm):
     class Meta:
         model = MAIAProject
         if settings.MONGO_DB_ENABLED:
-            fields = ("id", "namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
+            fields = (
+                "id",
+                "namespace",
+                "gpu",
+                "env_file",
+                "date",
+                "email",
+                "memory_limit",
+                "cpu_limit",
+                "description",
+                "supervisor",
+            )
         else:
             fields = ("namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")

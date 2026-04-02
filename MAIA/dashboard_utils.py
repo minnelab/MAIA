@@ -687,9 +687,9 @@ def update_user_table(form, user_model, maia_user_model):
     - Project details are updated or created in the `project_model` based on the namespace.
     """
 
-    project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
+    # project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
 
-    namespace_list = []
+    # namespace_list = []
 
     for entry in form.cleaned_data:
         if entry.startswith("namespace_"):
@@ -725,6 +725,7 @@ def update_user_table(form, user_model, maia_user_model):
                             #    else:
                             #        namespaces.append(namespace)
                             maia_user_model.objects.create(id=user_id, namespace=namespace)
+
 
 def get_project(group_id, settings, maia_project_model, is_namespace_style=False):
     """

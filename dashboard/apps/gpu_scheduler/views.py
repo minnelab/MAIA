@@ -19,6 +19,7 @@ from MAIA.kubernetes_utils import generate_kubeconfig
 from pathlib import Path
 import os
 import yaml
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAProject
 else:
@@ -192,7 +193,7 @@ def book_gpu(request):
 
     if request.user.is_superuser:
         namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
-        
+
         keycloak_groups = get_groups_in_keycloak(settings)
         for group in keycloak_groups:
             group_name = keycloak_groups[group]

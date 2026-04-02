@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 from pathlib import Path
 from .forms import UserTableForm
 import re
+
 if env_settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAUser, MAIAProject
 else:

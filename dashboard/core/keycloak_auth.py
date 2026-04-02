@@ -5,6 +5,7 @@ import jwt
 import time
 from django.conf import settings
 from apps.models import User
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAUser
 else:

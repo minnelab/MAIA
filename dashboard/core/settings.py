@@ -168,9 +168,9 @@ elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mongodb":
     MONGO_DB = MONGO_CLIENT[os.getenv("DB_NAME", "appseed_db")]
     MONGO_DB_ENABLED = True
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")),
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")),
         }
     }
 else:

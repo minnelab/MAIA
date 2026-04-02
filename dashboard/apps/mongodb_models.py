@@ -3,7 +3,6 @@ import hashlib
 import os
 import threading
 from datetime import date, datetime, time, timezone
-from bson import ObjectId
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from loguru import logger
@@ -11,6 +10,7 @@ from loguru import logger
 # ─── collection ───────────────────────────────────────────────────────────────
 _col = None
 _col_lock = threading.Lock()
+
 
 def get_collection():
     global _col
@@ -23,6 +23,7 @@ def get_collection():
                 _col.create_index("username", unique=True, sparse=True)
     return _col
 
+
 # ─── meta "mock" for Django compatibility ─────────────────────────────────────
 class _FakeField:
     """
@@ -33,6 +34,7 @@ class _FakeField:
     Also provides has_default() method for Django compatibility.
     Provides save_form_data for model form compatibility.
     """
+
     def __init__(self, name, blank=False, default=None):
         self.name = name
         self.attname = name
@@ -58,8 +60,9 @@ class _FakeField:
 
     def formfield(self, **kwargs):
         from django import forms
+
         # Determine blank status: accept kwarg override but default to self.blank
-        blank = kwargs.get('blank', self.blank)
+        blank = kwargs.get("blank", self.blank)
         # Attempt to guess field type by name
         if self.name in {"email", "supervisor"}:
             return forms.EmailField(required=not blank)
@@ -78,18 +81,31 @@ class _FakeField:
     def save_form_data(self, instance, data):
         setattr(instance, self.name, data)
 
+
 class _MAIAUserMeta:
     """
     Minimal _meta object to satisfy Django admin/forms expectations.
     """
+
     def __init__(self):
-        self.model_name = 'maiauser'
-        self.app_label = 'dashboard'
+        self.model_name = "maiauser"
+        self.app_label = "dashboard"
         # Create list of mock field objects
         field_names = [
-            'id', 'email', 'username', 'namespace', 'password', 'is_active', 'is_staff', 
-            'is_superuser', 'is_anonymous', 'is_authenticated', 'last_login', 
-            'date_joined', 'created_at', 'updated_at'
+            "id",
+            "email",
+            "username",
+            "namespace",
+            "password",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+            "is_anonymous",
+            "is_authenticated",
+            "last_login",
+            "date_joined",
+            "created_at",
+            "updated_at",
         ]
         self.fields = [_FakeField(name) for name in field_names]
         self.concrete_fields = self.fields
@@ -112,39 +128,41 @@ class _MAIAUserMeta:
     def get_fields(self):
         return self.fields
 
+
 # ─── exceptions (mirror Django) ───────────────────────────────────────────────
 class DoesNotExist(Exception):
     pass
 
+
 class MultipleObjectsReturned(Exception):
     pass
 
+
 # ─── QuerySet-like class ───────────────────────────────────────────────────────
 class MAIAUserQuerySet:
-    def __init__(self, query=None, projection=None, sort=None, limit_val=None,
-                 skip_val=None, for_update=False):
-        self._query      = query or {}
+    def __init__(self, query=None, projection=None, sort=None, limit_val=None, skip_val=None, for_update=False):
+        self._query = query or {}
         self._projection = projection
-        self._sort       = sort
-        self._limit_val  = limit_val
-        self._skip_val   = skip_val
-        self._for_update = for_update   # stored but MongoDB has no row locks
-        self._cache      = None
+        self._sort = sort
+        self._limit_val = limit_val
+        self._skip_val = skip_val
+        self._for_update = for_update  # stored but MongoDB has no row locks
+        self._cache = None
 
     # ── internal ──────────────────────────────────────────────────────────────
     def _clone(self, **overrides):
         return MAIAUserQuerySet(
-            query      = overrides.get("query",      dict(self._query)),
-            projection = overrides.get("projection", self._projection),
-            sort       = overrides.get("sort",       self._sort),
-            limit_val  = overrides.get("limit_val",  self._limit_val),
-            skip_val   = overrides.get("skip_val",   self._skip_val),
-            for_update = overrides.get("for_update", self._for_update),
+            query=overrides.get("query", dict(self._query)),
+            projection=overrides.get("projection", self._projection),
+            sort=overrides.get("sort", self._sort),
+            limit_val=overrides.get("limit_val", self._limit_val),
+            skip_val=overrides.get("skip_val", self._skip_val),
+            for_update=overrides.get("for_update", self._for_update),
         )
 
     def _fetch(self):
         if self._cache is None:
-            col    = get_collection()
+            col = get_collection()
             cursor = col.find(self._query, self._projection)
             if self._sort:
                 cursor = cursor.sort(self._sort)
@@ -189,12 +207,9 @@ class MAIAUserQuerySet:
         return get_collection().distinct(field, self._query)
 
     def values(self, *fields):
-        proj   = {f: 1 for f in fields} if fields else None
+        proj = {f: 1 for f in fields} if fields else None
         cursor = get_collection().find(self._query, proj)
-        return [
-            {k: v for k, v in doc.items() if k != "_id"}
-            for doc in cursor
-        ]
+        return [{k: v for k, v in doc.items() if k != "_id"} for doc in cursor]
 
     def values_list(self, *fields, flat=False):
         rows = self.values(*fields)
@@ -233,8 +248,8 @@ class MAIAUserQuerySet:
     def __getitem__(self, key):
         if isinstance(key, slice):
             qs = self._clone(
-                skip_val  = key.start or 0,
-                limit_val = (key.stop - (key.start or 0)) if key.stop else None,
+                skip_val=key.start or 0,
+                limit_val=(key.stop - (key.start or 0)) if key.stop else None,
             )
             return qs._fetch()
         return self._fetch()[key]
@@ -259,24 +274,21 @@ class MAIAUserQuerySet:
         return results[0]
 
     def get_or_create(self, defaults=None, **kwargs):
-        col   = get_collection()
+        col = get_collection()
         query = MAIAUser._build_query(kwargs)
-        doc   = col.find_one(query)
+        doc = col.find_one(query)
         if doc:
             return MAIAUser._from_doc(doc), False
-        data  = {**kwargs, **(defaults or {})}
-        user  = MAIAUser(**data)
+        data = {**kwargs, **(defaults or {})}
+        user = MAIAUser(**data)
         user.save()
         return user, True
 
     def update_or_create(self, defaults=None, **kwargs):
-        col    = get_collection()
-        query  = MAIAUser._build_query(kwargs)
+        col = get_collection()
+        query = MAIAUser._build_query(kwargs)
         update = {"$set": {**kwargs, **(defaults or {}), "updated_at": datetime.now(timezone.utc)}}
-        result = col.find_one_and_update(
-            query, update,
-            upsert=True, return_document=True
-        )
+        result = col.find_one_and_update(query, update, upsert=True, return_document=True)
         return MAIAUser._from_doc(result), result is None
 
     def update(self, **kwargs):
@@ -303,7 +315,7 @@ class MAIAUserQuerySet:
         return result.deleted_count, {"MAIAUser": result.deleted_count}
 
     def bulk_create(self, users):
-        docs   = [u._to_doc() for u in users]
+        docs = [u._to_doc() for u in users]
         result = get_collection().insert_many(docs)
         for user, oid in zip(users, result.inserted_ids):
             user.id = oid
@@ -311,13 +323,8 @@ class MAIAUserQuerySet:
 
     def bulk_update(self, users, fields):
         from pymongo import UpdateOne
-        ops = [
-            UpdateOne(
-                {"_id": u.id},
-                {"$set": {f: getattr(u, f) for f in fields}}
-            )
-            for u in users
-        ]
+
+        ops = [UpdateOne({"_id": u.id}, {"$set": {f: getattr(u, f) for f in fields}}) for u in users]
         return get_collection().bulk_write(ops).modified_count
 
     def in_bulk(self, id_list=None, field_name="id"):
@@ -328,13 +335,10 @@ class MAIAUserQuerySet:
                 query["_id"] = {"$in": id_list}
             else:
                 query[field_name] = {"$in": id_list}
-        return {
-            str(u.id): u
-            for u in (MAIAUser._from_doc(d) for d in get_collection().find(query))
-        }
+        return {str(u.id): u for u in (MAIAUser._from_doc(d) for d in get_collection().find(query))}
 
     def iterator(self, chunk_size=100):
-        col    = get_collection()
+        col = get_collection()
         cursor = col.find(self._query).batch_size(chunk_size)
         for doc in cursor:
             yield MAIAUser._from_doc(doc)
@@ -348,17 +352,8 @@ class MAIAUserManager:
     def get_queryset(self):
         return MAIAUserQuerySet()
 
-
     def create(self, **kwargs):
         user = MAIAUser(**kwargs)
-        user.save()
-        return user
-
-    def create_user(self, email, namespace, password=None, username=None, **extra):
-        if not email:
-            raise ValueError("email is required")
-        user = MAIAUser(email=email.lower().strip(), namespace=namespace, username=username, **extra)
-        user.set_password(password)
         user.save()
         return user
 
@@ -389,14 +384,14 @@ class MAIAUserManager:
 
 # ─── MAIAUser ─────────────────────────────────────────────────────────────────
 class MAIAUser:
-    DoesNotExist            = DoesNotExist
+    DoesNotExist = DoesNotExist
     MultipleObjectsReturned = MultipleObjectsReturned
-    objects                 = MAIAUserManager()
+    objects = MAIAUserManager()
 
     _meta = _MAIAUserMeta()  # <-- This will satisfy Django forms/models.py expectations
 
     REQUIRED_FIELDS = ["email", "username"]
-    USERNAME_FIELD  = "username"
+    USERNAME_FIELD = "username"
 
     def __init__(
         self,
@@ -414,20 +409,20 @@ class MAIAUser:
         id=None,
         **extra_fields,
     ):
-        self.id                = id
-        self.email             = email.lower().strip() if email else email
-        self.username          = username
-        self.namespace         = namespace
-        self.password          = password      # stored as hash
-        self.is_active         = is_active
-        self.is_staff          = is_staff
-        self.is_superuser      = is_superuser
-        self.is_anonymous      = is_anonymous
-        self.is_authenticated  = is_authenticated
-        self.last_login        = last_login
-        self.date_joined       = date_joined or datetime.now(timezone.utc)
-        self.created_at        = datetime.now(timezone.utc)
-        self.updated_at        = datetime.now(timezone.utc)
+        self.id = id
+        self.email = email.lower().strip() if email else email
+        self.username = username
+        self.namespace = namespace
+        self.password = password  # stored as hash
+        self.is_active = is_active
+        self.is_staff = is_staff
+        self.is_superuser = is_superuser
+        self.is_anonymous = is_anonymous
+        self.is_authenticated = is_authenticated
+        self.last_login = last_login
+        self.date_joined = date_joined or datetime.now(timezone.utc)
+        self.created_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
         for k, v in extra_fields.items():
             setattr(self, k, v)
 
@@ -512,7 +507,7 @@ class MAIAUser:
         exclude = set(exclude or [])
 
         # Only check if not excluded
-        if 'username' not in exclude and self.username:
+        if "username" not in exclude and self.username:
             qs = type(self).objects.filter(username=self.username)
             if self.id is not None:
                 qs = qs.exclude(id=self.id)
@@ -527,8 +522,8 @@ class MAIAUser:
         if raw_password is None:
             self.password = None
             return
-        salt          = os.urandom(16).hex()
-        hashed        = hashlib.sha256(f"{salt}{raw_password}".encode()).hexdigest()
+        salt = os.urandom(16).hex()
+        hashed = hashlib.sha256(f"{salt}{raw_password}".encode()).hexdigest()
         self.password = f"sha256${salt}${hashed}"
 
     def check_password(self, raw_password):
@@ -552,18 +547,18 @@ class MAIAUser:
     # ── persistence ───────────────────────────────────────────────────────────
     def _to_doc(self):
         doc = {
-            "email"           : self.email,
-            "namespace"       : self.namespace,
-            "password"        : self.password,
-            "is_active"       : self.is_active,
-            "is_staff"        : self.is_staff,
-            "is_superuser"    : self.is_superuser,
-            "is_anonymous"    : self.is_anonymous,
+            "email": self.email,
+            "namespace": self.namespace,
+            "password": self.password,
+            "is_active": self.is_active,
+            "is_staff": self.is_staff,
+            "is_superuser": self.is_superuser,
+            "is_anonymous": self.is_anonymous,
             "is_authenticated": self.is_authenticated,
-            "last_login"      : self.last_login,
-            "date_joined"     : self.date_joined,
-            "created_at"      : self.created_at,
-            "updated_at"      : self.updated_at,
+            "last_login": self.last_login,
+            "date_joined": self.date_joined,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
         }
         if self.username is not None:
             doc["username"] = self.username
@@ -576,35 +571,39 @@ class MAIAUser:
         d = dict(doc)
         id_val = d.pop("_id", None)
         return cls(
-            id              = id_val,
-            email           = d.pop("email", ""),
-            username        = d.pop("username", None),
-            namespace       = d.pop("namespace", ""),
-            password        = d.pop("password", None),
-            is_active       = d.pop("is_active", True),
-            is_staff        = d.pop("is_staff", False),
-            is_superuser    = d.pop("is_superuser", False),
-            is_anonymous    = d.pop("is_anonymous", False),
-            is_authenticated= d.pop("is_authenticated", True),
-            last_login      = d.pop("last_login", None),
-            date_joined     = d.pop("date_joined", None),
-            **d,   # any extra fields stored in mongo
+            id=id_val,
+            email=d.pop("email", ""),
+            username=d.pop("username", None),
+            namespace=d.pop("namespace", ""),
+            password=d.pop("password", None),
+            is_active=d.pop("is_active", True),
+            is_staff=d.pop("is_staff", False),
+            is_superuser=d.pop("is_superuser", False),
+            is_anonymous=d.pop("is_anonymous", False),
+            is_authenticated=d.pop("is_authenticated", True),
+            last_login=d.pop("last_login", None),
+            date_joined=d.pop("date_joined", None),
+            **d,  # any extra fields stored in mongo
         )
 
     @classmethod
     def _build_query(cls, kwargs):
         """Translate Django-style lookups to MongoDB queries."""
         OPERATORS = {
-            "gt" : "$gt",  "gte": "$gte",
-            "lt" : "$lt",  "lte": "$lte",
-            "ne" : "$ne",  "in" : "$in",
-            "nin": "$nin", "exists": "$exists",
+            "gt": "$gt",
+            "gte": "$gte",
+            "lt": "$lt",
+            "lte": "$lte",
+            "ne": "$ne",
+            "in": "$in",
+            "nin": "$nin",
+            "exists": "$exists",
         }
         query = {}
         for key, value in kwargs.items():
             parts = key.split("__")
             field = parts[0]
-            op    = parts[1] if len(parts) > 1 else None
+            op = parts[1] if len(parts) > 1 else None
             # If user searched by 'id', convert to MongoDB's '_id'
             mongo_field = "_id" if field == "id" else field
             if op == "iexact" or op == "icontains":
@@ -624,13 +623,13 @@ class MAIAUser:
         return query
 
     def save(self):
-        col              = get_collection()
-        self.updated_at  = datetime.now(timezone.utc)
-        doc              = self._to_doc()
+        col = get_collection()
+        self.updated_at = datetime.now(timezone.utc)
+        doc = self._to_doc()
         if self.id:
             col.update_one({"_id": self.id}, {"$set": doc})
         else:
-            result  = col.insert_one(doc)
+            result = col.insert_one(doc)
             self.id = result.inserted_id
         return self
 
@@ -648,10 +647,7 @@ class MAIAUser:
 
     def update_last_login(self):
         self.last_login = datetime.now(timezone.utc)
-        get_collection().update_one(
-            {"_id": self.id},
-            {"$set": {"last_login": self.last_login}}
-        )
+        get_collection().update_one({"_id": self.id}, {"$set": {"last_login": self.last_login}})
 
     # ── dunder ────────────────────────────────────────────────────────────────
     def __str__(self):
@@ -1033,8 +1029,9 @@ class MAIAProject:
 
     def __str__(self):
         return f"MAIAProject({self.namespace}, owner={self.email})"
-    
+
         # ── Django-compatible clean/full_clean stubs for ModelForm compatibility ──
+
     def clean(self):
         """
         This method is called during form/model validation.
@@ -1047,7 +1044,7 @@ class MAIAProject:
             self._errors["email"] = "This field is required."
         if not self.namespace:
             self._errors["namespace"] = "This field is required."
-    
+
     def full_clean(self, exclude=None, validate_unique=True):
         """Stub method to support Django ModelForm compatibility.
 
@@ -1097,7 +1094,7 @@ class MAIAProject:
         }
 
         return cleaned_data
-    
+
     def validate_unique(self, exclude=None):
         """
         Django-compatible method to check for unique field violations.
@@ -1109,7 +1106,7 @@ class MAIAProject:
         exclude = set(exclude or [])
 
         # Only check if not excluded
-        if 'namespace' not in exclude and self.namespace:
+        if "namespace" not in exclude and self.namespace:
             qs = type(self).objects.filter(namespace=self.namespace)
             if self.id is not None:
                 qs = qs.exclude(id=self.id)

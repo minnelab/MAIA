@@ -1,5 +1,6 @@
 from django.conf import settings
 from keycloak.exceptions import KeycloakPostError, KeycloakDeleteError
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAUser, MAIAProject
 else:

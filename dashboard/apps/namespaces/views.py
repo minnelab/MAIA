@@ -6,6 +6,7 @@ from MAIA.kubernetes_utils import get_namespaces
 import os
 from pathlib import Path
 from django.conf import settings
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAProject
 else:
@@ -132,7 +133,9 @@ def namespace_view(request, namespace_id):
         if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
             cluster_config_dict = {"ssh_hostname": "localhost"}
         else:
-            _, cluster_id = get_project(namespace_id.lower().replace("_", "-"), settings=settings, maia_project_model=MAIAProject, is_namespace_style=True)
+            _, cluster_id = get_project(
+                namespace_id.lower().replace("_", "-"), settings=settings, maia_project_model=MAIAProject, is_namespace_style=True
+            )
 
             cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
 
@@ -140,7 +143,9 @@ def namespace_view(request, namespace_id):
                 cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(cluster_id + ".yaml").read_text())
             else:
                 if len(deployed_clusters) > 0:
-                    register_cluster_for_project_in_db(MAIAProject, settings, namespace_id.lower().replace("_", "-"), deployed_clusters[0])
+                    register_cluster_for_project_in_db(
+                        MAIAProject, settings, namespace_id.lower().replace("_", "-"), deployed_clusters[0]
+                    )
                     cluster_config_dict = yaml.safe_load(
                         Path(cluster_config_path).joinpath(deployed_clusters[0] + ".yaml").read_text()
                     )

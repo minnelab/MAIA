@@ -75,6 +75,7 @@ class MAIAProject(models.Model):
     auto_deploy_apps = models.JSONField("auto_deploy_apps", default=[], null=True)
     project_configuration = models.JSONField("project_configuration", default={}, null=True)
 
+
 class MAIAUser(User):
     class Meta:
         app_label = "authentication"

@@ -2,6 +2,7 @@ from django import forms
 
 from .models import GPUBooking
 from django.conf import settings
+
 if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAProject
 else:
