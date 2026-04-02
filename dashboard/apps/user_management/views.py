@@ -225,17 +225,28 @@ class UserManagementAPIListPendingGroupsView(APIView):
         pending_groups = get_pending_projects(settings=env_settings, maia_project_model=MAIAProject)
         return Response({"pending_groups": pending_groups}, status=200)
 
+
 class UserManagementAPIGetProjectsStatusView(APIView):
     throttle_classes = [UserRateThrottle]
     permission_classes = [IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = get_project_argo_status_and_user_table(request=request, settings=env_settings, maia_user_model=MAIAUser, maia_project_model=MAIAProject)
-        return Response({"users_to_register_in_groups": to_register_in_groups,
-                         "users_to_register_in_keycloak": to_register_in_keycloak,
-                         "maia_groups_dict": maia_groups_dict,
-                         "project_argo_status": project_argo_status,
-                         "users_to_remove_from_group": users_to_remove_from_group}, status=200)
+        to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
+            get_project_argo_status_and_user_table(
+                request=request, settings=env_settings, maia_user_model=MAIAUser, maia_project_model=MAIAProject
+            )
+        )
+        return Response(
+            {
+                "users_to_register_in_groups": to_register_in_groups,
+                "users_to_register_in_keycloak": to_register_in_keycloak,
+                "maia_groups_dict": maia_groups_dict,
+                "project_argo_status": project_argo_status,
+                "users_to_remove_from_group": users_to_remove_from_group,
+            },
+            status=200,
+        )
+
 
 class UserManagementAPIListGroupsView(APIView):
     throttle_classes = [UserRateThrottle]

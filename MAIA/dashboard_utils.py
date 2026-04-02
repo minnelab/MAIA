@@ -524,7 +524,6 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             gpu = project.gpu
             project_tier = project.project_tier
 
-
         for env_file in minio_env_files:
             if env_file.startswith(maia_groups[maia_group] + "_env"):
                 env_files.append(env_file)
@@ -953,7 +952,9 @@ def get_project_argo_status_and_user_table(request, settings, maia_user_model, m
     if argocd_cluster_id is None or argocd_cluster_id == "N/A":
         ...
     else:
-        kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=settings, in_local_cluster_token=in_local_cluster_token)
+        kubeconfig_dict = generate_kubeconfig(
+            id_token, username, "default", argocd_cluster_id, settings=settings, in_local_cluster_token=in_local_cluster_token
+        )
         config.load_kube_config_from_dict(kubeconfig_dict)
         with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
             yaml.dump(kubeconfig_dict, f)
