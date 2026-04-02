@@ -59,19 +59,21 @@ class MAIAProject(models.Model):
     id = models.AutoField(primary_key=True, null=False, auto_created=True)
     email = models.EmailField("email", max_length=150, null=True)
     namespace = models.CharField("namespace", max_length=150, blank=True, unique=True)
-    gpu = models.CharField("gpu", max_length=150, blank=True, null=True)
-    date = models.DateField("date", default=datetime.date.today)
-
+    users = models.JSONField("users", default=[], null=True)
+    email_to_username_map = models.JSONField("email_to_username_map", default={}, null=True)
     memory_limit = models.TextField("memory_limit", default="2 Gi", null=True)
     cpu_limit = models.TextField("memory_limit", default="2", null=True)
-
-    env_file = models.TextField("env_file", default="N/A", null=True)
-
-    cluster = models.TextField("cluster", default="N/A", null=True)
+    memory_request = models.TextField("memory_request", default="2 Gi", null=True)
+    cpu_request = models.TextField("cpu_request", default="2", null=True)
     project_tier = models.TextField("project_tier", default="Base", null=True)
+    gpu = models.CharField("gpu", max_length=150, blank=True, null=True)
+    cluster = models.TextField("cluster", default="N/A", null=True)
+    date = models.DateField("date", default=datetime.date.today)
     description = models.TextField("description", blank=True, null=True)
     supervisor = models.EmailField("supervisor", max_length=150, null=True, blank=True)
-
+    auto_deploy = models.BooleanField("auto_deploy", default=False)
+    auto_deploy_apps = models.JSONField("auto_deploy_apps", default=[], null=True)
+    project_configuration = models.JSONField("project_configuration", default={}, null=True)
 
 class MAIAUser(User):
     class Meta:

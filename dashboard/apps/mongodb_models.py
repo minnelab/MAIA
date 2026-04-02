@@ -20,7 +20,6 @@ def get_collection():
                 _col = settings.MONGO_DB["maia_users"]
                 # indexes
                 _col.create_index("email", unique=True)
-                _col.create_index("namespace")
                 _col.create_index("username", unique=True, sparse=True)
     return _col
 
@@ -62,14 +61,18 @@ class _FakeField:
         # Determine blank status: accept kwarg override but default to self.blank
         blank = kwargs.get('blank', self.blank)
         # Attempt to guess field type by name
-        if self.name == "email":
+        if self.name in {"email", "supervisor"}:
             return forms.EmailField(required=not blank)
         elif self.name == "username":
             return forms.CharField(required=not blank)
-        elif self.name in {"is_active", "is_staff", "is_superuser", "is_anonymous", "is_authenticated"}:
+        elif self.name in {"is_active", "is_staff", "is_superuser", "is_anonymous", "is_authenticated", "auto_deploy"}:
             return forms.BooleanField(required=False)
-        elif self.name in {"last_login", "date_joined", "created_at", "updated_at"}:
+        elif self.name in {"last_login", "date_joined", "created_at", "updated_at", "date"}:
             return forms.DateTimeField(required=False)
+        elif self.name in {"users", "auto_deploy_apps", "project_configuration", "email_to_username_map"}:
+            return forms.JSONField(required=not blank)
+        elif self.name in {"memory_limit", "cpu_limit", "memory_request", "cpu_request", "project_tier", "cluster", "description"}:
+            return forms.TextField(required=not blank)
         else:
             return forms.CharField(required=not blank)
 
@@ -394,23 +397,23 @@ class MAIAUser:
 
     _meta = _MAIAUserMeta()  # <-- This will satisfy Django forms/models.py expectations
 
-    REQUIRED_FIELDS = ["email", "namespace", "username"]
-    USERNAME_FIELD  = "email"
+    REQUIRED_FIELDS = ["email", "username"]
+    USERNAME_FIELD  = "username"
 
     def __init__(
         self,
-        email = None,
-        namespace = "",
-        password        = None,
-        username        = None,
-        is_active       = True,
-        is_staff        = False,
-        is_superuser    = False,
-        is_anonymous    = False,
-        is_authenticated= True,
-        last_login      = None,
-        date_joined     = None,
-        id              = None,
+        email=None,
+        username=None,
+        namespace="",
+        password=None,
+        is_active=True,
+        is_staff=False,
+        is_superuser=False,
+        is_anonymous=False,
+        is_authenticated=True,
+        last_login=None,
+        date_joined=None,
+        id=None,
         **extra_fields,
     ):
         self.id                = id
@@ -457,8 +460,13 @@ class MAIAUser:
         This method is called during form/model validation.
         Accumulate validation errors in self._errors.
         """
-        # Custom validation logic (add as needed)
         self._errors = {}
+        # Enforce required fields even though `__init__` must tolerate None
+        # for Django form construction on GET requests.
+        if not self.email:
+            self._errors["email"] = "This field is required."
+        if not self.username:
+            self._errors["username"] = "This field is required."
 
     def full_clean(self, exclude=None, validate_unique=True):
         """Stub method to support Django ModelForm compatibility.
@@ -547,7 +555,6 @@ class MAIAUser:
     def _to_doc(self):
         doc = {
             "email"           : self.email,
-            "username"        : self.username,
             "namespace"       : self.namespace,
             "password"        : self.password,
             "is_active"       : self.is_active,
@@ -560,6 +567,8 @@ class MAIAUser:
             "created_at"      : self.created_at,
             "updated_at"      : self.updated_at,
         }
+        if self.username is not None:
+            doc["username"] = self.username
         if self.id:
             doc["_id"] = self.id
         return doc
@@ -671,10 +680,7 @@ def get_projects_collection():
         with _projects_col_lock:
             if _projects_col is None:
                 _projects_col = settings.MONGO_DB["maia_projects"]
-                _projects_col.create_index("group_id", unique=True)
-                _projects_col.create_index("username")
-                _projects_col.create_index("users")
-                _projects_col.create_index("cluster")
+                _projects_col.create_index("namespace", unique=True)
     return _projects_col
 
 
@@ -684,8 +690,8 @@ class _MAIAProjectMeta:
         self.app_label = "dashboard"
         field_names = [
             "id",
-            "group_id",
-            "username",
+            "namespace",
+            "email",
             "users",
             "email_to_username_map",
             "memory_limit",
@@ -865,20 +871,20 @@ class MAIAProject:
 
     def __init__(
         self,
-        group_id=None,
-        username=None,
-        users=None,
-        memory_limit="16 Gi",
-        cpu_limit="4",
-        memory_request="8 Gi",
+        namespace=None,
+        email=None,
+        users=[],
+        memory_limit="2 Gi",
+        cpu_limit="2",
+        memory_request="2 Gi",
         cpu_request="2",
         project_tier="Base",
-        gpu="1",
-        cluster="maia-small",
+        gpu="N/A",
+        cluster="N/A",
         date=None,
         supervisor=None,
         description=None,
-        auto_deploy=True,
+        auto_deploy=False,
         auto_deploy_apps=None,
         project_configuration=None,
         email_to_username_map=None,
@@ -888,8 +894,8 @@ class MAIAProject:
         **extra_fields,
     ):
         self.id = id
-        self.group_id = (group_id or "").strip()
-        self.username = username.lower().strip() if username else None
+        self.namespace = (namespace or "").strip()
+        self.email = email.lower().strip() if email else None
         self.users = users or []
         self.email_to_username_map = email_to_username_map or {}
         self.memory_limit = memory_limit
@@ -912,8 +918,8 @@ class MAIAProject:
 
     def _to_doc(self):
         doc = {
-            "group_id": self.group_id,
-            "username": self.username,
+            "namespace": self.namespace,
+            "email": self.email,
             "users": self.users,
             "email_to_username_map": self.email_to_username_map,
             "memory_limit": self.memory_limit,
@@ -942,8 +948,8 @@ class MAIAProject:
         id_val = d.pop("_id", None)
         return cls(
             id=id_val,
-            group_id=d.pop("group_id", ""),
-            username=d.pop("username", None),
+            namespace=d.pop("namespace", ""),
+            email=d.pop("email", None),
             users=d.pop("users", []),
             email_to_username_map=d.pop("email_to_username_map", {}),
             memory_limit=d.pop("memory_limit", "16 Gi"),
@@ -1015,4 +1021,4 @@ class MAIAProject:
             self.id = None
 
     def __str__(self):
-        return f"MAIAProject({self.group_id}, owner={self.username})"
+        return f"MAIAProject({self.namespace}, owner={self.email})"

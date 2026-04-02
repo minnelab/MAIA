@@ -104,13 +104,14 @@ def register_user(request, api=False):
                 namespace = form.cleaned_data.get("namespace")
                 #user = authenticate(username=username, password=raw_password)
 
-                #user.is_active = False
-                #user.save()
+                user = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
+                user.is_active = False
+                user.save()
 
                 # if os.environ["DEBUG"] != "True":
                 # send_email(email, os.environ["admin_email"], email)
-                #if settings.WEBHOOK_URL is not None:
-                #    send_webhook_message(username=username, namespace=namespace, url=settings.WEBHOOK_URL)
+                if settings.WEBHOOK_URL is not None:
+                    send_webhook_message(username=username, namespace=namespace, url=settings.WEBHOOK_URL)
                 confirm_request_registration_to_project(
                     project_name=namespace,
                     user_email=form.cleaned_data.get("email"),
@@ -129,8 +130,6 @@ def register_user(request, api=False):
                 # return redirect("/login/")
 
             else:
-                print(form.errors)
-                print(form.cleaned_data)
                 if "username" in form.errors and any("already exists" in str(e) for e in form.errors["username"]):
                     requested_namespace = form.cleaned_data.get("namespace")
                     if not requested_namespace:
@@ -149,10 +148,10 @@ def register_user(request, api=False):
                             msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
                                 form.cleaned_data.get("email"), requested_namespace
                             )
-                            #if settings.WEBHOOK_URL is not None:
-                            #    send_webhook_message(
-                            #        username=form.cleaned_data.get("email"), namespace=namespace, url=settings.WEBHOOK_URL
-                            #     )
+                            if settings.WEBHOOK_URL is not None:
+                                send_webhook_message(
+                                    username=form.cleaned_data.get("email"), namespace=namespace, url=settings.WEBHOOK_URL
+                                 )
                             confirm_request_registration_to_project(
                                 project_name=requested_namespace,
                                 user_email=form.cleaned_data.get("email"),
@@ -291,7 +290,10 @@ def register_project(request, api=False):
             request_files = request.FILES
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
-            form.save()
+            try:
+                form.save()
+            except Exception as e:
+                logger.exception(e)
             email = form.cleaned_data.get("email")
             namespace = form.cleaned_data.get("namespace")
             supervisor = form.cleaned_data.get("supervisor")
