@@ -523,7 +523,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             cluster = project.cluster
             gpu = project.gpu
             project_tier = project.project_tier
-            env_file = project.env_file
+
 
         for env_file in minio_env_files:
             if env_file.startswith(maia_groups[maia_group] + "_env"):
@@ -941,12 +941,19 @@ def get_project_argo_status_and_user_table(request, settings, maia_user_model, m
         - project_argo_status (dict): Dictionary containing the Argo CD project status for each project.
     """
     argocd_cluster_id = settings.ARGOCD_CLUSTER
+    in_local_cluster_token = os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False)
+    try:
+        id_token = request.session.get("oidc_id_token")
+        username = request.user.username
+    except Exception as e:
+        id_token = None
+        logger.info(f"Error getting ID token: {e}, using local cluster token instead")
+        username = "in-local-cluster-token"
 
-    id_token = request.session.get("oidc_id_token")
     if argocd_cluster_id is None or argocd_cluster_id == "N/A":
         ...
     else:
-        kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
+        kubeconfig_dict = generate_kubeconfig(id_token, username, "default", argocd_cluster_id, settings=settings, in_local_cluster_token=in_local_cluster_token)
         config.load_kube_config_from_dict(kubeconfig_dict)
         with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
             yaml.dump(kubeconfig_dict, f)
