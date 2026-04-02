@@ -1108,7 +1108,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
     try:
         host_aliases = json.loads(aliases_env_string)
     except json.JSONDecodeError:
-        print("Error: HOST_ALIASES is not valid JSON.")
+        logger.error("Error: HOST_ALIASES is not valid JSON.")
         host_aliases = []
 
     maia_dashboard_values["hostAliases"] = host_aliases
