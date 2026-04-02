@@ -5,7 +5,11 @@ from django.template.defaulttags import register
 from MAIA.kubernetes_utils import get_namespaces
 import os
 from pathlib import Path
-from apps.models import MAIAProject
+from django.conf import settings
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAProject
+else:
+    from apps.models import MAIAProject
 from django.http import HttpResponse
 
 # Create your views here.

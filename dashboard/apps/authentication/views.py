@@ -11,11 +11,10 @@ from .forms import LoginForm, SignUpForm, RegisterProjectForm, MAIAInfoForm
 from MAIA.dashboard_utils import send_webhook_message, verify_minio_availability, send_maia_info_email, upload_env_file_to_minio
 from core.settings import GITHUB_AUTH
 from django.conf import settings
-from apps.models import MAIAProject
 if settings.MONGO_DB_ENABLED:
-    from apps.mongodb_models import MAIAUser
+    from apps.mongodb_models import MAIAUser, MAIAProject
 else:
-    from apps.models import MAIAUser
+    from apps.models import MAIAUser, MAIAProject
 import os
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -290,10 +289,7 @@ def register_project(request, api=False):
             request_files = request.FILES
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
-            try:
-                form.save()
-            except Exception as e:
-                logger.exception(e)
+            form.save()
             email = form.cleaned_data.get("email")
             namespace = form.cleaned_data.get("namespace")
             supervisor = form.cleaned_data.get("supervisor")
@@ -316,8 +312,8 @@ def register_project(request, api=False):
                 msg = "Error storing environment file in MinIO"
                 success = False
 
-            #if settings.WEBHOOK_URL is not None:
-            #    send_webhook_message(username=email, namespace=namespace, url=settings.WEBHOOK_URL, project_registration=True)
+            if settings.WEBHOOK_URL is not None:
+                send_webhook_message(username=email, namespace=namespace, url=settings.WEBHOOK_URL, project_registration=True)
 
             confirm_request_registration_for_group(
                 group_name=namespace,

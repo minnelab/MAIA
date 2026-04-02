@@ -2,7 +2,7 @@
 import hashlib
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from bson import ObjectId
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -71,8 +71,6 @@ class _FakeField:
             return forms.DateTimeField(required=False)
         elif self.name in {"users", "auto_deploy_apps", "project_configuration", "email_to_username_map"}:
             return forms.JSONField(required=not blank)
-        elif self.name in {"memory_limit", "cpu_limit", "memory_request", "cpu_request", "project_tier", "cluster", "description"}:
-            return forms.TextField(required=not blank)
         else:
             return forms.CharField(required=not blank)
 
@@ -710,7 +708,10 @@ class _MAIAProjectMeta:
             "created_at",
             "updated_at",
         ]
-        self.fields = [_FakeField(name) for name in field_names]
+        # `id` is the MongoDB `_id` and is auto-generated on insert.
+        # Mark it as non-required for Django `ModelForm` compatibility so
+        # callers don't need to provide it in POST payloads.
+        self.fields = [_FakeField(name, blank=(name == "id")) for name in field_names]
         self.concrete_fields = self.fields
         self.private_fields = []
         self.many_to_many = []
@@ -827,6 +828,7 @@ class MAIAProjectQuerySet:
         query = MAIAProject._build_query(kwargs)
         now = datetime.now(timezone.utc)
         set_payload = {**kwargs, **(defaults or {}), "updated_at": now}
+        set_payload["date"] = MAIAProject._normalize_date_for_mongo(set_payload.get("date"))
         set_on_insert = {"created_at": now}
         result = col.find_one_and_update(
             query,
@@ -929,7 +931,7 @@ class MAIAProject:
             "project_tier": self.project_tier,
             "gpu": self.gpu,
             "cluster": self.cluster,
-            "date": self.date,
+            "date": self._normalize_date_for_mongo(self.date),
             "supervisor": self.supervisor,
             "description": self.description,
             "auto_deploy": self.auto_deploy,
@@ -942,10 +944,19 @@ class MAIAProject:
             doc["_id"] = self.id
         return doc
 
+    @staticmethod
+    def _normalize_date_for_mongo(value):
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return datetime.combine(value, time.min, tzinfo=timezone.utc)
+        return value
+
     @classmethod
     def _from_doc(cls, doc):
         d = dict(doc)
         id_val = d.pop("_id", None)
+        doc_date = d.pop("date", None)
+        if isinstance(doc_date, datetime):
+            doc_date = doc_date.date()
         return cls(
             id=id_val,
             namespace=d.pop("namespace", ""),
@@ -959,7 +970,7 @@ class MAIAProject:
             project_tier=d.pop("project_tier", "Base"),
             gpu=d.pop("gpu", "1"),
             cluster=d.pop("cluster", "maia-small"),
-            date=d.pop("date", None),
+            date=doc_date,
             supervisor=d.pop("supervisor", None),
             description=d.pop("description", None),
             auto_deploy=d.pop("auto_deploy", True),
@@ -1022,3 +1033,88 @@ class MAIAProject:
 
     def __str__(self):
         return f"MAIAProject({self.namespace}, owner={self.email})"
+    
+        # ── Django-compatible clean/full_clean stubs for ModelForm compatibility ──
+    def clean(self):
+        """
+        This method is called during form/model validation.
+        Accumulate validation errors in self._errors.
+        """
+        self._errors = {}
+        # Enforce required fields even though `__init__` must tolerate None
+        # for Django form construction on GET requests.
+        if not self.email:
+            self._errors["email"] = "This field is required."
+        if not self.namespace:
+            self._errors["namespace"] = "This field is required."
+    
+    def full_clean(self, exclude=None, validate_unique=True):
+        """Stub method to support Django ModelForm compatibility.
+
+        Args:
+            exclude: Fields to exclude from validation.
+            validate_unique: Whether to validate uniqueness.
+        Returns:
+            cleaned_data: Always returns cleaned_data dict with email, username, namespace.
+        Raises:
+            ValidationError: If there are validation errors (but always returns cleaned data).
+        """
+        self.clean()
+        unique_errors = self.validate_unique(exclude=exclude) or {}
+
+        if unique_errors:
+            # Merge unique errors to main errors dict
+            self._errors.update(unique_errors)
+
+        # Determine if there's a validation error to handle just before raising.
+        if self._errors:
+            # Preserve submitted values so form.cleaned_data still contains
+            # user input when validation fails (e.g. unique constraint errors).
+            error = ValidationError(self._errors)
+            raise error
+
+        # Otherwise, normal cleaned_data
+        cleaned_data = {
+            "namespace": self.namespace,
+            "email": self.email,
+            "users": self.users,
+            "email_to_username_map": self.email_to_username_map,
+            "memory_limit": self.memory_limit,
+            "cpu_limit": self.cpu_limit,
+            "memory_request": self.memory_request,
+            "cpu_request": self.cpu_request,
+            "project_tier": self.project_tier,
+            "gpu": self.gpu,
+            "cluster": self.cluster,
+            "date": self.date,
+            "supervisor": self.supervisor,
+            "description": self.description,
+            "auto_deploy": self.auto_deploy,
+            "auto_deploy_apps": self.auto_deploy_apps,
+            "project_configuration": self.project_configuration,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+        return cleaned_data
+    
+    def validate_unique(self, exclude=None):
+        """
+        Django-compatible method to check for unique field violations.
+        Used by ModelForms and Django admin.
+        Attaches errors to the instance for form display and prevents submission if errors exist.
+        """
+        unique_errors = {}
+
+        exclude = set(exclude or [])
+
+        # Only check if not excluded
+        if 'namespace' not in exclude and self.namespace:
+            qs = type(self).objects.filter(namespace=self.namespace)
+            if self.id is not None:
+                qs = qs.exclude(id=self.id)
+            if qs.exists():
+                unique_errors["namespace"] = self.unique_error_message(type(self), ["namespace"])
+        # Other unique checks can be added if needed
+
+        return unique_errors

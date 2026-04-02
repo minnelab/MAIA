@@ -12,11 +12,10 @@ from django.contrib.auth.models import User
 from pathlib import Path
 from .forms import UserTableForm
 import re
-from apps.models import MAIAProject
 if env_settings.MONGO_DB_ENABLED:
-    from apps.mongodb_models import MAIAUser
+    from apps.mongodb_models import MAIAUser, MAIAProject
 else:
-    from apps.models import MAIAUser
+    from apps.models import MAIAUser, MAIAProject
 import json
 from django.core.cache import cache
 from MAIA.kubernetes_utils import (

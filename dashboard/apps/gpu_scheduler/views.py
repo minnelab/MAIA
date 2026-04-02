@@ -19,7 +19,10 @@ from MAIA.kubernetes_utils import generate_kubeconfig
 from pathlib import Path
 import os
 import yaml
-from apps.models import MAIAProject
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAProject
+else:
+    from apps.models import MAIAProject
 from loguru import logger
 from MAIA.keycloak_utils import get_groups_in_keycloak
 

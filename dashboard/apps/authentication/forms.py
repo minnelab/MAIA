@@ -5,13 +5,12 @@ Copyright (c) 2019 - present AppSeed.us
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from apps.models import  MAIAProject
 from .models import MAIAInfo
 from django.conf import settings
 if settings.MONGO_DB_ENABLED:
-    from apps.mongodb_models import MAIAUser
+    from apps.mongodb_models import MAIAUser, MAIAProject
 else:
-    from apps.models import MAIAUser
+    from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
@@ -135,4 +134,7 @@ class RegisterProjectForm(forms.ModelForm):
 
     class Meta:
         model = MAIAProject
-        fields = ("id", "namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
+        if settings.MONGO_DB_ENABLED:
+            fields = ("id", "namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
+        else:
+            fields = ("namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")

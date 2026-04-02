@@ -1,10 +1,9 @@
 from django.conf import settings
 from keycloak.exceptions import KeycloakPostError, KeycloakDeleteError
-from apps.models import MAIAProject
 if settings.MONGO_DB_ENABLED:
-    from apps.mongodb_models import MAIAUser
+    from apps.mongodb_models import MAIAUser, MAIAProject
 else:
-    from apps.models import MAIAUser
+    from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import (
     register_user_in_keycloak,
     register_group_in_keycloak,
