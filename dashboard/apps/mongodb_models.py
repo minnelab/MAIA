@@ -429,6 +429,15 @@ class MAIAUser:
         # Track clean/validation errors for form use
         self._errors = {}
 
+    @property
+    def pk(self):
+        """Primary key alias for Django/DRF compatibility (e.g. UserRateThrottle)."""
+        return self.id
+
+    @pk.setter
+    def pk(self, value):
+        self.id = value
+
     # ── Add Django-compatible unique_error_message for form compatibility ─────
     def unique_error_message(self, model_class, unique_check):
         """
