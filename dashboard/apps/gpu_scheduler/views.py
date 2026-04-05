@@ -135,7 +135,7 @@ def admin_delete_booking(request, id):
     booking.delete()
     pod_name = "jupyter-" + convert_username_to_jupyterhub_username(booking.user_email)
 
-    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject)
+    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject, return_only_cluster_id=True)
     local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
 
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
@@ -167,7 +167,7 @@ def delete_booking(request, id):
     booking.delete()
     pod_name = "jupyter-" + convert_username_to_jupyterhub_username(booking.user_email)
 
-    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject)
+    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject, return_only_cluster_id=True)
     local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
 
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:

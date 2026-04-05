@@ -134,7 +134,7 @@ def namespace_view(request, namespace_id):
             cluster_config_dict = {"ssh_hostname": "localhost"}
         else:
             _, cluster_id = get_project(
-                namespace_id.lower().replace("_", "-"), settings=settings, maia_project_model=MAIAProject, is_namespace_style=True
+                namespace_id.lower().replace("_", "-"), settings=settings, maia_project_model=MAIAProject, is_namespace_style=True, return_only_cluster_id=True
             )
 
             cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]

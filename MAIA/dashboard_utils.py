@@ -726,7 +726,7 @@ def update_user_table(form, user_model, maia_user_model):
                             maia_user_model.objects.create(id=user_id, namespace=namespace)
 
 
-def get_project(group_id, settings, maia_project_model, is_namespace_style=False):
+def get_project(group_id, settings, maia_project_model, is_namespace_style=False, return_only_cluster_id=False):
     """
     Retrieve project details and associated cluster ID based on the group ID.
 
@@ -740,6 +740,8 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
         The Django model representing MAIA projects.
     is_namespace_style : bool, optional
         Flag indicating whether the group ID is in namespace style (default is False).
+    return_only_cluster_id : bool, optional
+        Flag indicating whether to return only the cluster ID (default is False).
 
     Returns
     -------
@@ -750,6 +752,16 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
     """
 
     cluster_id = None
+    
+    if return_only_cluster_id:
+        for project in maia_project_model.objects.all():
+            if is_namespace_style:
+                if str(project.namespace).lower().replace("_", "-") == group_id:
+                    return None, project.cluster
+            else:
+                if project.namespace == group_id:
+                    return None, project.cluster
+        return None, None
 
     for project in maia_project_model.objects.all():
         if is_namespace_style:
@@ -779,22 +791,41 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
 
                         for user in users:
                             group_users.append(user["email"])
-
+                
                 namespace_form = {
                     "group_ID": group_id,
                     "group_subdomain": group_id.lower().replace("_", "-"),
                     "users": group_users,
                     "resources_limits": {
-                        "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
-                        "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
+                        "memory": [project.memory_request, project.memory_limit],
+                        "cpu": [project.cpu_request, project.cpu_limit],
                     },
                     "project_tier": project.project_tier,
+                    "cluster": project.cluster,
+                    "email": project.email,
+                    "date": project.date,
+                    "supervisor": project.supervisor,
+                    "description": project.description,
+                    "auto_deploy": project.auto_deploy,
+                    "auto_deploy_apps": project.auto_deploy_apps,
+                    "project_configuration": project.project_configuration
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
+                try:
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
 
-                if project.env_file != "N/A" and project.env_file is not None:
-                    namespace_form["minio_env_name"] = project.env_file
+                    minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
+                except Exception:
+                    minio_env_files = []
+                for env_file in minio_env_files:
+                    if env_file.startswith(group_id + "_env"):
+                        namespace_form["minio_env_name"] = env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
@@ -833,16 +864,34 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "group_subdomain": group_id.lower().replace("_", "-"),
                     "users": group_users,
                     "resources_limits": {
-                        "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
-                        "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
+                        "memory": [project.memory_request, project.memory_limit],
+                        "cpu": [project.cpu_request, project.cpu_limit],
                     },
                     "project_tier": project.project_tier,
+                    "cluster": project.cluster,
+                    "email": project.email,
+                    "date": project.date,
+                    "supervisor": project.supervisor,
+                    "description": project.description,
+                    "auto_deploy": project.auto_deploy,
+                    "auto_deploy_apps": project.auto_deploy_apps,
+                    "project_configuration": project.project_configuration
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
-
-                if project.env_file != "N/A" and project.env_file is not None:
-                    namespace_form["minio_env_name"] = project.env_file
+                try:
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
+                    minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
+                except Exception:
+                    minio_env_files = []
+                for env_file in minio_env_files:
+                    if env_file.startswith(group_id + "_env"):
+                        namespace_form["minio_env_name"] = env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
