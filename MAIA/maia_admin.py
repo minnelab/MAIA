@@ -1072,13 +1072,31 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
 
     # Webhook and Support URL
     if "WEBHOOK_URL" in os.environ and "SUPPORT_URL" in os.environ:
-        maia_dashboard_values["env"].extend(
+        if dev_mode:
+            if "WEBHOOK_URL_DEV" in os.environ:
+                maia_dashboard_values["env"].extend(
+                    [
+                        {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL_DEV"]},
+                    ]
+                )
+            else:
+                maia_dashboard_values["env"].extend(
+                    [
+                        {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL"]},
+                    ]
+                )
+            maia_dashboard_values["env"].extend(
+                [
+                    {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
+                ]
+            )
+        else:
+            maia_dashboard_values["env"].extend(
             [
                 {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL"]},
                 {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
             ]
         )
-
     # MAIA-Chatbot Configuration
     if "OPENWEBAI_API_KEY" in os.environ and "OPENWEBAI_URL" in os.environ and "OPENWEBAI_MODEL" in os.environ:
         maia_dashboard_values["env"].extend(
