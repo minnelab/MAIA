@@ -134,15 +134,33 @@ def register_user(request, api=False):
                     requested_namespace = form.cleaned_data.get("namespace")
                     if not requested_namespace:
                         requested_namespace = settings.USERS_GROUP
+                        msg = "The requested namespace does not exist. Please choose a valid namespace."
+                        success = False
+                        if api:
+                            return Response(
+                                {"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+                            )
+                        else:
+                            return render(
+                                request,
+                                "accounts/register.html",
+                                {
+                                    "dashboard_version": settings.DASHBOARD_VERSION,
+                                    "MAIA_VERSION": settings.MAIA_VERSION,
+                                    "form": form,
+                                    "msg": msg,
+                                    "success": success,
+                                },
+                            )
                     user_in_db = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
                     namespace_is_already_registered = False
                     if user_in_db:
                         user_id = user_in_db.id
                         namespace = user_in_db.namespace
                         for ns in namespace.split(","):
-                            if ns == requested_namespace:
+                            if ns == requested_namespace and requested_namespace != settings.USERS_GROUP:
                                 namespace_is_already_registered = True
-                        if not namespace_is_already_registered:
+                        if not namespace_is_already_registered and requested_namespace != settings.USERS_GROUP:
                             namespace = f"{namespace},{requested_namespace}"
                             MAIAUser.objects.filter(id=user_id).update(namespace=namespace)
                             msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
@@ -291,6 +309,12 @@ def register_project(request, api=False):
         if api:
             request_data = request.data
             request_files = request.FILES
+        namespace = request_data.get("namespace")
+        exists = MAIAProject.objects.filter(namespace=namespace).exists()
+        if exists:
+            msg = "Project with namespace {} already exists or  it has already been requested.".format(namespace)
+            success = False
+            return Response({"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
             form.save()
