@@ -81,7 +81,7 @@ def _serialize_groups_dict_for_json(maia_groups_dict):
     return result
 
 
-_UPDATABLE_GROUP_FIELDS = {"cpu_limit", "memory_limit", "cluster", "gpu", "project_tier", "description", "supervisor", "email"}
+_UPDATABLE_GROUP_FIELDS = {"email_to_username_map", "memory_request", "cpu_request", "auto_deploy", "auto_deploy_apps", "project_configuration", "cpu_limit", "memory_limit", "cluster", "gpu", "project_tier", "description", "supervisor", "email"}
 
 
 def _enrich_user_list(user_list):
@@ -462,7 +462,7 @@ class UserManagementAPIDeleteGroupView(APIView):
 
 
 class ProjectChartValuesSerializer(serializers.Serializer):
-    group_id = serializers.CharField(max_length=63)
+    namespace = serializers.CharField(max_length=63)
     users = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     memory_limit = serializers.CharField(max_length=100)
     cpu_limit = serializers.CharField(max_length=100)
@@ -474,7 +474,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     cluster = serializers.CharField(max_length=100)
     date = serializers.DateField()
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
-    username = serializers.EmailField(max_length=254)
+    email = serializers.EmailField(max_length=254)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
     auto_deploy = serializers.BooleanField(required=False, default=False)
     auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
@@ -513,8 +513,8 @@ class ProjectChartValuesAPIView(APIView):
 
             validated_data = serializer.validated_data
 
-            group_id = validated_data["group_id"]
-            username = validated_data["username"]
+            namespace = validated_data["namespace"]
+            email = validated_data["email"]
             users = validated_data["users"]
             memory_limit = validated_data["memory_limit"]
             cpu_limit = validated_data["cpu_limit"]
@@ -602,8 +602,8 @@ class ProjectChartValuesAPIView(APIView):
             )
 
             project_form_dict = {
-                "group_ID": group_id,
-                "group_subdomain": group_id.lower().replace("_", "-"),
+                "group_ID": namespace,
+                "group_subdomain": namespace.lower().replace("_", "-"),
                 "users": users,
                 "resources_limits": {
                     "memory": [memory_request, memory_limit],
@@ -635,15 +635,15 @@ class ProjectChartValuesAPIView(APIView):
                     else:
                         kubeflow_namespace = False
                     create_namespace_from_context(
-                        namespace_id=group_id.lower().replace("_", "-"),
+                        namespace_id=namespace.lower().replace("_", "-"),
                         kubeflow_namespace=kubeflow_namespace,
                         owner_email=users[0],
                     )
-                    create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
+                    create_maia_rbac_from_context(namespace=namespace.lower().replace("_", "-"))
             values = deploy_project(
-                group_id,
+                namespace,
                 id_token,
-                username,
+                email,
                 cluster,
                 project_form_dict,
                 disable_argocd=not auto_deploy,
@@ -929,26 +929,27 @@ def delete_group_view(request, group_id):
 
 @login_required(login_url="/maia/login/")
 def register_user_view(request, email):
-    if not request.user.is_superuser:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({}, request))
+    try:
+        if not request.user.is_superuser:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({}, request))
 
-    user = MAIAUser.objects.filter(email=email).first()
-    if not user:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({"message": "User not found"}, request))
-    namespace = user.namespace
-    username = user.username
-    first_name = user.first_name
-    last_name = user.last_name
-    if not namespace:
-        namespace = env_settings.USERS_GROUP
-    result = create_user_service(email, username, first_name, last_name, namespace)
-    if result["status"] == 200:
-        return redirect("/maia/user-management/")
-    else:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({"message": result["message"]}, request))
+        user = MAIAUser.objects.filter(email=email).first()
+        if not user:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({"message": "User not found"}, request))
+        namespace = user.namespace
+        username = user.username
+        if not namespace:
+            namespace = env_settings.USERS_GROUP
+        result = create_user_service(email, username, "", "", namespace)
+        if result["status"] == 200:
+            return redirect("/maia/user-management/")
+        else:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({"message": result["message"]}, request))
+    except Exception as e:
+        logger.exception(e)
 
 
 @login_required(login_url="/maia/login/")
@@ -973,24 +974,28 @@ def register_user_in_group_view(request, email):
         return HttpResponse(html_template.render({}, request))
 
     groups = get_list_of_groups_requesting_a_user(email=email, user_model=MAIAUser)
+    
+    current_groups = get_groups_for_user(email, settings=env_settings)
 
     for group_id in groups:
-        register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=env_settings)
-        send_email_user_registration_to_group(
-            project_name=group_id,
-            user_email=email,
-            support_link=env_settings.SUPPORT_URL,
-            dashboard_url=env_settings.HOSTNAME + "/maia/",
-            smtp_sender_email=env_settings.SMTP_SENDER_EMAIL,
-            smtp_server=env_settings.SMTP_SERVER,
-            smtp_port=env_settings.SMTP_PORT,
-            smtp_password=env_settings.SMTP_PASSWORD,
-        )
-        if group_id == env_settings.ADMIN_GROUP:
-            user = MAIAUser.objects.filter(email=email).first()
-            user.is_superuser = True
-            user.is_staff = True
-            user.save()
+        if group_id not in current_groups:
+            register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=env_settings)
+            if group_id != env_settings.USERS_GROUP:
+                send_email_user_registration_to_group(
+                    project_name=group_id,
+                    user_email=email,
+                    support_link=env_settings.SUPPORT_URL,
+                    dashboard_url="https://" + env_settings.HOSTNAME + "/maia/",
+                    smtp_sender_email=env_settings.SMTP_SENDER_EMAIL,
+                    smtp_server=env_settings.SMTP_SERVER,
+                    smtp_port=env_settings.SMTP_PORT,
+                    smtp_password=env_settings.SMTP_PASSWORD,
+                )
+            if group_id == env_settings.ADMIN_GROUP:
+                user = MAIAUser.objects.filter(email=email).first()
+                user.is_superuser = True
+                user.is_staff = True
+                user.save()
 
     return redirect("/maia/user-management/")
 

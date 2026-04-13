@@ -38,4 +38,5 @@ urlpatterns = [
     path("delete-group-view/<str:group_id>", views.delete_group_view),
     path("remove-user-from-group/<str:email>", views.remove_user_from_group_view),
     path("delete-user-view/<str:email>", views.delete_user_view),
+    path("update-group-json/<str:namespace>", views.update_group_json_view),
 ]

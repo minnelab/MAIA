@@ -125,7 +125,7 @@ def create_user(email, username, first_name, last_name, namespace):
             send_email_approved_registration_email(
                 email,
                 temp_password,
-                settings.HOSTNAME + "/maia/",
+                "https://" + settings.HOSTNAME + "/maia/",
                 settings.SMTP_SENDER_EMAIL,
                 settings.SMTP_SERVER,
                 settings.SMTP_PORT,
@@ -488,7 +488,7 @@ def create_group(
                 project_name=group_id,
                 project_owner=email,
                 support_link=settings.SUPPORT_URL,
-                dashboard_url=settings.HOSTNAME + "/maia/",
+                dashboard_url="https://" + settings.HOSTNAME + "/maia/",
                 smtp_sender_email=settings.SMTP_SENDER_EMAIL,
                 smtp_server=settings.SMTP_SERVER,
                 smtp_port=settings.SMTP_PORT,

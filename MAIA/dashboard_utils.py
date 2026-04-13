@@ -516,7 +516,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 admin_users = []
             if project.supervisor:
                 for email in project.supervisor.split(","):
-                    admin_users.append(email)
+                    if email not in admin_users:
+                        admin_users.append(email)
             cpu_limit = project.cpu_limit
             memory_limit = project.memory_limit
             date = project.date
@@ -537,17 +538,25 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 group_users.append(user["email"] + " [Project Admin]")
             else:
                 group_users.append(user["email"])
-
         maia_group_dict[maia_groups[maia_group]] = {
             "users": group_users,
-            "env_file": env_files,
+            "namespace": project.namespace,
+            "supervisor": project.supervisor,
             "admin_users": admin_users,
-            "cpu_limit": cpu_limit,
-            "memory_limit": memory_limit,
-            "date": date,
-            "cluster": cluster,
-            "gpu": gpu,
-            "project_tier": project_tier,
+            "env_file": env_files,
+            "cpu_limit": project.cpu_limit,
+            "email": project.email,
+            "memory_limit": project.memory_limit,
+            "date": project.date,
+            "cluster": project.cluster,
+            "gpu": project.gpu,
+            "project_tier": project.project_tier,
+            "email_to_username_map": project.email_to_username_map,
+            "memory_request": project.memory_request,
+            "cpu_request": project.cpu_request,
+            "auto_deploy": project.auto_deploy,
+            "auto_deploy_apps": project.auto_deploy_apps,
+            "project_configuration": project.project_configuration,
         }
 
     for pending_project in pending_projects:
@@ -568,14 +577,25 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         maia_group_dict[pending_project] = {
             "users": users,
             "pending": True,
+            "namespace": pending_project,
             "env_file": env_files,
-            "admin_users": [],
+            "email": project.email,
             "cpu_limit": project.cpu_limit,
             "memory_limit": project.memory_limit,
             "date": project.date,
-            "cluster": "N/A",
+            "cluster": project.cluster,
+            "admin_users": [project.supervisor],
             "gpu": project.gpu,
+            "supervisor": project.supervisor,
+            "description": project.description,
+            "date": project.date,
             "project_tier": project.project_tier,
+            "email_to_username_map": project.email_to_username_map,
+            "memory_request": project.memory_request,
+            "cpu_request": project.cpu_request,
+            "auto_deploy": project.auto_deploy,
+            "auto_deploy_apps": project.auto_deploy_apps,
+            "project_configuration": project.project_configuration,
         }
 
     users_to_register_in_keycloak = []
