@@ -499,12 +499,6 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         users = keycloak_admin.get_group_members(group_id=maia_group)
 
         admin_users = []
-        cpu_limit = None
-        memory_limit = None
-        date = None
-        cluster = None
-        gpu = None
-        project_tier = None
         env_files = []
 
         if maia_project_model.objects.filter(namespace=maia_groups[maia_group]).exists():
@@ -518,12 +512,6 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 for email in project.supervisor.split(","):
                     if email not in admin_users:
                         admin_users.append(email)
-            cpu_limit = project.cpu_limit
-            memory_limit = project.memory_limit
-            date = project.date
-            cluster = project.cluster
-            gpu = project.gpu
-            project_tier = project.project_tier
 
         for env_file in minio_env_files:
             if env_file.startswith(maia_groups[maia_group] + "_env"):
@@ -588,7 +576,6 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             "gpu": project.gpu,
             "supervisor": project.supervisor,
             "description": project.description,
-            "date": project.date,
             "project_tier": project.project_tier,
             "email_to_username_map": project.email_to_username_map,
             "memory_request": project.memory_request,
@@ -771,7 +758,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
     """
 
     cluster_id = None
-    
+
     if return_only_cluster_id:
         for project in maia_project_model.objects.all():
             if is_namespace_style:
@@ -810,7 +797,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
 
                         for user in users:
                             group_users.append(user["email"])
-                
+
                 namespace_form = {
                     "group_ID": group_id,
                     "group_subdomain": group_id.lower().replace("_", "-"),
@@ -827,7 +814,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "description": project.description,
                     "auto_deploy": project.auto_deploy,
                     "auto_deploy_apps": project.auto_deploy_apps,
-                    "project_configuration": project.project_configuration
+                    "project_configuration": project.project_configuration,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
@@ -894,7 +881,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "description": project.description,
                     "auto_deploy": project.auto_deploy,
                     "auto_deploy_apps": project.auto_deploy_apps,
-                    "project_configuration": project.project_configuration
+                    "project_configuration": project.project_configuration,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"

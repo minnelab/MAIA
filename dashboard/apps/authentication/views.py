@@ -138,7 +138,8 @@ def register_user(request, api=False):
                         success = False
                         if api:
                             return Response(
-                                {"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+                                {"msg": msg, "success": success},
+                                status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST,
                             )
                         else:
                             return render(
@@ -314,7 +315,9 @@ def register_project(request, api=False):
         if exists:
             msg = "Project with namespace {} already exists or  it has already been requested.".format(namespace)
             success = False
-            return Response({"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+            )
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
             form.save()

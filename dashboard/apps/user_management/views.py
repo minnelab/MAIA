@@ -81,7 +81,22 @@ def _serialize_groups_dict_for_json(maia_groups_dict):
     return result
 
 
-_UPDATABLE_GROUP_FIELDS = {"email_to_username_map", "memory_request", "cpu_request", "auto_deploy", "auto_deploy_apps", "project_configuration", "cpu_limit", "memory_limit", "cluster", "gpu", "project_tier", "description", "supervisor", "email"}
+_UPDATABLE_GROUP_FIELDS = {
+    "email_to_username_map",
+    "memory_request",
+    "cpu_request",
+    "auto_deploy",
+    "auto_deploy_apps",
+    "project_configuration",
+    "cpu_limit",
+    "memory_limit",
+    "cluster",
+    "gpu",
+    "project_tier",
+    "description",
+    "supervisor",
+    "email",
+}
 
 
 def _enrich_user_list(user_list):
@@ -573,21 +588,21 @@ class ProjectChartValuesAPIView(APIView):
                     "BUCKET_NAME": os.environ["BUCKET_NAME"],
                 }
                 settings = SimpleNamespace(**settings_dict)
-                filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
+                filename, success = upload_env_file_to_minio(env_file=env_file, namespace=namespace, settings=settings)
                 if not success:
                     return Response({"error": filename}, status=400)
                 env_file = filename
             for user in users:
                 if not MAIAUser.objects.filter(email=user).exists():
                     username = email_to_username_map.get(user, user)
-                    create_user_service(user, username, "", "", f"{group_id},{user_group}")
+                    create_user_service(user, username, "", "", f"{namespace},{user_group}")
             if not MAIAUser.objects.filter(email=supervisor).exists():
                 username = email_to_username_map.get(supervisor, supervisor)
-                create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
+                create_user_service(supervisor, username, "", "", f"{namespace},{user_group}")
             if supervisor not in users:
                 users = [supervisor] + users
             create_group_service(
-                group_id,
+                namespace,
                 gpu,
                 date,
                 memory_limit,
@@ -659,12 +674,12 @@ class ProjectChartValuesAPIView(APIView):
 
                 TOKEN = response.json()["token"]
 
-                apps = get_maia_toolkit_apps(group_id, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
+                apps = get_maia_toolkit_apps(namespace, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
 
                 for app in apps_to_sync:
                     for a in apps:
-                        if f"{group_id}-{app}" == a["name"]:
-                            sync_argocd_app(group_id, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
+                        if f"{namespace}-{app}" == a["name"]:
+                            sync_argocd_app(namespace, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
 
             return Response({"values": values["message"]}, status=200)
         except Exception as e:
@@ -974,7 +989,7 @@ def register_user_in_group_view(request, email):
         return HttpResponse(html_template.render({}, request))
 
     groups = get_list_of_groups_requesting_a_user(email=email, user_model=MAIAUser)
-    
+
     current_groups = get_groups_for_user(email, settings=env_settings)
 
     for group_id in groups:
