@@ -689,10 +689,9 @@ def update_user_table(form, user_model, maia_user_model):
     # project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
 
     # namespace_list = []
-
     for entry in form.cleaned_data:
         if entry.startswith("namespace_"):
-            user = user_model.objects.filter(email=entry.replace("namespace_", "")).first()
+            user = maia_user_model.objects.filter(email=entry.replace("namespace_", "")).first()
             if user:
                 user_id = user.id
                 if maia_user_model.objects.filter(id=user_id).exists():
@@ -706,7 +705,7 @@ def update_user_table(form, user_model, maia_user_model):
                     maia_user_model.objects.filter(id=user_id).update(namespace=namespace)
                 else:
                     if user_id is not None:
-                        if user_model.objects.filter(id=user_id).exists():
+                        if maia_user_model.objects.filter(id=user_id).exists():
                             namespace = form.cleaned_data[entry]
                             # namespaces = []
                             # for namespace in namespace_list:
