@@ -631,7 +631,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
     dashboard_domain = cluster_config_dict["domain"]
     if "DASHBOARD_DOMAIN" in os.environ:
         dashboard_domain = os.environ["DASHBOARD_DOMAIN"]
-    keycloak_domain = cluster_config_dict["domain"]
+    keycloak_domain = "iam." + cluster_config_dict["domain"]
     if "KEYCLOAK_DOMAIN" in os.environ:
         keycloak_domain = os.environ["KEYCLOAK_DOMAIN"]
     argocd_domain = cluster_config_dict["domain"]
@@ -699,25 +699,25 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             {"name": "OIDC_RP_CLIENT_ID", "value": "maia"},
             {"name": "OIDC_RP_PUBLIC_CLIENT_ID", "value": "maia-public"},
             {"name": "OIDC_RP_CLIENT_SECRET", "value": os.environ["keycloak_client_secret"]},
-            {"name": "OIDC_SERVER_URL", "value": "https://iam." + keycloak_domain},
+            {"name": "OIDC_SERVER_URL", "value": "https://" + keycloak_domain},
             {"name": "OIDC_REALM_NAME", "value": realm_name},
             {"name": "OIDC_USERNAME", "value": "admin"},
-            {"name": "OIDC_ISSUER_URL", "value": "https://iam." + keycloak_domain + f"/realms/{realm_name}"},
+            {"name": "OIDC_ISSUER_URL", "value": "https://" + keycloak_domain + f"/realms/{realm_name}"},
             {
                 "name": "OIDC_OP_AUTHORIZATION_ENDPOINT",
-                "value": "https://iam." + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/auth",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/auth",
             },
             {
                 "name": "OIDC_OP_TOKEN_ENDPOINT",
-                "value": "https://iam." + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/token",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/token",
             },
             {
                 "name": "OIDC_OP_USER_ENDPOINT",
-                "value": "https://iam." + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/userinfo",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/userinfo",
             },
             {
                 "name": "OIDC_OP_JWKS_ENDPOINT",
-                "value": "https://iam." + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/certs",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/certs",
             },
             {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
