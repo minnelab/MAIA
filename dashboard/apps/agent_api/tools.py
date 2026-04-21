@@ -7,7 +7,11 @@ and exposed via the standalone MCP server.
 
 import json
 from loguru import logger
-from apps.models import MAIAUser, MAIAProject
+from django.conf import settings as env_settings
+if env_settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser, MAIAProject
+else:
+    from apps.models import MAIAUser, MAIAProject
 from apps.user_management.services import (
     create_user,
     update_user,
@@ -15,13 +19,25 @@ from apps.user_management.services import (
     create_group,
     delete_group,
 )
+from apps.authentication.views import register_user
 from django.conf import settings
+from django.http import HttpRequest
 from MAIA.dashboard_utils import get_pending_projects
 
 # ---------------------------------------------------------------------------
 # Tool schemas (Anthropic tool_use format)
 # ---------------------------------------------------------------------------
 
+USER_TOOL_DEFINITIONS = [
+    {
+        "name": "request_create_user",
+        "description": (
+            "Request a new MAIA user to be created and registered in Keycloak. "
+            "An invitation email with a temporary password is sent automatically."
+        ),
+        "input_schema": {"type": "object", "properties": {"email": {"type": "string", "description": "User's email address"}, "username": {"type": "string", "description": "Username (lowercase, no spaces)"}, "first_name": {"type": "string", "description": "First name"}, "last_name": {"type": "string", "description": "Last name"}, "namespace": {"type": "string", "description": "Comma-separated list of group/namespace IDs to assign (optional)"}}, "required": ["email", "username", "first_name", "last_name"]},
+    }
+]
 TOOL_DEFINITIONS = [
     {
         "name": "list_users",
@@ -202,6 +218,18 @@ OPENAI_TOOL_DEFINITIONS = [
     for t in TOOL_DEFINITIONS
 ]
 
+OPENAI_USER_TOOL_DEFINITIONS = [
+    {
+        "type": "function",
+        "function": {
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["input_schema"],
+        },
+    }
+    for t in USER_TOOL_DEFINITIONS
+]
+
 def execute_tool(name: str, arguments: dict) -> str:
     """Execute a MAIA admin tool and return the result as a JSON string."""
     try:
@@ -283,7 +311,12 @@ def execute_tool(name: str, arguments: dict) -> str:
         elif name == "delete_project":
             result = delete_group(group_id=arguments["group_id"])
             return json.dumps(result)
-
+        elif name == "request_create_user":
+            request = HttpRequest()
+            request.method = "POST"
+            request.data = arguments
+            result = register_user(request=request, api=True)
+            return json.dumps({"success": result.data["success"], "msg": result.data["msg"]})
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})
 

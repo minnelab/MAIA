@@ -24,7 +24,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .tools import TOOL_DEFINITIONS, OPENAI_TOOL_DEFINITIONS, execute_tool
+from .tools import TOOL_DEFINITIONS, OPENAI_TOOL_DEFINITIONS, OPENAI_USER_TOOL_DEFINITIONS, execute_tool
 
 # ---------------------------------------------------------------------------
 # System prompt (shared across all providers)
@@ -183,14 +183,13 @@ def _run_agent_openai(message: str, history: list, cfg: dict):
 
     # OpenAI keeps system prompt inside the messages list
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.extend(history)
+    messages.extend(history[:-2])
     messages.append({"role": "user", "content": message})
-
     while True:
         response = client.chat.completions.create(
             model=cfg["model"],
             messages=messages,
-            tools=OPENAI_TOOL_DEFINITIONS,
+            tools=OPENAI_USER_TOOL_DEFINITIONS,
             max_tokens=4096,
         )
         choice = response.choices[0]

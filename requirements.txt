@@ -33,3 +33,4 @@ rich
 loguru
 ansible
 dotenv
+openai
