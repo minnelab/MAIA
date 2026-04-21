@@ -277,6 +277,24 @@ def execute_tool(name: str, arguments: dict) -> str:
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})
 
+
+# ---------------------------------------------------------------------------
+# OpenAI / Ollama function-calling format
+# (wraps the same input_schema — only the key name differs)
+# ---------------------------------------------------------------------------
+
+OPENAI_TOOL_DEFINITIONS = [
+    {
+        "type": "function",
+        "function": {
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["input_schema"],
+        },
+    }
+    for t in TOOL_DEFINITIONS
+]
+
     except Exception as exc:
         logger.error(f"Tool execution error [{name}]: {exc}")
         return json.dumps({"error": str(exc)})

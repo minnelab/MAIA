@@ -266,12 +266,33 @@ def agent_api_view(request):
         html_template = loader.get_template("home/page-403.html")
         return HttpResponse(html_template.render({}, request))
 
+    provider = getattr(settings, "AGENT_PROVIDER", os.environ.get("AGENT_PROVIDER", "anthropic")).lower()
+
+    if provider == "openai":
+        is_ready = bool(getattr(settings, "OPENAI_API_KEY", None))
+        active_model = getattr(settings, "OPENAI_MODEL", "gpt-4o")
+        active_base_url = getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1")
+    elif provider == "ollama":
+        is_ready = True
+        active_model = getattr(settings, "OLLAMA_MODEL", "llama3")
+        active_base_url = getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    else:
+        provider = "anthropic"
+        is_ready = bool(getattr(settings, "ANTHROPIC_API_KEY", None))
+        active_model = getattr(settings, "AGENT_MODEL", "claude-sonnet-4-6")
+        active_base_url = None
+
     context = {
         "segment": "agent-api",
-        "hostname": settings.HOSTNAME,
-        "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
+        "hostname": getattr(settings, "HOSTNAME", "localhost"),
+        "agent_provider": provider,
+        "agent_is_ready": is_ready,
+        "agent_model": active_model,
+        "agent_base_url": active_base_url,
         "agent_token_configured": bool(getattr(settings, "AGENT_API_TOKEN", None)),
-        "agent_model": getattr(settings, "AGENT_MODEL", "claude-sonnet-4-6"),
+        # legacy keys kept for the env-var table
+        "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
+        "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", None)),
         "user": ["admin"],
         "username": request.user.username + " [ADMIN]",
     }

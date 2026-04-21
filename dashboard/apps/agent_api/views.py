@@ -1,21 +1,18 @@
 """
-MAIA Agent API views.
+MAIA Agent API views — multi-provider.
 
-Provides two HTTP endpoints:
+Supported AI providers (set via AGENT_PROVIDER env var):
+  anthropic  (default) — Claude via Anthropic SDK
+  openai               — GPT-4 / Azure / any OpenAI-compatible endpoint
+  ollama               — local models via Ollama's OpenAI-compatible API
 
-1. POST /maia/agent/chat/
-   Generic REST endpoint — accepts {"message": "...", "history": [...]}
-   and returns {"response": "...", "history": [...]}.
-
-2. POST /maia/agent/mattermost/
-   Mattermost-compatible endpoint — accepts the standard outgoing-webhook
-   payload and returns {"text": "...", "response_type": "in_channel"}.
-
-Both endpoints require the X-Agent-Token header (or "token" field in the
-body) to match the AGENT_API_TOKEN setting.
-
-The agent uses Claude with MAIA admin tools to perform user/project
-management operations on behalf of the requester.
+Endpoints
+---------
+POST   /maia/agent/chat/          Generic REST (token auth)
+POST   /maia/agent/mattermost/    Mattermost outgoing webhook / slash command
+POST   /maia/agent/admin-chat/    Dashboard chat UI (session auth, superuser only)
+DELETE /maia/agent/admin-chat/    Clear session history
+POST   /maia/agent/mcp/           HTTP MCP server (JSON-RPC 2.0)
 """
 
 import json
@@ -27,10 +24,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .tools import TOOL_DEFINITIONS, execute_tool
+from .tools import TOOL_DEFINITIONS, OPENAI_TOOL_DEFINITIONS, execute_tool
 
 # ---------------------------------------------------------------------------
-# Agent runner
+# System prompt (shared across all providers)
 # ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT = """You are MAIA Admin Assistant, an AI agent that helps \
@@ -52,92 +49,196 @@ Guidelines:
 5. Keep responses concise and professional.
 """
 
+# ---------------------------------------------------------------------------
+# Configuration helper
+# ---------------------------------------------------------------------------
 
-def _run_agent(message: str, history: list, model: str, api_key: str):
-    """
-    Run the Claude agentic loop with MAIA admin tools.
 
-    Returns (response_text: str, updated_history: list).
+def _get_config() -> dict:
     """
+    Return a dict with all provider settings pulled from Django settings / env.
+
+    Keys: provider, api_key, model, base_url, agent_token, is_ready
+    """
+
+    def _s(key, default=None):
+        return getattr(settings, key, None) or os.environ.get(key, default) or default
+
+    provider = _s("AGENT_PROVIDER", "anthropic").lower()
+    agent_token = _s("AGENT_API_TOKEN", "")
+
+    if provider == "openai":
+        api_key = _s("OPENAI_API_KEY", "")
+        model = _s("OPENAI_MODEL", "gpt-4o")
+        base_url = _s("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        is_ready = bool(api_key)
+
+    elif provider == "ollama":
+        api_key = "ollama"  # openai SDK requires a non-empty value
+        model = _s("OLLAMA_MODEL", "llama3")
+        base_url = _s("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        is_ready = True  # no key needed
+
+    else:  # anthropic (default)
+        provider = "anthropic"
+        api_key = _s("ANTHROPIC_API_KEY", "")
+        model = _s("AGENT_MODEL", "claude-sonnet-4-6")
+        base_url = None
+        is_ready = bool(api_key)
+
+    return {
+        "provider": provider,
+        "api_key": api_key,
+        "model": model,
+        "base_url": base_url,
+        "agent_token": agent_token,
+        "is_ready": is_ready,
+    }
+
+
+def _not_ready_error(cfg: dict) -> str:
+    if cfg["provider"] == "anthropic":
+        return "ANTHROPIC_API_KEY is not configured on the server."
+    if cfg["provider"] == "openai":
+        return "OPENAI_API_KEY is not configured on the server."
+    return f"Provider '{cfg['provider']}' is not configured."
+
+
+# ---------------------------------------------------------------------------
+# Anthropic agent runner
+# ---------------------------------------------------------------------------
+
+
+def _run_agent_anthropic(message: str, history: list, cfg: dict):
+    """Agentic loop using the Anthropic SDK (Claude)."""
     try:
         import anthropic
     except ImportError as exc:
         raise RuntimeError(
-            "The 'anthropic' package is required for the Agent API. "
-            "Install it with: pip install anthropic"
+            "Install the 'anthropic' package: pip install anthropic"
         ) from exc
 
-    client = anthropic.Anthropic(api_key=api_key)
-
+    client = anthropic.Anthropic(api_key=cfg["api_key"])
     messages = list(history)
     messages.append({"role": "user", "content": message})
 
     while True:
         response = client.messages.create(
-            model=model,
+            model=cfg["model"],
             max_tokens=4096,
             system=SYSTEM_PROMPT,
             messages=messages,
             tools=TOOL_DEFINITIONS,
         )
-
-        # Append the raw assistant message to history
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "end_turn":
             text = "".join(
-                block.text for block in response.content if hasattr(block, "text")
+                b.text for b in response.content if hasattr(b, "text")
             )
             return text, messages
 
         if response.stop_reason == "tool_use":
-            tool_results = []
-            for block in response.content:
-                if block.type == "tool_use":
-                    logger.info(
-                        f"Agent calling tool '{block.name}' with args: {block.input}"
-                    )
-                    result = execute_tool(block.name, block.input)
-                    tool_results.append(
+            results = []
+            for b in response.content:
+                if b.type == "tool_use":
+                    logger.info(f"[anthropic] tool '{b.name}' args={b.input}")
+                    results.append(
                         {
                             "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result,
+                            "tool_use_id": b.id,
+                            "content": execute_tool(b.name, b.input),
                         }
                     )
-            messages.append({"role": "user", "content": tool_results})
-
+            messages.append({"role": "user", "content": results})
         else:
-            # Unexpected stop reason — return whatever text we have
             text = "".join(
-                block.text for block in response.content if hasattr(block, "text")
+                b.text for b in response.content if hasattr(b, "text")
             )
             return text or "No response generated.", messages
 
 
 # ---------------------------------------------------------------------------
-# Shared helpers
+# OpenAI-compatible agent runner  (OpenAI GPT-4, Ollama, …)
 # ---------------------------------------------------------------------------
 
 
-def _get_config():
-    """Return (api_key, model, agent_token) from settings / env."""
-    api_key = getattr(settings, "ANTHROPIC_API_KEY", None) or os.environ.get(
-        "ANTHROPIC_API_KEY", ""
-    )
-    model = getattr(settings, "AGENT_MODEL", None) or os.environ.get(
-        "AGENT_MODEL", "claude-sonnet-4-6"
-    )
-    agent_token = getattr(settings, "AGENT_API_TOKEN", None) or os.environ.get(
-        "AGENT_API_TOKEN", ""
-    )
-    return api_key, model, agent_token
+def _run_agent_openai(message: str, history: list, cfg: dict):
+    """
+    Agentic loop using the OpenAI SDK.
+
+    Works with:
+      - OpenAI (base_url = https://api.openai.com/v1)
+      - Ollama  (base_url = http://localhost:11434/v1, api_key = 'ollama')
+      - Any other OpenAI-compatible endpoint
+    """
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise RuntimeError(
+            "Install the 'openai' package: pip install openai"
+        ) from exc
+
+    client = OpenAI(api_key=cfg["api_key"], base_url=cfg["base_url"])
+
+    # OpenAI keeps system prompt inside the messages list
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages.extend(history)
+    messages.append({"role": "user", "content": message})
+
+    while True:
+        response = client.chat.completions.create(
+            model=cfg["model"],
+            messages=messages,
+            tools=OPENAI_TOOL_DEFINITIONS,
+            max_tokens=4096,
+        )
+        choice = response.choices[0]
+        # Store as plain dict (always JSON-serialisable)
+        messages.append(choice.message.model_dump(exclude_unset=False))
+
+        if choice.finish_reason == "stop":
+            return choice.message.content or "", messages[1:]  # strip system
+
+        if choice.finish_reason == "tool_calls":
+            for tc in (choice.message.tool_calls or []):
+                try:
+                    args = json.loads(tc.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+                logger.info(
+                    f"[openai] tool '{tc.function.name}' args={args}"
+                )
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": execute_tool(tc.function.name, args),
+                    }
+                )
+        else:
+            return choice.message.content or "No response generated.", messages[1:]
+
+
+# ---------------------------------------------------------------------------
+# Dispatcher
+# ---------------------------------------------------------------------------
+
+
+def _run_agent(message: str, history: list, cfg: dict):
+    """Route to the correct provider runner and return (text, history)."""
+    if cfg["provider"] == "anthropic":
+        return _run_agent_anthropic(message, history, cfg)
+    return _run_agent_openai(message, history, cfg)
+
+
+# ---------------------------------------------------------------------------
+# Token validation
+# ---------------------------------------------------------------------------
 
 
 def _validate_token(request, agent_token: str) -> bool:
-    """Return True if the request carries a valid agent token."""
     if not agent_token:
-        # No token configured → open access (development only)
         return True
     provided = request.headers.get("X-Agent-Token") or request.data.get("token", "")
     return provided == agent_token
@@ -150,79 +251,64 @@ def _validate_token(request, agent_token: str) -> bool:
 
 class AgentChatView(APIView):
     """
-    Generic REST chat endpoint.
+    Generic REST agent endpoint.
 
-    Request body (JSON):
-        {
-            "message": "Create a user alice@example.com ...",
-            "history": []        # optional conversation history
-        }
-
-    Response (JSON):
-        {
-            "response": "...",
-            "history": [...]
-        }
+    POST /maia/agent/chat/
+    Headers: X-Agent-Token: <AGENT_API_TOKEN>
+    Body:    {"message": "...", "history": []}
+    → {"response": "...", "history": [...]}
     """
 
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        api_key, model, agent_token = _get_config()
+        cfg = _get_config()
 
-        if not _validate_token(request, agent_token):
+        if not _validate_token(request, cfg["agent_token"]):
             return Response({"error": "Unauthorized"}, status=401)
 
         message = request.data.get("message", "").strip()
         if not message:
             return Response({"error": "'message' field is required"}, status=400)
 
-        if not api_key:
-            return Response(
-                {"error": "ANTHROPIC_API_KEY is not configured on the server"},
-                status=503,
-            )
+        if not cfg["is_ready"]:
+            return Response({"error": _not_ready_error(cfg)}, status=503)
 
         history = request.data.get("history", [])
 
         try:
-            response_text, updated_history = _run_agent(
-                message, history, model, api_key
-            )
+            response_text, updated_history = _run_agent(message, history, cfg)
         except Exception as exc:
             logger.error(f"Agent error: {exc}")
             return Response({"error": str(exc)}, status=500)
 
-        return Response({"response": response_text, "history": updated_history})
+        serialised = (
+            _serialise_history(updated_history)
+            if cfg["provider"] == "anthropic"
+            else updated_history
+        )
+        return Response({"response": response_text, "history": serialised})
 
 
 class AgentMattermostView(APIView):
     """
-    Mattermost-compatible outgoing webhook / slash-command endpoint.
+    Mattermost outgoing-webhook / slash-command endpoint.
 
-    Mattermost sends application/x-www-form-urlencoded or JSON with fields:
-        token, team_id, channel_id, channel_name, user_id, user_name,
-        command, text, response_url, trigger_id
-
-    This view validates the Mattermost token, strips the slash-command trigger
-    word if present, runs the agent, and returns the Mattermost response format:
-
-        {"text": "...", "response_type": "in_channel"}
+    POST /maia/agent/mattermost/
+    → {"text": "...", "response_type": "in_channel"}
     """
 
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        api_key, model, agent_token = _get_config()
+        cfg = _get_config()
 
-        # Mattermost passes the integration token in the 'token' body field
         provided_token = request.data.get("token", "")
-        if agent_token and provided_token != agent_token:
+        if cfg["agent_token"] and provided_token != cfg["agent_token"]:
             return Response({"text": "Unauthorized: invalid token."})
 
-        # Extract the user text — strip the slash-command name if present
         raw_text = request.data.get("text", "").strip()
-        command = request.data.get("command", "").strip()  # e.g. "/maia-admin"
+        command = request.data.get("command", "").strip()
         if command and raw_text.startswith(command):
             raw_text = raw_text[len(command):].strip()
 
@@ -237,47 +323,34 @@ class AgentMattermostView(APIView):
             )
             return Response({"text": help_text, "response_type": "ephemeral"})
 
-        if not api_key:
+        if not cfg["is_ready"]:
             return Response(
                 {
-                    "text": "MAIA Agent is not configured (missing ANTHROPIC_API_KEY).",
+                    "text": f"MAIA Agent is not configured ({_not_ready_error(cfg)})",
                     "response_type": "ephemeral",
                 }
             )
 
         try:
-            response_text, _ = _run_agent(raw_text, [], model, api_key)
+            response_text, _ = _run_agent(raw_text, [], cfg)
         except Exception as exc:
             logger.error(f"Mattermost agent error: {exc}")
-            return Response(
-                {"text": f"Error: {exc}", "response_type": "ephemeral"}
-            )
+            return Response({"text": f"Error: {exc}", "response_type": "ephemeral"})
 
         return Response({"text": response_text, "response_type": "in_channel"})
-
-
-# ---------------------------------------------------------------------------
-# MCP Server — HTTP/SSE transport (JSON-RPC 2.0)
-# ---------------------------------------------------------------------------
 
 
 class AgentAdminChatView(APIView):
     """
     Session-based chat endpoint for the dashboard admin chat UI.
 
-    Requires the requesting user to be authenticated AND a superuser —
-    no extra token needed because the Django session already proves identity.
+    Requires Django session auth + superuser — no extra token needed.
 
-    POST /maia/agent/admin-chat/
-        {"message": "..."}
-        → {"response": "...", "history_length": N}
-
-    DELETE /maia/agent/admin-chat/   (clear conversation)
-        → {"cleared": true}
+    POST   /maia/agent/admin-chat/  {"message": "..."}
+    DELETE /maia/agent/admin-chat/  (clear conversation)
     """
 
-    permission_classes = [AllowAny]  # auth enforced manually below
-
+    permission_classes = [AllowAny]
     SESSION_KEY = "agent_chat_history"
 
     def _require_admin(self, request):
@@ -290,36 +363,34 @@ class AgentAdminChatView(APIView):
         if deny:
             return deny
 
-        api_key, model, _ = _get_config()
-        if not api_key:
-            return Response(
-                {"error": "ANTHROPIC_API_KEY is not configured on the server"},
-                status=503,
-            )
+        cfg = _get_config()
+        if not cfg["is_ready"]:
+            return Response({"error": _not_ready_error(cfg)}, status=503)
 
         message = request.data.get("message", "").strip()
         if not message:
             return Response({"error": "'message' field is required"}, status=400)
 
-        # Load history from session (contains only JSON-serialisable content)
         history = request.session.get(self.SESSION_KEY, [])
 
         try:
-            response_text, updated_history = _run_agent(
-                message, history, model, api_key
-            )
+            response_text, updated_history = _run_agent(message, history, cfg)
         except Exception as exc:
             logger.error(f"Admin chat agent error: {exc}")
             return Response({"error": str(exc)}, status=500)
 
-        # Persist only the serialisable portions (strings/dicts, not SDK objects)
-        request.session[self.SESSION_KEY] = _serialise_history(updated_history)
+        serialised = (
+            _serialise_history(updated_history)
+            if cfg["provider"] == "anthropic"
+            else updated_history
+        )
+        request.session[self.SESSION_KEY] = serialised
         request.session.modified = True
 
         return Response(
             {
                 "response": response_text,
-                "history_length": len(request.session[self.SESSION_KEY]),
+                "history_length": len(serialised),
             }
         )
 
@@ -332,61 +403,50 @@ class AgentAdminChatView(APIView):
         return Response({"cleared": True})
 
 
+# ---------------------------------------------------------------------------
+# Anthropic history serialiser (converts SDK objects → plain dicts)
+# ---------------------------------------------------------------------------
+
+
 def _serialise_history(history: list) -> list:
-    """
-    Convert a message list that may contain Anthropic SDK objects into plain
-    JSON-serialisable dicts so they can be stored in the Django session.
-    """
     serialisable = []
     for msg in history:
         role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
-        content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
-
+        content = (
+            msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
+        )
         if isinstance(content, str):
             serialisable.append({"role": role, "content": content})
         elif isinstance(content, list):
-            clean_blocks = []
+            clean = []
             for block in content:
                 if isinstance(block, dict):
-                    clean_blocks.append(block)
+                    clean.append(block)
                 elif hasattr(block, "type"):
                     b = {"type": block.type}
-                    if hasattr(block, "text"):
-                        b["text"] = block.text
-                    if hasattr(block, "id"):
-                        b["id"] = block.id
-                    if hasattr(block, "name"):
-                        b["name"] = block.name
-                    if hasattr(block, "input"):
-                        b["input"] = block.input
-                    if hasattr(block, "tool_use_id"):
-                        b["tool_use_id"] = block.tool_use_id
-                    if hasattr(block, "content"):
-                        b["content"] = block.content
-                    clean_blocks.append(b)
-            serialisable.append({"role": role, "content": clean_blocks})
-        # Skip messages with non-serialisable content silently
+                    for attr in ("text", "id", "name", "input", "tool_use_id", "content"):
+                        if hasattr(block, attr):
+                            b[attr] = getattr(block, attr)
+                    clean.append(b)
+            serialisable.append({"role": role, "content": clean})
     return serialisable
+
+
+# ---------------------------------------------------------------------------
+# HTTP MCP server (JSON-RPC 2.0)
+# ---------------------------------------------------------------------------
 
 
 class MCPServerView(APIView):
     """
-    Minimal MCP server implemented over plain HTTP (JSON-RPC 2.0 subset).
+    Stateless HTTP MCP endpoint.
 
-    Supports the three MCP methods needed by clients:
-        initialize   → returns server capabilities
-        tools/list   → returns TOOL_DEFINITIONS in MCP schema format
-        tools/call   → executes a tool and returns the result
-
-    Authentication: X-Agent-Token header or 'token' query parameter.
-
-    This endpoint is designed for lightweight integrations.  For full MCP
-    stdio transport, use the standalone mcp_server/maia_mcp_server.py script.
+    Methods: initialize, tools/list, tools/call
+    Auth:    X-Agent-Token header or ?token= query param
     """
 
     permission_classes = [AllowAny]
 
-    # MCP tool schema format differs slightly from Anthropic — convert once
     _MCP_TOOLS = [
         {
             "name": t["name"],
@@ -397,19 +457,14 @@ class MCPServerView(APIView):
     ]
 
     def post(self, request, *args, **kwargs):
-        _, _, agent_token = _get_config()
+        cfg = _get_config()
 
-        # Allow token via header OR query param for MCP clients
         provided = request.headers.get("X-Agent-Token") or request.query_params.get(
             "token", ""
         )
-        if agent_token and provided != agent_token:
+        if cfg["agent_token"] and provided != cfg["agent_token"]:
             return Response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {"code": -32001, "message": "Unauthorized"},
-                    "id": None,
-                },
+                {"jsonrpc": "2.0", "error": {"code": -32001, "message": "Unauthorized"}, "id": None},
                 status=401,
             )
 
@@ -420,11 +475,7 @@ class MCPServerView(APIView):
             params = body.get("params", {})
         except Exception:
             return Response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {"code": -32700, "message": "Parse error"},
-                    "id": None,
-                }
+                {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None}
             )
 
         if method == "initialize":
@@ -442,31 +493,16 @@ class MCPServerView(APIView):
             tool_args = params.get("arguments", {})
             if not tool_name:
                 return Response(
-                    {
-                        "jsonrpc": "2.0",
-                        "error": {
-                            "code": -32602,
-                            "message": "Missing 'name' in params",
-                        },
-                        "id": rpc_id,
-                    }
+                    {"jsonrpc": "2.0", "error": {"code": -32602, "message": "Missing 'name'"}, "id": rpc_id}
                 )
-            raw_result = execute_tool(tool_name, tool_args)
             result = {
-                "content": [{"type": "text", "text": raw_result}],
+                "content": [{"type": "text", "text": execute_tool(tool_name, tool_args)}],
                 "isError": False,
             }
 
         else:
             return Response(
-                {
-                    "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32601,
-                        "message": f"Method not found: {method}",
-                    },
-                    "id": rpc_id,
-                }
+                {"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method not found: {method}"}, "id": rpc_id}
             )
 
         return Response({"jsonrpc": "2.0", "result": result, "id": rpc_id})

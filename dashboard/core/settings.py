@@ -66,12 +66,23 @@ ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
 ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)
 
 # Agent API / MCP Server settings
-ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
-# Claude model used by the Agent API (override via env var)
-AGENT_MODEL = env("AGENT_MODEL", default="claude-sonnet-4-6")
-# Shared secret that protects the Agent API and HTTP MCP endpoint.
-# Set this to a strong random string in production (required).
+# Select the AI provider: anthropic (default) | openai | ollama
+AGENT_PROVIDER = env("AGENT_PROVIDER", default="anthropic")
+# Shared secret protecting /maia/agent/* endpoints (required in production)
 AGENT_API_TOKEN = env("AGENT_API_TOKEN", default=None)
+
+# Anthropic provider
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
+AGENT_MODEL = env("AGENT_MODEL", default="claude-sonnet-4-6")
+
+# OpenAI provider (also used for Azure OpenAI — set OPENAI_BASE_URL accordingly)
+OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
+OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
+OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
+
+# Ollama provider (OpenAI-compatible local inference)
+OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://localhost:11434/v1")
+OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3")
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
 
