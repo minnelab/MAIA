@@ -2,7 +2,11 @@ from django import forms
 
 from .models import GPUBooking
 from django.conf import settings
-from apps.models import MAIAProject
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAProject
+else:
+    from apps.models import MAIAProject
 from MAIA.keycloak_utils import get_groups_in_keycloak
 from MAIA.dashboard_utils import get_pending_projects, verify_gpu_booking_policy
 

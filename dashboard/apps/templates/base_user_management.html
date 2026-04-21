@@ -35,136 +35,74 @@
                     </div>
                 </div>
             </div>
-            <div class="card-body px-0 pb-2">
-                <div class="table-responsive">
-                    <table class="table align-items-center mb-0">
-                        <thead>
-                            <tr>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Name</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Register </th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Deploy </th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Users</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Memory Limit</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">CPU Limit</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Requested GPU</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Allocation Date Expiration</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Conda</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Assigned Cluster</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Workspace Type</th>
-                                
-                            </tr>
-                        </thead>
-                        <tbody>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Left panel: searchable project list -->
+                    <div class="col-md-3 border-end pe-3">
+                        <div class="mb-3" style="position:relative;">
+                            <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#adb5bd; font-size:.8rem; pointer-events:none; z-index:1;"></i>
+                            <input type="text" id="project-search" class="form-control form-control-sm"
+                                   placeholder="Search projects..." autocomplete="off"
+                                   style="padding-left:30px;">
+                        </div>
+                        <div id="project-list" style="max-height: 520px; overflow-y: auto;">
                             {% for namespace in maia_groups_dict %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <a href="/maia/namespaces/{{ namespace|lower|to_hyphen }}">
-                                            <h6 class="mb-0 text-sm ">{{ namespace }}</h6>
-                                        </a>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% if maia_groups_dict|get_item:namespace|get_item:"pending" == True %}
-                                        <h6 class="mb-0 text-sm ">
-                                        <p data-bs-placement="left" data-bs-toggle="tooltip-register-group" title="Register the group in Keycloak">
-                                        <a href="/maia/user-management/register-group/{{ namespace }}" class="fa fa-users"></a>
-                                        </p>
-                                        </h6>
-                                        {% endif %}
-                                        <h6 class="mb-0 text-sm ">
-                                        <p data-bs-placement="left" data-bs-toggle="tooltip-delete-group" title="Delete the group">
-                                        <a href="/maia/user-management/delete-group-view/{{ namespace }}" class="fa fa-trash"></a>
-                                        </p>
-                                        </h6>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% if project_argo_status|get_item:namespace == -1 %}
-                                        <p data-bs-placement="left" data-bs-toggle="tooltip-deploy-group" title="Create the Project in MAIA, deploying the MAIA Namespace">
-                                        <a href="/maia/user-management/deploy/{{ namespace }}" class="fa fa-play"></a>
-                                        </p>
-                                        {% elif project_argo_status|get_item:namespace == 0 %}
-                                        {%else%}
-                                        <p data-bs-placement="left" data-bs-toggle="tooltip-redeploy-group" title="The MAIA Project is already deployed, click to redeploy and update the MAIA Namespace">
-                                        <a class="fa fa-sync-alt" href="/maia/user-management/deploy/{{ namespace }}">
-                                        <!--href="{{argocd_url}}/applications?proj={{namespace|lower|to_hyphen}}"-->
-                                        </a>
-                                        </p>
-                                        {% endif %}
-                                        {% if project_argo_status|get_item:namespace == 1 %}
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center" id="users_{{ namespace }}">
-                                        {% for user in maia_groups_dict|get_item:namespace|get_item:"users" %}
-                                        <li>{{ user }}</li>
-                                        {% endfor %}
-                                        <h6 class="mb-0 text-sm "></h6>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="memory_limit_"|add:namespace %}
-                                        {{ form|index:form_key }}
-                                        {% endwith %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="cpu_limit_"|add:namespace %}
-                                        {{ form|index:form_key }}
-                                        {% endwith %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="gpu_"|add:namespace %}
-                                        {{ form|index:form_key }}
-                                        {% endwith %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="date_"|add:namespace %}
-                                        {{ form|index:form_key }}
-                                        {% endwith %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% for env_file in maia_groups_dict|get_item:namespace|get_item:"env_file" %}
-                                        {% if env_file != "N/A" %}
-                                        <a href="{{ minio_console_url }}/{{ env_file }}">
-                                            <li>{{ env_file }}</li>
-                                        </a>
-                                        {% else %}
-                                        <li>N/A</li>
-                                        {% endif %}
-                                        {% endfor %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="cluster_"|add:namespace %}
-                                        {{ form|index:form_key }}
-                                        {% endwith %}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        {% with form_key="project_tier_"|add:namespace %}
-                                        {{ form|index:form_key }}
-                                        {% endwith %}
-                                    </div>
-                                </td>
-                            </tr>
+                            <div class="project-item rounded mb-1 px-2 py-2 d-flex align-items-center justify-content-between"
+                                 data-namespace="{{ namespace }}"
+                                 onclick="selectProject('{{ namespace }}')"
+                                 style="cursor: pointer; transition: background 0.15s;">
+                                <span class="text-sm font-weight-bold text-truncate" style="max-width: 140px;" title="{{ namespace }}">{{ namespace }}</span>
+                                {% if maia_groups_dict|get_item:namespace|get_item:"pending" == True %}
+                                <span class="badge ms-1 text-dark" style="background:#ffc107; font-size:0.6rem;">Pending</span>
+                                {% endif %}
+                            </div>
                             {% endfor %}
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+                    <!-- Right panel: JSON viewer + action buttons -->
+                    <div class="col-md-9 ps-4">
+                        <div id="project-json-panel">
+                            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap" style="gap: 8px;">
+                                <a id="selected-project-link" href="#" class="text-sm font-weight-bold text-dark text-decoration-none">
+                                    <i class="fa fa-folder-open me-1 text-primary"></i>
+                                    <span id="selected-project-name"></span>
+                                </a>
+                                <div class="d-flex flex-wrap align-items-center" style="gap: 6px;">
+                                    <!-- Edit / Save / Cancel -->
+                                    <button id="btn-edit-json" type="button" onclick="startEditJson()" class="btn btn-sm btn-outline-secondary py-1 px-2">
+                                        <i class="fa fa-pencil-alt me-1"></i>Edit
+                                    </button>
+                                    <button id="btn-save-json" type="button" onclick="saveJson()" class="btn btn-sm btn-primary py-1 px-2" style="display:none;">
+                                        <i class="fa fa-save me-1"></i>Save
+                                    </button>
+                                    <button id="btn-cancel-json" type="button" onclick="cancelEditJson()" class="btn btn-sm btn-outline-secondary py-1 px-2" style="display:none;">
+                                        <i class="fa fa-times me-1"></i>Cancel
+                                    </button>
+                                    <div id="btn-register" style="display: none;">
+                                        <a id="link-register" href="#" class="btn btn-sm btn-outline-warning py-1 px-2" title="Register the group in Keycloak">
+                                            <i class="fa fa-users me-1"></i>Register
+                                        </a>
+                                    </div>
+                                    <div id="btn-deploy">
+                                        <a id="link-deploy" href="#" class="btn btn-sm btn-outline-success py-1 px-2">
+                                            <i class="fa fa-play me-1"></i>Deploy
+                                        </a>
+                                    </div>
+                                    <div id="btn-delete">
+                                        <a id="link-delete" href="#" class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete the group">
+                                            <i class="fa fa-trash me-1"></i>Delete
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Save status message -->
+                            <div id="json-save-status" style="display:none;" class="mb-2 text-sm px-1"></div>
+                            <!-- View mode: syntax-highlighted pre -->
+                            <pre id="json-viewer" style="background:#1a1a2e; color:#e0e0e0; padding:16px; border-radius:8px; max-height:480px; overflow-y:auto; font-size:0.78rem; line-height:1.6; margin:0;"></pre>
+                            <!-- Edit mode: textarea -->
+                            <textarea id="json-editor" spellcheck="false" style="display:none; background:#1a1a2e; color:#e0e0e0; padding:16px; border-radius:8px; height:480px; width:100%; font-size:0.78rem; line-height:1.6; font-family:monospace; border:1px solid #4a4a6a; resize:vertical;"></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -173,131 +111,168 @@
 
         <div class="card">
             <div class="card-header pb-0">
-                <div class="row">
-                    <div class="col-lg-6 col-7">
-                        <h6>Users</h6>
+                <div class="d-flex align-items-center justify-content-between flex-wrap mb-2" style="gap:10px;">
+                    <h6 class="mb-0">Users</h6>
+                    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                        <!-- Filter by group -->
+                        <select id="user-group-filter"
+                                style="border-radius:8px; border:1px solid #e9ecef; padding:5px 28px 5px 10px;
+                                       font-size:.8rem; font-weight:600; color:#344767;
+                                       background:#f8f9fa; cursor:pointer; outline:none;
+                                       appearance:none; -webkit-appearance:none;
+                                       background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238392ab'/%3E%3C/svg%3E\");
+                                       background-repeat:no-repeat; background-position:right 8px center;">
+                            <option value="">All groups</option>
+                            {% for namespace in maia_groups_dict %}
+                            <option value="{{ namespace }}">{{ namespace }}</option>
+                            {% endfor %}
+                        </select>
+                        <!-- Text search -->
+                        <div style="position:relative; width:240px;">
+                            <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#adb5bd; font-size:.8rem; pointer-events:none;"></i>
+                            <input type="text" id="user-search" class="form-control form-control-sm"
+                                   placeholder="Search by name or email…" autocomplete="off"
+                                   style="padding-left:30px;">
+                        </div>
                     </div>
                 </div>
+                <!-- Legend -->
+                <div class="mt-1 d-flex flex-wrap" style="gap:10px;">
+                    <span class="text-xxs"><span class="ns-chip ns-chip-registered">ns</span> registered in Keycloak</span>
+                    <span class="text-xxs"><span class="ns-chip ns-chip-pending">ns</span> pending Keycloak group add</span>
+                    <span class="text-xxs"><span class="ns-chip ns-chip-remove">ns</span> should be removed from Keycloak</span>
+                </div>
             </div>
-            <div class="card-body px-0 pb-2">
+            <div class="card-body px-0 pb-0">
                 <div class="table-responsive">
-                    <table class="table align-items-center mb-0">
+                    <table class="table align-items-center mb-0" id="users-table">
                         <thead>
                             <tr>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Registration</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Username</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Email</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Admin</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Active</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-3">Actions</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">User</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Role</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
                                 <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Date Joined</th>
-                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Requested Namespace</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Namespaces</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for user in user_table %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <h6 class="mb-0 text-sm ">
-                                            {% if user.is_registered_in_keycloak == 1 %}
-                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-registration" title="User is registered in Keycloak">
-                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm mb-0"  data-bs-placement="left" data-bs-toggle="tooltip-user-registration" title="Click to register user in Keycloak">
-                                                <a class="fa fa-address-card" href="/maia/user-management/register-user/{{ user.email }}"></a>
-                                            </p>
-                                            {% endif %}
-                                        </h6>
-                                        <h6 class="mb-0 text-sm ">
-                                            {% if user.is_registered_in_groups == 1 %}
-                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-registration" title="The User is linked to all the requested groups">
-                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-registration" title="Register user in the requested groups: {{ user.is_registered_in_groups|join:", " }}">
-                                                <a class="fa fa-users" aria-hidden="true" href="/maia/user-management/register-user-in-group/{{ user.email }}"></a>
-                                            </p>
-                                            {% endif %}
-                                        </h6>
-                                        <h6 class="mb-0 text-sm ">
-                                            {% if user.remove_from_group == 0 %}
-                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-deletion" title="The User is linked to all the requested groups">
-                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm mb-0" data-bs-placement="left" data-bs-toggle="tooltip-user-group-deletion" title="The User is currently registered to groups which are not requested. Click to remove the user from the groups: {{ user.remove_from_group|join:", " }}">
-                                                <a class="fa fa-trash" aria-hidden="true" href="/maia/user-management/remove-user-from-group/{{ user.email }}"></a>
-                                            </p>
-                                            {% endif %}
-                                        </h6>
-                                        <h6 class="mb-0 text-sm ">
-                                        <p data-bs-placement="left" data-bs-toggle="tooltip-delete-user" title="Delete the user">
-                                        <a href="/maia/user-management/delete-user-view/{{ user.email }}" class="fa fa-trash"></a>
-                                        </p>
-                                        </h6>
-                                    </div>  
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <h6 class="mb-0 text-sm ">{{ user.username }}</h6>
+                            <tr class="user-row{% if user.is_registered_in_keycloak == 0 or user.is_registered_in_groups != 1 or user.remove_from_group != 0 %} user-row-needs-action{% endif %}"
+                                data-user="{{ user.email|lower }} {{ user.username|lower }}"
+                                data-namespaces="{% for ns_info in user.namespace_status %}{{ ns_info.name }}{% if not forloop.last %} {% endif %}{% endfor %}">
+
+                                <!-- ── Actions ─────────────────────────────── -->
+                                <td class="ps-3">
+                                    <div class="d-flex flex-column" style="gap:4px; min-width:130px;">
+                                        {% if user.is_registered_in_keycloak == 1 %}
+                                        <span class="user-action-badge badge-ok">
+                                            <i class="fa fa-check me-1"></i>Keycloak
+                                        </span>
+                                        {% else %}
+                                        <a href="/maia/user-management/register-user/{{ user.email }}"
+                                           class="user-action-badge badge-warn"
+                                           title="Register this user in Keycloak">
+                                            <i class="fa fa-address-card me-1"></i>Register KC
+                                        </a>
+                                        {% endif %}
+
+                                        {% if user.is_registered_in_groups != 1 %}
+                                        <a href="/maia/user-management/register-user-in-group/{{ user.email }}"
+                                           class="user-action-badge badge-warn"
+                                           title="Add to groups: {{ user.is_registered_in_groups|join:', ' }}">
+                                            <i class="fa fa-users me-1"></i>Add to groups
+                                        </a>
+                                        {% endif %}
+
+                                        {% if user.remove_from_group != 0 %}
+                                        <a href="/maia/user-management/remove-user-from-group/{{ user.email }}"
+                                           class="user-action-badge badge-danger"
+                                           title="Remove from: {{ user.remove_from_group|join:', ' }}">
+                                            <i class="fa fa-user-minus me-1"></i>Remove groups
+                                        </a>
+                                        {% endif %}
+
+                                        <a href="/maia/user-management/delete-user-view/{{ user.email }}"
+                                           class="user-action-badge badge-muted"
+                                           title="Permanently delete this user">
+                                            <i class="fa fa-trash me-1"></i>Delete
+                                        </a>
                                     </div>
                                 </td>
+
+                                <!-- ── User identity ────────────────────────── -->
                                 <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <h6 class="mb-0 text-sm ">{{ user.email }}</h6>
+                                    <div class="d-flex flex-column">
+                                        <span class="text-sm font-weight-bold text-dark">{{ user.username }}</span>
+                                        <span class="text-xs text-secondary">{{ user.email }}</span>
                                     </div>
                                 </td>
+
+                                <!-- ── Role ─────────────────────────────────── -->
                                 <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <h6 class="mb-0 text-sm ">
-                                            {% if user.is_superuser == 1 %}
-                                            <p class="text-sm mb-0">
-                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm mb-0">
-                                                <i class="fa fa-times text-danger" aria-hidden="true"></i>
-                                            </p>
-                                            {% endif %}
-                                        </h6>
-                                    </div>
+                                    {% if user.is_superuser == 1 %}
+                                    <span class="badge badge-sm bg-gradient-info">Admin</span>
+                                    {% else %}
+                                    <span class="badge badge-sm bg-gradient-secondary" style="opacity:.7;">User</span>
+                                    {% endif %}
                                 </td>
+
+                                <!-- ── Active ───────────────────────────────── -->
                                 <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <h6 class="mb-0 text-sm ">
-                                            {% if user.is_active == 1 %}
-                                            <p class="text-sm mb-0">
-                                                <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm mb-0">
-                                                <i class="fa fa-times text-danger" aria-hidden="true"></i>
-                                            </p>
-                                            {% endif %}
-                                        </h6>
-                                    </div>
+                                    {% if user.is_active == 1 %}
+                                    <span class="badge badge-sm bg-gradient-success">Active</span>
+                                    {% else %}
+                                    <span class="badge badge-sm bg-gradient-danger">Inactive</span>
+                                    {% endif %}
                                 </td>
+
+                                <!-- ── Date joined ──────────────────────────── -->
                                 <td>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <h6 class="mb-0 text-sm ">{{ user.date_joined }}</h6>
-                                    </div>
+                                    <span class="text-xs text-secondary">{{ user.date_joined|date:"Y-m-d" }}</span>
                                 </td>
+
+                                <!-- ── Namespaces ───────────────────────────── -->
                                 <td>
-                                    <div class="d-flex flex-column justify-content-center">
+                                    <div class="d-flex flex-wrap mb-1" style="gap:3px;">
+                                        {% for ns_info in user.namespace_status %}
+                                        <span class="ns-chip ns-chip-{{ ns_info.status }}" title="{{ ns_info.status }}">{{ ns_info.name }}</span>
+                                        {% empty %}
+                                        <span class="text-xxs text-secondary fst-italic">none</span>
+                                        {% endfor %}
+                                    </div>
+                                    <div>
                                         {% with form_key="namespace_"|add:user.username %}
                                         {{ form|index:form_key }}
                                         {% endwith %}
                                     </div>
                                 </td>
+
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+            <!-- Update Users footer -->
+            <div class="card-footer px-4 py-3 d-flex align-items-center justify-content-between"
+                 style="border-top:1px solid #f0f2f5; background:#fafbfc; border-radius:0 0 12px 12px;">
+                <span class="text-xs text-secondary">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Edit namespace fields above, then click <strong>Update Users</strong> to save changes.
+                </span>
+                <button type="submit" name="Submit" value="Submit"
+                        style="display:inline-flex; align-items:center; gap:8px;
+                               padding:9px 22px; border-radius:10px;
+                               background:linear-gradient(310deg,#2152ff,#21d4fd);
+                               color:#fff; font-weight:700; font-size:.85rem;
+                               border:none; cursor:pointer;
+                               box-shadow:0 4px 15px rgba(33,82,255,.35);
+                               transition:box-shadow .2s, transform .15s;">
+                    <i class="fas fa-users-cog"></i> Update Users
+                </button>
+            </div>
         </div>
-        <button class="btn btn-primary" type="submit" name="Submit" value="Submit">Update Table</button>
     </form>
 </section>
 
@@ -339,38 +314,6 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-delete-group"]'))
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-  });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-register-group"]'))
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-  });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-deploy-group"]'))
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-  });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip-redeploy-group"]'))
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-  });
-</script>
-<script>
     var coll = document.getElementsByClassName("collapsible");
     var i;
     for (i = 0; i < coll.length; i++) {
@@ -401,6 +344,227 @@ document.addEventListener('DOMContentLoaded', function () {
         navigator.clipboard.writeText("kubectl port-forward " + e.target.id + " -n " + namespace + " :" + port);
     }
 </script>
+
+<!-- JSON Viewer / Editor for Namespaces -->
+<script>
+    var maiaGroupsData = {{ maia_groups_dict_json|safe }};
+    var argoStatusData = {{ project_argo_status_json|safe }};
+    var currentNamespace = null;
+
+    // ── Syntax highlighting ──────────────────────────────────────────────────
+    function syntaxHighlightJson(obj) {
+        var json = JSON.stringify(obj, null, 2);
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(
+            /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+            function (match) {
+                var cls = 'json-number';
+                if (/^"/.test(match)) {
+                    cls = /:$/.test(match) ? 'json-key' : 'json-string';
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            }
+        );
+    }
+
+    // ── Project selection ────────────────────────────────────────────────────
+    function selectProject(namespace) {
+        // Cancel any in-progress edit first
+        cancelEditJson();
+
+        currentNamespace = namespace;
+
+        document.querySelectorAll('.project-item').forEach(function(el) {
+            el.style.background = '';
+        });
+        var selected = document.querySelector('.project-item[data-namespace="' + CSS.escape(namespace) + '"]');
+        if (selected) selected.style.background = '#e9ecef';
+
+        var data = maiaGroupsData[namespace];
+        var status = argoStatusData[namespace];
+
+        document.getElementById('json-save-status').style.display = 'none';
+
+        document.getElementById('selected-project-name').textContent = namespace;
+        var hyphenNs = namespace.toLowerCase().replace(/_/g, '-');
+        document.getElementById('selected-project-link').href = '/maia/namespaces/' + hyphenNs;
+
+        document.getElementById('json-viewer').innerHTML = syntaxHighlightJson(data);
+
+        // Register button (pending only)
+        if (data.pending === true) {
+            document.getElementById('btn-register').style.display = '';
+            document.getElementById('link-register').href = '/maia/user-management/register-group/' + namespace;
+        } else {
+            document.getElementById('btn-register').style.display = 'none';
+        }
+
+        // Deploy / Redeploy button
+        var deployBtn = document.getElementById('btn-deploy');
+        var deployLink = document.getElementById('link-deploy');
+        if (status === -1) {
+            deployBtn.style.display = '';
+            deployLink.href = '/maia/user-management/deploy/' + namespace;
+            deployLink.innerHTML = '<i class="fa fa-play me-1"></i>Deploy';
+            deployLink.className = 'btn btn-sm btn-outline-success py-1 px-2';
+        } else if (status === 0) {
+            deployBtn.style.display = 'none';
+        } else {
+            deployBtn.style.display = '';
+            deployLink.href = '/maia/user-management/deploy/' + namespace;
+            deployLink.innerHTML = '<i class="fa fa-sync-alt me-1"></i>Redeploy';
+            deployLink.className = 'btn btn-sm btn-outline-info py-1 px-2';
+        }
+
+        document.getElementById('link-delete').href = '/maia/user-management/delete-group-view/' + namespace;
+    }
+
+    // ── Edit mode ────────────────────────────────────────────────────────────
+    function startEditJson() {
+        if (!currentNamespace) return;
+        var data = maiaGroupsData[currentNamespace];
+        document.getElementById('json-editor').value = JSON.stringify(data, null, 2);
+        document.getElementById('json-viewer').style.display = 'none';
+        document.getElementById('json-editor').style.display = 'block';
+        document.getElementById('btn-edit-json').style.display = 'none';
+        document.getElementById('btn-save-json').style.display = '';
+        document.getElementById('btn-cancel-json').style.display = '';
+        document.getElementById('json-save-status').style.display = 'none';
+    }
+
+    function cancelEditJson() {
+        document.getElementById('json-editor').style.display = 'none';
+        document.getElementById('json-viewer').style.display = 'block';
+        document.getElementById('btn-edit-json').style.display = '';
+        document.getElementById('btn-save-json').style.display = 'none';
+        document.getElementById('btn-cancel-json').style.display = 'none';
+        document.getElementById('json-save-status').style.display = 'none';
+    }
+
+    function saveJson() {
+        if (!currentNamespace) return;
+        var raw = document.getElementById('json-editor').value;
+        var parsed;
+        try {
+            parsed = JSON.parse(raw);
+        } catch (e) {
+            showSaveStatus('Invalid JSON: ' + e.message, false);
+            return;
+        }
+
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        document.getElementById('btn-save-json').disabled = true;
+
+        fetch('/maia/user-management/update-group-json/' + currentNamespace, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify(parsed),
+        })
+        .then(function(resp) { return resp.json().then(function(body) { return {ok: resp.ok, body: body}; }); })
+        .then(function(result) {
+            document.getElementById('btn-save-json').disabled = false;
+            if (result.ok) {
+                // Update in-memory data and refresh view
+                maiaGroupsData[currentNamespace] = parsed;
+                document.getElementById('json-viewer').innerHTML = syntaxHighlightJson(parsed);
+                cancelEditJson();
+                showSaveStatus('Saved successfully.', true);
+            } else {
+                showSaveStatus('Error: ' + (result.body.error || JSON.stringify(result.body)), false);
+            }
+        })
+        .catch(function(err) {
+            document.getElementById('btn-save-json').disabled = false;
+            showSaveStatus('Request failed: ' + err.message, false);
+        });
+    }
+
+    function showSaveStatus(msg, success) {
+        var el = document.getElementById('json-save-status');
+        el.textContent = msg;
+        el.style.display = 'block';
+        el.style.color = success ? '#2dce89' : '#f5365c';
+    }
+
+    // ── Auto-select first project on load ────────────────────────────────────
+    (function() {
+        var keys = Object.keys(maiaGroupsData);
+        if (keys.length > 0) selectProject(keys[0]);
+    })();
+
+    // ── Filter functions ─────────────────────────────────────────────────────
+    // Project filter: uses classList.toggle('d-none') so it overrides d-flex !important
+    function filterProjects(query) {
+        query = (query || '').toLowerCase();
+        document.querySelectorAll('.project-item').forEach(function(el) {
+            var match = el.getAttribute('data-namespace').toLowerCase().indexOf(query) !== -1;
+            el.classList.toggle('d-none', !match);
+        });
+    }
+
+    // User filter: combines text search + group dropdown, reads both from DOM
+    function filterUsers() {
+        var textQ  = ((document.getElementById('user-search')       || {}).value || '').toLowerCase();
+        var groupQ = ((document.getElementById('user-group-filter') || {}).value || '').toLowerCase();
+        document.querySelectorAll('.user-row').forEach(function(row) {
+            var textMatch  = !textQ  || (row.getAttribute('data-user') || '').toLowerCase().indexOf(textQ) !== -1;
+            var nsList     = (row.getAttribute('data-namespaces') || '').toLowerCase().split(' ');
+            var groupMatch = !groupQ || nsList.indexOf(groupQ) !== -1;
+            row.classList.toggle('d-none', !(textMatch && groupMatch));
+        });
+    }
+
+    // ── Layer 1: document delegation — input + keyup ──────────────────────────
+    document.addEventListener('input', function(e) {
+        if (!e.target) return;
+        if (e.target.id === 'project-search')    filterProjects(e.target.value);
+        if (e.target.id === 'user-search')       filterUsers();
+        if (e.target.id === 'user-group-filter') filterUsers();
+    });
+    document.addEventListener('keyup', function(e) {
+        if (!e.target) return;
+        if (e.target.id === 'project-search') filterProjects(e.target.value);
+        if (e.target.id === 'user-search')    filterUsers();
+    });
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'user-group-filter') filterUsers();
+    });
+
+    // ── Layer 2: window.load — direct binding + polling safety net ───────────
+    window.addEventListener('load', function() {
+        var ps = document.getElementById('project-search');
+        if (ps) {
+            ps.addEventListener('input', function() { filterProjects(this.value); });
+            ps.addEventListener('keyup', function() { filterProjects(this.value); });
+        }
+        var us = document.getElementById('user-search');
+        if (us) {
+            us.addEventListener('input', filterUsers);
+            us.addEventListener('keyup', filterUsers);
+        }
+        var gf = document.getElementById('user-group-filter');
+        if (gf) gf.addEventListener('change', filterUsers);
+
+        // Polling: catches any value change that events missed
+        var lastPQ = '', lastUQ = '', lastGQ = '';
+        setInterval(function() {
+            var p  = document.getElementById('project-search');
+            var u  = document.getElementById('user-search');
+            var g  = document.getElementById('user-group-filter');
+            var pv = p ? p.value : '', uv = u ? u.value : '', gv = g ? g.value : '';
+            if (pv !== lastPQ) { lastPQ = pv; filterProjects(pv); }
+            if (uv !== lastUQ || gv !== lastGQ) { lastUQ = uv; lastGQ = gv; filterUsers(); }
+        }, 150);
+    });
+</script>
+
 <style>
     #thumbs {
         width: 1000px;
@@ -443,6 +607,80 @@ document.addEventListener('DOMContentLoaded', function () {
         display: none;
         overflow: hidden;
         background-color: #f1f1f1;
+    }
+
+    /* ── Project list ────────────────────── */
+    .project-item:hover {
+        background: #f0f0f0 !important;
+    }
+
+    /* ── JSON syntax colours ─────────────── */
+    .json-key    { color: #9cdcfe; }
+    .json-string { color: #ce9178; }
+    .json-number { color: #b5cea8; }
+    .json-boolean{ color: #569cd6; }
+    .json-null   { color: #808080; }
+
+    /* ── Namespace chips ─────────────────── */
+    .ns-chip {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 10px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: .02em;
+        white-space: nowrap;
+    }
+    .ns-chip-registered { background: #d1fae5; color: #065f46; }
+    .ns-chip-pending    { background: #fef3c7; color: #92400e; }
+    .ns-chip-remove     { background: #fee2e2; color: #991b1b; }
+
+    /* ── User action badges ──────────────── */
+    .user-action-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: opacity .15s;
+    }
+    .user-action-badge:hover { opacity: .8; text-decoration: none; }
+    .badge-ok      { background: #d1fae5; color: #065f46; }
+    .badge-warn    { background: #fef3c7; color: #7c5700; }
+    .badge-danger  { background: #fee2e2; color: #991b1b; }
+    .badge-muted   { background: #f1f3f4; color: #5f6368; }
+
+    /* ── User table rows ─────────────────── */
+    .user-row:hover td { background: rgba(0,0,0,.025); }
+    .user-row-needs-action td:first-child {
+        border-left: 3px solid #fb6340;
+    }
+
+    /* ── Update Users button hover ──────────── */
+    .card-footer button[type="submit"]:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(33,82,255,.5) !important;
+    }
+
+    /* ── Namespace text input in user table ─ */
+    #users-table input[type="text"] {
+        font-size: 0.7rem;
+        font-family: monospace;
+        padding: 3px 6px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        width: 100%;
+        color: #495057;
+        background: #f8f9fa;
+    }
+    #users-table input[type="text"]:focus {
+        border-color: #5e72e4;
+        outline: none;
+        background: #fff;
     }
 </style>
 {% endblock javascripts %}

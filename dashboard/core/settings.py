@@ -145,6 +145,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
+MONGO_DB_ENABLED = False
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
@@ -165,6 +166,7 @@ elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mongodb":
         f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}'
     )
     MONGO_DB = MONGO_CLIENT[os.getenv("DB_NAME", "appseed_db")]
+    MONGO_DB_ENABLED = True
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",

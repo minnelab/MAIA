@@ -499,12 +499,6 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         users = keycloak_admin.get_group_members(group_id=maia_group)
 
         admin_users = []
-        cpu_limit = None
-        memory_limit = None
-        date = None
-        cluster = None
-        gpu = None
-        project_tier = None
         env_files = []
 
         if maia_project_model.objects.filter(namespace=maia_groups[maia_group]).exists():
@@ -516,14 +510,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 admin_users = []
             if project.supervisor:
                 for email in project.supervisor.split(","):
-                    admin_users.append(email)
-            cpu_limit = project.cpu_limit
-            memory_limit = project.memory_limit
-            date = project.date
-            cluster = project.cluster
-            gpu = project.gpu
-            project_tier = project.project_tier
-            env_file = project.env_file
+                    if email not in admin_users:
+                        admin_users.append(email)
 
         for env_file in minio_env_files:
             if env_file.startswith(maia_groups[maia_group] + "_env"):
@@ -538,17 +526,25 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 group_users.append(user["email"] + " [Project Admin]")
             else:
                 group_users.append(user["email"])
-
         maia_group_dict[maia_groups[maia_group]] = {
             "users": group_users,
-            "env_file": env_files,
+            "namespace": project.namespace,
+            "supervisor": project.supervisor,
             "admin_users": admin_users,
-            "cpu_limit": cpu_limit,
-            "memory_limit": memory_limit,
-            "date": date,
-            "cluster": cluster,
-            "gpu": gpu,
-            "project_tier": project_tier,
+            "env_file": env_files,
+            "cpu_limit": project.cpu_limit,
+            "email": project.email,
+            "memory_limit": project.memory_limit,
+            "date": project.date,
+            "cluster": project.cluster,
+            "gpu": project.gpu,
+            "project_tier": project.project_tier,
+            "email_to_username_map": project.email_to_username_map,
+            "memory_request": project.memory_request,
+            "cpu_request": project.cpu_request,
+            "auto_deploy": project.auto_deploy,
+            "auto_deploy_apps": project.auto_deploy_apps,
+            "project_configuration": project.project_configuration,
         }
 
     for pending_project in pending_projects:
@@ -569,14 +565,24 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         maia_group_dict[pending_project] = {
             "users": users,
             "pending": True,
+            "namespace": pending_project,
             "env_file": env_files,
-            "admin_users": [],
+            "email": project.email,
             "cpu_limit": project.cpu_limit,
             "memory_limit": project.memory_limit,
             "date": project.date,
-            "cluster": "N/A",
+            "cluster": project.cluster,
+            "admin_users": [project.supervisor],
             "gpu": project.gpu,
+            "supervisor": project.supervisor,
+            "description": project.description,
             "project_tier": project.project_tier,
+            "email_to_username_map": project.email_to_username_map,
+            "memory_request": project.memory_request,
+            "cpu_request": project.cpu_request,
+            "auto_deploy": project.auto_deploy,
+            "auto_deploy_apps": project.auto_deploy_apps,
+            "project_configuration": project.project_configuration,
         }
 
     users_to_register_in_keycloak = []
@@ -668,7 +674,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         project_model.objects.create(namespace=group_id, cluster=cluster, memory_limit="2 Gi", cpu_limit="2")
 
 
-def update_user_table(form, user_model, maia_user_model, project_model):
+def update_user_table(form, user_model, maia_user_model):
     """
     Updates user and project information based on the cleaned data from a form.
 
@@ -680,8 +686,6 @@ def update_user_table(form, user_model, maia_user_model, project_model):
         The user model to query and update user information.
     maia_user_model : Model
         The MAIA user model to query and update namespace information.
-    project_model : Model
-        The project model to query and update project information.
     Notes
     -----
     - The function processes entries in the form's cleaned data to update user namespaces and project details.
@@ -689,13 +693,12 @@ def update_user_table(form, user_model, maia_user_model, project_model):
     - Project details are updated or created in the `project_model` based on the namespace.
     """
 
-    project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
+    # project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
 
-    namespace_list = []
-
+    # namespace_list = []
     for entry in form.cleaned_data:
         if entry.startswith("namespace_"):
-            user = user_model.objects.filter(email=entry.replace("namespace_", "")).first()
+            user = maia_user_model.objects.filter(email=entry.replace("namespace_", "")).first()
             if user:
                 user_id = user.id
                 if maia_user_model.objects.filter(id=user_id).exists():
@@ -709,7 +712,7 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                     maia_user_model.objects.filter(id=user_id).update(namespace=namespace)
                 else:
                     if user_id is not None:
-                        if user_model.objects.filter(id=user_id).exists():
+                        if maia_user_model.objects.filter(id=user_id).exists():
                             namespace = form.cleaned_data[entry]
                             # namespaces = []
                             # for namespace in namespace_list:
@@ -727,35 +730,9 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                             #    else:
                             #        namespaces.append(namespace)
                             maia_user_model.objects.create(id=user_id, namespace=namespace)
-        for project_entry in project_entries:
-            if entry.startswith(project_entry + "_"):
-                namespace = entry[len(project_entry + "_") :]
-                namespace_list.append(namespace)
-
-    for namespace in namespace_list:
-        # namespaced_entries = [entry for entry in form.cleaned_data if entry.endswith(namespace)]
-        if project_model.objects.filter(namespace=namespace).exists():
-            project_model.objects.filter(namespace=namespace).update(
-                memory_limit=form.cleaned_data["memory_limit_" + namespace],
-                cpu_limit=form.cleaned_data["cpu_limit_" + namespace],
-                date=form.cleaned_data["date_" + namespace],
-                cluster=form.cleaned_data["cluster_" + namespace],
-                gpu=form.cleaned_data["gpu_" + namespace],
-                project_tier=form.cleaned_data["project_tier_" + namespace],
-            )
-        else:
-            project_model.objects.create(
-                namespace=namespace,
-                memory_limit=form.cleaned_data["memory_limit_" + namespace],
-                cpu_limit=form.cleaned_data["cpu_limit_" + namespace],
-                date=form.cleaned_data["date_" + namespace],
-                cluster=form.cleaned_data["cluster_" + namespace],
-                gpu=form.cleaned_data["gpu_" + namespace],
-                project_tier=form.cleaned_data["project_tier_" + namespace],
-            )
 
 
-def get_project(group_id, settings, maia_project_model, is_namespace_style=False):
+def get_project(group_id, settings, maia_project_model, is_namespace_style=False, return_only_cluster_id=False):
     """
     Retrieve project details and associated cluster ID based on the group ID.
 
@@ -769,6 +746,8 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
         The Django model representing MAIA projects.
     is_namespace_style : bool, optional
         Flag indicating whether the group ID is in namespace style (default is False).
+    return_only_cluster_id : bool, optional
+        Flag indicating whether to return only the cluster ID (default is False).
 
     Returns
     -------
@@ -779,6 +758,16 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
     """
 
     cluster_id = None
+
+    if return_only_cluster_id:
+        for project in maia_project_model.objects.all():
+            if is_namespace_style:
+                if str(project.namespace).lower().replace("_", "-") == group_id:
+                    return None, project.cluster
+            else:
+                if project.namespace == group_id:
+                    return None, project.cluster
+        return None, None
 
     for project in maia_project_model.objects.all():
         if is_namespace_style:
@@ -814,16 +803,35 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "group_subdomain": group_id.lower().replace("_", "-"),
                     "users": group_users,
                     "resources_limits": {
-                        "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
-                        "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
+                        "memory": [project.memory_request, project.memory_limit],
+                        "cpu": [project.cpu_request, project.cpu_limit],
                     },
                     "project_tier": project.project_tier,
+                    "cluster": project.cluster,
+                    "email": project.email,
+                    "date": project.date,
+                    "supervisor": project.supervisor,
+                    "description": project.description,
+                    "auto_deploy": project.auto_deploy,
+                    "auto_deploy_apps": project.auto_deploy_apps,
+                    "project_configuration": project.project_configuration,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
+                try:
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
 
-                if project.env_file != "N/A" and project.env_file is not None:
-                    namespace_form["minio_env_name"] = project.env_file
+                    minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
+                except Exception:
+                    minio_env_files = []
+                for env_file in minio_env_files:
+                    if env_file.startswith(group_id + "_env"):
+                        namespace_form["minio_env_name"] = env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
@@ -862,16 +870,34 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "group_subdomain": group_id.lower().replace("_", "-"),
                     "users": group_users,
                     "resources_limits": {
-                        "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
-                        "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
+                        "memory": [project.memory_request, project.memory_limit],
+                        "cpu": [project.cpu_request, project.cpu_limit],
                     },
                     "project_tier": project.project_tier,
+                    "cluster": project.cluster,
+                    "email": project.email,
+                    "date": project.date,
+                    "supervisor": project.supervisor,
+                    "description": project.description,
+                    "auto_deploy": project.auto_deploy,
+                    "auto_deploy_apps": project.auto_deploy_apps,
+                    "project_configuration": project.project_configuration,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
-
-                if project.env_file != "N/A" and project.env_file is not None:
-                    namespace_form["minio_env_name"] = project.env_file
+                try:
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
+                    minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
+                except Exception:
+                    minio_env_files = []
+                for env_file in minio_env_files:
+                    if env_file.startswith(group_id + "_env"):
+                        namespace_form["minio_env_name"] = env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
@@ -969,12 +995,21 @@ def get_project_argo_status_and_user_table(request, settings, maia_user_model, m
         - project_argo_status (dict): Dictionary containing the Argo CD project status for each project.
     """
     argocd_cluster_id = settings.ARGOCD_CLUSTER
+    in_local_cluster_token = os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False)
+    try:
+        id_token = request.session.get("oidc_id_token")
+        username = request.user.username
+    except Exception as e:
+        id_token = None
+        logger.info(f"Error getting ID token: {e}, using local cluster token instead")
+        username = "in-local-cluster-token"
 
-    id_token = request.session.get("oidc_id_token")
     if argocd_cluster_id is None or argocd_cluster_id == "N/A":
         ...
     else:
-        kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
+        kubeconfig_dict = generate_kubeconfig(
+            id_token, username, "default", argocd_cluster_id, settings=settings, in_local_cluster_token=in_local_cluster_token
+        )
         config.load_kube_config_from_dict(kubeconfig_dict)
         with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
             yaml.dump(kubeconfig_dict, f)
