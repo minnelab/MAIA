@@ -258,7 +258,6 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             {"keycloak_values": "keycloak_values"},
             {"maia_admin_toolkit_values": "maia_admin_toolkit_values"},
             {"maia_dashboard_values": "maia_dashboard_values"},
-            {"maia_dashboard_values_dev": "maia_dashboard_values_dev"},
             {"rancher_values": "rancher_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
@@ -273,6 +272,13 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             "https://releases.rancher.com/server-charts/latest",
         ],
     }
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ):
+        values["defaults"].append({"maia_dashboard_values_dev": "maia_dashboard_values_dev"})
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
 
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:
