@@ -293,6 +293,7 @@ def agent_api_view(request):
         # legacy keys kept for the env-var table
         "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
         "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", None)),
+        "ollama_key_configured": bool(getattr(settings, "OLLAMA_API_KEY", None)),
         "user": ["admin"],
         "username": request.user.username + " [ADMIN]",
     }

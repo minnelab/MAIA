@@ -74,10 +74,10 @@ def _get_config() -> dict:
         is_ready = bool(api_key)
 
     elif provider == "ollama":
-        api_key = "ollama"  # openai SDK requires a non-empty value
+        api_key = _s("OLLAMA_API_KEY", "ollama")  # use key if set, else dummy value
         model = _s("OLLAMA_MODEL", "llama3")
         base_url = _s("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-        is_ready = True  # no key needed
+        is_ready = True  # key is optional for local; required only for secured endpoints
 
     else:  # anthropic (default)
         provider = "anthropic"
