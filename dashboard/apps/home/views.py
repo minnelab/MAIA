@@ -260,6 +260,25 @@ def maia_spotlight(request):
     return HttpResponse(html_template.render(context, request))
 
 
+@login_required(login_url="/maia/login/")
+def agent_api_view(request):
+    if not request.user.is_superuser:
+        html_template = loader.get_template("home/page-403.html")
+        return HttpResponse(html_template.render({}, request))
+
+    context = {
+        "segment": "agent-api",
+        "hostname": settings.HOSTNAME,
+        "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
+        "agent_token_configured": bool(getattr(settings, "AGENT_API_TOKEN", None)),
+        "agent_model": getattr(settings, "AGENT_MODEL", "claude-sonnet-4-6"),
+        "user": ["admin"],
+        "username": request.user.username + " [ADMIN]",
+    }
+    html_template = loader.get_template("home/agent-api.html")
+    return HttpResponse(html_template.render(context, request))
+
+
 @csrf_exempt
 def chat(request):
     if request.method == "POST":

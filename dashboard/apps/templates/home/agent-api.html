@@ -1,0 +1,466 @@
+{% extends "layouts/base.html" %}
+{% load static %}
+
+{% block title %}MAIA Admin Agent{% endblock %}
+
+{% block content %}
+<style>
+/* ── Chat window ─────────────────────────────────────────── */
+#chat-window {
+  height: 480px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  padding: 1rem 1.25rem;
+  background: #f8f9fa;
+  border-radius: .75rem;
+}
+.msg-row { display: flex; gap: .6rem; align-items: flex-end; }
+.msg-row.user  { flex-direction: row-reverse; }
+.msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700; flex-shrink: 0;
+}
+.msg-avatar.ai   { background: linear-gradient(195deg,#42424a,#191919); color:#fff; }
+.msg-avatar.user { background: linear-gradient(195deg,#49a3f1,#1A73E8); color:#fff; }
+.msg-bubble {
+  max-width: 75%;
+  padding: .6rem .9rem;
+  border-radius: 1rem;
+  font-size: .85rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.msg-bubble.ai {
+  background: #fff;
+  border-bottom-left-radius: .25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+.msg-bubble.user {
+  background: linear-gradient(195deg,#49a3f1,#1A73E8);
+  color: #fff;
+  border-bottom-right-radius: .25rem;
+}
+/* rendered markdown inside AI bubble */
+.msg-bubble.ai p   { margin-bottom: .4rem; }
+.msg-bubble.ai ul,
+.msg-bubble.ai ol  { padding-left: 1.2rem; margin-bottom: .4rem; }
+.msg-bubble.ai pre { background: #f1f3f5; border-radius: .4rem; padding: .5rem .75rem; font-size: .78rem; overflow-x:auto; }
+.msg-bubble.ai code:not(pre code) { background: #e9ecef; border-radius: .3rem; padding: .1em .35em; font-size: .82em; }
+.msg-bubble.ai table { width:100%; font-size:.8rem; border-collapse:collapse; margin:.4rem 0; }
+.msg-bubble.ai th,
+.msg-bubble.ai td  { border:1px solid #dee2e6; padding:.3rem .5rem; }
+.msg-bubble.ai th  { background:#e9ecef; }
+
+/* typing indicator */
+.typing-dots { display:flex; gap:4px; padding:.4rem .2rem; }
+.typing-dots span {
+  width:7px; height:7px; border-radius:50%;
+  background:#adb5bd; animation: blink 1.2s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay:.2s; }
+.typing-dots span:nth-child(3) { animation-delay:.4s; }
+@keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+/* suggestion chips */
+.chip-btn {
+  display:inline-block; padding:.3rem .7rem; margin:.2rem .2rem 0 0;
+  border:1px solid #dee2e6; border-radius:2rem; font-size:.78rem;
+  cursor:pointer; background:#fff; transition:background .15s,border-color .15s;
+  white-space:nowrap;
+}
+.chip-btn:hover { background:#e9ecef; border-color:#adb5bd; }
+</style>
+
+<div class="container-fluid py-4">
+
+  <!-- ══════════════════════════════════════════════════
+       CHAT PANEL
+  ══════════════════════════════════════════════════════ -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0 d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5ZM3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.58 26.58 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.933.933 0 0 1-.765.935c-.845.147-2.34.346-4.235.346-1.895 0-3.39-.2-4.235-.346A.933.933 0 0 1 3 9.219V8.062Zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a24.767 24.767 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25.286 25.286 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.134Z"/>
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
+            </svg>
+            <h6 class="mb-0">MAIA Admin Assistant</h6>
+            {% if anthropic_configured %}
+              <span class="badge bg-gradient-success ms-1" style="font-size:.7rem">Ready</span>
+            {% else %}
+              <span class="badge bg-gradient-danger ms-1" style="font-size:.7rem">ANTHROPIC_API_KEY not set</span>
+            {% endif %}
+          </div>
+          <button id="btn-clear" class="btn btn-sm btn-outline-secondary mb-0" title="Start a new conversation">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16" class="me-1">
+              <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+              <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+            </svg>
+            New conversation
+          </button>
+        </div>
+
+        <div class="card-body pt-2 pb-2">
+          <!-- chat window -->
+          <div id="chat-window">
+            <div class="msg-row">
+              <div class="msg-avatar ai">AI</div>
+              <div class="msg-bubble ai">
+                Hello! I'm the MAIA Admin Assistant. I can help you manage users and research projects.
+                Try asking me something or pick a suggestion below.
+              </div>
+            </div>
+          </div>
+
+          <!-- suggestion chips -->
+          <div id="chips" class="mt-2 mb-1">
+            <span class="chip-btn">List all users</span>
+            <span class="chip-btn">List all projects</span>
+            <span class="chip-btn">List pending projects</span>
+            <span class="chip-btn">Create a new user</span>
+            <span class="chip-btn">Create a new project</span>
+            <span class="chip-btn">Delete a user</span>
+            <span class="chip-btn">Delete a project</span>
+          </div>
+        </div>
+
+        <!-- input bar -->
+        <div class="card-footer pt-0 pb-3">
+          <div class="d-flex gap-2">
+            <textarea id="chat-input" rows="1"
+              class="form-control form-control-sm"
+              placeholder="Ask me anything about users or projects…"
+              style="resize:none; min-height:38px; max-height:120px; overflow-y:auto;"
+            ></textarea>
+            <button id="btn-send" class="btn bg-gradient-dark mb-0 px-3" {% if not anthropic_configured %}disabled{% endif %}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-secondary mt-1 mb-0">
+            Conversation is kept in your browser session.
+            Model: <code>{{ agent_model }}</code>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       API DOCS (tabbed)
+  ══════════════════════════════════════════════════════ -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0">
+          <h6 class="mb-0">Integration Reference</h6>
+          <ul class="nav nav-tabs mt-2" id="apiTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-rest" type="button">REST API</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mattermost" type="button">Mattermost</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mcp-http" type="button">HTTP MCP</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mcp-stdio" type="button">Stdio MCP</button>
+            </li>
+          </ul>
+        </div>
+        <div class="card-body">
+          <div class="tab-content">
+
+            <!-- REST -->
+            <div class="tab-pane fade show active" id="tab-rest">
+              <p class="text-sm">Send a natural-language command; supports multi-turn conversation via the <code>history</code> field.</p>
+              <pre class="bg-gray-100 p-3 rounded text-xs" style="white-space:pre-wrap">POST /maia/agent/chat/
+X-Agent-Token: &lt;AGENT_API_TOKEN&gt;
+Content-Type: application/json
+
+{
+  "message": "List all users",
+  "history": []
+}
+
+→ {"response": "...", "history": [...]}</pre>
+            </div>
+
+            <!-- Mattermost -->
+            <div class="tab-pane fade" id="tab-mattermost">
+              <p class="text-sm">Configure a Mattermost <em>Outgoing Webhook</em> or <em>Slash Command</em>.</p>
+              <ol class="text-sm ps-3">
+                <li>Go to <strong>Integrations → Outgoing Webhooks</strong></li>
+                <li>Callback URL: <code>https://{{ hostname }}/maia/agent/mattermost/</code></li>
+                <li>Token: matches <code>AGENT_API_TOKEN</code></li>
+                <li>Trigger word (optional): e.g. <kbd>maia</kbd></li>
+              </ol>
+              <p class="text-sm mt-2 mb-0">Users then type <code>maia list all projects</code> in any channel.</p>
+            </div>
+
+            <!-- HTTP MCP -->
+            <div class="tab-pane fade" id="tab-mcp-http">
+              <p class="text-sm">Stateless JSON-RPC 2.0 endpoint. Connect any MCP-aware agent or framework.</p>
+              <pre class="bg-gray-100 p-3 rounded text-xs" style="white-space:pre-wrap">POST /maia/agent/mcp/
+X-Agent-Token: &lt;AGENT_API_TOKEN&gt;
+Content-Type: application/json
+
+# Handshake
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+
+# List tools
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+
+# Call a tool
+{"jsonrpc":"2.0","id":3,"method":"tools/call",
+ "params":{"name":"list_users","arguments":{}}}</pre>
+            </div>
+
+            <!-- Stdio MCP -->
+            <div class="tab-pane fade" id="tab-mcp-stdio">
+              <p class="text-sm">Use <code>mcp_server/maia_mcp_server.py</code> with Claude Desktop, Cursor, or any MCP client.</p>
+              <pre class="bg-gray-100 p-3 rounded text-xs" style="white-space:pre-wrap"># claude_desktop_config.json
+{
+  "mcpServers": {
+    "maia-admin": {
+      "command": "python",
+      "args": ["/path/to/MAIA/mcp_server/maia_mcp_server.py"],
+      "env": {
+        "MAIA_API_URL": "https://{{ hostname }}/",
+        "MAIA_API_TOKEN": "&lt;admin-DRF-token&gt;"
+      }
+    }
+  }
+}</pre>
+              <p class="text-sm mt-2">Get a DRF token (inside the dashboard container):</p>
+              <pre class="bg-gray-100 p-3 rounded text-xs">python manage.py shell -c "
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+u = User.objects.get(username='&lt;admin-username&gt;')
+t, _ = Token.objects.get_or_create(user=u)
+print(t.key)"</pre>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TOOLS TABLE + ENV VARS (side by side)
+  ══════════════════════════════════════════════════════ -->
+  <div class="row">
+    <!-- Tools -->
+    <div class="col-xl-8 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0"><h6 class="mb-0">Available Admin Tools</h6></div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tool</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Description</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Required params</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code class="text-xs">list_users</code></td><td class="text-sm">List all platform users with group assignments</td><td class="text-xs text-secondary">—</td></tr>
+                <tr><td><code class="text-xs">create_user</code></td><td class="text-sm">Create a user and register in Keycloak</td><td class="text-xs text-secondary">email, username, first_name, last_name</td></tr>
+                <tr><td><code class="text-xs">update_user</code></td><td class="text-sm">Update a user's group/namespace assignments</td><td class="text-xs text-secondary">email, namespace</td></tr>
+                <tr><td><code class="text-xs">delete_user</code></td><td class="text-sm">Delete a user from the platform</td><td class="text-xs text-secondary">email</td></tr>
+                <tr><td><code class="text-xs">list_projects</code></td><td class="text-sm">List all research projects / groups</td><td class="text-xs text-secondary">—</td></tr>
+                <tr><td><code class="text-xs">list_pending_projects</code></td><td class="text-sm">List projects pending admin approval</td><td class="text-xs text-secondary">—</td></tr>
+                <tr><td><code class="text-xs">create_project</code></td><td class="text-sm">Create a project with Kubernetes namespace &amp; GPU quota</td><td class="text-xs text-secondary">group_id, gpu, date, memory_limit, cpu_limit, cluster, project_tier</td></tr>
+                <tr><td><code class="text-xs">delete_project</code></td><td class="text-sm">Delete a project and remove members from Keycloak group</td><td class="text-xs text-secondary">group_id</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Env vars -->
+    <div class="col-xl-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header pb-0"><h6 class="mb-0">Environment Variables</h6></div>
+        <div class="card-body px-0 pt-0 pb-2">
+          <div class="table-responsive p-0">
+            <table class="table align-items-center mb-0">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Variable</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code class="text-xs">ANTHROPIC_API_KEY</code></td>
+                  <td>{% if anthropic_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-danger">Not set</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">AGENT_API_TOKEN</code></td>
+                  <td>{% if agent_token_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-warning">Not set</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">AGENT_MODEL</code></td>
+                  <td><code class="text-xs">{{ agent_model }}</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const chatWindow  = document.getElementById("chat-window");
+  const chatInput   = document.getElementById("chat-input");
+  const btnSend     = document.getElementById("btn-send");
+  const btnClear    = document.getElementById("btn-clear");
+  const chips       = document.querySelectorAll(".chip-btn");
+  const csrfToken   = "{{ csrf_token }}";
+  const CHAT_URL    = "/maia/agent/admin-chat/";
+
+  // ── helpers ────────────────────────────────────────────────
+  function scrollBottom() {
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function appendBubble(role, html) {
+    const isUser = role === "user";
+    const row = document.createElement("div");
+    row.className = "msg-row" + (isUser ? " user" : "");
+
+    const avatar = document.createElement("div");
+    avatar.className = "msg-avatar " + (isUser ? "user" : "ai");
+    avatar.textContent = isUser ? "You" : "AI";
+
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble " + (isUser ? "user" : "ai");
+    if (isUser) {
+      bubble.textContent = html;
+    } else {
+      bubble.innerHTML = marked.parse(html);
+    }
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    chatWindow.appendChild(row);
+    scrollBottom();
+    return bubble;
+  }
+
+  function showTyping() {
+    const row = document.createElement("div");
+    row.className = "msg-row";
+    row.id = "typing-row";
+
+    const avatar = document.createElement("div");
+    avatar.className = "msg-avatar ai";
+    avatar.textContent = "AI";
+
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble ai";
+    bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    chatWindow.appendChild(row);
+    scrollBottom();
+  }
+
+  function removeTyping() {
+    const el = document.getElementById("typing-row");
+    if (el) el.remove();
+  }
+
+  function setLoading(on) {
+    btnSend.disabled = on;
+    chatInput.disabled = on;
+    if (on) showTyping(); else removeTyping();
+  }
+
+  // ── send message ───────────────────────────────────────────
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+    appendBubble("user", text);
+    chatInput.value = "";
+    autoResize();
+    setLoading(true);
+
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await resp.json();
+      setLoading(false);
+      if (resp.ok) {
+        appendBubble("ai", data.response || "(no response)");
+      } else {
+        appendBubble("ai", "⚠️ **Error:** " + (data.error || resp.status));
+      }
+    } catch (err) {
+      setLoading(false);
+      appendBubble("ai", "⚠️ **Network error:** " + err.message);
+    }
+  }
+
+  // ── clear conversation ─────────────────────────────────────
+  async function clearChat() {
+    await fetch(CHAT_URL, {
+      method: "DELETE",
+      headers: { "X-CSRFToken": csrfToken },
+    });
+    // Remove all messages except the welcome bubble
+    while (chatWindow.children.length > 1) {
+      chatWindow.removeChild(chatWindow.lastChild);
+    }
+  }
+
+  // ── auto-resize textarea ───────────────────────────────────
+  function autoResize() {
+    chatInput.style.height = "auto";
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
+  }
+
+  // ── event listeners ────────────────────────────────────────
+  btnSend.addEventListener("click", () => sendMessage(chatInput.value));
+
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(chatInput.value);
+    }
+  });
+
+  chatInput.addEventListener("input", autoResize);
+
+  btnClear.addEventListener("click", clearChat);
+
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => sendMessage(chip.textContent.trim()));
+  });
+})();
+</script>
+{% endblock %}

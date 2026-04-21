@@ -20,6 +20,7 @@ urlpatterns = [
     path("maia/", include("apps.authentication.urls")),  # Auth routes - login / register
     # ADD NEW Routes HERE
     path("maia/api/", include("apps.api.urls")),  # API Generator Routes
+    path("maia/agent/", include("apps.agent_api.urls")),  # Agent API + MCP Server
     path("", include("apps.dyn_datatables.urls")),  # Dynamic DB Routes
     # Leave `Home.Urls` as last the last line
     path("maia/", include("apps.home.urls")),  # Generic Routing
