@@ -274,8 +274,8 @@ def agent_api_view(request):
         active_base_url = getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1")
     elif provider == "ollama":
         is_ready = True
-        active_model = getattr(settings, "OLLAMA_MODEL", "llama3")
-        active_base_url = getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        active_model = getattr(settings, "OPENWEBAI_MODEL", "llama3")
+        active_base_url = getattr(settings, "OPENWEBAI_URL", "http://localhost:11434/v1")
     else:
         provider = "anthropic"
         is_ready = bool(getattr(settings, "ANTHROPIC_API_KEY", None))
@@ -293,7 +293,7 @@ def agent_api_view(request):
         # legacy keys kept for the env-var table
         "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
         "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", None)),
-        "ollama_key_configured": bool(getattr(settings, "OLLAMA_API_KEY", None)),
+        "ollama_key_configured": bool(getattr(settings, "OPENWEBAI_API_KEY", None)),
         "user": ["admin"],
         "username": request.user.username + " [ADMIN]",
     }

@@ -80,11 +80,6 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
 OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
 OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
 
-# Ollama provider (OpenAI-compatible local inference)
-OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://localhost:11434/v1")
-OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3")
-# Required when Ollama is behind an authenticated proxy (e.g. Open WebUI)
-OLLAMA_API_KEY = env("OLLAMA_API_KEY", default=None)
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
 
