@@ -49,6 +49,13 @@ Guidelines:
 5. Keep responses concise and professional.
 """
 
+
+def _build_system_prompt(username: str | None) -> str:
+    """Append the operator identity to the base system prompt when known."""
+    if not username:
+        return SYSTEM_PROMPT
+    return SYSTEM_PROMPT + f"\nYou are currently assisting the administrator: {username}."
+
 # ---------------------------------------------------------------------------
 # Configuration helper
 # ---------------------------------------------------------------------------
@@ -109,7 +116,7 @@ def _not_ready_error(cfg: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _run_agent_anthropic(message: str, history: list, cfg: dict):
+def _run_agent_anthropic(message: str, history: list, cfg: dict, username: str | None = None):
     """Agentic loop using the Anthropic SDK (Claude)."""
     try:
         import anthropic
@@ -122,13 +129,16 @@ def _run_agent_anthropic(message: str, history: list, cfg: dict):
     messages = list(history)
     messages.append({"role": "user", "content": message})
 
+    extra = {"metadata": {"user_id": username}} if username else {}
+
     while True:
         response = client.messages.create(
             model=cfg["model"],
             max_tokens=4096,
-            system=SYSTEM_PROMPT,
+            system=_build_system_prompt(username),
             messages=messages,
             tools=TOOL_DEFINITIONS,
+            **extra,
         )
         messages.append({"role": "assistant", "content": response.content})
 
@@ -163,7 +173,7 @@ def _run_agent_anthropic(message: str, history: list, cfg: dict):
 # ---------------------------------------------------------------------------
 
 
-def _run_agent_openai(message: str, history: list, cfg: dict):
+def _run_agent_openai(message: str, history: list, cfg: dict, username: str | None = None):
     """
     Agentic loop using the OpenAI SDK.
 
@@ -182,9 +192,12 @@ def _run_agent_openai(message: str, history: list, cfg: dict):
     client = OpenAI(api_key=cfg["api_key"], base_url=cfg["base_url"])
 
     # OpenAI keeps system prompt inside the messages list
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": _build_system_prompt(username)}]
     messages.extend(history)
     messages.append({"role": "user", "content": message})
+
+    # 'user' field lets the provider attribute requests to a specific end-user
+    extra = {"user": username} if username else {}
 
     while True:
         response = client.chat.completions.create(
@@ -192,6 +205,7 @@ def _run_agent_openai(message: str, history: list, cfg: dict):
             messages=messages,
             tools=OPENAI_TOOL_DEFINITIONS,
             max_tokens=4096,
+            **extra,
         )
         choice = response.choices[0]
         # Store as plain dict (always JSON-serialisable)
@@ -225,11 +239,11 @@ def _run_agent_openai(message: str, history: list, cfg: dict):
 # ---------------------------------------------------------------------------
 
 
-def _run_agent(message: str, history: list, cfg: dict):
+def _run_agent(message: str, history: list, cfg: dict, username: str | None = None):
     """Route to the correct provider runner and return (text, history)."""
     if cfg["provider"] == "anthropic":
-        return _run_agent_anthropic(message, history, cfg)
-    return _run_agent_openai(message, history, cfg)
+        return _run_agent_anthropic(message, history, cfg, username)
+    return _run_agent_openai(message, history, cfg, username)
 
 
 # ---------------------------------------------------------------------------
@@ -276,8 +290,16 @@ class AgentChatView(APIView):
 
         history = request.data.get("history", [])
 
+        # Use authenticated Django user when available, else accept an explicit
+        # "user" field in the request body (for machine-to-machine callers).
+        username = None
+        if request.user.is_authenticated:
+            username = request.user.email or request.user.username
+        if not username:
+            username = request.data.get("user") or None
+
         try:
-            response_text, updated_history = _run_agent(message, history, cfg)
+            response_text, updated_history = _run_agent(message, history, cfg, username)
         except Exception as exc:
             logger.error(f"Agent error: {exc}")
             return Response({"error": str(exc)}, status=500)
@@ -331,8 +353,11 @@ class AgentMattermostView(APIView):
                 }
             )
 
+        # Mattermost sends user_name and user_email in the webhook payload
+        username = request.data.get("user_email") or request.data.get("user_name") or None
+
         try:
-            response_text, _ = _run_agent(raw_text, [], cfg)
+            response_text, _ = _run_agent(raw_text, [], cfg, username)
         except Exception as exc:
             logger.error(f"Mattermost agent error: {exc}")
             return Response({"text": f"Error: {exc}", "response_type": "ephemeral"})
@@ -373,10 +398,13 @@ class AgentAdminChatView(APIView):
 
         history = request.session.get(self.SESSION_KEY, [])
 
+        # Use email if set, fall back to username — always non-empty for superusers
+        username = request.user.email or request.user.username
+
         try:
-            response_text, updated_history = _run_agent(message, history, cfg)
+            response_text, updated_history = _run_agent(message, history, cfg, username)
         except Exception as exc:
-            logger.error(f"Admin chat agent error: {exc}")
+            logger.error(f"Admin chat agent error [{username}]: {exc}")
             return Response({"error": str(exc)}, status=500)
 
         serialised = (
