@@ -462,6 +462,10 @@ env:
   ORTHANC_CPU_LIMIT: "4000m"
   ORTHANC_MEMORY_REQUEST: "4Gi"
   ORTHANC_MEMORY_LIMIT: "4Gi"
+  ORTHANC_MYSQL_CPU_REQUEST: "500m"
+  ORTHANC_MYSQL_CPU_LIMIT: "500m"
+  ORTHANC_MYSQL_MEMORY_REQUEST: "2Gi"
+  ORTHANC_MYSQL_MEMORY_LIMIT: "2Gi"
   MLFLOW_CPU_REQUEST: "500m"
   MLFLOW_CPU_LIMIT: "500m"
   MLFLOW_MEMORY_REQUEST: "2Gi"
@@ -528,4 +532,22 @@ email_to_username_map:
   "email_1": "username_1"
   "email_2": "username_2"
   "email_3": "username_3"
+```
+
+#### Host Aliases
+
+Used to set the host aliases for the MAIA Dashboard pod, in case the CoreDNS cannot resolve the hostnames:
+
+```yaml
+env:
+  HOST_ALIASES: '[{"ip": "<IP_ADDRESS>", "hostnames": ["<hostname_1>", "<hostname_2>"]}]'
+```
+
+#### Custom Clusters Configuration
+
+Used to set the custom clusters configuration for the MAIA Dashboard, when adding new clusters to the MAIA Dashboard.
+
+```yaml
+env:
+  CLUSTER_YAML_CONFIGS: "<path/to/cluster_1>.yaml,<path/to/cluster_2>.yaml,<path/to/cluster_3>.yaml"
 ```

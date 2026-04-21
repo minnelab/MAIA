@@ -254,7 +254,10 @@ def build_maia_images(
                 "maia-dashboard",
                 build_versions["maia-dashboard"],
                 "dashboard",
-                [f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}"],
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}",
+                    f"MAIA_VERSION=v{build_versions['maia-dashboard']}",
+                ],
                 registry_credentials=registry_credentials,
             )
         )
@@ -273,6 +276,8 @@ def build_maia_images(
                 [
                     f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}",
                     "DEVEL=1",
+                    f"DEV_BRANCH={os.environ['DEV_BRANCH']}",
+                    f"MAIA_VERSION=v{build_versions['maia-dashboard']}",
                     "MAIA_DASHBOARD_PATH=/etc/MAIA/dashboard",
                 ],
                 registry_credentials=registry_credentials,

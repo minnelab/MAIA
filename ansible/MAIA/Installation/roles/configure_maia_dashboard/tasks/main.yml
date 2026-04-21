@@ -16,6 +16,13 @@
   set_fact:
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
+- name: Ensure DEPLOY_KUBECONFIG is absolute
+  ansible.builtin.set_fact:
+    DEPLOY_KUBECONFIG: >-
+      {{ DEPLOY_KUBECONFIG if DEPLOY_KUBECONFIG is match('^/') else (config_folder ~ '/' ~ DEPLOY_KUBECONFIG) }}
+  when: DEPLOY_KUBECONFIG is defined and (DEPLOY_KUBECONFIG is not match('^/'))
+  delegate_to: localhost
+
 - name: Run MAIA Admin Toolkit installer
   ansible.builtin.command: >
     MAIA_install_admin_toolkit
@@ -34,6 +41,7 @@
     minio_root_password: "{{ minio_root_password }}"
     dashboard_api_secret: "{{ dashboard_api_secret }}"
     mysql_dashboard_password: "{{ mysql_dashboard_password }}"
+    mongodb_dashboard_password: "{{ mongodb_dashboard_password }}"
     rancher_token: "{{ rancher_token }}"
     rancher_password: "{{ rancher_password }}"
     keycloak_admin_password: "{{ keycloak_admin_password }}"

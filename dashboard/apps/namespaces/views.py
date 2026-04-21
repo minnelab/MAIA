@@ -5,7 +5,12 @@ from django.template.defaulttags import register
 from MAIA.kubernetes_utils import get_namespaces
 import os
 from pathlib import Path
-from apps.models import MAIAProject
+from django.conf import settings
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAProject
+else:
+    from apps.models import MAIAProject
 from django.http import HttpResponse
 
 # Create your views here.
@@ -13,6 +18,7 @@ from MAIA.kubernetes_utils import get_namespace_details
 from MAIA.dashboard_utils import get_allocation_date_for_project, get_project, register_cluster_for_project_in_db
 import datetime
 from django.conf import settings
+from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
 @register.filter
@@ -93,7 +99,7 @@ def namespace_view(request, namespace_id):
         if request.user.is_superuser:
             is_admin = True
         maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards = (
-            get_namespace_details(settings, id_token, namespace_id, user_id, is_admin=is_admin)
+            get_namespace_details(settings, id_token, namespace_id.lower().replace("_", "-"), user_id, is_admin=is_admin)
         )
 
         if len(remote_desktop_dict) == 0:
@@ -109,7 +115,12 @@ def namespace_view(request, namespace_id):
 
         namespaces = []
         if request.user.is_superuser:
-            namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            keycloak_groups = get_groups_in_keycloak(settings)
+            for group in keycloak_groups:
+                group_name = keycloak_groups[group]
+                if group_name.lower().replace("_", "-") in namespaces_global:
+                    namespaces.append(group_name)
 
         else:
             for group in groups:
@@ -117,12 +128,18 @@ def namespace_view(request, namespace_id):
                     namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
 
         allocation_date = get_allocation_date_for_project(
-            maia_project_model=MAIAProject, group_id=namespace_id, is_namespace_style=True
+            maia_project_model=MAIAProject, group_id=namespace_id.lower().replace("_", "-"), is_namespace_style=True
         )
         if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
             cluster_config_dict = {"ssh_hostname": "localhost"}
         else:
-            _, cluster_id = get_project(namespace_id, settings=settings, maia_project_model=MAIAProject, is_namespace_style=True)
+            _, cluster_id = get_project(
+                namespace_id.lower().replace("_", "-"),
+                settings=settings,
+                maia_project_model=MAIAProject,
+                is_namespace_style=True,
+                return_only_cluster_id=True,
+            )
 
             cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
 
@@ -130,7 +147,9 @@ def namespace_view(request, namespace_id):
                 cluster_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(cluster_id + ".yaml").read_text())
             else:
                 if len(deployed_clusters) > 0:
-                    register_cluster_for_project_in_db(MAIAProject, settings, namespace_id, deployed_clusters[0])
+                    register_cluster_for_project_in_db(
+                        MAIAProject, settings, namespace_id.lower().replace("_", "-"), deployed_clusters[0]
+                    )
                     cluster_config_dict = yaml.safe_load(
                         Path(cluster_config_path).joinpath(deployed_clusters[0] + ".yaml").read_text()
                     )

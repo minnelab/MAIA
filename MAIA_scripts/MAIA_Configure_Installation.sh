@@ -372,6 +372,18 @@ else
 fi
 
 if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  existing_mongodb_dashboard_password=$(jq -r '.mongodb_dashboard_password' "$CONFIG_FOLDER/env.json")
+else
+  existing_mongodb_dashboard_password=""
+fi
+
+if [ -n "$existing_mongodb_dashboard_password" ] && [ "$existing_mongodb_dashboard_password" != "null" ]; then
+  mongodb_dashboard_password="$existing_mongodb_dashboard_password"
+else
+  mongodb_dashboard_password=$(openssl rand -hex 12)
+fi
+
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
   existing_admin_email=$(jq -r '.admin_email' "$CONFIG_FOLDER/env.json")
 else
   existing_admin_email=""
@@ -412,6 +424,7 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "minio_admin_password": "$minio_admin_password",
   "minio_root_password": "$minio_root_password",
   "mysql_dashboard_password": "$mysql_dashboard_password",
+  "mongodb_dashboard_password": "$mongodb_dashboard_password",
   "admin_email": "$admin_email"
 }
 EOF

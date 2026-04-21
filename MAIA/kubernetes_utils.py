@@ -29,6 +29,8 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
             object_name,
             expires=timedelta(hours=168),  # Link valid for 7 days
         )
+        logger.info(f"MinIO public URL: {settings.MINIO_PUBLIC_URL}")
+        logger.info(f"MinIO shareable link: {url}")
         return url
 
     except Exception:
@@ -45,6 +47,8 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
             object_name,
             expires=timedelta(hours=168),  # Link valid for 7 days
         )
+        logger.info(f"MinIO public URL: {settings.MINIO_PUBLIC_URL}")
+        logger.info(f"MinIO shareable link: {url}")
         return url
 
 
@@ -950,12 +954,12 @@ def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):
     def create_resource(api_call, name, kind, **kwargs):
         try:
             api_call(**kwargs)
-            print(f"Created {kind}: {name}")
+            logger.info(f"Created {kind}: {name}")
         except ApiException as e:
             if e.status == 409:
-                print(f"{kind} '{name}' already exists. Skipping.")
+                logger.info(f"{kind} '{name}' already exists. Skipping.")
             else:
-                print(f"Failed to create {kind} '{name}': {e}")
+                logger.error(f"Failed to create {kind} '{name}': {e}")
 
     # Create ServiceAccounts
     for sa in service_accounts:
@@ -1017,10 +1021,10 @@ def create_kubeflow_profile(namespace: str, owner: str):
         )
     except ApiException as e:
         if e.status == 409:
-            print(f"Profile '{namespace}' already exists. Skipping.")
+            logger.info(f"Profile '{namespace}' already exists. Skipping.")
             return
         else:
-            print(f"Failed to create profile '{namespace}': {e}")
+            logger.error(f"Failed to create profile '{namespace}': {e}")
             return
     return
 
@@ -1053,9 +1057,9 @@ def get_profile_uid(profile_name: str) -> str:
 
     except ApiException as e:
         if e.status == 404:
-            print(f"Profile '{profile_name}' not found.")
+            logger.info(f"Profile '{profile_name}' not found.")
         else:
-            print(f"An API error occurred: {e.reason} ({e.status})")
+            logger.error(f"An API error occurred: {e.reason} ({e.status})")
         return None
 
 
@@ -1548,14 +1552,14 @@ def create_maia_rbac_from_context(namespace):
     )
 
     try:
-        print(f"Creating Role 'maia-namespace-role' in namespace '{namespace}'...")
+        logger.info(f"Creating Role 'maia-namespace-role' in namespace '{namespace}'...")
         rbac_api.create_namespaced_role(namespace=namespace, body=role)
-        print("Role created successfully.\n")
+        logger.info("Role created successfully.\n")
     except ApiException as e:
         if e.status == 409:
-            print("Role already exists. Skipping creation.\n")
+            logger.info("Role already exists. Skipping creation.\n")
         else:
-            print(f"Failed to create Role: {e}\n")
+            logger.error(f"Failed to create Role: {e}\n")
 
     # --- 2. Define and Create the RoleBinding ---
     role_binding = client.V1RoleBinding(
@@ -1565,11 +1569,11 @@ def create_maia_rbac_from_context(namespace):
     )
 
     try:
-        print(f"Creating RoleBinding 'maia-namespace-role-binding' in namespace '{namespace}'...")
+        logger.info(f"Creating RoleBinding 'maia-namespace-role-binding' in namespace '{namespace}'...")
         rbac_api.create_namespaced_role_binding(namespace=namespace, body=role_binding)
-        print("RoleBinding created successfully.\n")
+        logger.info("RoleBinding created successfully.\n")
     except ApiException as e:
         if e.status == 409:
-            print("RoleBinding already exists. Skipping creation.\n")
+            logger.info("RoleBinding already exists. Skipping creation.\n")
         else:
-            print(f"Failed to create RoleBinding: {e}\n")
+            logger.error(f"Failed to create RoleBinding: {e}\n")

@@ -21,6 +21,13 @@
   set_fact:
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
+- name: Ensure DEPLOY_KUBECONFIG is absolute
+  ansible.builtin.set_fact:
+    DEPLOY_KUBECONFIG: >-
+      {{ DEPLOY_KUBECONFIG if DEPLOY_KUBECONFIG is match('^/') else (config_folder ~ '/' ~ DEPLOY_KUBECONFIG) }}
+  when: DEPLOY_KUBECONFIG is defined and (DEPLOY_KUBECONFIG is not match('^/'))
+  delegate_to: localhost
+
 - name: Create namespaces
   kubernetes.core.k8s:
     api_version: v1

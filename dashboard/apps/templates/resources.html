@@ -1,443 +1,460 @@
 {% extends 'layouts/base.html' %}
 
-{% block title %} Resource Usage {% endblock title %}
+{% block title %} Resources {% endblock title %}
 
-<!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+  /* ── Section cards ───────────────────────────── */
+  .res-card {
+    border-radius: 14px; border: none;
+    box-shadow: 0 2px 14px rgba(0,0,0,.06);
+    margin-bottom: 24px; overflow: hidden;
+  }
+  .res-card-header {
+    padding: 16px 22px 14px;
+    background: #fff; border-bottom: 1px solid #f0f2f5;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .res-card-title {
+    font-size: .95rem; font-weight: 700; color: #344767;
+    display: flex; align-items: center; gap: 8px; margin: 0;
+  }
+  .res-card-title i { color: #5e72e4; font-size: .82rem; }
+
+  /* ── Tables ──────────────────────────────────── */
+  .res-table th {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8392ab;
+    padding: 10px 16px; border-top: none; background: #f8f9fa;
+  }
+  .res-table td {
+    font-size: .83rem; padding: 11px 16px;
+    vertical-align: middle; color: #344767;
+    border-color: #f0f2f5;
+  }
+  .res-table tr:hover td { background: rgba(94,114,228,.03); }
+
+  /* ── Expiration badges ───────────────────────── */
+  .exp-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: .72rem; font-weight: 700;
+  }
+  .exp-ok      { background: #e8faf0; color: #1aae6f; }
+  .exp-none    { background: #f0f2f5; color: #8392ab; }
+  .exp-expired { background: #fee2e2; color: #c53030; }
+
+  /* ── Availability indicators ─────────────────── */
+  .avail-ok   { color: #2dce89; font-size: .85rem; }
+  .avail-warn { color: #fb6340; font-size: .85rem; }
+  .avail-bad  { color: #f5365c; font-size: .85rem; }
+
+  .avail-bar-wrap {
+    height: 5px; border-radius: 3px; background: #f0f2f5;
+    overflow: hidden; min-width: 60px;
+  }
+  .avail-bar { height: 100%; border-radius: 3px; }
+  .avail-bar-ok   { background: #2dce89; }
+  .avail-bar-warn { background: #fb6340; }
+  .avail-bar-bad  { background: #f5365c; }
+
+  /* ── Search form ─────────────────────────────── */
+  .form-group-label {
+    font-size: .73rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8392ab; margin-bottom: 5px; display: block;
+  }
+  .form-control, .form-select, select {
+    border-radius: 8px !important; border: 1px solid #e9ecef !important;
+    padding: 9px 13px !important; font-size: .84rem !important;
+    background: #fff !important; width: 100%;
+    transition: border-color .15s, box-shadow .15s !important;
+  }
+  .form-control:focus, select:focus {
+    border-color: #5e72e4 !important;
+    box-shadow: 0 0 0 3px rgba(94,114,228,.15) !important;
+    outline: none !important;
+  }
+
+  .search-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 24px; border-radius: 10px;
+    background: linear-gradient(310deg, #2152ff, #21d4fd);
+    color: #fff; font-weight: 700; font-size: .85rem;
+    border: none; cursor: pointer;
+    box-shadow: 0 4px 15px rgba(33,82,255,.35);
+    transition: box-shadow .2s, transform .15s;
+  }
+  .search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(33,82,255,.5);
+  }
+
+  .export-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px;
+    background: #f0f2f5; color: #344767;
+    font-size: .75rem; font-weight: 600;
+    border: none; cursor: pointer;
+    transition: background .12s;
+    text-decoration: none;
+  }
+  .export-btn:hover { background: #e2e6ea; }
+
+  /* ── Namespace link ──────────────────────────── */
+  .ns-link {
+    color: #5e72e4; font-weight: 600; text-decoration: none;
+  }
+  .ns-link:hover { text-decoration: underline; }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .res-animate { animation: fadeSlideUp .3s ease both; }
+</style>
+{% endblock stylesheets %}
 
 {% block content %}
+<section class="min-vh-100 mb-8">
 
-<main class="main-content mt-0">
-    <section class="min-vh-100 mb-8">
+  <!-- ══ Hero ════════════════════════════════════════════════════════ -->
   {% if BACKEND == "compose" %}
-   <div class="page-header align-items-start min-vh-80 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png');">
+  <div class="page-header align-items-start min-vh-40 pt-5 pb-11 m-3 border-radius-lg"
+       style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png'); background-size: cover;">
   {% else %}
-    <div class="page-header align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg" style="background-image: url('{{ ASSETS_ROOT }}/img/MAIA/GPU_Booking.png'); background-size: cover; background-position: center; background-size: 90% auto; background-repeat: no-repeat;">
+  <div class="page-header align-items-start min-vh-40 pt-5 pb-11 m-3 border-radius-lg"
+       style="background-image: url('{{ ASSETS_ROOT }}/img/MAIA/GPU_Booking.png');
+              background-size: cover; background-position: center;">
   {% endif %}
     <span class="mask bg-gradient-dark opacity-6"></span>
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="col-lg-5 text-center mx-auto">
-                        <h1 class="text-white mb-2 mt-5">MAIA Resources</h1>
-                    </div>
-                </div>
-            </div>
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-lg-6 text-center">
+          <h1 class="text-white mb-2">MAIA Resources</h1>
+          <p class="text-white mb-0" style="opacity:.75; font-size:.9rem;">
+            GPU allocations, availability search, and compute statistics
+          </p>
         </div>
-
-        <div class="card">
-            <div class="card-header pb-0">
-                <div class="row">
-                    <div class="col-lg-6 col-15">
-                        <h3>GPU Allocations</h3>
-                    </div>
-                    <div class="col-lg-6 col-5 my-auto text-end">
-                        <div class="dropdown float-lg-end pe-4">
-                            <a class="cursor-pointer" id="dropdownTable" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fa fa-ellipsis-v text-secondary"></i>
-                            </a>
-                            <ul class="dropdown-menu px-2 py-3 ms-sm-n4 ms-n5" aria-labelledby="dropdownTable">
-                                <li><a class="dropdown-item border-radius-md" onclick="exportTableToExcel('allocations', 'MAIA_GPU_Allocations')">Download as Excel</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body px-0 pb-2">
-                <div class="table-responsive">
-                    <table class="table align-items-center mb-0" id="allocations">
-                        <thead>
-                            <tr class="align-middle text-center text-sm">
-                                <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Name</th>
-                                <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Cluster</th>
-                                <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Node</th>
-                                <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Namespace</th>
-                                <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">GPU</th>
-                                <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Expiring Booking</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for k in gpu_allocations.items %}
-                            <tr>
-                                <td class="align-middle text-center text-sm">
-                                    <span class="text-m font-weight-bold"> {{k|dict_key}} </span>
-                                </td>
-                                <td class="align-middle text-center text-sm">
-                                    <span class="text-m font-weight-bold"> {{k|dict_val|get_item:'cluster'}} </span>
-                                </td>
-                                <td class="align-middle text-center text-sm">
-                                    <span class="text-m font-weight-bold"> {{k|dict_val|get_item:'node'}} </span>
-                                </td>
-                                <td class="align-middle text-center text-sm">
-                                    <span class="text-m font-weight-bold"> <a href="/maia/namespaces/{{k|dict_val|get_item:'namespace'}}" /> {{k|dict_val|get_item:'namespace'}} </span>
-                                </td>
-                                <td class="align-
-                            </td>
-
-                            
-
-                        <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|get_item:'gpu_name'}} -  {{k|dict_val|get_item:'gpu_size'}}</span>
-                            </td>
-
-                            <td class="align-middle text-center text-sm">
-                                    {% if k|dict_val|get_item:'expiration' %}
-                                        {% if 'is_expired' in k|dict_val %}
-                                            {% if k|dict_val|get_item:'is_expired' %}
-                                                <form method="POST" action="{% url 'delete_expired_pod' k|dict_val|get_item:'namespace' k|dict_key %}" onsubmit="deleteElement(event);">
-                                                                {% csrf_token %}
-                                                                <button type="submit" class="btn btn-danger btn-sm">Expired ({{k|dict_val|get_item:'expiration'}})</button>
-                                                </form>
-                                                
-                                            {% else %}
-                                                <span class="text-m font-weight-bold">{{k|dict_val|get_item:'expiration'}}</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="text-m font-weight-bold">{{k|dict_val|get_item:'expiration'}}</span>
-                                        {% endif %}
-                                    {% else %}
-                                        <span class="text-m font-weight-bold"> No Expiry </span>
-                                    {% endif %}
-                                </td>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
-    <br>
-      <div class="container">
-        <div class="row mt-lg-n50 mt-md-n50 mt-n50">
-          <div class="col-xl-100 col-lg-100 col-md-100 mx-auto">
-            <div class="card z-index-0">
+  </div>
 
-              <div class="card-header text-center pt-4">
-                <h5>Available Computing Resources</h5>
-              </div>
+  <div class="container-fluid mt-n6 px-4">
 
-              <div class="row px-xl-5 px-sm-4 px-3">
-
-                <div class="mt-2 position-relative text-center">
-                  <p class="text-sm font-weight-bold mb-2 text-secondary text-border d-inline z-index-2 px-3">
-                    {% if msg %}
-                      <span class="text-danger">{{ msg | safe }}</span>
+    <!-- ══ GPU Allocations ═══════════════════════════════════════════ -->
+    <div class="res-card res-animate" style="animation-delay:.05s;">
+      <div class="res-card-header">
+        <h6 class="res-card-title">
+          <i class="fas fa-microchip"></i> GPU Allocations
+        </h6>
+        <button class="export-btn" onclick="exportTableToExcel('allocations','MAIA_GPU_Allocations')">
+          <i class="fas fa-file-excel"></i> Export Excel
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table res-table mb-0" id="allocations">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Cluster</th>
+                <th>Node</th>
+                <th>Namespace</th>
+                <th>GPU</th>
+                <th>Expiration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for k in gpu_allocations.items %}
+              <tr>
+                <td><span class="font-weight-bold">{{ k|dict_key }}</span></td>
+                <td>{{ k|dict_val|get_item:'cluster' }}</td>
+                <td><code style="background:#f0f2f5; padding:2px 7px; border-radius:5px; font-size:.78rem;">{{ k|dict_val|get_item:'node' }}</code></td>
+                <td>
+                  <a href="/maia/namespaces/{{ k|dict_val|get_item:'namespace' }}" class="ns-link">
+                    {{ k|dict_val|get_item:'namespace' }}
+                  </a>
+                </td>
+                <td>
+                  <span class="exp-badge exp-ok" style="background:#ede9fe; color:#5b21b6;">
+                    <i class="fas fa-microchip"></i>
+                    {{ k|dict_val|get_item:'gpu_name' }} &middot; {{ k|dict_val|get_item:'gpu_size' }}
+                  </span>
+                </td>
+                <td>
+                  {% if k|dict_val|get_item:'expiration' %}
+                    {% if 'is_expired' in k|dict_val %}
+                      {% if k|dict_val|get_item:'is_expired' %}
+                        <form method="POST"
+                              action="{% url 'delete_expired_pod' k|dict_val|get_item:'namespace' k|dict_key %}"
+                              onsubmit="deleteElement(event);" style="display:inline;">
+                          {% csrf_token %}
+                          <button type="submit"
+                                  style="display:inline-flex; align-items:center; gap:5px;
+                                         padding:4px 12px; border-radius:8px;
+                                         background:#fee2e2; color:#c53030; border:none;
+                                         font-size:.72rem; font-weight:700; cursor:pointer;">
+                            <i class="fas fa-times-circle"></i> Expired &middot; {{ k|dict_val|get_item:'expiration' }}
+                          </button>
+                        </form>
+                      {% else %}
+                        <span class="exp-badge exp-ok">
+                          <i class="fas fa-clock"></i> {{ k|dict_val|get_item:'expiration' }}
+                        </span>
+                      {% endif %}
                     {% else %}
-                      Find the MAIA node matching your computing resource request.
+                      <span class="exp-badge exp-ok">
+                        <i class="fas fa-clock"></i> {{ k|dict_val|get_item:'expiration' }}
+                      </span>
                     {% endif %}
-                  </p>
-                </div>
-
-              </div>
-
-              <div class="card-body">
-
-                {% if success %} 
-                
-                  <p class="text-sm mt-3 mb-0 text-center"> 
-                    <div class="text-center">
-                      <a href="{% url 'login' %}" class="btn bg-gradient-dark w-100 my-4 mb-2">Sign IN</a>
-                    </div> 
-                  </p>
-
-                {% else %}
-
-                  <form role="form text-left" method="post" action="">
-
-                      {% csrf_token %}
-
-
-                      <div class="mb-3">
-                        <label>GPU Request</label>
-                        {{ form.gpu_request }}
-                        <label>CPU Cores Request</label>
-                        {{ form.cpu_request }}
-                        <label>Memory Request [Gi]</label>
-                        {{ form.memory_request }}
-                         <button type="submit" name="register" class="btn bg-gradient-dark w-20 mb-2">Search</button>
-                      </div>
-                      <span class="text-danger">{{ form.gpu_request.errors }}</span>
-
-                      <span class="text-danger">{{ form.cpu_request.errors }}</span>
-
-                    <span class="text-danger">{{ form.memory_request.errors }}</span>
-
-
-
-
-
-
-                  </form>
-
-                {% endif %}
-
-              </div>
-
-            </div>
-
-              {% if available_gpu %}
-    <div class="row my-5">
-    <div class="col-lg-8 col-md-8 mb-md-0 mb-4">
-        <div class="card">
-            <div class="card-header pb-0">
-                <div class="row">
-                    <div class="col-lg-6 col-15">
-                        <h3>GPU Stats</h3>
-
-                    </div>
-                    <div class="col-lg-6 col-5 my-auto text-end">
-                        <div class="dropdown float-lg-end pe-4">
-                            <a class="cursor-pointer" id="dropdownTable" data-bs-toggle="dropdown"
-                               aria-expanded="false">
-                                <i class="fa fa-ellipsis-v text-secondary"></i>
-                            </a>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body px-0 pb-2">
-                <div class="table-responsive">
-                    <table class="table align-items-center mb-0">
-                        <thead>
-                        <tr class="align-middle text-center text-sm">
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7"></th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Cluster / Node</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">GPU</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Available</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Total</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for k in available_gpu.items %}
-                        <tr>
-                            <td class="align-right text-center text-sm">
-                                {% if k|dict_val|index:0 == 0 or k|dict_val|index:0 == "NA" %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-times text-danger" aria-hidden="true"></i>
-                                </p>
-                                {% else %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                </p>
-                                {% endif %}
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_key}} </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:2}} </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:0}} </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:1}} </span>
-                            </td>
-
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                  {% else %}
+                    <span class="exp-badge exp-none">
+                      <i class="fas fa-infinity"></i> No Expiry
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="text-center py-4" style="color:#8392ab;">
+                  <i class="fas fa-microchip fa-2x mb-2 d-block" style="opacity:.3;"></i>
+                  No active GPU allocations
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
+      </div>
     </div>
 
-    <div class="col-lg-6 col-md-6 mb-md-0 mb-4">
-        <div class="card">
-            <div class="card-header pb-0">
-                <div class="row">
-                    <div class="col-lg-6 col-15">
-                        <h3>CPU Stats</h3>
+    <!-- ══ Resource Search ════════════════════════════════════════════ -->
+    <div class="res-card res-animate" style="animation-delay:.1s;">
+      <div class="res-card-header">
+        <h6 class="res-card-title">
+          <i class="fas fa-search"></i> Find Available Computing Resources
+        </h6>
+      </div>
+      <div class="card-body p-4">
 
-                    </div>
-                    <div class="col-lg-6 col-5 my-auto text-end">
-                        <div class="dropdown float-lg-end pe-4">
-                            <a class="cursor-pointer" id="dropdownTable" data-bs-toggle="dropdown"
-                               aria-expanded="false">
-                                <i class="fa fa-ellipsis-v text-secondary"></i>
-                            </a>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body px-0 pb-2">
-                <div class="table-responsive">
-                    <table class="table align-items-center mb-0">
-                        <thead>
-                        <tr class="align-middle text-center text-sm">
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7"></th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Cluster / Node</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Available</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Total</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-
-
-                        {% for k in available_cpu.items %}
-                        <tr>
-                            <td class="align-right text-center text-sm">
-                                {% if k|dict_val|index:2 < 5 %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-times text-danger" aria-hidden="true"></i>
-                                </p>
-                                {% elif k|dict_val|index:2 < 15 %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-times text-warning" aria-hidden="true"></i>
-                                </p>
-                                {% else %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                </p>
-                                {% endif %}
-                            </td>
-
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_key}} </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:0|floatformat:2}} ({{k|dict_val|index:2|floatformat:1}}%) </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:1}} </span>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        {% if msg %}
+        <div style="background:#fff5f5; border:1px solid #fed7d7; border-radius:10px;
+                    padding:10px 14px; margin-bottom:16px; color:#c53030;
+                    font-size:.82rem; display:flex; align-items:center; gap:8px;">
+          <i class="fas fa-exclamation-circle"></i> {{ msg|safe }}
         </div>
-    </div>
+        {% endif %}
 
-
-
-    <div class="col-lg-6 col-md-6 mb-md-0 mb-4">
-        <div class="card">
-            <div class="card-header pb-0">
-                <div class="row">
-                    <div class="col-lg-6 col-15">
-                        <h3>Memory Stats</h3>
-
-                    </div>
-                    <div class="col-lg-6 col-5 my-auto text-end">
-                        <div class="dropdown float-lg-end pe-4">
-                            <a class="cursor-pointer" id="dropdownTable" data-bs-toggle="dropdown"
-                               aria-expanded="false">
-                                <i class="fa fa-ellipsis-v text-secondary"></i>
-                            </a>
-
-                        </div>
-                    </div>
-                </div>
+        <form method="post" action="">
+          {% csrf_token %}
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-group-label">GPUs</label>
+              {{ form.gpu_request }}
+              {% if form.gpu_request.errors %}
+              <span style="color:#f5365c; font-size:.75rem;">{{ form.gpu_request.errors }}</span>
+              {% endif %}
             </div>
-            <div class="card-body px-0 pb-2">
-                <div class="table-responsive">
-                    <table class="table align-items-center mb-0">
-                        <thead>
-                        <tr class="align-middle text-center text-sm">
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7"></th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Cluster / Node</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Available</th>
-                            <th class="text-uppercase text-secondary text-m font-weight-bolder opacity-7">Total</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-
-
-                        {% for k in available_memory.items %}
-                        <tr>
-                            <td class="align-right text-center text-sm">
-                                {% if k|dict_val|index:2 < 5 %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-times text-danger" aria-hidden="true"></i>
-                                </p>
-                                {% elif k|dict_val|index:2 < 15 %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-times text-warning" aria-hidden="true"></i>
-                                </p>
-                                {% else %}
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-check text-success" aria-hidden="true"></i>
-                                </p>
-                                {% endif %}
-                            </td>
-
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_key}} </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:0|floatformat:2}} Gi ({{k|dict_val|index:2|floatformat:1}}%) </span>
-                            </td>
-                            <td class="align-middle text-center text-sm">
-                                <span class="text-m font-weight-bold"> {{k|dict_val|index:1|floatformat:2}} Gi </span>
-                        </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            <div class="col-md-3">
+              <label class="form-group-label">CPU Cores</label>
+              {{ form.cpu_request }}
+              {% if form.cpu_request.errors %}
+              <span style="color:#f5365c; font-size:.75rem;">{{ form.cpu_request.errors }}</span>
+              {% endif %}
             </div>
+            <div class="col-md-3">
+              <label class="form-group-label">Memory (Gi)</label>
+              {{ form.memory_request }}
+              {% if form.memory_request.errors %}
+              <span style="color:#f5365c; font-size:.75rem;">{{ form.memory_request.errors }}</span>
+              {% endif %}
+            </div>
+            <div class="col-md-2">
+              <button type="submit" name="register" class="search-btn w-100">
+                <i class="fas fa-search"></i> Search
+              </button>
+            </div>
+          </div>
+        </form>
 
-
+      </div>
     </div>
 
+    <!-- ══ Search Results ═════════════════════════════════════════════ -->
+    {% if available_gpu %}
+    <div class="row g-4 res-animate" style="animation-delay:.15s;">
 
-</div>
-    </div>
-    {%endif%}
+      <!-- GPU Stats -->
+      <div class="col-xl-4 col-lg-6">
+        <div class="res-card mb-0">
+          <div class="res-card-header">
+            <h6 class="res-card-title"><i class="fas fa-microchip"></i> GPU Availability</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table res-table mb-0">
+                <thead>
+                  <tr>
+                    <th style="width:32px;"></th>
+                    <th>Node</th>
+                    <th>GPU</th>
+                    <th>Avail / Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for k in available_gpu.items %}
+                  <tr>
+                    <td>
+                      {% if k|dict_val|index:0 == 0 or k|dict_val|index:0 == "NA" %}
+                      <i class="fas fa-times-circle avail-bad"></i>
+                      {% else %}
+                      <i class="fas fa-check-circle avail-ok"></i>
+                      {% endif %}
+                    </td>
+                    <td><span class="font-weight-bold text-xs">{{ k|dict_key }}</span></td>
+                    <td><span class="text-xs">{{ k|dict_val|index:2 }}</span></td>
+                    <td>
+                      <span class="font-weight-bold">{{ k|dict_val|index:0 }}</span>
+                      <span class="text-secondary"> / {{ k|dict_val|index:1 }}</span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
-    </section>
 
-    {% include "includes/footer-fullscreen.html" %}
+      <!-- CPU Stats -->
+      <div class="col-xl-4 col-lg-6">
+        <div class="res-card mb-0">
+          <div class="res-card-header">
+            <h6 class="res-card-title"><i class="fas fa-server"></i> CPU Availability</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table res-table mb-0">
+                <thead>
+                  <tr>
+                    <th style="width:32px;"></th>
+                    <th>Node</th>
+                    <th>Available</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for k in available_cpu.items %}
+                  <tr>
+                    <td>
+                      {% if k|dict_val|index:2 < 5 %}
+                      <i class="fas fa-times-circle avail-bad"></i>
+                      {% elif k|dict_val|index:2 < 15 %}
+                      <i class="fas fa-exclamation-circle avail-warn"></i>
+                      {% else %}
+                      <i class="fas fa-check-circle avail-ok"></i>
+                      {% endif %}
+                    </td>
+                    <td><span class="font-weight-bold text-xs">{{ k|dict_key }}</span></td>
+                    <td>
+                      <div>
+                        <span class="font-weight-bold">{{ k|dict_val|index:0|floatformat:1 }}</span>
+                        <span class="text-secondary text-xs"> ({{ k|dict_val|index:2|floatformat:0 }}%)</span>
+                      </div>
+                      <div class="avail-bar-wrap mt-1">
+                        <div class="avail-bar {% if k|dict_val|index:2 < 5 %}avail-bar-bad{% elif k|dict_val|index:2 < 15 %}avail-bar-warn{% else %}avail-bar-ok{% endif %}"
+                             style="width: {{ k|dict_val|index:2|floatformat:0 }}%;"></div>
+                      </div>
+                    </td>
+                    <td><span class="text-secondary">{{ k|dict_val|index:1 }}</span></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  </main>
+      <!-- Memory Stats -->
+      <div class="col-xl-4 col-lg-6">
+        <div class="res-card mb-0">
+          <div class="res-card-header">
+            <h6 class="res-card-title"><i class="fas fa-memory"></i> Memory Availability</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table res-table mb-0">
+                <thead>
+                  <tr>
+                    <th style="width:32px;"></th>
+                    <th>Node</th>
+                    <th>Available</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for k in available_memory.items %}
+                  <tr>
+                    <td>
+                      {% if k|dict_val|index:2 < 5 %}
+                      <i class="fas fa-times-circle avail-bad"></i>
+                      {% elif k|dict_val|index:2 < 15 %}
+                      <i class="fas fa-exclamation-circle avail-warn"></i>
+                      {% else %}
+                      <i class="fas fa-check-circle avail-ok"></i>
+                      {% endif %}
+                    </td>
+                    <td><span class="font-weight-bold text-xs">{{ k|dict_key }}</span></td>
+                    <td>
+                      <div>
+                        <span class="font-weight-bold">{{ k|dict_val|index:0|floatformat:1 }} Gi</span>
+                        <span class="text-secondary text-xs"> ({{ k|dict_val|index:2|floatformat:0 }}%)</span>
+                      </div>
+                      <div class="avail-bar-wrap mt-1">
+                        <div class="avail-bar {% if k|dict_val|index:2 < 5 %}avail-bar-bad{% elif k|dict_val|index:2 < 15 %}avail-bar-warn{% else %}avail-bar-ok{% endif %}"
+                             style="width: {{ k|dict_val|index:2|floatformat:0 }}%;"></div>
+                      </div>
+                    </td>
+                    <td><span class="text-secondary">{{ k|dict_val|index:1|floatformat:1 }} Gi</span></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  {% endblock content %}
+    </div>
+    {% endif %}
 
-  <!-- Specific JS goes HERE --> 
-  {% block javascripts %}
-  <script>
-    
-    function deleteElement(e) {
-        if (!confirm('Are you sure you want to terminate the pod? The pod will be recreated without a GPU attached')) e.preventDefault();
-    }
-</script>
-  <script type="text/javascript">
-    function exportTableToExcel(allocations, filename = ''){
-    var downloadLink;
+  </div>
+</section>
+
+{% include "includes/footer.html" %}
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+  function deleteElement(e) {
+    if (!confirm('Are you sure you want to terminate the pod? It will be recreated without a GPU.')) e.preventDefault();
+  }
+
+  function exportTableToExcel(tableId, filename) {
     var dataType = 'application/vnd.ms-excel';
-    var tableSelect = document.getElementById(allocations);
-    var tableHTML = tableSelect.outerHTML.replace(/ /g, '%20');
-
-    // Specify file name
-    filename = filename?filename+'.xls':'excel_data.xls';
-
-    // Create download link element
-    downloadLink = document.createElement("a");
-
-    document.body.appendChild(downloadLink);
-
-    if(navigator.msSaveOrOpenBlob){
-        var blob = new Blob(['\ufeff', tableHTML], {
-            type: dataType
-        });
-        navigator.msSaveOrOpenBlob( blob, filename);
-    }else{
-        // Create a link to the file
-        downloadLink.href = 'data:' + dataType + ', ' + tableHTML;
-
-        // Setting the file name
-        downloadLink.download = filename;
-
-        //triggering the function
-        downloadLink.click();
+    var tableHTML = document.getElementById(tableId).outerHTML.replace(/ /g, '%20');
+    filename = (filename || 'export') + '.xls';
+    var a = document.createElement('a');
+    document.body.appendChild(a);
+    if (navigator.msSaveOrOpenBlob) {
+      navigator.msSaveOrOpenBlob(new Blob(['\ufeff', tableHTML], {type: dataType}), filename);
+    } else {
+      a.href = 'data:' + dataType + ', ' + tableHTML;
+      a.download = filename;
+      a.click();
     }
-}
-
+    document.body.removeChild(a);
+  }
 </script>
-
-  {% endblock javascripts %}
+{% endblock javascripts %}

@@ -662,7 +662,7 @@ Login App (maia-core-loginapp)
 MAIA Dashboard (maia-dashboard)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Description**: Deploys the MAIA Dashboard application and supporting services for admin-facing UI and APIs (including database and secrets such as `dashboard_api_secret` and `mysql_dashboard_password` provided via the Admin Toolkit).
+**Description**: Deploys the MAIA Dashboard application and supporting services for admin-facing UI and APIs (including database and secrets such as `dashboard_api_secret` and, `mongodb_dashboard_password`, and a `mysql_dashboard_password` provided via the Admin Toolkit).
 
 **Use Cases**:
 - Central UI for administrators to monitor and manage MAIA resources
@@ -808,7 +808,7 @@ Write Rancher Token to Cluster Config
 
 This playbook configures the MAIA Dashboard by running the Admin Toolkit installer and synchronizing the dashboard ArgoCD application.
 
-**Note**: `config_folder` must point to the directory created by `MAIA_Configure_Installation.sh` and contain `env.json` and the cluster configuration YAML (`{{ cluster_name }}.yaml`). The playbook requires various environment variables to be set in `env.json`, including `DEPLOY_KUBECONFIG`, `argocd_namespace`, `admin_group_ID`, `admin_project_chart`, `admin_project_repo`, `admin_project_version`, `keycloak_client_secret`, `minio_admin_password`, `minio_root_password`, `dashboard_api_secret`, `mysql_dashboard_password`, and `ARGOCD_PASSWORD`.
+**Note**: `config_folder` must point to the directory created by `MAIA_Configure_Installation.sh` and contain `env.json` and the cluster configuration YAML (`{{ cluster_name }}.yaml`). The playbook requires various environment variables to be set in `env.json`, including `DEPLOY_KUBECONFIG`, `argocd_namespace`, `admin_group_ID`, `admin_project_chart`, `admin_project_repo`, `admin_project_version`, `keycloak_client_secret`, `minio_admin_password`, `minio_root_password`, `dashboard_api_secret`, `mongodb_dashboard_password`, `mysql_dashboard_password`, and `ARGOCD_PASSWORD`.
 
 The `configure_maia_dashboard.yaml` playbook performs the following steps:
 

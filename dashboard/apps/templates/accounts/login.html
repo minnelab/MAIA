@@ -1,148 +1,218 @@
 {% extends 'layouts/base-fullscreen.html' %}
 
-{% block title %} Sign IN {% endblock title %}
+{% block title %} Sign In {% endblock title %}
 
-<!-- Specific CSS goes HERE -->
-{% block stylesheets %}{% endblock stylesheets %}
+{% block stylesheets %}
+<style>
+  .auth-logo {
+    width: 60px; height: 60px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    /* background: linear-gradient(310deg, #2152ff, #21d4fd); */
+    /* box-shadow: 0 6px 24px rgba(33,82,255,.35); */
+    margin: 0 auto 16px;
+  }
+  .auth-logo i { color: #fff; font-size: 1.6rem; }
+
+  .auth-title {
+    font-size: 1.7rem; font-weight: 800; line-height: 1.15;
+    background: linear-gradient(310deg, #2152ff, #21d4fd);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .auth-subtitle { font-size: 0.82rem; color: #8392ab; margin-top: 2px; }
+
+  .auth-card {
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.12);
+    border: none;
+  }
+
+  .auth-btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; padding: 13px 20px; border-radius: 10px;
+    background: linear-gradient(310deg, #2152ff, #21d4fd);
+    color: #fff; font-weight: 700; font-size: 0.9rem;
+    text-decoration: none; border: none; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(33,82,255,.4);
+    transition: box-shadow .2s, transform .15s;
+  }
+  .auth-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(33,82,255,.5);
+    color: #fff; text-decoration: none;
+  }
+
+  .auth-btn-secondary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 11px 20px; border-radius: 10px;
+    background: #f8f9fa; color: #344767;
+    font-weight: 600; font-size: 0.85rem;
+    text-decoration: none;
+    border: 1px solid #e9ecef;
+    transition: background .15s, box-shadow .15s, transform .12s;
+  }
+  .auth-btn-secondary:hover {
+    background: #fff; transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.09);
+    text-decoration: none; color: #344767;
+  }
+  .auth-btn-secondary i { color: #5e72e4; }
+
+  .auth-divider {
+    position: relative; text-align: center; margin: 18px 0;
+  }
+  .auth-divider::before {
+    content: ''; position: absolute; top: 50%;
+    left: 0; right: 0; height: 1px; background: #e9ecef;
+  }
+  .auth-divider span {
+    position: relative; background: #fff;
+    padding: 0 14px; color: #8392ab;
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  }
+
+  .auth-links {
+    background: #f8f9fa; border-radius: 10px;
+    padding: 14px 16px; margin-top: 8px;
+    font-size: 0.78rem; color: #67748e;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .auth-links a { color: #2152ff; text-decoration: none; font-weight: 600; }
+  .auth-links a:hover { text-decoration: underline; }
+  .auth-links .link-row { display: flex; align-items: center; gap: 7px; }
+  .auth-links .link-row i { color: #8392ab; width: 14px; text-align: center; }
+
+  .github-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 22px; border-radius: 8px;
+    background: #24292e; color: #fff;
+    font-size: 0.82rem; font-weight: 600;
+    border: none; cursor: pointer;
+    transition: background .15s, transform .12s;
+  }
+  .github-btn:hover { background: #1a1e22; transform: translateY(-1px); color: #fff; }
+
+  .error-box {
+    background: #fff5f5; border: 1px solid #fed7d7;
+    border-radius: 10px; padding: 10px 14px;
+    color: #c53030; font-size: 0.82rem;
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .error-box i { margin-top: 2px; flex-shrink: 0; }
+</style>
+{% endblock stylesheets %}
 
 {% block content %}
 
-  <div class="container position-sticky z-index-sticky top-0">
-    <div class="row">
-      <div class="col-12">
-
-        {% include "includes/navigation-fullscreen.html" %}
-
-      </div>
+<div class="container position-sticky z-index-sticky top-0">
+  <div class="row">
+    <div class="col-12">
+      {% include "includes/navigation-fullscreen.html" %}
     </div>
   </div>
+</div>
 
-  <main class="main-content mt-0"></main>
-    <section>
-      <div class="page-header min-vh-75">
-        <div class="container">
-          <div class="row">
-            <div class="col-xl-4 col-lg-5 col-md-6 d-flex flex-column mx-auto">
-              <div class="card card-plain mt-8">
-                <div class="card-header pb-0 text-left bg-transparent">
-                  <h3 class="font-weight-bolder text-info text-gradient">
-                    {% if BACKEND == "compose" %}
-                      MAIA Lite Dashboard
-                    {% else %}
-                      MAIA Dashboard
-                    {% endif %}
-                  </h3>
-                  <p class="mb-0">
-                    {% if msg %}
-                      <span class="text-danger">{{ msg | safe }}</span>
-                    {% else %}
-                    <div class="text-center">
-                       <a href="/maia/info" class="btn bg-gradient-error w-100 mt-4 mb-0">About MAIA</a>
-                    </div>
-                    {% endif %}                     
-                  </p>
+<main class="main-content mt-0">
+  <section>
+    <div class="page-header min-vh-100">
+      <div class="container">
+        <div class="row">
+
+          <!-- ── Auth card ── -->
+          <div class="col-xl-4 col-lg-5 col-md-6 d-flex flex-column mx-auto">
+            <div class="card auth-card mt-8">
+              <div class="card-body px-4 pt-4 pb-4">
+
+                <!-- Logo + title -->
+                <div class="text-center mb-4">
+                  <div class="auth-logo">
+                    <img src="{{ ASSETS_ROOT }}/img/MAIA/MAIA_Logo.png" alt="MAIA Logo" style="height:80px;max-width:120px;">
+                  </div>
+                  <div class="auth-title">
+                    {% if BACKEND == "compose" %}MAIA Lite{% else %}MAIA{% endif %}
+                  </div>
+                  <div class="auth-subtitle">Medical AI Platform</div>
                 </div>
-                <div class="card-body">
-                  <form role="form text-left" method="post" action="">
+
+                <!-- Error -->
+                {% if msg %}
+                <div class="error-box">
+                  <i class="fas fa-exclamation-circle"></i>
+                  <span>{{ msg|safe }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Primary sign-in -->
+                <a href="{% url 'oidc_authentication_init' %}" class="auth-btn-primary mb-3">
+                  <i class="fas fa-sign-in-alt"></i> Sign In with SSO
+                </a>
+
+                <div class="auth-divider"><span>or</span></div>
+
+                <!-- Register options -->
+                <a href="{% url 'register' %}" class="auth-btn-secondary mb-2">
+                  <i class="fas fa-user-plus"></i> Join an Existing Project
+                </a>
+                <a href="{% url 'register_project' %}" class="auth-btn-secondary">
+                  <i class="fas fa-project-diagram"></i> Register a New Project
+                </a>
+
+                <!-- GitHub auth -->
+                {% if GITHUB_AUTH %}
+                <div class="auth-divider mt-3"><span>social login</span></div>
+                <div class="text-center">
+                  <form method="post" action="/social_login/github/login/?next=%2F">
                     {% csrf_token %}
-                    <div class="text-center">
-                       <a href="{% url 'oidc_authentication_init' %}" class="btn bg-gradient-info w-100 mt-4 mb-0">Sign IN</a>
-                    </div>
-                    <div class="text-center">
-                      <a href="{% url 'register' %}" class="btn bg-gradient-secondary w-100 mt-4 mb-0">Sign UP for an Existing Project</a>
-                    </div>
-                    <div class="text-center">
-                      <a href="{% url 'register_project' %}" class="btn bg-gradient-secondary w-100 mt-4 mb-0">Register a New Project</a>
-                    </div>
-                    
+                    <button class="github-btn" type="submit">
+                      <i class="fab fa-github"></i> Sign in with GitHub
+                    </button>
                   </form>
                 </div>
-                <br><br>
-                <div class="text-left">
-                  <a href="/maia/spotlight" >Interested in learning more about open-source Medical AI Tools? check out the MAIA Spotlights</a>
+                {% endif %}
+
+                <!-- Footer links -->
+                <div class="auth-links">
+                  <div class="link-row">
+                    <i class="fas fa-info-circle"></i>
+                    <span><a href="/maia/info">About MAIA</a></span>
+                  </div>
+                  <div class="link-row">
+                    <i class="fas fa-lightbulb"></i>
+                    <span><a href="/maia/spotlight">MAIA Spotlights</a> — open-source Medical AI tools</span>
+                  </div>
+                  <div class="link-row">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Nature_journal_logo.svg/1200px-Nature_journal_logo.svg.png"
+                         alt="NPJ" style="height:13px; opacity:.7;">
+                    <span><a href="https://www.nature.com/articles/s44387-025-00042-6" target="_blank">MAIA in NPJ Artificial Intelligence</a></span>
+                  </div>
                 </div>
-                <br><br>
-                <div class="text-left">
-                <p style="display: flex; align-items: center; gap: 8px;">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Nature_journal_logo.svg/1200px-Nature_journal_logo.svg.png" alt="NPJ AI" style="height: 24px;">
-                  <span>
-                    Check out the <a href="https://www.nature.com/articles/s44387-025-00042-6" target="_blank">MAIA article published in NPJ Artificial Intelligence</a> and please make sure to
-                    cite it when using the platform in your research.
-                  </span>
-                </p>
-              </div>
-                <div class="card-footer text-center pt-0 px-lg-2 px-1">
-                  <p class="mb-4 text-sm mx-auto">
-                    <!-- GitHub button starts here -->
-                    {% if GITHUB_AUTH %}
-                      <p class="mb-2">or SignIn with</p>
-                      <form method="post" action="/social_login/github/login/?next=%2F">{% csrf_token %}
-                        <button class="btn btn-outline" type="submit">
-                          <span class="text-lg fs-1 fab fa-github"></span>
-                        </button>
-                      </form>  
-                    {% endif %}
-                    <!-- GitHub ends here -->
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="oblique position-absolute top-0 h-100 d-md-block d-none me-n8">
-                {% if BACKEND == "compose" %}
-                      <div class="oblique-image bg-cover position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6" style="background-image:url('{{ ASSETS_ROOT }}/img/miniMAIA.png')"></div>
-                    {% else %}
-                      <div class="oblique-image bg-cover position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6" style="background-image:url('{{ ASSETS_ROOT }}/img/MAIA/MAIA_room_simple.png'); background-size: cover; background-position: center; background-size: 55% auto; background-repeat: no-repeat;"></div>
-                    {% endif %}
+
               </div>
             </div>
           </div>
+
+          <!-- ── Oblique image ── -->
+          <div class="col-md-6">
+            <div class="oblique position-absolute top-0 h-100 d-md-block d-none me-n8">
+              {% if BACKEND == "compose" %}
+              <div class="oblique-image bg-cover position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6"
+                   style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png');"></div>
+              {% else %}
+              <div class="oblique-image bg-cover position-absolute fixed-top ms-auto h-100 z-index-0 ms-n6"
+                   style="background-image: url('{{ ASSETS_ROOT }}/img/MAIA/MAIA_room_simple.png');
+                          background-size: cover; background-position: center;"></div>
+              {% endif %}
+            </div>
+          </div>
+
         </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
+</main>
 
-  {% include "includes/footer-fullscreen.html" %}
+{% include "includes/footer-fullscreen.html" %}
 
 {% endblock content %}
 
-<!-- Specific JS goes HERE --> 
-{% block javascripts %}
-
-<script>
-  // Save aKey in localStorage 
-  const asyncLocalStorage = {
-      setItem: function (key, value) {
-          return Promise.resolve().then(function () {
-              localStorage.setItem(key, value);
-          });
-      }
-  }
-
-  // Login hook  
-  document.getElementsByTagName('form')[0].onsubmit = (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    const username = formData.get('username');
-    const password = formData.get('password');
-
-    fetch('/maia/login/jwt/',{
-        method: 'POST',
-        body: JSON.stringify({
-            username: username,
-            password: password
-        }),
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then((response) => response.json())
-    .then((res) => {
-      // store token in localStorage
-      asyncLocalStorage.setItem('token',res.token).then(result => {e.target.submit()})
-    })
-    .catch((err) => {console.log(err)})   
-  }
-</script>
-
-{% endblock javascripts %}
+{% block javascripts %}{% endblock javascripts %}

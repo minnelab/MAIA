@@ -34,6 +34,7 @@ pytest
 pytest-env
 pytest-django
 loguru
+pymongo
 # Agent API + MCP Server
 anthropic>=0.40.0
 mcp>=1.0.0

@@ -183,7 +183,7 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_PROJECT_CHART_VERSION") is not None:
         admin_project_chart_version = os.environ.get("ADMIN_PROJECT_CHART_VERSION")
     else:
-        admin_project_chart_version = "1.1.0"
+        admin_project_chart_version = "1.2.2"
 
     return {
         "rancher_chart_version": rancher_chart_version,
@@ -311,7 +311,7 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
     else:
-        maia_dashboard_image_version = "2.4.1"
+        maia_dashboard_image_version = "2.5.0"
 
     if os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION") is not None:
         monai_toolkit_image_version = os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION")

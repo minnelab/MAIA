@@ -4,7 +4,12 @@ import requests
 import jwt
 import time
 from django.conf import settings
-from apps.models import MAIAUser, User
+from apps.models import User
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser
+else:
+    from apps.models import MAIAUser
 import threading
 from loguru import logger
 
@@ -98,7 +103,7 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Unknown key ID")
         KEYCLOAK_REALM = settings.OIDC_REALM_NAME
         KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
-        KEYCLOAK_CLIENT_ID = settings.OIDC_RP_PUBLIC_CLIENT_ID
+        KEYCLOAK_CLIENT_ID = [settings.OIDC_RP_PUBLIC_CLIENT_ID, settings.OIDC_RP_CLIENT_ID]
         try:
             payload = jwt.decode(
                 token,

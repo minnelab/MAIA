@@ -69,3 +69,23 @@ spec:
         - name: {{ .Values.homePVC }}
           persistentVolumeClaim:
             claimName: {{ .Values.homePVC }}{{ .Values.extraVolumes | toYaml | nindent 8 }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-ssh
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["2022"]
+  selector:
+    matchLabels:
+      app: {{ .Values.user_id }}   

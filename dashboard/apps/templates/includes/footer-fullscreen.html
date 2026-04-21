@@ -1,23 +1,65 @@
 <footer class="footer py-5">
-    <div class="container">
-      <div class="row">
-        <div class="col-lg-8 mb-4 mx-auto text-center">
-          <a href={{"SUPPORT_URL"|env}} target="_blank" class="text-secondary me-xl-5 me-3 mb-sm-0 mb-2 fab fa-discord">
-            Support
-          </a>
-          <a href="https://github.com/minnelab/maia" target="_blank" class="text-secondary me-xl-4 me-4">
-            <span class="text-lg fab fa-github"></span>
-          </a>
-          <a href="https://maia-toolkit.readthedocs.io" target="_blank" class="text-secondary me-xl-4 me-4">
-            <span class="text-lg fa fa-book"></span>
-          </a>
+  <div class="container-fluid">
+    <div class="row align-items-center justify-content-lg-between">
+
+      <!-- Left: brand + copyright -->
+      <div class="col-lg-5 mb-lg-0 mb-3">
+        <div class="d-flex align-items-center" style="gap: 10px;">
+          <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(310deg,#2152ff,#21d4fd);
+                      display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <img src="{{ ASSETS_ROOT }}/img/MAIA/MAIA_Logo.png" alt="MAIA Logo" style="height:30px;max-width:120px;">
+          </div>
+          <div>
+            <div style="font-size:.8rem; font-weight:700; color:#344767; line-height:1.2;">MAIA Dashboard</div>
+            <div style="font-size:.72rem; color:#8392ab;">
+              &copy; {% now "Y" %} MAIA &mdash; KTH Royal Institute of Technology, MinneLab
+            </div>
+          </div>
         </div>
       </div>
-      <div class="text-center">
-        <a>Dashboard Version: {{dashboard_version}}</a>
+
+      <!-- Right: links -->
+      <div class="col-lg-7 d-flex justify-content-center">
+        <ul class="nav nav-footer justify-content-center flex-wrap" style="gap: 4px;">
+          <li class="nav-item">
+            <a href="/maia/info" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-info-circle me-1" style="opacity:.6;"></i>About MAIA
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/maia/spotlight" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-lightbulb me-1" style="opacity:.6;"></i>Spotlights
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="https://www.nature.com/articles/s44387-025-00042-6" target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-newspaper me-1" style="opacity:.6;"></i>NPJ AI Article
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="https://github.com/minnelab/maia" target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fab fa-github me-1" style="opacity:.6;"></i>GitHub
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="https://maia-toolkit.readthedocs.io" target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-book me-1" style="opacity:.6;"></i>Documentation
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href={{"SUPPORT_URL"|env}} target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fa-brands fa-discord me-1" style="opacity:.6;"></i>Support Channel
+            </a>
+          </li>
+          <li class="nav-item">
+            <span class="text-muted text-sm px-2">Dashboard Version: {{dashboard_version}} (MAIA Version: {{MAIA_VERSION}})</span>
+          </li>
+        </ul>
       </div>
-      
+
     </div>
+  </div>
+
 <!-- 🧠 Chatbot Floating Widget -->
 <style>
   /* Button styling */

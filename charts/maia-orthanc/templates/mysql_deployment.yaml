@@ -43,11 +43,11 @@ spec:
               value: {{ .Values.mysql.mysqlDatabase }}
           resources:
             limits:
-              cpu: 2000m
-              memory: 4Gi
+              cpu: {{ .Values.mysql.cpu_limit }}
+              memory: {{ .Values.mysql.memory_limit }}
             requests:
-              cpu: 2000m
-              memory: 4Gi
+              cpu: {{ .Values.mysql.cpu_request }}
+              memory: {{ .Values.mysql.memory_request }}
           volumeMounts:
             - name: persistent-storage
               mountPath: /var/lib/mysql

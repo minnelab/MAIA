@@ -268,13 +268,17 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
         admin_toolkit_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
         admin_toolkit_values["path"] = "charts/maia-admin-toolkit"
 
+    realm_name = os.environ.get("KEYCLOAK_REALM_NAME", "maia")
+    keycloak_domain = cluster_config_dict["domain"]
+    if "KEYCLOAK_DOMAIN" in os.environ:
+        keycloak_domain = os.environ["KEYCLOAK_DOMAIN"]
     admin_toolkit_values.update(
         {
             "argocd": {
                 "enabled": True,
                 "argocd_namespace": "argocd",
                 "argocd_domain": "argocd." + cluster_config_dict["domain"],
-                "keycloak_issuer_url": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+                "keycloak_issuer_url": "https://iam." + keycloak_domain + "/realms/" + realm_name,
                 "keycloak_client_id": "maia",
                 "keycloak_client_secret": os.environ["keycloak_client_secret"],
             },
@@ -310,6 +314,24 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             },
         }
     )
+
+    if "CLUSTER_YAML_CONFIGS" in os.environ:
+        clusters = []
+        cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
+        for cluster_file in cluster_files:
+            if not os.path.isabs(cluster_file):
+                cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
+            with open(cluster_file, "r") as f:
+                cluster_config_dict_temp = yaml.safe_load(f)
+                clusters.append(
+                    {
+                        "name": cluster_config_dict_temp["cluster_name"],
+                        "server": cluster_config_dict_temp["api"],
+                        "token": cluster_config_dict_temp.get("maia_dashboard", {}).get("token", ""),
+                    }
+                )
+
+    admin_toolkit_values["argocd"]["additional_clusters"] = clusters
 
     if "externalCA" in cluster_config_dict:
         admin_toolkit_values["minio"]["externalCA"] = {}
@@ -570,7 +592,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict):
+def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict, dev_mode=False):
     """
     Create MAIA dashboard values for Helm chart deployment.
 
@@ -582,7 +604,8 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         The project identifier.
     cluster_config_dict : dict
         Dictionary containing cluster configuration details.
-
+    dev_mode : bool
+        Whether to use the development mode.
     Returns
     -------
     dict
@@ -605,6 +628,15 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         maia_dashboard_values["path"] = "charts/maia-dashboard"
 
     default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
+    dashboard_domain = cluster_config_dict["domain"]
+    if "DASHBOARD_DOMAIN" in os.environ:
+        dashboard_domain = os.environ["DASHBOARD_DOMAIN"]
+    keycloak_domain = "iam." + cluster_config_dict["domain"]
+    if "KEYCLOAK_DOMAIN" in os.environ:
+        keycloak_domain = os.environ["KEYCLOAK_DOMAIN"]
+    argocd_domain = cluster_config_dict["domain"]
+    if "ARGOCD_DOMAIN" in os.environ:
+        argocd_domain = os.environ["ARGOCD_DOMAIN"]
     maia_dashboard_values.update(
         {
             "ingress": {
@@ -613,7 +645,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 "annotations": {},
                 "hosts": [
                     {
-                        "host": "maia." + cluster_config_dict["domain"],
+                        "host": "maia." + dashboard_domain,
                         "paths": [
                             {"path": "/", "pathType": "ImplementationSpecific"},
                             {"path": "/maia-api/", "pathType": "ImplementationSpecific"},
@@ -621,7 +653,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                         ],
                     }
                 ],
-                "tls": [{"hosts": ["maia." + cluster_config_dict["domain"]]}],
+                "tls": [{"hosts": ["maia." + dashboard_domain]}],
             },
             "env": [
                 {"name": "DEBUG", "value": "False"},
@@ -630,15 +662,14 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             "storageClass": cluster_config_dict["storage_class"],
             "image": {"repository": f"{default_registry}/maia-dashboard", "tag": maia_dashboard_image_version},
             "dashboard": {"local_config_path": "/mnt/dashboard-config"},
-            "mysql": {"enabled": True, "image": mysql_image, "tag": mysql_image_version},
         }
     )
     if cluster_config_dict["url_type"] == "subpath":
-        maia_dashboard_values["ingress"]["hosts"][0]["host"] = cluster_config_dict["domain"]
-        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = cluster_config_dict["domain"]
-        maia_dashboard_values["env"].append({"name": "SERVER", "value": cluster_config_dict["domain"]})
+        maia_dashboard_values["ingress"]["hosts"][0]["host"] = dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = dashboard_domain
+        maia_dashboard_values["env"].append({"name": "SERVER", "value": dashboard_domain})
     else:
-        maia_dashboard_values["env"].append({"name": "SERVER", "value": "maia." + cluster_config_dict["domain"]})
+        maia_dashboard_values["env"].append({"name": "SERVER", "value": "maia." + dashboard_domain})
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         maia_dashboard_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
@@ -651,45 +682,129 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
                 cluster_config_dict["traefik_resolver"]
             )
     elif cluster_config_dict["ingress_class"] == "nginx":
+        cluster_issuer_name = cluster_config_dict.get("nginx_cluster_issuer", "cluster-issuer")
         maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
         maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
         maia_dashboard_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
         if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
             maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
         else:
-            maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
-        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = cluster_config_dict["domain"]
+            maia_dashboard_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_issuer_name
+        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "maia." + dashboard_domain
 
     # Authentication
+    realm_name = os.environ.get("KEYCLOAK_REALM_NAME", "maia")
     maia_dashboard_values["env"].extend(
         [
             {"name": "OIDC_RP_CLIENT_ID", "value": "maia"},
             {"name": "OIDC_RP_PUBLIC_CLIENT_ID", "value": "maia-public"},
             {"name": "OIDC_RP_CLIENT_SECRET", "value": os.environ["keycloak_client_secret"]},
-            {"name": "OIDC_SERVER_URL", "value": "https://iam." + cluster_config_dict["domain"]},
-            {"name": "OIDC_REALM_NAME", "value": "maia"},
+            {"name": "OIDC_SERVER_URL", "value": "https://" + keycloak_domain},
+            {"name": "OIDC_REALM_NAME", "value": realm_name},
             {"name": "OIDC_USERNAME", "value": "admin"},
-            {"name": "OIDC_ISSUER_URL", "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia"},
+            {"name": "OIDC_ISSUER_URL", "value": "https://" + keycloak_domain + f"/realms/{realm_name}"},
             {
                 "name": "OIDC_OP_AUTHORIZATION_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/auth",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/auth",
             },
             {
                 "name": "OIDC_OP_TOKEN_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/token",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/token",
             },
             {
                 "name": "OIDC_OP_USER_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/userinfo",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/userinfo",
             },
             {
                 "name": "OIDC_OP_JWKS_ENDPOINT",
-                "value": "https://iam." + cluster_config_dict["domain"] + "/realms/maia/protocol/openid-connect/certs",
+                "value": "https://" + keycloak_domain + f"/realms/{realm_name}/protocol/openid-connect/certs",
             },
             {"name": "OIDC_RP_SIGN_ALGO", "value": "RS256"},
             {"name": "OIDC_RP_SCOPES", "value": "openid email profile"},
         ]
     )
+
+    chart_folder = "maia_dashboard_values"
+    db_service_name_prefix = "maia-admin-maia-dashboard-"
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ) and dev_mode:
+        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
+        maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
+        chart_folder = "maia_dashboard_values_dev"
+        maia_dashboard_values["ingress"]["hosts"][0]["host"] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = "beta.maia." + dashboard_domain
+        maia_dashboard_values["ingress"]["tls"][0]["secretName"] = "beta.maia." + dashboard_domain
+        for env_var in maia_dashboard_values["env"]:
+            if env_var["name"] == "SERVER":
+                env_var["value"] = "beta.maia." + dashboard_domain
+        db_service_name_prefix = "maia-admin-maia-dashboard-dev-"
+
+    if "dashboard_db_engine" in os.environ and os.environ["dashboard_db_engine"] == "mongodb":
+        db_engine = "mongodb"
+        if "mongodb_dashboard_password" in os.environ:
+            db_password = os.environ["mongodb_dashboard_password"]
+        else:
+            db_password = generate_human_memorable_password()
+        maia_dashboard_values["mongodb"] = {
+            "enabled": True,
+            "user": "maia-admin",
+            "password": db_password,
+            "name": "mongodb",
+            "host": "mongo",
+            "storageClass": (
+                cluster_config_dict["shared_storage_class"]
+                if "shared_storage_class" in cluster_config_dict
+                else cluster_config_dict["storage_class"]
+            ),
+        }
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DB_ENGINE", "value": "mongodb"},
+                {"name": "DB_NAME", "value": "mongodb"},
+                {"name": "DB_HOST", "value": db_service_name_prefix + db_engine},
+                {"name": "DB_PORT", "value": "27017"},
+                {"name": "DB_USERNAME", "value": "maia-admin"},
+                {"name": "DB_PASS", "value": db_password},
+            ]
+        )
+    elif "dashboard_db_engine" in os.environ and os.environ["dashboard_db_engine"] == "sqlite":
+        db_engine = "sqlite"
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DB_ENGINE", "value": "sqlite"},
+            ]
+        )
+    else:
+        db_engine = "mysql"
+        maia_dashboard_values["mysql"] = {"enabled": True, "image": mysql_image, "tag": mysql_image_version}
+
+        if "mysql_dashboard_password" in os.environ:
+            db_password = os.environ["mysql_dashboard_password"]
+        else:
+            db_password = generate_human_memorable_password()
+        mysql_service_name = db_service_name_prefix + db_engine
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DB_ENGINE", "value": "mysql"},
+                {"name": "DB_NAME", "value": "mysql"},
+                {"name": "DB_HOST", "value": mysql_service_name},
+                {"name": "DB_PORT", "value": "3306"},
+                {"name": "DB_USERNAME", "value": "maia-admin"},
+                {"name": "DB_PASS", "value": db_password},
+            ]
+        )
+        maia_dashboard_values["mysql"].update(
+            {
+                "mysqlRootPassword": db_password,
+                "mysqlUser": "maia-admin",
+                "mysqlPassword": db_password,
+                "mysqlDatabase": "mysql",
+            }
+        )
 
     # Cluster Access
     maia_dashboard_values["clusters"] = [
@@ -708,10 +823,18 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         port = get_api_port(os.environ["K8S_DISTRIBUTION"])
         maia_dashboard_values["clusters"][0]["api"] = f"https://{cluster_config_dict['domain']}:{port}"
         maia_dashboard_values["clusters"][0]["maia_dashboard"]["token"] = ""
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MAIA_DASHBOARD_OIDC_AUTHENTICATION", "value": "True"},
+            ]
+        )
 
+    argocd_cluster = cluster_config_dict["cluster_name"]
+    if os.environ.get("ARGOCD_CLUSTER") is not None:
+        argocd_cluster = os.environ["ARGOCD_CLUSTER"]
     maia_dashboard_values["env"].extend(
         [
-            {"name": "ARGOCD_CLUSTER", "value": cluster_config_dict["cluster_name"]},
+            {"name": "ARGOCD_CLUSTER", "value": argocd_cluster},
         ]
     )
 
@@ -803,59 +926,119 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "admin_group_ID", "value": os.environ.get("admin_group_ID", "MAIA:admin")},
             {"name": "USERS_GROUP", "value": cluster_config_dict.get("users_group", "users")},
             {"name": "argocd_namespace", "value": "argocd"},
-            {"name": "ARGOCD_SERVER", "value": "https://argocd." + cluster_config_dict["domain"]},
+            {"name": "ARGOCD_SERVER", "value": "https://argocd." + argocd_domain},
             {"name": "ARGOCD_PASSWORD", "value": os.environ["ARGOCD_PASSWORD"]},
         ]
     )
 
     # Dev Branch
-    if os.environ.get("DEV_BRANCH") is not None:
+    if os.environ.get("DEV_BRANCH") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "DEV_BRANCH", "value": os.environ["DEV_BRANCH"]},
             ]
         )
-    if os.environ.get("GIT_EMAIL") is not None:
+    if os.environ.get("GIT_EMAIL") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "GIT_EMAIL", "value": os.environ["GIT_EMAIL"]},
             ]
         )
-    if os.environ.get("GIT_NAME") is not None:
+    if os.environ.get("GIT_NAME") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "GIT_NAME", "value": os.environ["GIT_NAME"]},
             ]
         )
-    if os.environ.get("GPG_KEY") is not None:
+    if os.environ.get("GPG_KEY") is not None and dev_mode:
         maia_dashboard_values["env"].extend(
             [
                 {"name": "GPG_KEY", "value": "/var/keys/gpg.key"},
             ]
         )
-        with open(os.environ["GPG_KEY"], "r") as f:
-            maia_dashboard_values["gpg_key"] = f.read()
+        if Path(os.environ["GPG_KEY"]).exists():
+            gpg_key = open(os.environ["GPG_KEY"], "r").read()
+        else:
+            gpg_key = open(Path(config_folder).joinpath(os.environ["GPG_KEY"]), "r").read()
+        maia_dashboard_values["gpg_key"] = gpg_key
 
-    if (
-        os.environ.get("DEV_BRANCH") is not None
-        or os.environ.get("GIT_EMAIL") is not None
-        or os.environ.get("GIT_NAME") is not None
-        or os.environ.get("GPG_KEY") is not None
-    ):
-        maia_dashboard_values["image"]["tag"] = maia_dashboard_image_version + maia_dashboard_dev_tag_suffix
-        maia_dashboard_values["image"]["repository"] = f"{default_registry}/maia-dashboard-dev"
-
+    if os.environ.get("DEV_TAG") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "DEV_TAG", "value": os.environ["DEV_TAG"]},
+            ]
+        )
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MAIA_VERSION", "value": os.environ["DEV_TAG"]},
+            ]
+        )
+    if os.environ.get("CIFS_SERVER") is not None:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "CIFS_SERVER", "value": os.environ["CIFS_SERVER"]},
+            ]
+        )
+    if os.environ.get("CIFS_PUBLIC_KEY") is not None:
+        if "CIFS_PUBLIC_KEY" in os.environ:
+            if Path(os.environ["CIFS_PUBLIC_KEY"]).exists():
+                public_key = open(os.environ["CIFS_PUBLIC_KEY"], "r").read()
+            else:
+                public_key = open(Path(config_folder).joinpath(os.environ["CIFS_PUBLIC_KEY"]), "r").read()
+        else:
+            public_key = ""
+        maia_dashboard_values["cifs_public_key"] = public_key
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "CIFS_PUBLIC_KEY", "value": "/var/cifs/public-key.pem"},
+            ]
+        )
     ### MinIO Configuration
+    minio_console_url = f"https://minio.{dashboard_domain}/browser/maia-envs"
+    if os.environ.get("MINIO_CONSOLE_URL") is not None:
+        minio_console_url = os.environ["MINIO_CONSOLE_URL"]
+    minio_url = "minio:80"
+    if os.environ.get("MINIO_URL") is not None:
+        minio_url = os.environ["MINIO_URL"]
     maia_dashboard_values["env"].extend(
         [
-            {"name": "MINIO_URL", "value": "minio:80"},
+            {"name": "MINIO_URL", "value": minio_url},
             {"name": "MINIO_ACCESS_KEY", "value": "maia-admin"},
             {"name": "MINIO_SECRET_KEY", "value": os.environ["minio_admin_password"]},
-            {"name": "MINIO_SECURE", "value": "False"},
             {"name": "BUCKET_NAME", "value": "maia-envs"},
-            {"name": "MINIO_CONSOLE_URL", "value": f"https://minio.{cluster_config_dict['domain']}/browser/maia-envs"},
+            {"name": "MINIO_CONSOLE_URL", "value": minio_console_url},
         ]
     )
+    if "MINIO_SECURE" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_SECURE", "value": os.environ["MINIO_SECURE"]},
+            ]
+        )
+    else:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_SECURE", "value": "False"},
+            ]
+        )
+    if "MINIO_PUBLIC_SECURE" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_PUBLIC_SECURE", "value": os.environ["MINIO_PUBLIC_SECURE"]},
+            ]
+        )
+    else:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_PUBLIC_SECURE", "value": "False"},
+            ]
+        )
+    if "MINIO_PUBLIC_URL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "MINIO_PUBLIC_URL", "value": os.environ["MINIO_PUBLIC_URL"]},
+            ]
+        )
 
     ## MONAI Toolkit Image and Orthanc
     maia_dashboard_values["env"].extend(
@@ -870,33 +1053,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
             {"name": "MAIA_REGISTRY", "value": os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")},
         ]
     )
-
-    ## MySQL Configuration
-
-    if "mysql_dashboard_password" in os.environ:
-        db_password = os.environ["mysql_dashboard_password"]
-    else:
-        db_password = generate_human_memorable_password()
-
-    maia_dashboard_values["env"].extend(
-        [
-            {"name": "DB_ENGINE", "value": "mysql"},
-            {"name": "DB_NAME", "value": "mysql"},
-            {"name": "DB_HOST", "value": "maia-admin-maia-dashboard-mysql"},
-            {"name": "DB_PORT", "value": "3306"},
-            {"name": "DB_USERNAME", "value": "maia-admin"},
-            {"name": "DB_PASS", "value": db_password},
-        ]
-    )
-    maia_dashboard_values["mysql"].update(
-        {
-            "mysqlRootPassword": db_password,
-            "mysqlUser": "maia-admin",
-            "mysqlPassword": db_password,
-            "mysqlDatabase": "mysql",
-        }
-    )
-
     # Email Notification Systen
 
     if (
@@ -916,13 +1072,31 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
 
     # Webhook and Support URL
     if "WEBHOOK_URL" in os.environ and "SUPPORT_URL" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL"]},
-                {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
-            ]
-        )
-
+        if dev_mode:
+            if "WEBHOOK_URL_DEV" in os.environ:
+                maia_dashboard_values["env"].extend(
+                    [
+                        {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL_DEV"]},
+                    ]
+                )
+            else:
+                maia_dashboard_values["env"].extend(
+                    [
+                        {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL"]},
+                    ]
+                )
+            maia_dashboard_values["env"].extend(
+                [
+                    {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
+                ]
+            )
+        else:
+            maia_dashboard_values["env"].extend(
+                [
+                    {"name": "WEBHOOK_URL", "value": os.environ["WEBHOOK_URL"]},
+                    {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
+                ]
+            )
     # MAIA-Chatbot Configuration
     if "OPENWEBAI_API_KEY" in os.environ and "OPENWEBAI_URL" in os.environ and "OPENWEBAI_MODEL" in os.environ:
         maia_dashboard_values["env"].extend(
@@ -941,15 +1115,39 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         projects = os.environ["maia_projects"].split(",")
         maia_dashboard_values["maia_projects"] = []
         for project in projects:
+            # If the project path is not absolute, expand it relative to the config_folder
+            if not os.path.isabs(project):
+                project = str(Path(config_folder).joinpath(project).resolve())
             with open(project, "r") as f:
                 project_dict = json.load(f)
             maia_dashboard_values["maia_projects"].append(project_dict)
 
+    aliases_env_string = os.environ.get("HOST_ALIASES", "[]")
+
+    # 2. Parse the string back into a list
+    try:
+        host_aliases = json.loads(aliases_env_string)
+    except json.JSONDecodeError:
+        logger.error("Error: HOST_ALIASES is not valid JSON.")
+        host_aliases = []
+
+    maia_dashboard_values["hostAliases"] = host_aliases
+
+    if "CLUSTER_YAML_CONFIGS" in os.environ:
+        maia_dashboard_values["clusters"] = []
+        cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
+        for cluster_file in cluster_files:
+            if not os.path.isabs(cluster_file):
+                cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
+            with open(cluster_file, "r") as f:
+                cluster_config_dict = yaml.safe_load(f)
+                maia_dashboard_values["clusters"].append(cluster_config_dict)
+
     # CIFS
     # MAIA Segmentation Portal
     # GPU Booking
-    Path(config_folder).joinpath(project_id, "maia_dashboard_values").mkdir(parents=True, exist_ok=True)
-    with open(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml"), "w") as f:
+    Path(config_folder).joinpath(project_id, chart_folder).mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, chart_folder, f"{chart_folder}.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
 
     return {
@@ -960,7 +1158,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict)
         ),
         "repo": maia_dashboard_values["repo_url"],
         "version": maia_dashboard_values["chart_version"],
-        "values": str(Path(config_folder).joinpath(project_id, "maia_dashboard_values", "maia_dashboard_values.yaml")),
+        "values": str(Path(config_folder).joinpath(project_id, chart_folder, f"{chart_folder}.yaml")),
     }
 
 

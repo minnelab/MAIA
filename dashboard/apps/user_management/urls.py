@@ -15,6 +15,7 @@ from apps.user_management.views import (
     UserManagementAPICreateGroupView,
     UserManagementAPIDeleteGroupView,
     UserManagementAPIListPendingGroupsView,
+    UserManagementAPIGetProjectsStatusView,
 )
 
 urlpatterns = [
@@ -29,6 +30,7 @@ urlpatterns = [
     path("update-user/", UserManagementAPIUpdateUserView.as_view(), name="update_user"),
     path("delete-user/", UserManagementAPIDeleteUserView.as_view(), name="delete_user"),
     path("create-group/", UserManagementAPICreateGroupView.as_view(), name="create_group"),
+    path("get-projects/", UserManagementAPIGetProjectsStatusView.as_view(), name="get_projects_status"),
     path("list-pending-groups/", UserManagementAPIListPendingGroupsView.as_view(), name="list_pending_groups"),
     path("delete-group/<str:group_id>", UserManagementAPIDeleteGroupView.as_view(), name="delete_group"),
     path("register-user-in-group/<str:email>", views.register_user_in_group_view),
@@ -36,4 +38,5 @@ urlpatterns = [
     path("delete-group-view/<str:group_id>", views.delete_group_view),
     path("remove-user-from-group/<str:email>", views.remove_user_from_group_view),
     path("delete-user-view/<str:email>", views.delete_user_view),
+    path("update-group-json/<str:namespace>", views.update_group_json_view),
 ]

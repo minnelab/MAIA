@@ -229,6 +229,7 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "startTimeout": 7200,
             "allowPrivilegeEscalation": True,
             "uid": 1000,
+            "extraPodConfig": {"securityContext": {"fsGroupChangePolicy": "OnRootMismatch"}},
             "networkPolicy": {"enabled": False},
             "defaultUrl": "/lab/tree/Welcome.ipynb",
             "extraEnv": {
@@ -335,6 +336,15 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 secure = os.environ["MINIO_SECURE"]
         else:
             secure = True
+        if "MINIO_PUBLIC_SECURE" in os.environ:
+            if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
+                public_secure = False
+            elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
+                public_secure = True
+            else:
+                public_secure = os.environ["MINIO_PUBLIC_SECURE"]
+        else:
+            public_secure = secure
         if "minio_env_name" not in user_form or user_form["minio_env_name"] is None:
             minio_env_name = team_id + "_env"
         else:
@@ -348,14 +358,16 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
         try:
             if minio_env_name.endswith(".zip"):
                 settings_dict = {
-                    "MINIO_PUBLIC_URL": os.environ["MINIO_URL"],
+                    "MINIO_PUBLIC_URL": (
+                        os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
+                    ),
                     "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
                     "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
-                    "MINIO_PUBLIC_SECURE": secure,
+                    "MINIO_PUBLIC_SECURE": public_secure,
                     "BUCKET_NAME": os.environ["BUCKET_NAME"],
                 }
                 settings = SimpleNamespace(**settings_dict)
-                jh_helm_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(
+                jh_template["singleuser"]["extraEnv"]["CUSTOM_SETUP_LINK"] = get_minio_shareable_link(
                     minio_env_name, os.environ["BUCKET_NAME"], settings
                 )
             else:
@@ -455,6 +467,13 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             cpu_values.append(float(cpu_value))
         except ValueError:
             cpu_values.append(cpu_value)
+    for i, cpu_value in enumerate(cpu_values):
+        if isinstance(cpu_value, str) and cpu_value.endswith("m"):
+            try:
+                numeric_value = float(cpu_value[:-1]) / 1000.0
+                cpu_values[i] = numeric_value
+            except ValueError:
+                pass  # If the value can't be converted, leave it as is
     jh_template["singleuser"]["cpu"] = {
         "limit": cpu_values[1],
         "guarantee": cpu_values[0],
@@ -668,7 +687,34 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 },
             }
         )
-
+    if "node_selector" in user_form:
+        k = list(user_form["node_selector"].keys())[0]
+        v = user_form["node_selector"][k]
+        jh_template["singleuser"]["profileList"].append(
+            {
+                "display_name": f"MAIA Workspace v{maia_workspace_version} [Node: {k}: {v}]",
+                "description": "MAIA Workspace with Python 3.10, Anaconda and SSH Connection",
+                "default": True,
+                "kubespawner_override": {
+                    "image": f"{maia_workspace_image}:{maia_workspace_version}",
+                    "start_timeout": 7200,
+                    "http_timeout": 7200,
+                    # mem_limit
+                    # cpu_limit
+                    # mem_guarantee
+                    # cpu_guarantee
+                    "nodeSelector": {k: v},
+                    "extra_resource_limits": {},
+                    # "container_security_context": {
+                    # "privileged": True, ## Remove
+                    # "procMount": "unmasked",
+                    # "seccompProfile": {
+                    #    "type": "Unconfined"
+                    # }
+                    # }
+                },
+            },
+        )
     if gpu_request > 0:
         for profile in jh_template["singleuser"]["profileList"]:
             if (

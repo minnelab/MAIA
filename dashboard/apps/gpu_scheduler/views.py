@@ -19,8 +19,13 @@ from MAIA.kubernetes_utils import generate_kubeconfig
 from pathlib import Path
 import os
 import yaml
-from apps.models import MAIAProject
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAProject
+else:
+    from apps.models import MAIAProject
 from loguru import logger
+from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
 @method_decorator(csrf_exempt, name="dispatch")  # 🚀 This disables CSRF for this API
@@ -130,7 +135,7 @@ def admin_delete_booking(request, id):
     booking.delete()
     pod_name = "jupyter-" + convert_username_to_jupyterhub_username(booking.user_email)
 
-    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject)
+    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject, return_only_cluster_id=True)
     local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
 
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
@@ -162,7 +167,7 @@ def delete_booking(request, id):
     booking.delete()
     pod_name = "jupyter-" + convert_username_to_jupyterhub_username(booking.user_email)
 
-    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject)
+    _, cluster_id = get_project(booking.namespace, settings=settings, maia_project_model=MAIAProject, return_only_cluster_id=True)
     local_kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
 
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
@@ -187,7 +192,13 @@ def book_gpu(request):
     namespaces = []
 
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
 
     if namespaces is None or len(namespaces) == 0:
         namespaces = []
@@ -222,6 +233,7 @@ def book_gpu(request):
     context = {
         "namespaces": namespaces,
         "dashboard_version": settings.DASHBOARD_VERSION,
+        "MAIA_VERSION": settings.MAIA_VERSION,
         "form": form,
         "msg": msg,
         "success": success,
@@ -241,7 +253,12 @@ def gpu_booking_info(request):
     groups = request.user.groups.all()
     namespaces = []
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
 
     else:
         for group in groups:
@@ -278,6 +295,7 @@ def gpu_booking_info(request):
     context = {
         "namespaces": namespaces,
         "dashboard_version": settings.DASHBOARD_VERSION,
+        "MAIA_VERSION": settings.MAIA_VERSION,
         "bookings": bookings_dict,
         "total_days": total_days,
     }

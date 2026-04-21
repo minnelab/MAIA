@@ -7,6 +7,7 @@ import os
 import environ
 import yaml
 from MAIA.versions import define_maia_admin_versions
+from pymongo import MongoClient
 
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 
@@ -19,6 +20,7 @@ env = environ.Env(
 )
 
 DASHBOARD_VERSION = maia_dashboard_image_version
+MAIA_VERSION = os.environ.get("MAIA_VERSION", "N/A")
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 CORE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -152,6 +154,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
+MONGO_DB_ENABLED = False
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
@@ -166,6 +169,18 @@ if os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mysql":
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", 3306),
         },
+    }
+elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mongodb":
+    MONGO_CLIENT = MongoClient(
+        f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}'
+    )
+    MONGO_DB = MONGO_CLIENT[os.getenv("DB_NAME", "appseed_db")]
+    MONGO_DB_ENABLED = True
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")),
+        }
     }
 else:
     print("INFO: Using local sqlite database at " + str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")))

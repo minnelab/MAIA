@@ -174,13 +174,13 @@ def get_ssh_port_dict(port_type, namespace, port_range, maia_metallb_ip=None):
                 if svc.status.load_balancer.ingress is not None:
                     if svc.spec.type == "LoadBalancer" and svc.status.load_balancer.ingress[0].ip == maia_metallb_ip:
                         for port in svc.spec.ports:
-                            if (port.name == "ssh" and svc.metadata.namespace == namespace) or (
-                                port.name == "orthanc-dicom" and svc.metadata.namespace == namespace
-                            ):
-                                if svc.metadata.name.endswith("-ssh"):
-                                    used_port.append({svc.metadata.name[: -len("-ssh")]: int(port.port)})
-                                else:
-                                    used_port.append({svc.metadata.name: int(port.port)})
+                            # if (port.name == "ssh" and svc.metadata.namespace == namespace) or (
+                            #    port.name == "orthanc-dicom" and svc.metadata.namespace == namespace
+                            # ):
+                            if svc.metadata.name.endswith("-ssh"):
+                                used_port.append({svc.metadata.name[: -len("-ssh")]: int(port.port)})
+                            else:
+                                used_port.append({svc.metadata.name: int(port.port)})
             elif port_type == "NodePort":
                 if svc.spec.type == "NodePort" and svc.metadata.namespace == namespace:
                     for port in svc.spec.ports:
@@ -243,8 +243,8 @@ def get_ssh_ports(n_requested_ports, port_type, ip_range, maia_metallb_ip=None):
                 if svc.status.load_balancer.ingress is not None:
                     if svc.spec.type == "LoadBalancer" and svc.status.load_balancer.ingress[0].ip == maia_metallb_ip:
                         for port in svc.spec.ports:
-                            if port.name == "ssh" or port.name == "orthanc-dicom":
-                                used_port.append(int(port.port))
+                            # if port.name == "ssh" or port.name == "orthanc-dicom":
+                            used_port.append(int(port.port))
             elif port_type == "NodePort":
                 if svc.spec.type == "NodePort":
                     for port in svc.spec.ports:
@@ -732,6 +732,23 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         memory_limit = os.environ["ORTHANC_MEMORY_LIMIT_" + namespace]
     else:
         memory_limit = os.environ.get("ORTHANC_MEMORY_LIMIT", "4Gi")
+
+    if "ORTHANC_MYSQL_CPU_REQUEST_" + namespace in os.environ:
+        mysql_cpu_request = os.environ["ORTHANC_MYSQL_CPU_REQUEST_" + namespace]
+    else:
+        mysql_cpu_request = os.environ.get("ORTHANC_MYSQL_CPU_REQUEST", "500m")
+    if "ORTHANC_MYSQL_CPU_LIMIT_" + namespace in os.environ:
+        mysql_cpu_limit = os.environ["ORTHANC_MYSQL_CPU_LIMIT_" + namespace]
+    else:
+        mysql_cpu_limit = os.environ.get("ORTHANC_MYSQL_CPU_LIMIT", "500m")
+    if "ORTHANC_MYSQL_MEMORY_REQUEST_" + namespace in os.environ:
+        mysql_memory_request = os.environ["ORTHANC_MYSQL_MEMORY_REQUEST_" + namespace]
+    else:
+        mysql_memory_request = os.environ.get("ORTHANC_MYSQL_MEMORY_REQUEST", "2Gi")
+    if "ORTHANC_MYSQL_MEMORY_LIMIT_" + namespace in os.environ:
+        mysql_memory_limit = os.environ["ORTHANC_MYSQL_MEMORY_LIMIT_" + namespace]
+    else:
+        mysql_memory_limit = os.environ.get("ORTHANC_MYSQL_MEMORY_LIMIT", "2Gi")
     orthanc_config = {
         "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
         "imagePullSecret": image_pull_secret,
@@ -773,6 +790,10 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
             "mysqlDatabase": "orthanc",
             "image": mysql_image,
             "tag": mysql_image_version,
+            "cpu_request": mysql_cpu_request,
+            "cpu_limit": mysql_cpu_limit,
+            "memory_request": mysql_memory_request,
+            "memory_limit": mysql_memory_limit,
         }
 
     if private_registry is not None:
@@ -1637,9 +1658,13 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
 
     enable_cifs = namespace_config.get("extra_configs", {}).get("enable_cifs", False)
     if enable_cifs and "CIFS_SERVER" in os.environ:
+        if "CIFS_PUBLIC_KEY" in os.environ:
+            public_key = open(os.environ["CIFS_PUBLIC_KEY"], "r").read()
+        else:
+            public_key = ""
         maia_namespace_values["cifs"] = {
             "enabled": True,
-            "encryption": {"publicKey": os.environ.get("CIFS_PUBLIC_KEY", "")},
+            "encryption": {"publicKey": public_key},
         }  # base64 encoded}
     namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
     Path(config_folder).joinpath(namespace_config["group_ID"], "maia_namespace_values").mkdir(parents=True, exist_ok=True)

@@ -42,6 +42,11 @@ spec:
           secret:
             secretName: {{ include "maia-dashboard.fullname" . }}-gpg-key
         {{- end }}
+        {{- if .Values.cifs_public_key }}
+        - name: cifs-public-key
+          secret:
+            secretName: cifs-encryption-public-key
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -57,6 +62,11 @@ spec:
             {{- if .Values.gpg_key }}
             - name: gpg-key
               mountPath: /var/keys
+            {{- end }}
+            {{- if .Values.cifs_public_key }}
+            - name: cifs-public-key
+              mountPath: /var/cifs/public-key.pem
+              subPath: public-key.pem
             {{- end }}
           ports:
             - name: http

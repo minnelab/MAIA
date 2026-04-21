@@ -10,6 +10,7 @@ from django.conf import settings
 from MAIA.maia_fn import convert_username_to_jupyterhub_username
 import requests
 from django.contrib.auth.decorators import login_required
+from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
 def get_resources_status(request):
@@ -79,7 +80,12 @@ def search_resources(request):
     namespaces = []
 
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
 
     else:
         for group in groups:

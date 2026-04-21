@@ -1,7 +1,7 @@
 import os
 from rest_framework import serializers
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template import loader
 from django.conf import settings as env_settings
 import requests
@@ -12,7 +12,11 @@ from django.contrib.auth.models import User
 from pathlib import Path
 from .forms import UserTableForm
 import re
-from apps.models import MAIAUser, MAIAProject
+
+if env_settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser, MAIAProject
+else:
+    from apps.models import MAIAUser, MAIAProject
 import json
 from django.core.cache import cache
 from MAIA.kubernetes_utils import (
@@ -62,6 +66,88 @@ import datetime
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DNS_LABEL_REGEX = r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
 user_group = env_settings.USERS_GROUP
+
+
+def _serialize_groups_dict_for_json(maia_groups_dict):
+    """Convert maia_groups_dict to a JSON-serializable dict (e.g. date -> ISO string)."""
+    result = {}
+    for namespace, data in maia_groups_dict.items():
+        result[namespace] = {}
+        for key, value in data.items():
+            if isinstance(value, (datetime.date, datetime.datetime)):
+                result[namespace][key] = value.isoformat()
+            else:
+                result[namespace][key] = value
+    return result
+
+
+_UPDATABLE_GROUP_FIELDS = {
+    "email_to_username_map",
+    "memory_request",
+    "cpu_request",
+    "auto_deploy",
+    "auto_deploy_apps",
+    "project_configuration",
+    "cpu_limit",
+    "memory_limit",
+    "cluster",
+    "gpu",
+    "project_tier",
+    "description",
+    "supervisor",
+    "email",
+}
+
+
+def _enrich_user_list(user_list):
+    """Attach namespace_status list to each user dict for template rendering.
+
+    Each entry is {'name': str, 'status': 'registered' | 'pending' | 'remove'}.
+    """
+    for user in user_list:
+        pending = user["is_registered_in_groups"] if user["is_registered_in_groups"] != 1 else []
+        to_remove = user["remove_from_group"] if user["remove_from_group"] != 0 else []
+        requested = [ns.strip() for ns in user["namespace"].split(",") if ns.strip()] if user.get("namespace") else []
+
+        namespace_status = []
+        for ns in requested:
+            namespace_status.append({"name": ns, "status": "pending" if ns in pending else "registered"})
+        for ns in to_remove:
+            namespace_status.append({"name": ns, "status": "remove"})
+
+        user["namespace_status"] = namespace_status
+    return user_list
+
+
+@login_required(login_url="/maia/login/")
+def update_group_json_view(request, namespace):
+    if not request.user.is_superuser:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    try:
+        project = MAIAProject.objects.get(namespace=namespace)
+    except MAIAProject.DoesNotExist:
+        return JsonResponse({"error": f"Project '{namespace}' not found"}, status=404)
+
+    for field in _UPDATABLE_GROUP_FIELDS:
+        if field in data:
+            setattr(project, field, data[field])
+
+    if "date" in data:
+        try:
+            project.date = datetime.date.fromisoformat(data["date"])
+        except (ValueError, TypeError):
+            return JsonResponse({"error": "Invalid date format; expected YYYY-MM-DD"}, status=400)
+
+    project.save()
+    return JsonResponse({"message": "Project updated successfully"})
 
 
 def group_id_validator(value):
@@ -153,6 +239,28 @@ class UserManagementAPIListPendingGroupsView(APIView):
     def get(self, request, *args, **kwargs):
         pending_groups = get_pending_projects(settings=env_settings, maia_project_model=MAIAProject)
         return Response({"pending_groups": pending_groups}, status=200)
+
+
+class UserManagementAPIGetProjectsStatusView(APIView):
+    throttle_classes = [UserRateThrottle]
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        to_register_in_groups, to_register_in_keycloak, maia_groups_dict, project_argo_status, users_to_remove_from_group = (
+            get_project_argo_status_and_user_table(
+                request=request, settings=env_settings, maia_user_model=MAIAUser, maia_project_model=MAIAProject
+            )
+        )
+        return Response(
+            {
+                "users_to_register_in_groups": to_register_in_groups,
+                "users_to_register_in_keycloak": to_register_in_keycloak,
+                "maia_groups_dict": maia_groups_dict,
+                "project_argo_status": project_argo_status,
+                "users_to_remove_from_group": users_to_remove_from_group,
+            },
+            status=200,
+        )
 
 
 class UserManagementAPIListGroupsView(APIView):
@@ -369,7 +477,7 @@ class UserManagementAPIDeleteGroupView(APIView):
 
 
 class ProjectChartValuesSerializer(serializers.Serializer):
-    group_id = serializers.CharField(max_length=63)
+    namespace = serializers.CharField(max_length=63)
     users = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     memory_limit = serializers.CharField(max_length=100)
     cpu_limit = serializers.CharField(max_length=100)
@@ -381,7 +489,7 @@ class ProjectChartValuesSerializer(serializers.Serializer):
     cluster = serializers.CharField(max_length=100)
     date = serializers.DateField()
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
-    username = serializers.EmailField(max_length=254)
+    email = serializers.EmailField(max_length=254)
     description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
     auto_deploy = serializers.BooleanField(required=False, default=False)
     auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
@@ -402,168 +510,181 @@ class ProjectChartValuesAPIView(APIView):
     throttle_classes = [UserRateThrottle]
 
     def post(self, request, *args, **kwargs):
-        serializer = ProjectChartValuesSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response({"error": serializer.errors}, status=400)
+        try:
+            serializer = ProjectChartValuesSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({"error": serializer.errors}, status=400)
 
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return Response({"error": "Missing Authorization header"}, status=401)
+            auth_header = request.headers.get("Authorization")
+            if not auth_header:
+                return Response({"error": "Missing Authorization header"}, status=401)
 
-        # Expecting "Bearer <token>"
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            return Response({"error": "Invalid Authorization header format"}, status=401)
+            # Expecting "Bearer <token>"
+            parts = auth_header.split()
+            if len(parts) != 2 or parts[0].lower() != "bearer":
+                return Response({"error": "Invalid Authorization header format"}, status=401)
 
-        id_token = parts[1]
+            id_token = parts[1]
 
-        validated_data = serializer.validated_data
+            validated_data = serializer.validated_data
 
-        group_id = validated_data["group_id"]
-        username = validated_data["username"]
-        users = validated_data["users"]
-        memory_limit = validated_data["memory_limit"]
-        cpu_limit = validated_data["cpu_limit"]
-        cpu_request = validated_data["cpu_request"]
-        memory_request = validated_data["memory_request"]
-        project_tier = validated_data["project_tier"]
-        gpu = validated_data["gpu"]
-        env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
-        cluster = validated_data["cluster"]
-        date = validated_data["date"]
-        supervisor = validated_data["supervisor"]
-        description = validated_data["description"]
-        auto_deploy = validated_data["auto_deploy"]
-        auto_deploy_apps = (
-            validated_data["auto_deploy_apps"]
-            if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None
-            else []
-        )
-        project_configuration = (
-            validated_data["project_configuration"]
-            if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
-            else None
-        )
-        email_to_username_map = validated_data.get("email_to_username_map", None)
-        if request.FILES:
-            env_file = request.FILES["env_file"]
-            if "MINIO_SECURE" in os.environ:
-                if os.environ["MINIO_SECURE"].lower() == "false":
-                    secure = False
-                elif os.environ["MINIO_SECURE"].lower() == "true":
-                    secure = True
-                else:
-                    secure = os.environ["MINIO_SECURE"]
-            else:
-                secure = True
-            if "MINIO_PUBLIC_SECURE" in os.environ:
-                if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
-                    public_secure = False
-                elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
-                    public_secure = True
-                else:
-                    public_secure = os.environ["MINIO_PUBLIC_SECURE"]
-            else:
-                public_secure = secure
-            settings_dict = {
-                "MINIO_URL": os.environ["MINIO_URL"],
-                "MINIO_PUBLIC_URL": (
-                    os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
-                ),
-                "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
-                "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
-                "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
-                "MINIO_SECURE": secure,
-                "BUCKET_NAME": os.environ["BUCKET_NAME"],
-            }
-            settings = SimpleNamespace(**settings_dict)
-            filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
-            if not success:
-                return Response({"error": filename}, status=400)
-            env_file = filename
-        for user in users:
-            if not MAIAUser.objects.filter(email=user).exists():
-                username = email_to_username_map.get(user, user)
-                create_user_service(user, username, "", "", f"{group_id},{user_group}")
-        if not MAIAUser.objects.filter(email=supervisor).exists():
-            username = email_to_username_map.get(supervisor, supervisor)
-            create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
-        if supervisor not in users:
-            users = [supervisor] + users
-        create_group_service(
-            group_id,
-            gpu,
-            date,
-            memory_limit,
-            cpu_limit,
-            env_file,
-            cluster,
-            project_tier,
-            supervisor,
-            users,
-            description,
-            supervisor,
-        )
-
-        project_form_dict = {
-            "group_ID": group_id,
-            "group_subdomain": group_id.lower().replace("_", "-"),
-            "users": users,
-            "resources_limits": {
-                "memory": [memory_request, memory_limit],
-                "cpu": [cpu_request, cpu_limit],
-            },
-            "project_tier": project_tier,
-            "gpu_request": gpu,
-            "minio_env_name": env_file,
-        }
-        if auto_deploy:
-            kubeconfig_dict = generate_kubeconfig(
-                id_token, username, "default", cluster, settings=env_settings, in_local_cluster_token=True
+            namespace = validated_data["namespace"]
+            email = validated_data["email"]
+            users = validated_data["users"]
+            memory_limit = validated_data["memory_limit"]
+            cpu_limit = validated_data["cpu_limit"]
+            cpu_request = validated_data["cpu_request"]
+            memory_request = validated_data["memory_request"]
+            project_tier = validated_data["project_tier"]
+            gpu = validated_data["gpu"]
+            env_file = (
+                validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
             )
-            config.load_kube_config_from_dict(kubeconfig_dict)
-            with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
-                yaml.dump(kubeconfig_dict, f)
-                os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
-                if (
-                    "env" in project_configuration
-                    and "DEPLOY_KUBEFLOW" in project_configuration["env"]
-                    and project_configuration["env"]["DEPLOY_KUBEFLOW"] == "True"
-                ):
-                    kubeflow_namespace = True
+            cluster = validated_data["cluster"]
+            date = validated_data["date"]
+            supervisor = validated_data["supervisor"]
+            description = validated_data["description"]
+            auto_deploy = validated_data["auto_deploy"]
+            auto_deploy_apps = (
+                validated_data["auto_deploy_apps"]
+                if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None
+                else []
+            )
+            project_configuration = (
+                validated_data["project_configuration"]
+                if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
+                else None
+            )
+            email_to_username_map = validated_data.get("email_to_username_map", {})
+            if request.FILES:
+                env_file = request.FILES["env_file"]
+                if "MINIO_SECURE" in os.environ:
+                    if os.environ["MINIO_SECURE"].lower() == "false":
+                        secure = False
+                    elif os.environ["MINIO_SECURE"].lower() == "true":
+                        secure = True
+                    else:
+                        secure = os.environ["MINIO_SECURE"]
                 else:
-                    kubeflow_namespace = False
-                create_namespace_from_context(
-                    namespace_id=group_id.lower().replace("_", "-"), kubeflow_namespace=kubeflow_namespace, owner_email=users[0]
+                    secure = True
+                if "MINIO_PUBLIC_SECURE" in os.environ:
+                    if os.environ["MINIO_PUBLIC_SECURE"].lower() == "false":
+                        public_secure = False
+                    elif os.environ["MINIO_PUBLIC_SECURE"].lower() == "true":
+                        public_secure = True
+                    else:
+                        public_secure = os.environ["MINIO_PUBLIC_SECURE"]
+                else:
+                    public_secure = secure
+                settings_dict = {
+                    "MINIO_URL": os.environ["MINIO_URL"],
+                    "MINIO_PUBLIC_URL": (
+                        os.environ["MINIO_PUBLIC_URL"] if "MINIO_PUBLIC_URL" in os.environ else os.environ["MINIO_URL"]
+                    ),
+                    "MINIO_PUBLIC_SECURE": public_secure if "MINIO_PUBLIC_SECURE" in os.environ else secure,
+                    "MINIO_ACCESS_KEY": os.environ["MINIO_ACCESS_KEY"],
+                    "MINIO_SECRET_KEY": os.environ["MINIO_SECRET_KEY"],
+                    "MINIO_SECURE": secure,
+                    "BUCKET_NAME": os.environ["BUCKET_NAME"],
+                }
+                settings = SimpleNamespace(**settings_dict)
+                filename, success = upload_env_file_to_minio(env_file=env_file, namespace=namespace, settings=settings)
+                if not success:
+                    return Response({"error": filename}, status=400)
+                env_file = filename
+            for user in users:
+                if not MAIAUser.objects.filter(email=user).exists():
+                    username = email_to_username_map.get(user, user)
+                    create_user_service(user, username, "", "", f"{namespace},{user_group}")
+            if not MAIAUser.objects.filter(email=supervisor).exists():
+                username = email_to_username_map.get(supervisor, supervisor)
+                create_user_service(supervisor, username, "", "", f"{namespace},{user_group}")
+            if supervisor not in users:
+                users = [supervisor] + users
+            create_group_service(
+                namespace,
+                gpu,
+                date,
+                memory_limit,
+                cpu_limit,
+                env_file,
+                cluster,
+                project_tier,
+                supervisor,
+                users,
+                description,
+                supervisor,
+            )
+
+            project_form_dict = {
+                "group_ID": namespace,
+                "group_subdomain": namespace.lower().replace("_", "-"),
+                "users": users,
+                "resources_limits": {
+                    "memory": [memory_request, memory_limit],
+                    "cpu": [cpu_request, cpu_limit],
+                },
+                "project_tier": project_tier,
+                "gpu_request": gpu,
+                "minio_env_name": env_file,
+            }
+            if auto_deploy:
+                kubeconfig_dict = generate_kubeconfig(
+                    id_token,
+                    username,
+                    "default",
+                    cluster,
+                    settings=env_settings,
+                    in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
                 )
-                create_maia_rbac_from_context(namespace=group_id.lower().replace("_", "-"))
-        values = deploy_project(
-            group_id,
-            id_token,
-            username,
-            cluster,
-            project_form_dict,
-            disable_argocd=not auto_deploy,
-            return_values_only=not auto_deploy,
-            custom_project_dict=project_configuration,
-            use_in_local_cluster_token=True,
-        )
-        if auto_deploy:
-            apps_to_sync = auto_deploy_apps
-            url = f"{env_settings.ARGOCD_SERVER}/api/v1/session"
-            response = requests.post(url, json={"username": "admin", "password": env_settings.ARGOCD_PASSWORD}, verify=False)
-            response.raise_for_status()
+                config.load_kube_config_from_dict(kubeconfig_dict)
+                with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
+                    yaml.dump(kubeconfig_dict, f)
+                    os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
+                    if (
+                        "env" in project_configuration
+                        and "DEPLOY_KUBEFLOW" in project_configuration["env"]
+                        and project_configuration["env"]["DEPLOY_KUBEFLOW"] == "True"
+                    ):
+                        kubeflow_namespace = True
+                    else:
+                        kubeflow_namespace = False
+                    create_namespace_from_context(
+                        namespace_id=namespace.lower().replace("_", "-"),
+                        kubeflow_namespace=kubeflow_namespace,
+                        owner_email=users[0],
+                    )
+                    create_maia_rbac_from_context(namespace=namespace.lower().replace("_", "-"))
+            values = deploy_project(
+                namespace,
+                id_token,
+                email,
+                cluster,
+                project_form_dict,
+                disable_argocd=not auto_deploy,
+                return_values_only=not auto_deploy,
+                custom_project_dict=project_configuration,
+                use_in_local_cluster_token=os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False),
+            )
+            if auto_deploy:
+                apps_to_sync = auto_deploy_apps
+                url = f"{env_settings.ARGOCD_SERVER}/api/v1/session"
+                response = requests.post(url, json={"username": "admin", "password": env_settings.ARGOCD_PASSWORD}, verify=False)
+                response.raise_for_status()
 
-            TOKEN = response.json()["token"]
+                TOKEN = response.json()["token"]
 
-            apps = get_maia_toolkit_apps(group_id, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
+                apps = get_maia_toolkit_apps(namespace, env_settings.ARGOCD_PASSWORD, env_settings.ARGOCD_SERVER)
 
-            for app in apps_to_sync:
-                for a in apps:
-                    if f"{group_id}-{app}" == a["name"]:
-                        sync_argocd_app(group_id, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
+                for app in apps_to_sync:
+                    for a in apps:
+                        if f"{namespace}-{app}" == a["name"]:
+                            sync_argocd_app(namespace, a["name"], a["version"], env_settings.ARGOCD_SERVER, TOKEN)
 
-        return Response({"values": values["message"]}, status=200)
+            return Response({"values": values["message"]}, status=200)
+        except Exception as e:
+            logger.exception(e)
+            return Response({"error": str(e)}, status=500)
 
 
 # Create your views here.
@@ -699,6 +820,7 @@ def index(request):
                     x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
                 ),
             )
+            _enrich_user_list(sorted_user_list)
             if "BACKEND" in os.environ:
                 backend = os.environ["BACKEND"]
             else:
@@ -708,6 +830,8 @@ def index(request):
                 "user_table": sorted_user_list,
                 "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
                 "maia_groups_dict": maia_groups_dict,
+                "maia_groups_dict_json": json.dumps(_serialize_groups_dict_for_json(maia_groups_dict)),
+                "project_argo_status_json": json.dumps(project_argo_status),
                 "form": UserTableForm(request.POST),
                 "project_argo_status": project_argo_status,
                 "argocd_url": argocd_url,
@@ -719,7 +843,7 @@ def index(request):
             form = UserTableForm(request.POST)
 
             if form.is_valid():
-                update_user_table(form, User, MAIAUser, MAIAProject)
+                update_user_table(form, User, MAIAUser)
             else:
                 ...
                 logger.info(f"Form is not valid: {form.errors}")
@@ -750,8 +874,9 @@ def index(request):
                 x["is_registered_in_keycloak"] == 0 or x["is_registered_in_groups"] != 1 or x["remove_from_group"] != 0
             ),
         )
+        _enrich_user_list(sorted_user_list)
 
-        user_form = UserTableForm(users=sorted_user_list, projects=maia_groups_dict)
+        user_form = UserTableForm(users=sorted_user_list)
         if "BACKEND" in os.environ:
             backend = os.environ["BACKEND"]
         else:
@@ -760,6 +885,8 @@ def index(request):
             "BACKEND": backend,
             "user_table": sorted_user_list,
             "maia_groups_dict": maia_groups_dict,
+            "maia_groups_dict_json": json.dumps(_serialize_groups_dict_for_json(maia_groups_dict)),
+            "project_argo_status_json": json.dumps(project_argo_status),
             "minio_console_url": os.environ.get("MINIO_CONSOLE_URL", None),
             "form": user_form,
             "user": ["admin"],
@@ -817,26 +944,27 @@ def delete_group_view(request, group_id):
 
 @login_required(login_url="/maia/login/")
 def register_user_view(request, email):
-    if not request.user.is_superuser:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({}, request))
+    try:
+        if not request.user.is_superuser:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({}, request))
 
-    user = MAIAUser.objects.filter(email=email).first()
-    if not user:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({"message": "User not found"}, request))
-    namespace = user.namespace
-    username = user.username
-    first_name = user.first_name
-    last_name = user.last_name
-    if not namespace:
-        namespace = env_settings.USERS_GROUP
-    result = create_user_service(email, username, first_name, last_name, namespace)
-    if result["status"] == 200:
-        return redirect("/maia/user-management/")
-    else:
-        html_template = loader.get_template("home/page-500.html")
-        return HttpResponse(html_template.render({"message": result["message"]}, request))
+        user = MAIAUser.objects.filter(email=email).first()
+        if not user:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({"message": "User not found"}, request))
+        namespace = user.namespace
+        username = user.username
+        if not namespace:
+            namespace = env_settings.USERS_GROUP
+        result = create_user_service(email, username, "", "", namespace)
+        if result["status"] == 200:
+            return redirect("/maia/user-management/")
+        else:
+            html_template = loader.get_template("home/page-500.html")
+            return HttpResponse(html_template.render({"message": result["message"]}, request))
+    except Exception as e:
+        logger.exception(e)
 
 
 @login_required(login_url="/maia/login/")
@@ -862,23 +990,27 @@ def register_user_in_group_view(request, email):
 
     groups = get_list_of_groups_requesting_a_user(email=email, user_model=MAIAUser)
 
+    current_groups = get_groups_for_user(email, settings=env_settings)
+
     for group_id in groups:
-        register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=env_settings)
-        send_email_user_registration_to_group(
-            project_name=group_id,
-            user_email=email,
-            support_link=env_settings.SUPPORT_URL,
-            dashboard_url=env_settings.HOSTNAME + "/maia/",
-            smtp_sender_email=env_settings.SMTP_SENDER_EMAIL,
-            smtp_server=env_settings.SMTP_SERVER,
-            smtp_port=env_settings.SMTP_PORT,
-            smtp_password=env_settings.SMTP_PASSWORD,
-        )
-        if group_id == env_settings.ADMIN_GROUP:
-            user = MAIAUser.objects.filter(email=email).first()
-            user.is_superuser = True
-            user.is_staff = True
-            user.save()
+        if group_id not in current_groups:
+            register_users_in_group_in_keycloak(group_id=group_id, emails=[email], settings=env_settings)
+            if group_id != env_settings.USERS_GROUP:
+                send_email_user_registration_to_group(
+                    project_name=group_id,
+                    user_email=email,
+                    support_link=env_settings.SUPPORT_URL,
+                    dashboard_url="https://" + env_settings.HOSTNAME + "/maia/",
+                    smtp_sender_email=env_settings.SMTP_SENDER_EMAIL,
+                    smtp_server=env_settings.SMTP_SERVER,
+                    smtp_port=env_settings.SMTP_PORT,
+                    smtp_password=env_settings.SMTP_PASSWORD,
+                )
+            if group_id == env_settings.ADMIN_GROUP:
+                user = MAIAUser.objects.filter(email=email).first()
+                user.is_superuser = True
+                user.is_staff = True
+                user.save()
 
     return redirect("/maia/user-management/")
 
