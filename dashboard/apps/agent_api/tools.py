@@ -190,7 +190,17 @@ TOOL_DEFINITIONS = [
 # ---------------------------------------------------------------------------
 # Tool executor
 # ---------------------------------------------------------------------------
-
+OPENAI_TOOL_DEFINITIONS = [
+    {
+        "type": "function",
+        "function": {
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["input_schema"],
+        },
+    }
+    for t in TOOL_DEFINITIONS
+]
 
 def execute_tool(name: str, arguments: dict) -> str:
     """Execute a MAIA admin tool and return the result as a JSON string."""
@@ -283,17 +293,7 @@ def execute_tool(name: str, arguments: dict) -> str:
 # (wraps the same input_schema — only the key name differs)
 # ---------------------------------------------------------------------------
 
-OPENAI_TOOL_DEFINITIONS = [
-    {
-        "type": "function",
-        "function": {
-            "name": t["name"],
-            "description": t["description"],
-            "parameters": t["input_schema"],
-        },
-    }
-    for t in TOOL_DEFINITIONS
-]
+
 
     except Exception as exc:
         logger.error(f"Tool execution error [{name}]: {exc}")
