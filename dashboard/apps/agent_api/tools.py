@@ -103,18 +103,14 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "create_project",
-        "description": (
-            "Create a new MAIA research project with a Kubernetes namespace, "
-            "GPU allocation, and member users."
-        ),
+        "description": ("Create a new MAIA research project with a Kubernetes namespace, " "GPU allocation, and member users."),
         "input_schema": {
             "type": "object",
             "properties": {
                 "group_id": {
                     "type": "string",
                     "description": (
-                        "Unique project ID used as the Kubernetes namespace "
-                        "(lowercase alphanumeric and hyphens, max 63 chars)"
+                        "Unique project ID used as the Kubernetes namespace " "(lowercase alphanumeric and hyphens, max 63 chars)"
                     ),
                 },
                 "gpu": {
@@ -196,9 +192,7 @@ def execute_tool(name: str, arguments: dict) -> str:
     """Execute a MAIA admin tool and return the result as a JSON string."""
     try:
         if name == "list_users":
-            users = list(
-                MAIAUser.objects.all().values("id", "email", "username", "namespace")
-            )
+            users = list(MAIAUser.objects.all().values("id", "email", "username", "namespace"))
             return json.dumps({"users": users, "count": len(users)}, indent=2)
 
         elif name == "create_user":
@@ -248,9 +242,7 @@ def execute_tool(name: str, arguments: dict) -> str:
             )
 
         elif name == "list_pending_projects":
-            pending = get_pending_projects(
-                settings=settings, maia_project_model=MAIAProject
-            )
+            pending = get_pending_projects(settings=settings, maia_project_model=MAIAProject)
             return json.dumps({"pending_projects": pending}, indent=2)
 
         elif name == "create_project":

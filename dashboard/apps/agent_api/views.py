@@ -18,7 +18,6 @@ The agent uses Claude with MAIA admin tools to perform user/project
 management operations on behalf of the requester.
 """
 
-import json
 import os
 
 from django.conf import settings
@@ -63,8 +62,7 @@ def _run_agent(message: str, history: list, model: str, api_key: str):
         import anthropic
     except ImportError as exc:
         raise RuntimeError(
-            "The 'anthropic' package is required for the Agent API. "
-            "Install it with: pip install anthropic"
+            "The 'anthropic' package is required for the Agent API. " "Install it with: pip install anthropic"
         ) from exc
 
     client = anthropic.Anthropic(api_key=api_key)
@@ -85,18 +83,14 @@ def _run_agent(message: str, history: list, model: str, api_key: str):
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "end_turn":
-            text = "".join(
-                block.text for block in response.content if hasattr(block, "text")
-            )
+            text = "".join(block.text for block in response.content if hasattr(block, "text"))
             return text, messages
 
         if response.stop_reason == "tool_use":
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
-                    logger.info(
-                        f"Agent calling tool '{block.name}' with args: {block.input}"
-                    )
+                    logger.info(f"Agent calling tool '{block.name}' with args: {block.input}")
                     result = execute_tool(block.name, block.input)
                     tool_results.append(
                         {
@@ -109,9 +103,7 @@ def _run_agent(message: str, history: list, model: str, api_key: str):
 
         else:
             # Unexpected stop reason — return whatever text we have
-            text = "".join(
-                block.text for block in response.content if hasattr(block, "text")
-            )
+            text = "".join(block.text for block in response.content if hasattr(block, "text"))
             return text or "No response generated.", messages
 
 
@@ -122,15 +114,9 @@ def _run_agent(message: str, history: list, model: str, api_key: str):
 
 def _get_config():
     """Return (api_key, model, agent_token) from settings / env."""
-    api_key = getattr(settings, "ANTHROPIC_API_KEY", None) or os.environ.get(
-        "ANTHROPIC_API_KEY", ""
-    )
-    model = getattr(settings, "AGENT_MODEL", None) or os.environ.get(
-        "AGENT_MODEL", "claude-sonnet-4-6"
-    )
-    agent_token = getattr(settings, "AGENT_API_TOKEN", None) or os.environ.get(
-        "AGENT_API_TOKEN", ""
-    )
+    api_key = getattr(settings, "ANTHROPIC_API_KEY", None) or os.environ.get("ANTHROPIC_API_KEY", "")
+    model = getattr(settings, "AGENT_MODEL", None) or os.environ.get("AGENT_MODEL", "claude-sonnet-4-6")
+    agent_token = getattr(settings, "AGENT_API_TOKEN", None) or os.environ.get("AGENT_API_TOKEN", "")
     return api_key, model, agent_token
 
 
@@ -186,9 +172,7 @@ class AgentChatView(APIView):
         history = request.data.get("history", [])
 
         try:
-            response_text, updated_history = _run_agent(
-                message, history, model, api_key
-            )
+            response_text, updated_history = _run_agent(message, history, model, api_key)
         except Exception as exc:
             logger.error(f"Agent error: {exc}")
             return Response({"error": str(exc)}, status=500)
@@ -224,7 +208,7 @@ class AgentMattermostView(APIView):
         raw_text = request.data.get("text", "").strip()
         command = request.data.get("command", "").strip()  # e.g. "/maia-admin"
         if command and raw_text.startswith(command):
-            raw_text = raw_text[len(command):].strip()
+            raw_text = raw_text[len(command) :].strip()
 
         if not raw_text:
             help_text = (
@@ -249,9 +233,7 @@ class AgentMattermostView(APIView):
             response_text, _ = _run_agent(raw_text, [], model, api_key)
         except Exception as exc:
             logger.error(f"Mattermost agent error: {exc}")
-            return Response(
-                {"text": f"Error: {exc}", "response_type": "ephemeral"}
-            )
+            return Response({"text": f"Error: {exc}", "response_type": "ephemeral"})
 
         return Response({"text": response_text, "response_type": "in_channel"})
 
@@ -305,9 +287,7 @@ class AgentAdminChatView(APIView):
         history = request.session.get(self.SESSION_KEY, [])
 
         try:
-            response_text, updated_history = _run_agent(
-                message, history, model, api_key
-            )
+            response_text, updated_history = _run_agent(message, history, model, api_key)
         except Exception as exc:
             logger.error(f"Admin chat agent error: {exc}")
             return Response({"error": str(exc)}, status=500)
@@ -400,9 +380,7 @@ class MCPServerView(APIView):
         _, _, agent_token = _get_config()
 
         # Allow token via header OR query param for MCP clients
-        provided = request.headers.get("X-Agent-Token") or request.query_params.get(
-            "token", ""
-        )
+        provided = request.headers.get("X-Agent-Token") or request.query_params.get("token", "")
         if agent_token and provided != agent_token:
             return Response(
                 {
