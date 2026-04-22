@@ -589,7 +589,7 @@ class ProjectChartValuesAPIView(APIView):
             if supervisor not in users:
                 users = [supervisor] + users
             create_group_service(
-                namespace=namespace	,
+                namespace=namespace,
                 gpu=gpu,
                 date=date,
                 memory_limit=memory_limit,
@@ -600,7 +600,6 @@ class ProjectChartValuesAPIView(APIView):
                 supervisor=supervisor,
                 users=users,
                 description=description,
-                supervisor=supervisor,
                 email_to_username_map=email_to_username_map,
                 memory_request=memory_request,
                 cpu_request=cpu_request,
@@ -1041,13 +1040,13 @@ def register_group_view(request, group_id):
         cluster = None
         project_tier = None
         user_id = None
-        email_list = None
+        users = None
         description = None
         supervisor = None
-    email_list = get_list_of_users_requesting_a_group(maia_user_model=MAIAUser, group_id=group_id)
+    users = get_list_of_users_requesting_a_group(maia_user_model=MAIAUser, group_id=group_id)
     result = create_group_service(
         namespace=group_id,
-        gpu,
+        gpu=gpu,
         date=date,
         memory_limit=memory_limit,
         cpu_limit=cpu_limit,
@@ -1055,7 +1054,7 @@ def register_group_view(request, group_id):
         cluster=cluster,
         project_tier=project_tier,
         user_email=user_id,
-        users=email_list,
+        users=users,
         description=description,
         supervisor=supervisor,
         email_to_username_map=email_to_username_map,

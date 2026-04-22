@@ -390,14 +390,14 @@ def sync_list_of_users_for_group(group_id, email_list):
 @transaction.atomic
 def create_group(
     namespace,
-    gpu = None,
-    date = None,
-    memory_limit = None,
-    cpu_limit = None,
-    env_file = None,
-    cluster = None,
-    project_tier = None,
-    user_email = None,
+    gpu=None,
+    date=None,
+    memory_limit=None,
+    cpu_limit=None,
+    env_file=None,
+    cluster=None,
+    project_tier=None,
+    user_email=None,
     users=None,
     description=None,
     supervisor=None,
@@ -453,7 +453,7 @@ def create_group(
             users = [user_email] + users
     if supervisor and MAIAUser.objects.filter(email=supervisor).exists():
         if not users:
-            email_list = [supervisor]
+            users = [supervisor]
         else:
             users = [supervisor] + users
         user_email = supervisor

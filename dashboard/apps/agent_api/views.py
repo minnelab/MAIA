@@ -24,7 +24,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .tools import TOOL_DEFINITIONS, OPENAI_TOOL_DEFINITIONS, OPENAI_USER_TOOL_DEFINITIONS, USER_TOOL_DEFINITIONS,  execute_tool
+from .tools import TOOL_DEFINITIONS, OPENAI_TOOL_DEFINITIONS, OPENAI_USER_TOOL_DEFINITIONS, USER_TOOL_DEFINITIONS, execute_tool
 
 # ---------------------------------------------------------------------------
 # System prompt (shared across all providers)
@@ -55,6 +55,7 @@ def _build_system_prompt(username: str | None) -> str:
     if not username:
         return SYSTEM_PROMPT
     return SYSTEM_PROMPT + f"\nYou are currently assisting the administrator: {username}."
+
 
 # ---------------------------------------------------------------------------
 # Configuration helper
@@ -121,9 +122,7 @@ def _run_agent_anthropic(message: str, history: list, cfg: dict, authorized: boo
     try:
         import anthropic
     except ImportError as exc:
-        raise RuntimeError(
-            "Install the 'anthropic' package: pip install anthropic"
-        ) from exc
+        raise RuntimeError("Install the 'anthropic' package: pip install anthropic") from exc
 
     client = anthropic.Anthropic(api_key=cfg["api_key"])
     messages = list(history)
@@ -147,9 +146,7 @@ def _run_agent_anthropic(message: str, history: list, cfg: dict, authorized: boo
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "end_turn":
-            text = "".join(
-                b.text for b in response.content if hasattr(b, "text")
-            )
+            text = "".join(b.text for b in response.content if hasattr(b, "text"))
             return text, messages
 
         if response.stop_reason == "tool_use":
@@ -166,9 +163,7 @@ def _run_agent_anthropic(message: str, history: list, cfg: dict, authorized: boo
                     )
             messages.append({"role": "user", "content": results})
         else:
-            text = "".join(
-                b.text for b in response.content if hasattr(b, "text")
-            )
+            text = "".join(b.text for b in response.content if hasattr(b, "text"))
             return text or "No response generated.", messages
 
 
@@ -189,9 +184,7 @@ def _run_agent_openai(message: str, history: list, cfg: dict, authorized: bool, 
     try:
         from openai import OpenAI
     except ImportError as exc:
-        raise RuntimeError(
-            "Install the 'openai' package: pip install openai"
-        ) from exc
+        raise RuntimeError("Install the 'openai' package: pip install openai") from exc
 
     client = OpenAI(api_key=cfg["api_key"], base_url=cfg["base_url"])
 
@@ -223,14 +216,12 @@ def _run_agent_openai(message: str, history: list, cfg: dict, authorized: bool, 
             return choice.message.content or "", messages[1:]  # strip system
 
         if choice.finish_reason == "tool_calls":
-            for tc in (choice.message.tool_calls or []):
+            for tc in choice.message.tool_calls or []:
                 try:
                     args = json.loads(tc.function.arguments)
                 except json.JSONDecodeError:
                     args = {}
-                logger.info(
-                    f"[openai] tool '{tc.function.name}' args={args}"
-                )
+                logger.info(f"[openai] tool '{tc.function.name}' args={args}")
                 messages.append(
                     {
                         "role": "tool",
@@ -287,7 +278,7 @@ class AgentChatView(APIView):
         cfg = _get_config()
 
         authorized = _validate_token(request, cfg["agent_token"])
-        #return Response({"error": "Unauthorized"}, status=401)
+        # return Response({"error": "Unauthorized"}, status=401)
 
         message = request.data.get("message", "").strip()
         if not message:
@@ -312,11 +303,7 @@ class AgentChatView(APIView):
             logger.error(f"Agent error: {exc}")
             return Response({"error": str(exc)}, status=500)
 
-        serialised = (
-            _serialise_history(updated_history)
-            if cfg["provider"] == "anthropic"
-            else updated_history
-        )
+        serialised = _serialise_history(updated_history) if cfg["provider"] == "anthropic" else updated_history
         return Response({"response": response_text, "history": serialised})
 
 
@@ -340,7 +327,7 @@ class AgentMattermostView(APIView):
         raw_text = request.data.get("text", "").strip()
         command = request.data.get("command", "").strip()
         if command and raw_text.startswith(command):
-            raw_text = raw_text[len(command):].strip()
+            raw_text = raw_text[len(command) :].strip()
 
         if not raw_text:
             help_text = (
@@ -415,11 +402,7 @@ class AgentAdminChatView(APIView):
             logger.error(f"Admin chat agent error [{username}]: {exc}")
             return Response({"error": str(exc)}, status=500)
 
-        serialised = (
-            _serialise_history(updated_history)
-            if cfg["provider"] == "anthropic"
-            else updated_history
-        )
+        serialised = _serialise_history(updated_history) if cfg["provider"] == "anthropic" else updated_history
         request.session[self.SESSION_KEY] = serialised
         request.session.modified = True
 
@@ -448,9 +431,7 @@ def _serialise_history(history: list) -> list:
     serialisable = []
     for msg in history:
         role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
-        content = (
-            msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
-        )
+        content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
         if isinstance(content, str):
             serialisable.append({"role": role, "content": content})
         elif isinstance(content, list):
@@ -495,9 +476,7 @@ class MCPServerView(APIView):
     def post(self, request, *args, **kwargs):
         cfg = _get_config()
 
-        provided = request.headers.get("X-Agent-Token") or request.query_params.get(
-            "token", ""
-        )
+        provided = request.headers.get("X-Agent-Token") or request.query_params.get("token", "")
         if cfg["agent_token"] and provided != cfg["agent_token"]:
             return Response(
                 {"jsonrpc": "2.0", "error": {"code": -32001, "message": "Unauthorized"}, "id": None},
@@ -510,9 +489,7 @@ class MCPServerView(APIView):
             method = body.get("method", "")
             params = body.get("params", {})
         except Exception:
-            return Response(
-                {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None}
-            )
+            return Response({"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None})
 
         if method == "initialize":
             result = {
@@ -528,17 +505,13 @@ class MCPServerView(APIView):
             tool_name = params.get("name", "")
             tool_args = params.get("arguments", {})
             if not tool_name:
-                return Response(
-                    {"jsonrpc": "2.0", "error": {"code": -32602, "message": "Missing 'name'"}, "id": rpc_id}
-                )
+                return Response({"jsonrpc": "2.0", "error": {"code": -32602, "message": "Missing 'name'"}, "id": rpc_id})
             result = {
                 "content": [{"type": "text", "text": execute_tool(tool_name, tool_args)}],
                 "isError": False,
             }
 
         else:
-            return Response(
-                {"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method not found: {method}"}, "id": rpc_id}
-            )
+            return Response({"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method not found: {method}"}, "id": rpc_id})
 
         return Response({"jsonrpc": "2.0", "result": result, "id": rpc_id})
