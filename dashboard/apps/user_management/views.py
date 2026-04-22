@@ -195,18 +195,23 @@ class CreateUserSerializer(serializers.Serializer):
 
 
 class CreateGroupSerializer(serializers.Serializer):
-    group_id = serializers.CharField(max_length=63)
-    gpu = serializers.CharField(max_length=100)
-    date = serializers.DateField()
+    namespace = serializers.CharField(max_length=63)
+    users = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
     memory_limit = serializers.CharField(max_length=100)
     cpu_limit = serializers.CharField(max_length=100)
+    cpu_request = serializers.CharField(max_length=100)
+    memory_request = serializers.CharField(max_length=100)
+    project_tier = serializers.CharField(max_length=100)
+    gpu = serializers.CharField(max_length=100)
     env_file = serializers.FileField(required=False, allow_empty_file=True)
     cluster = serializers.CharField(max_length=100)
-    project_tier = serializers.CharField(max_length=100)
-    user_id = serializers.EmailField(max_length=254, required=False, allow_blank=True)
-    email_list = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
-    description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
+    date = serializers.DateField()
     supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
+    email = serializers.EmailField(max_length=254)
+    description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
+    auto_deploy = serializers.BooleanField(required=False, default=False)
+    auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    project_configuration = serializers.DictField(required=False, allow_empty=True)
     email_to_username_map = serializers.DictField(child=serializers.CharField(), required=False, allow_empty=True)
 
     def validate_email_to_username_map(self, value):
@@ -217,7 +222,7 @@ class CreateGroupSerializer(serializers.Serializer):
                 raise serializers.ValidationError("email_to_username_map must be a dictionary of email: username pairs")
         return value
 
-    def validate_group_id(self, value):
+    def validate_namespace(self, value):
         return group_id_validator(value)
 
 
@@ -385,19 +390,24 @@ class UserManagementAPICreateGroupView(APIView):
             return Response({"error": serializer.errors}, status=400)
 
         validated_data = serializer.validated_data
-        group_id = validated_data["group_id"]
+        namespace = validated_data["namespace"]
         gpu = validated_data["gpu"]
         date = validated_data["date"]
         memory_limit = validated_data["memory_limit"]
         cpu_limit = validated_data["cpu_limit"]
+        cpu_request = validated_data["cpu_request"]
+        memory_request = validated_data["memory_request"]
         env_file = validated_data["env_file"] if "env_file" in validated_data and validated_data["env_file"] is not None else None
         cluster = validated_data["cluster"]
         project_tier = validated_data["project_tier"]
-        user_id = validated_data.get("user_id", None)
-        email_list = validated_data.get("email_list", None)
+        email = validated_data["email"]
+        users = validated_data.get("users", None)
         description = validated_data.get("description", None)
         supervisor = validated_data.get("supervisor", None)
         email_to_username_map = validated_data.get("email_to_username_map", None)
+        auto_deploy = validated_data.get("auto_deploy", False)
+        auto_deploy_apps = validated_data.get("auto_deploy_apps", [])
+        project_configuration = validated_data.get("project_configuration", {})
         if request.FILES:
             env_file = request.FILES["env_file"]
             if "MINIO_SECURE" in os.environ:
@@ -430,33 +440,39 @@ class UserManagementAPICreateGroupView(APIView):
                 "BUCKET_NAME": os.environ["BUCKET_NAME"],
             }
             settings = SimpleNamespace(**settings_dict)
-            filename, success = upload_env_file_to_minio(env_file=env_file, namespace=group_id, settings=settings)
+            filename, success = upload_env_file_to_minio(env_file=env_file, namespace=namespace, settings=settings)
             if not success:
                 return Response({"error": filename}, status=400)
             env_file = filename
-        for user in email_list:
+        for user in users:
             if not MAIAUser.objects.filter(email=user).exists():
                 username = email_to_username_map.get(user, user)
-                create_user_service(user, username, "", "", f"{group_id},{user_group}")
+                create_user_service(user, username, "", "", f"{namespace},{user_group}")
         if not MAIAUser.objects.filter(email=supervisor).exists():
             username = email_to_username_map.get(supervisor, supervisor)
-            create_user_service(supervisor, username, "", "", f"{group_id},{user_group}")
-        if not MAIAUser.objects.filter(email=user_id).exists():
-            username = email_to_username_map.get(user_id, user_id)
-            create_user_service(user_id, username, "", "", f"{group_id},{user_group}")
+            create_user_service(supervisor, username, "", "", f"{namespace},{user_group}")
+        if not MAIAUser.objects.filter(email=email).exists():
+            username = email_to_username_map.get(email, email)
+            create_user_service(email, username, "", "", f"{namespace},{user_group}")
         result = create_group_service(
-            group_id,
-            gpu,
-            date,
-            memory_limit,
-            cpu_limit,
-            env_file,
-            cluster,
-            project_tier,
-            user_id,
-            email_list,
-            description,
-            supervisor,
+            namespace,
+            gpu=gpu,
+            date=date,
+            memory_limit=memory_limit,
+            cpu_limit=cpu_limit,
+            env_file=env_file,
+            cluster=cluster,
+            project_tier=project_tier,
+            user_email=email,
+            users=users,
+            description=description,
+            supervisor=supervisor,
+            email_to_username_map=email_to_username_map,
+            memory_request=memory_request,
+            cpu_request=cpu_request,
+            auto_deploy=auto_deploy,
+            auto_deploy_apps=auto_deploy_apps,
+            project_configuration=project_configuration,
         )
         return Response({"message": result["message"]}, status=result["status"])
 
@@ -476,42 +492,13 @@ class UserManagementAPIDeleteGroupView(APIView):
         return Response({"message": result["message"]}, status=result["status"])
 
 
-class ProjectChartValuesSerializer(serializers.Serializer):
-    namespace = serializers.CharField(max_length=63)
-    users = serializers.ListField(child=serializers.EmailField(), required=False, allow_empty=True)
-    memory_limit = serializers.CharField(max_length=100)
-    cpu_limit = serializers.CharField(max_length=100)
-    cpu_request = serializers.CharField(max_length=100)
-    memory_request = serializers.CharField(max_length=100)
-    project_tier = serializers.CharField(max_length=100)
-    gpu = serializers.CharField(max_length=100)
-    env_file = serializers.FileField(required=False, allow_empty_file=True)
-    cluster = serializers.CharField(max_length=100)
-    date = serializers.DateField()
-    supervisor = serializers.EmailField(max_length=254, required=False, allow_blank=True, allow_null=True)
-    email = serializers.EmailField(max_length=254)
-    description = serializers.CharField(max_length=5000, required=False, allow_blank=True, allow_null=True)
-    auto_deploy = serializers.BooleanField(required=False, default=False)
-    auto_deploy_apps = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
-    project_configuration = serializers.DictField(required=False, allow_empty=True)
-    email_to_username_map = serializers.DictField(child=serializers.CharField(), required=False, allow_empty=True)
-
-    def validate_email_to_username_map(self, value):
-        if not isinstance(value, dict):
-            raise serializers.ValidationError("email_to_username_map must be a dictionary")
-        for email, username in value.items():
-            if not isinstance(email, str) or not isinstance(username, str):
-                raise serializers.ValidationError("email_to_username_map must be a dictionary of email: username pairs")
-        return value
-
-
 class ProjectChartValuesAPIView(APIView):
     permission_classes = [IsAdminUser]
     throttle_classes = [UserRateThrottle]
 
     def post(self, request, *args, **kwargs):
         try:
-            serializer = ProjectChartValuesSerializer(data=request.data)
+            serializer = CreateGroupSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({"error": serializer.errors}, status=400)
 
@@ -602,18 +589,24 @@ class ProjectChartValuesAPIView(APIView):
             if supervisor not in users:
                 users = [supervisor] + users
             create_group_service(
-                namespace,
-                gpu,
-                date,
-                memory_limit,
-                cpu_limit,
-                env_file,
-                cluster,
-                project_tier,
-                supervisor,
-                users,
-                description,
-                supervisor,
+                namespace=namespace	,
+                gpu=gpu,
+                date=date,
+                memory_limit=memory_limit,
+                cpu_limit=cpu_limit,
+                env_file=env_file,
+                cluster=cluster,
+                project_tier=project_tier,
+                supervisor=supervisor,
+                users=users,
+                description=description,
+                supervisor=supervisor,
+                email_to_username_map=email_to_username_map,
+                memory_request=memory_request,
+                cpu_request=cpu_request,
+                auto_deploy=auto_deploy,
+                auto_deploy_apps=auto_deploy_apps,
+                project_configuration=project_configuration,
             )
 
             project_form_dict = {
@@ -1033,6 +1026,12 @@ def register_group_view(request, group_id):
         user_id = project.email
         description = project.description
         supervisor = project.supervisor
+        email_to_username_map = project.email_to_username_map
+        memory_request = project.memory_request
+        cpu_request = project.cpu_request
+        auto_deploy = project.auto_deploy
+        auto_deploy_apps = project.auto_deploy_apps
+        project_configuration = project.project_configuration
     else:
         gpu = None
         date = None
@@ -1047,18 +1046,24 @@ def register_group_view(request, group_id):
         supervisor = None
     email_list = get_list_of_users_requesting_a_group(maia_user_model=MAIAUser, group_id=group_id)
     result = create_group_service(
-        group_id,
+        namespace=group_id,
         gpu,
-        date,
-        memory_limit,
-        cpu_limit,
-        env_file,
-        cluster,
-        project_tier,
-        user_id,
-        email_list,
-        description,
-        supervisor,
+        date=date,
+        memory_limit=memory_limit,
+        cpu_limit=cpu_limit,
+        env_file=env_file,
+        cluster=cluster,
+        project_tier=project_tier,
+        user_email=user_id,
+        users=email_list,
+        description=description,
+        supervisor=supervisor,
+        email_to_username_map=email_to_username_map,
+        memory_request=memory_request,
+        cpu_request=cpu_request,
+        auto_deploy=auto_deploy,
+        auto_deploy_apps=auto_deploy_apps,
+        project_configuration=project_configuration,
     )
 
     if result["status"] == 200:

@@ -250,17 +250,28 @@
     messages.scrollTop = messages.scrollHeight;
 
     try {
-      const res = await fetch("/maia/chatbot/chat/", {
+      const history = Array.from(messages.querySelectorAll(".chat-message")).map(el => {
+        const isUser = el.classList.contains("user");
+        const isAI = el.classList.contains("ai");
+        let role = isUser ? "user" : (isAI ? "assistant" : "unknown");
+        // Extract message content (strip "You:" / "MAIA:" prefixes)
+        let content = el.innerText.trim();
+        content = content.replace(/^You:\s*/i, "").replace(/^MAIA:\s*/i, "");
+        return { role, content };
+      });
+ 
+ 
+      const res = await fetch("/maia/agent/chat/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
+        body: JSON.stringify({ message: msg, history: history })
       });
 
       const data = await res.json();
 
       // Replace typing animation with actual reply
-      if (data.reply) {
-        typingEl.innerHTML = `<b>MAIA:</b><br><span>${marked.parse(data.reply)}</span>`;
+      if (data.response) {
+        typingEl.innerHTML = `<b>MAIA:</b><br><span>${marked.parse(data.response)}</span>`;
       } else {
         typingEl.innerHTML = `<b>MAIA:</b> Error: ${data.error}`;
       }

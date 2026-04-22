@@ -3,8 +3,8 @@
 helm repo add maia https://minnelab.github.io/MAIA/
 helm repo update
 
-if [ -n "$DEV_TAG" ]; then
-    pip install git+https://github.com/minnelab/MAIA.git@$DEV_TAG
+if [ -n "$MAIA_TAG" ]; then
+    pip install git+https://github.com/minnelab/MAIA.git@$MAIA_TAG
 else
     pip install --pre --upgrade maia-toolkit==$MAIA_VERSION
 fi

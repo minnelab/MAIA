@@ -389,74 +389,85 @@ def sync_list_of_users_for_group(group_id, email_list):
 
 @transaction.atomic
 def create_group(
-    group_id,
-    gpu,
-    date,
-    memory_limit,
-    cpu_limit,
-    env_file,
-    cluster,
-    project_tier,
-    user_email,
-    email_list=None,
+    namespace,
+    gpu = None,
+    date = None,
+    memory_limit = None,
+    cpu_limit = None,
+    env_file = None,
+    cluster = None,
+    project_tier = None,
+    user_email = None,
+    users=None,
     description=None,
     supervisor=None,
+    email_to_username_map=None,
+    memory_request=None,
+    cpu_request=None,
+    auto_deploy=None,
+    auto_deploy_apps=None,
+    project_configuration=None,
 ):
     """
     Create a new MAIA group/project and register it in Keycloak.
 
     Args:
-        group_id (str): Group identifier (namespace)
-        gpu (str): GPU allocation for the group
-        date (str): Creation date
-        memory_limit (str): Memory limit for the group
-        cpu_limit (str): CPU limit for the group
-        env_file (str): Environment file configuration
-        cluster (str): Cluster assignment
-        project_tier (str): Project tier flag
-        user_email (str): Email of the user creating/owning the group
-        email_list (list, optional): List of user emails to add to the group
+        namespace (str): Group identifier (namespace)
+        gpu (str, optional): GPU allocation for the group
+        date (str, optional): Date of expiration of the project associated with the group
+        memory_limit (str, optional): Memory limit for the group
+        cpu_limit (str, optional): CPU limit for the group
+        env_file (str, optional): Environment file configuration
+        cluster (str, optional): Cluster assignment
+        project_tier (str, optional): Project tier flag
+        user_email (str, optional): Email of the user creating/owning the group
+        users (list, optional): List of user emails to add to the group
         description (str, optional): Project description
         supervisor (str, optional): Supervisor email for student projects
-
+        email_to_username_map (dict, optional): Map of email to username
+        memory_request (str, optional): Memory request for the group
+        cpu_request (str, optional): CPU request for the group
+        auto_deploy (bool, optional): Whether to auto-deploy the group
+        auto_deploy_apps (list, optional): List of apps to auto-deploy
+        project_configuration (dict, optional): Project configuration
     Returns:
         dict: Success message or error information
     """
-    if email_list is not None and not isinstance(email_list, list):
+    if users is not None and not isinstance(users, list):
         return {"message": "User list must be a list", "status": 400}
     try:
-        register_group_in_keycloak(group_id=group_id, settings=settings)
+        register_group_in_keycloak(group_id=namespace, settings=settings)
         group_already_exists = False
     except KeycloakPostError as e:
         if getattr(e, "response_code", 0) == 409:
             group_already_exists = True
-            logger.warning(f"Group {group_id} already exists in Keycloak")
+            logger.warning(f"Group {namespace} already exists in Keycloak")
         else:
-            logger.error(f"Error registering group {group_id} in Keycloak.")
+            logger.error(f"Error registering group {namespace} in Keycloak.")
             raise
 
     if user_email and MAIAUser.objects.filter(email=user_email).exists():
-        if not email_list:
-            email_list = [user_email]
+        if not users:
+            users = [user_email]
         else:
-            email_list = [user_email] + email_list
+            users = [user_email] + users
     if supervisor and MAIAUser.objects.filter(email=supervisor).exists():
-        if not email_list:
+        if not users:
             email_list = [supervisor]
         else:
-            email_list = [supervisor] + email_list
+            users = [supervisor] + users
         user_email = supervisor
-    sync_result = sync_list_of_users_for_group(group_id, email_list)
+    sync_result = sync_list_of_users_for_group(namespace, users)
 
     if isinstance(sync_result, dict):
         status = sync_result.get("status")
         if status is not None and status != 200:
-            raise RuntimeError(f"Failed to sync users for group {group_id}: {sync_result}")
+            raise RuntimeError(f"Failed to sync users for group {namespace}: {sync_result}")
     # Create or update the project
     try:
         # "Create or update" logic: update an existing MAIAProject with this namespace, or create it if not present.
         MAIAProject.objects.update_or_create(
-            namespace=group_id,
+            namespace=namespace,
             defaults={
                 "email": user_email,
                 "gpu": gpu,
@@ -468,10 +479,16 @@ def create_group(
                 "project_tier": project_tier,
                 "description": description,
                 "supervisor": supervisor,
+                "memory_request": memory_request,
+                "cpu_request": cpu_request,
+                "auto_deploy": auto_deploy,
+                "auto_deploy_apps": auto_deploy_apps,
+                "project_configuration": project_configuration,
+                "email_to_username_map": email_to_username_map,
             },
         )
     except Exception as e:
-        logger.exception(f"Error creating or updating group {group_id} in the database: {e}")
+        logger.exception(f"Error creating or updating group {namespace} in the database: {e}")
         raise
 
     if (
@@ -483,9 +500,9 @@ def create_group(
         and settings.SMTP_PORT is not None
         and settings.SMTP_PASSWORD is not None
     ):
-        for email in email_list:
+        for email in users:
             send_email_approved_project_registration(
-                project_name=group_id,
+                project_name=namespace,
                 project_owner=email,
                 support_link=settings.SUPPORT_URL,
                 dashboard_url="https://" + settings.HOSTNAME + "/maia/",
@@ -502,58 +519,58 @@ def create_group(
 
 
 @transaction.atomic
-def delete_group(group_id):
+def delete_group(namespace):
     """
     Delete a group and remove it from Keycloak.
 
     Args:
-        group_id (str): Group identifier (namespace)
+        namespace (str): Group identifier (namespace)
 
     Returns:
         dict: Success message or error information
     """
-    if group_id in RESERVED_GROUPS:
+    if namespace in RESERVED_GROUPS:
         return {"message": "Group is a reserved group and cannot be deleted", "status": 403}
-    if not MAIAProject.objects.filter(namespace=group_id).exists():
+    if not MAIAProject.objects.filter(namespace=namespace).exists():
         return {"message": "Group does not exist", "status": 400}
     # Remove all users from the group in Keycloak
-    users_in_group = get_list_of_users_requesting_a_group(group_id=group_id, maia_user_model=MAIAUser)
+    users_in_group = get_list_of_users_requesting_a_group(group_id=namespace, maia_user_model=MAIAUser)
     for user_email in users_in_group:
         maia_users = MAIAUser.objects.filter(email=user_email)
         try:
-            remove_user_from_group_in_keycloak(email=user_email, group_id=group_id, settings=settings)
+            remove_user_from_group_in_keycloak(email=user_email, group_id=namespace, settings=settings)
         except KeycloakDeleteError as e:
             if getattr(e, "response_code", 0) == 409:
-                logger.warning(f"User was already not in group {group_id} in Keycloak")
+                logger.warning(f"User was already not in group {namespace} in Keycloak")
                 # Even if the user was already not in the group in Keycloak,
                 # ensure the namespace field in MAIAUser is updated.
                 for maia_user in maia_users:
-                    maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, group_id)
+                    maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, namespace)
                 MAIAUser.objects.bulk_update(maia_users, ["namespace"])
                 continue
             elif getattr(e, "response_code", 0) == 404:
-                logger.warning(f"User does not exist in Keycloak and could not be removed from group {group_id}")
+                logger.warning(f"User does not exist in Keycloak and could not be removed from group {namespace}")
                 # If the user does not exist in Keycloak, still remove the group
                 # from the namespace field in MAIAUser.
                 for maia_user in maia_users:
-                    maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, group_id)
+                    maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, namespace)
                 MAIAUser.objects.bulk_update(maia_users, ["namespace"])
                 continue
             else:
-                logger.error(f"Error removing user from group {group_id} in Keycloak.")
+                logger.error(f"Error removing user from group {namespace} in Keycloak.")
                 raise
         # On successful removal from the group in Keycloak, also update the
         # namespace field in MAIAUser to remove the group.
         for maia_user in maia_users:
-            maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, group_id)
+            maia_user.namespace = _remove_group_from_namespace(maia_user.namespace, namespace)
         MAIAUser.objects.bulk_update(maia_users, ["namespace"])
     try:
-        delete_group_in_keycloak(group_id=group_id, settings=settings)
+        delete_group_in_keycloak(group_id=namespace, settings=settings)
     except KeycloakDeleteError as e:
         if getattr(e, "response_code", 0) == 404:
             logger.warning("Group does not exist in Keycloak and could not be deleted")
         else:
-            logger.error(f"Error deleting group {group_id} in Keycloak.")
+            logger.error(f"Error deleting group {namespace} in Keycloak.")
             raise
-    MAIAProject.objects.filter(namespace=group_id).delete()
+    MAIAProject.objects.filter(namespace=namespace).delete()
     return {"message": "Group deleted successfully", "status": 200}

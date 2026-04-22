@@ -89,11 +89,12 @@
               <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/>
             </svg>
             <h6 class="mb-0">MAIA Admin Assistant</h6>
-            {% if anthropic_configured %}
+            {% if agent_is_ready %}
               <span class="badge bg-gradient-success ms-1" style="font-size:.7rem">Ready</span>
             {% else %}
-              <span class="badge bg-gradient-danger ms-1" style="font-size:.7rem">ANTHROPIC_API_KEY not set</span>
+              <span class="badge bg-gradient-danger ms-1" style="font-size:.7rem">Not configured</span>
             {% endif %}
+            <span class="badge bg-gradient-secondary ms-1" style="font-size:.7rem">{{ agent_provider }}</span>
           </div>
           <button id="btn-clear" class="btn btn-sm btn-outline-secondary mb-0" title="Start a new conversation">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16" class="me-1">
@@ -136,7 +137,7 @@
               placeholder="Ask me anything about users or projects…"
               style="resize:none; min-height:38px; max-height:120px; overflow-y:auto;"
             ></textarea>
-            <button id="btn-send" class="btn bg-gradient-dark mb-0 px-3" {% if not anthropic_configured %}disabled{% endif %}>
+            <button id="btn-send" class="btn bg-gradient-dark mb-0 px-3" {% if not agent_is_ready %}disabled{% endif %}>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
               </svg>
@@ -144,7 +145,9 @@
           </div>
           <p class="text-xs text-secondary mt-1 mb-0">
             Conversation is kept in your browser session.
+            Provider: <code>{{ agent_provider }}</code> &nbsp;·&nbsp;
             Model: <code>{{ agent_model }}</code>
+            {% if agent_base_url %}&nbsp;·&nbsp; Endpoint: <code>{{ agent_base_url }}</code>{% endif %}
           </p>
         </div>
       </div>
@@ -290,28 +293,65 @@ print(t.key)"</pre>
     <!-- Env vars -->
     <div class="col-xl-4 mb-4">
       <div class="card h-100">
-        <div class="card-header pb-0"><h6 class="mb-0">Environment Variables</h6></div>
+        <div class="card-header pb-0"><h6 class="mb-0">Configuration</h6></div>
         <div class="card-body px-0 pt-0 pb-2">
           <div class="table-responsive p-0">
             <table class="table align-items-center mb-0">
               <thead>
                 <tr>
                   <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Variable</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Value / Status</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><code class="text-xs">ANTHROPIC_API_KEY</code></td>
-                  <td>{% if anthropic_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-danger">Not set</span>{% endif %}</td>
+                  <td><code class="text-xs">AGENT_PROVIDER</code></td>
+                  <td><span class="badge bg-gradient-info">{{ agent_provider }}</span></td>
                 </tr>
                 <tr>
                   <td><code class="text-xs">AGENT_API_TOKEN</code></td>
                   <td>{% if agent_token_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-warning">Not set</span>{% endif %}</td>
                 </tr>
+
+                {# ── Anthropic ── #}
+                <tr class="table-light"><td colspan="2" class="text-xxs text-uppercase text-secondary fw-bold pt-2 pb-1 px-3">Anthropic</td></tr>
+                <tr>
+                  <td><code class="text-xs">ANTHROPIC_API_KEY</code></td>
+                  <td>{% if anthropic_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-secondary">Not set</span>{% endif %}</td>
+                </tr>
                 <tr>
                   <td><code class="text-xs">AGENT_MODEL</code></td>
-                  <td><code class="text-xs">{{ agent_model }}</code></td>
+                  <td class="text-xs text-secondary">e.g. <em>claude-sonnet-4-6</em></td>
+                </tr>
+
+                {# ── OpenAI ── #}
+                <tr class="table-light"><td colspan="2" class="text-xxs text-uppercase text-secondary fw-bold pt-2 pb-1 px-3">OpenAI</td></tr>
+                <tr>
+                  <td><code class="text-xs">OPENAI_API_KEY</code></td>
+                  <td>{% if openai_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-secondary">Not set</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">OPENAI_MODEL</code></td>
+                  <td class="text-xs text-secondary">e.g. <em>gpt-4o</em></td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">OPENAI_BASE_URL</code></td>
+                  <td class="text-xs text-secondary">Override for Azure / proxies</td>
+                </tr>
+
+                {# ── Ollama ── #}
+                <tr class="table-light"><td colspan="2" class="text-xxs text-uppercase text-secondary fw-bold pt-2 pb-1 px-3">Ollama</td></tr>
+                <tr>
+                  <td><code class="text-xs">OPENWEBAI_URL</code></td>
+                  <td class="text-xs text-secondary">e.g. <em>https://maia-chat.app.../api/v1</em></td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">OPENWEBAI_API_KEY</code></td>
+                  <td>{% if ollama_key_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-secondary">Not set (local only)</span>{% endif %}</td>
+                </tr>
+                <tr>
+                  <td><code class="text-xs">OPENWEBAI_MODEL</code></td>
+                  <td class="text-xs text-secondary">e.g. <em>llama3</em>, <em>mistral</em></td>
                 </tr>
               </tbody>
             </table>
