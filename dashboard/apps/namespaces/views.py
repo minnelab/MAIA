@@ -11,10 +11,10 @@ if settings.MONGO_DB_ENABLED:
     from apps.mongodb_models import MAIAProject
 else:
     from apps.models import MAIAProject
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 # Create your views here.
-from MAIA.kubernetes_utils import get_namespace_details
+from MAIA.kubernetes_utils import get_namespace_details, get_namespace_pods, get_pod_logs, get_namespace_pod_metrics
 from MAIA.dashboard_utils import get_allocation_date_for_project, get_project, register_cluster_for_project_in_db
 import datetime
 from django.conf import settings
@@ -185,3 +185,78 @@ def namespace_view(request, namespace_id):
             context["username"] = request.user.username
         html_template = loader.get_template("base_namespace.html")
         return HttpResponse(html_template.render(context, request))
+
+
+def _check_namespace_access(request, namespace_id):
+    """Return the normalised namespace name if the user may access it, else None."""
+    ns = namespace_id.lower().replace("_", "-")
+    if request.user.is_superuser:
+        return ns
+    groups = request.user.groups.all()
+    allowed = [str(g).split(":")[-1].lower().replace("_", "-") for g in groups]
+    return ns if ns in allowed else None
+
+
+@login_required(login_url="/maia/login/")
+def namespace_pods_api(request, namespace_id):
+    """JSON: list pods in the namespace with resource requests and container statuses."""
+    ns = _check_namespace_access(request, namespace_id)
+    if ns is None:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+    id_token = request.session.get("oidc_id_token")
+    try:
+        pods = get_namespace_pods(
+            id_token=id_token,
+            api_urls=settings.API_URL,
+            private_clusters=settings.PRIVATE_CLUSTERS,
+            namespace=ns,
+        )
+        return JsonResponse({"pods": pods})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required(login_url="/maia/login/")
+def namespace_pod_logs_api(request, namespace_id, pod_name):
+    """JSON: return the last N log lines for a pod (optionally filtered to one container)."""
+    ns = _check_namespace_access(request, namespace_id)
+    if ns is None:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+    id_token = request.session.get("oidc_id_token")
+    container = request.GET.get("container") or None
+    try:
+        tail_lines = int(request.GET.get("tail", 200))
+    except ValueError:
+        tail_lines = 200
+    try:
+        logs = get_pod_logs(
+            id_token=id_token,
+            api_urls=settings.API_URL,
+            private_clusters=settings.PRIVATE_CLUSTERS,
+            namespace=ns,
+            pod_name=pod_name,
+            container=container,
+            tail_lines=tail_lines,
+        )
+        return JsonResponse({"logs": logs or ""})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required(login_url="/maia/login/")
+def namespace_pod_metrics_api(request, namespace_id):
+    """JSON: return actual CPU/memory usage for all pods in the namespace."""
+    ns = _check_namespace_access(request, namespace_id)
+    if ns is None:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+    id_token = request.session.get("oidc_id_token")
+    try:
+        metrics = get_namespace_pod_metrics(
+            id_token=id_token,
+            api_urls=settings.API_URL,
+            private_clusters=settings.PRIVATE_CLUSTERS,
+            namespace=ns,
+        )
+        return JsonResponse({"metrics": metrics})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

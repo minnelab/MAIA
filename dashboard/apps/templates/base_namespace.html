@@ -310,6 +310,81 @@
       </div>
     </div>
 
+    <!-- ── Running Pods ── -->
+    <div class="ns-section-card ns-animate" style="animation-delay:.08s;">
+      <div class="ns-section-header">
+        <h6 class="ns-section-title">
+          <i class="fas fa-cubes"></i> Running Pods
+          <span class="badge bg-gradient-primary badge-sm ms-2" id="pods-count" style="display:none;"></span>
+        </h6>
+        <button class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size:.75rem;" onclick="loadPods()" id="pods-refresh-btn">
+          <i class="fas fa-sync-alt" id="pods-refresh-icon"></i> Refresh
+        </button>
+      </div>
+      <div id="pods-loading" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+        <span class="ms-2 text-sm text-secondary">Loading pods…</span>
+      </div>
+      <div id="pods-content" style="display:none;">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table ns-table mb-0">
+              <thead>
+                <tr>
+                  <th>Pod</th>
+                  <th>Status</th>
+                  <th>Node</th>
+                  <th>Containers</th>
+                  <th>CPU Req / Used</th>
+                  <th>Memory Req / Used</th>
+                  <th>GPU</th>
+                  <th>Age</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="pods-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="pods-empty" class="text-center py-4 text-secondary text-sm" style="display:none;">
+        No pods found in this namespace.
+      </div>
+      <div id="pods-error" class="text-center py-3 text-sm" style="display:none; color:#f5365c;"></div>
+    </div>
+
+    <!-- Logs Modal -->
+    <div class="modal fade" id="logsModal" tabindex="-1" aria-labelledby="logsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header py-3 align-items-center">
+            <h6 class="modal-title mb-0" id="logsModalLabel" style="font-size:.9rem; font-weight:700; color:#344767;">Logs</h6>
+            <div class="ms-auto d-flex align-items-center gap-2 me-3">
+              <select class="form-select form-select-sm" id="logs-container-select" style="width:auto;" onchange="fetchLogs()"></select>
+              <select class="form-select form-select-sm" id="logs-tail-select" style="width:auto;" onchange="fetchLogs()">
+                <option value="100">Last 100 lines</option>
+                <option value="200" selected>Last 200 lines</option>
+                <option value="500">Last 500 lines</option>
+                <option value="1000">Last 1000 lines</option>
+              </select>
+              <button class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="fetchLogs()" title="Refresh logs">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+            <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-0" style="background:#1a1a2e;">
+            <div id="logs-loading" class="text-center py-4" style="background:#1a1a2e; color:#e8e8e8;">
+              <div class="spinner-border spinner-border-sm" role="status" style="color:#5e72e4;"></div>
+              <span class="ms-2 text-sm">Loading logs…</span>
+            </div>
+            <pre id="logs-content" style="display:none; background:#1a1a2e; color:#e8e8e8; margin:0; padding:16px 20px; font-family:'Courier New',monospace; font-size:0.73rem; min-height:300px; max-height:70vh; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></pre>
+            <div id="logs-error" class="text-center py-3 text-sm" style="display:none; color:#f5365c; background:#1a1a2e;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Remote Desktops ── -->
     {% if remote_desktop_dict %}
     <div class="ns-section-card ns-animate" style="animation-delay:.1s;">
@@ -578,5 +653,194 @@
   function copyToClipboardPod(e, namespace, port) {
     navigator.clipboard.writeText("kubectl port-forward " + e.target.id + " -n " + namespace + " :" + port);
   }
+
+  /* ── Pods dashboard ──────────────────────────────────────────── */
+  const _NS = "{{ namespace }}";
+  let _currentPod = null;
+  let _podMetrics = {};
+
+  function _podAge(ts) {
+    if (!ts || ts === "N/A") return "N/A";
+    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+    if (diff < 60)    return diff + "s";
+    if (diff < 3600)  return Math.floor(diff / 60) + "m";
+    if (diff < 86400) return Math.floor(diff / 3600) + "h";
+    return Math.floor(diff / 86400) + "d";
+  }
+
+  function _phaseClass(phase) {
+    if (phase === "Running")  return "bg-gradient-success";
+    if (phase === "Pending")  return "bg-gradient-warning";
+    if (phase === "Succeeded") return "bg-gradient-info";
+    return "bg-gradient-danger";
+  }
+
+  function _fmtCpu(v) {
+    if (!v || v === "N/A") return "N/A";
+    if (v.endsWith("n")) return (parseInt(v) / 1e6).toFixed(1) + "m";
+    return v;
+  }
+
+  function _fmtMem(v) {
+    if (!v || v === "N/A") return "N/A";
+    if (v.endsWith("Ki")) return (parseInt(v) / 1024).toFixed(0) + " Mi";
+    return v;
+  }
+
+  function _usageHtml(req, used) {
+    const reqStr = req || "N/A";
+    if (used && used !== "N/A")
+      return `${reqStr} <span style="color:#11cdef;">/ ${used}</span>`;
+    return reqStr;
+  }
+
+  function loadPods() {
+    document.getElementById("pods-loading").style.display = "";
+    document.getElementById("pods-content").style.display = "none";
+    document.getElementById("pods-empty").style.display = "none";
+    document.getElementById("pods-error").style.display = "none";
+    document.getElementById("pods-count").style.display = "none";
+    document.getElementById("pods-refresh-icon").classList.add("fa-spin");
+
+    Promise.all([
+      fetch(`/maia/namespaces/${_NS}/api/pods/`).then(r => r.json()),
+      fetch(`/maia/namespaces/${_NS}/api/pods/metrics/`).then(r => r.json()).catch(() => ({ metrics: {} })),
+    ]).then(([podsData, metricsData]) => {
+      document.getElementById("pods-refresh-icon").classList.remove("fa-spin");
+      _podMetrics = (metricsData && metricsData.metrics) ? metricsData.metrics : {};
+
+      if (podsData.error) {
+        document.getElementById("pods-loading").style.display = "none";
+        document.getElementById("pods-error").textContent = "Error: " + podsData.error;
+        document.getElementById("pods-error").style.display = "";
+        return;
+      }
+
+      const pods = podsData.pods || [];
+      if (pods.length === 0) {
+        document.getElementById("pods-loading").style.display = "none";
+        document.getElementById("pods-empty").style.display = "";
+        return;
+      }
+
+      const badge = document.getElementById("pods-count");
+      badge.textContent = pods.length;
+      badge.style.display = "";
+
+      const tbody = document.getElementById("pods-tbody");
+      tbody.innerHTML = "";
+
+      pods.forEach(pod => {
+        const cNames = pod.containers.map(c => c.name);
+        const totalRestarts = Object.values(pod.container_statuses || {})
+          .reduce((s, cs) => s + (cs.restart_count || 0), 0);
+
+        // Aggregate per-container resource info
+        const cpuReqs  = pod.containers.map(c => c.cpu_request || "N/A");
+        const memReqs  = pod.containers.map(c => c.memory_request || "N/A");
+        const gpuVals  = pod.containers.map(c => c.gpu).filter(Boolean);
+        const mPod     = _podMetrics[pod.name] || {};
+        const cpuUseds = pod.containers.map(c => _fmtCpu((mPod[c.name] || {}).cpu));
+        const memUseds = pod.containers.map(c => _fmtMem((mPod[c.name] || {}).memory));
+
+        const cpuCol = pod.containers.length === 1
+          ? _usageHtml(_fmtCpu(cpuReqs[0]), cpuUseds[0])
+          : pod.containers.map((c, i) => `<div>${c.name}: ${_usageHtml(_fmtCpu(cpuReqs[i]), cpuUseds[i])}</div>`).join("");
+
+        const memCol = pod.containers.length === 1
+          ? _usageHtml(_fmtMem(memReqs[0]), memUseds[0])
+          : pod.containers.map((c, i) => `<div>${c.name}: ${_usageHtml(_fmtMem(memReqs[i]), memUseds[i])}</div>`).join("");
+
+        const gpuCol = gpuVals.length
+          ? `<span class="badge bg-gradient-warning">${gpuVals.join("+")} GPU</span>`
+          : `<span class="text-secondary">—</span>`;
+
+        const restartHtml = totalRestarts > 0
+          ? `<br><small style="color:#fb6340;"><i class="fas fa-redo-alt me-1"></i>${totalRestarts} restart${totalRestarts > 1 ? "s" : ""}</small>`
+          : "";
+
+        const encodedCNames = JSON.stringify(cNames).replace(/'/g, "\\'");
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            <span style="font-weight:700; font-size:.83rem;">${pod.name}</span>${restartHtml}
+          </td>
+          <td><span class="badge ${_phaseClass(pod.phase)}">${pod.phase}</span></td>
+          <td><code class="mono" style="font-size:.70rem;">${pod.node || "N/A"}</code></td>
+          <td><small class="text-secondary">${cNames.join(", ")}</small></td>
+          <td><code class="mono" style="font-size:.72rem;">${cpuCol}</code></td>
+          <td><code class="mono" style="font-size:.72rem;">${memCol}</code></td>
+          <td>${gpuCol}</td>
+          <td><small class="text-secondary">${_podAge(pod.start_time)}</small></td>
+          <td>
+            <button class="btn btn-sm py-1 px-2 btn-outline-primary" style="font-size:.70rem;"
+                    onclick="openLogs('${pod.name}', ${encodedCNames})">
+              <i class="fas fa-terminal me-1"></i>Logs
+            </button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("pods-loading").style.display = "none";
+      document.getElementById("pods-content").style.display = "";
+
+    }).catch(() => {
+      document.getElementById("pods-refresh-icon").classList.remove("fa-spin");
+      document.getElementById("pods-loading").style.display = "none";
+      document.getElementById("pods-error").textContent = "Failed to load pods.";
+      document.getElementById("pods-error").style.display = "";
+    });
+  }
+
+  function openLogs(podName, containers) {
+    _currentPod = podName;
+    document.getElementById("logsModalLabel").textContent = podName + " — Logs";
+
+    const sel = document.getElementById("logs-container-select");
+    sel.innerHTML = "";
+    containers.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      sel.appendChild(opt);
+    });
+
+    const modal = new bootstrap.Modal(document.getElementById("logsModal"));
+    modal.show();
+    fetchLogs();
+  }
+
+  function fetchLogs() {
+    if (!_currentPod) return;
+    const container = document.getElementById("logs-container-select").value;
+    const tail = document.getElementById("logs-tail-select").value;
+
+    document.getElementById("logs-loading").style.display = "";
+    document.getElementById("logs-content").style.display = "none";
+    document.getElementById("logs-error").style.display = "none";
+
+    fetch(`/maia/namespaces/${_NS}/api/pods/${_currentPod}/logs/?container=${encodeURIComponent(container)}&tail=${tail}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById("logs-loading").style.display = "none";
+        if (data.error) {
+          document.getElementById("logs-error").textContent = "Error: " + data.error;
+          document.getElementById("logs-error").style.display = "";
+          return;
+        }
+        const pre = document.getElementById("logs-content");
+        pre.textContent = data.logs || "(no logs available)";
+        pre.style.display = "";
+        pre.scrollTop = pre.scrollHeight;
+      })
+      .catch(() => {
+        document.getElementById("logs-loading").style.display = "none";
+        document.getElementById("logs-error").textContent = "Failed to fetch logs.";
+        document.getElementById("logs-error").style.display = "";
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", loadPods);
 </script>
 {% endblock javascripts %}

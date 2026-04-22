@@ -849,6 +849,127 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
     return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards
 
 
+def get_namespace_pods(id_token, api_urls, private_clusters, namespace):
+    """Get pods in a namespace with resource requests/limits and container statuses."""
+    pods_list = []
+    seen_pods = set()
+
+    for api_url in api_urls:
+        token = private_clusters.get(api_url, id_token)
+        try:
+            response = requests.get(
+                f"{api_url}/api/v1/namespaces/{namespace}/pods",
+                headers={"Authorization": f"Bearer {token}"},
+                verify=False,
+            )
+            data = json.loads(response.text)
+        except Exception:
+            continue
+
+        if "items" not in data:
+            continue
+
+        for pod in data["items"]:
+            pod_name = pod["metadata"]["name"]
+            if pod_name in seen_pods:
+                continue
+            seen_pods.add(pod_name)
+
+            containers = []
+            for container in pod["spec"]["containers"]:
+                resources = container.get("resources", {})
+                requests_res = resources.get("requests", {})
+                limits_res = resources.get("limits", {})
+                containers.append(
+                    {
+                        "name": container["name"],
+                        "image": container["image"],
+                        "cpu_request": requests_res.get("cpu", "N/A"),
+                        "memory_request": requests_res.get("memory", "N/A"),
+                        "cpu_limit": limits_res.get("cpu", "N/A"),
+                        "memory_limit": limits_res.get("memory", "N/A"),
+                        "gpu": requests_res.get("nvidia.com/gpu", None),
+                    }
+                )
+
+            container_statuses = {}
+            for cs in pod["status"].get("containerStatuses", []):
+                state = cs.get("state", {})
+                state_name = list(state.keys())[0] if state else "unknown"
+                container_statuses[cs["name"]] = {
+                    "ready": cs.get("ready", False),
+                    "restart_count": cs.get("restartCount", 0),
+                    "state": state_name,
+                }
+
+            pods_list.append(
+                {
+                    "name": pod_name,
+                    "phase": pod["status"].get("phase", "Unknown"),
+                    "start_time": pod["metadata"].get("creationTimestamp", "N/A"),
+                    "node": pod["spec"].get("nodeName", "N/A"),
+                    "containers": containers,
+                    "container_statuses": container_statuses,
+                }
+            )
+
+    return pods_list
+
+
+def get_pod_logs(id_token, api_urls, private_clusters, namespace, pod_name, container=None, tail_lines=200):
+    """Get the last tail_lines log lines for a pod/container."""
+    for api_url in api_urls:
+        token = private_clusters.get(api_url, id_token)
+        params = {"tailLines": tail_lines}
+        if container:
+            params["container"] = container
+        try:
+            response = requests.get(
+                f"{api_url}/api/v1/namespaces/{namespace}/pods/{pod_name}/log",
+                headers={"Authorization": f"Bearer {token}"},
+                params=params,
+                verify=False,
+            )
+            if response.status_code == 200:
+                return response.text
+        except Exception:
+            continue
+    return None
+
+
+def get_namespace_pod_metrics(id_token, api_urls, private_clusters, namespace):
+    """Get actual CPU/memory usage for pods in a namespace via the metrics-server API."""
+    metrics_dict = {}
+    for api_url in api_urls:
+        token = private_clusters.get(api_url, id_token)
+        try:
+            response = requests.get(
+                f"{api_url}/apis/metrics.k8s.io/v1beta1/namespaces/{namespace}/pods",
+                headers={"Authorization": f"Bearer {token}"},
+                verify=False,
+            )
+            if response.status_code != 200:
+                continue
+            data = json.loads(response.text)
+        except Exception:
+            continue
+
+        if "items" not in data:
+            continue
+
+        for pod in data["items"]:
+            pod_name = pod["metadata"]["name"]
+            containers = {}
+            for container in pod.get("containers", []):
+                containers[container["name"]] = {
+                    "cpu": container["usage"].get("cpu", "N/A"),
+                    "memory": container["usage"].get("memory", "N/A"),
+                }
+            metrics_dict[pod_name] = containers
+
+    return metrics_dict
+
+
 def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):
     """
     Creates ServiceAccounts, RoleBindings, and an Istio AuthorizationPolicy
