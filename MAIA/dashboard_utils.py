@@ -615,7 +615,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                     if user.email not in users_to_remove_from_group:
                         users_to_remove_from_group[user.email] = [user_group]
                     else:
-                        users_to_remove_from_group[user.email].append(user_group)
+                        if user_group not in users_to_remove_from_group[user.email]:
+                            users_to_remove_from_group[user.email].append(user_group)
 
     return users_to_register_in_group, users_to_register_in_keycloak, maia_group_dict, users_to_remove_from_group
 
