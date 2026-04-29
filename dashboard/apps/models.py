@@ -71,6 +71,7 @@ class MAIAProject(models.Model):
     date = models.DateField("date", default=datetime.date.today)
     description = models.TextField("description", blank=True, null=True)
     supervisor = models.EmailField("supervisor", max_length=150, null=True, blank=True)
+    resource_needs = models.TextField("resource_needs", blank=True, null=True)
     auto_deploy = models.BooleanField("auto_deploy", default=False)
     auto_deploy_apps = models.JSONField("auto_deploy_apps", default=[], null=True)
     project_configuration = models.JSONField("project_configuration", default={}, null=True)
