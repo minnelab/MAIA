@@ -718,7 +718,8 @@ def create_cert_manager_values(config_folder, project_id):
 def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
     """
     Creates GPU operator values configuration for a Kubernetes cluster and writes it to a YAML file.
-
+    To add Time Slicing, follow the instructions in the following link: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-sharing.html
+        
     Parameters
     ----------
     config_folder : str
