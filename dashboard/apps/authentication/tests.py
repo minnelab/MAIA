@@ -202,4 +202,4 @@ class RegisterProjectViewTests(TestCase):
         self.assertEqual(response.data["msg"], "Request for Project Registration submitted successfully.")
         self.assertTrue(response.data["success"], True)
         project = MAIAProject.objects.filter(namespace="no-rn-project").first()
-        self.assertFalse(project.resource_needs)
+        self.assertIsNone(project.resource_needs)
