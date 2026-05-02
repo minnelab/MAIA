@@ -363,6 +363,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
         "metallbSharedIp": cluster_config.get("metallb_shared_ip", False),
         "metallbIpPool": cluster_config.get("metallb_ip_pool", False),
         "loadBalancerIp": cluster_config.get("maia_metallb_ip", False),
+        "sshHostname": cluster_config.get("ssh_hostname", ""),
     }
     if minimal_deployment:
         maia_namespace_values["chart_name"] = "maia-namespace"
