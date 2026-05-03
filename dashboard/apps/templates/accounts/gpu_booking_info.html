@@ -1,0 +1,285 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} My GPU Bookings {% endblock title %}
+
+{% block stylesheets %}
+<style>
+  /* ── Section cards ───────────────────────────── */
+  .booking-list-card {
+    border-radius: 14px; border: none;
+    box-shadow: 0 2px 14px rgba(0,0,0,.06);
+    overflow: hidden;
+  }
+  .booking-list-header {
+    padding: 16px 22px 14px;
+    background: #fff; border-bottom: 1px solid #f0f2f5;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .booking-list-title {
+    font-size: .95rem; font-weight: 700; color: #344767;
+    display: flex; align-items: center; gap: 8px; margin: 0;
+  }
+  .booking-list-title i { color: #5e72e4; }
+
+  /* ── Stats badge ─────────────────────────────── */
+  .stat-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: .78rem; font-weight: 700;
+  }
+  .stat-pill-blue { background: #e0e7ff; color: #3730a3; }
+  .stat-pill-green { background: #d1fae5; color: #065f46; }
+
+  /* ── Table ───────────────────────────────────── */
+  .booking-table th {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8392ab;
+    padding: 10px 16px; border-top: none; background: #f8f9fa;
+  }
+  .booking-table td {
+    font-size: .83rem; padding: 12px 16px;
+    vertical-align: middle; color: #344767;
+    border-color: #f0f2f5;
+  }
+  .booking-table tr:hover td { background: rgba(94,114,228,.03); }
+
+  /* ── Status badges ───────────────────────────── */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: .72rem; font-weight: 700;
+  }
+  .status-active   { background: #d1fae5; color: #065f46; }
+  .status-pending  { background: #fef3c7; color: #92400e; }
+  .status-expired  { background: #f0f2f5; color: #8392ab; }
+
+  /* ── Action buttons ──────────────────────────── */
+  .action-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 7px;
+    font-size: .72rem; font-weight: 700;
+    border: none; cursor: pointer;
+    text-decoration: none; transition: opacity .15s;
+  }
+  .action-btn:hover { opacity: .8; text-decoration: none; }
+  .action-delete       { background: #fee2e2; color: #c53030; }
+  .action-admin-delete { background: #fce7f3; color: #9d174d; }
+
+  /* ── GPU chip ────────────────────────────────── */
+  .gpu-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    background: #ede9fe; color: #5b21b6;
+    font-size: .72rem; font-weight: 700;
+  }
+
+  /* ── Date range ──────────────────────────────── */
+  .date-range {
+    font-size: .78rem; color: #344767; white-space: nowrap;
+  }
+  .date-range .arrow { color: #8392ab; margin: 0 4px; }
+
+  /* ── Empty state ─────────────────────────────── */
+  .empty-state {
+    text-align: center; padding: 48px 24px;
+  }
+  .empty-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: #f0f2f5;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .empty-icon i { color: #adb5bd; font-size: 1.6rem; }
+
+  /* ── Namespace link ──────────────────────────── */
+  .ns-link { color: #5e72e4; font-weight: 600; text-decoration: none; }
+  .ns-link:hover { text-decoration: underline; }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in { animation: fadeSlideUp .3s ease both; }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<section class="min-vh-100 mb-8">
+
+  <!-- ══ Hero ════════════════════════════════════════════════════════ -->
+  {% if BACKEND == "compose" %}
+  <div class="page-header align-items-start min-vh-40 pt-5 pb-11 m-3 border-radius-lg"
+       style="background-image: url('{{ ASSETS_ROOT }}/img/miniMAIA.png'); background-size: cover;">
+  {% else %}
+  <div class="page-header align-items-start min-vh-40 pt-5 pb-11 m-3 border-radius-lg"
+       style="background-image: url('{{ ASSETS_ROOT }}/img/MAIA/GPU_Booking.png');
+              background-size: cover; background-position: center;">
+  {% endif %}
+    <span class="mask bg-gradient-dark opacity-6"></span>
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-lg-6 text-center">
+          <h1 class="text-white mb-2">My GPU Bookings</h1>
+          <p class="text-white mb-0" style="opacity:.75; font-size:.9rem;">
+            Track and manage your GPU reservations
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid mt-n6 px-4">
+
+    <!-- ── Stats row ── -->
+    <div class="d-flex flex-wrap align-items-center mb-4 animate-in" style="gap:10px; animation-delay:.05s;">
+      <span class="stat-pill stat-pill-blue">
+        <i class="fas fa-calendar-alt"></i>
+        Total booked: <strong>{{ total_days }} day{{ total_days|pluralize }}</strong>
+      </span>
+      {% with active_count=bookings|length %}
+      <span class="stat-pill stat-pill-green">
+        <i class="fas fa-microchip"></i>
+        {{ active_count }} booking{{ active_count|pluralize }}
+      </span>
+      {% endwith %}
+      <a href="/maia/gpu-booking/"
+         style="display:inline-flex; align-items:center; gap:6px;
+                padding:6px 14px; border-radius:20px;
+                background:linear-gradient(310deg,#3a0ca3,#7209b7);
+                color:#fff; font-size:.78rem; font-weight:700;
+                text-decoration:none; margin-left:auto;">
+        <i class="fas fa-plus"></i> New Booking
+      </a>
+    </div>
+
+    <!-- ── Bookings table ── -->
+    <div class="booking-list-card animate-in" style="animation-delay:.1s;">
+      <div class="booking-list-header">
+        <h6 class="booking-list-title">
+          <i class="fas fa-list"></i> Booking History
+        </h6>
+      </div>
+
+      {% if bookings %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table booking-table mb-0">
+            <thead>
+              <tr>
+                <th>GPU</th>
+                <th>Project</th>
+                <th>Email</th>
+                <th>Period</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for booking in bookings %}
+              <tr>
+                <!-- GPU -->
+                <td>
+                  <span class="gpu-chip">
+                    <i class="fas fa-microchip"></i> {{ booking.gpu }}
+                  </span>
+                </td>
+
+                <!-- Project -->
+                <td>
+                  <a href="/maia/namespaces/{{ booking.namespace|lower|to_hyphen }}" class="ns-link">
+                    {{ booking.namespace }}
+                  </a>
+                </td>
+
+                <!-- Email -->
+                <td>
+                  <span class="text-xs text-secondary">{{ booking.email }}</span>
+                </td>
+
+                <!-- Period -->
+                <td>
+                  <div class="date-range">
+                    <i class="fas fa-calendar me-1" style="color:#8392ab; font-size:.7rem;"></i>
+                    {{ booking.start_date }}
+                    <span class="arrow">→</span>
+                    {{ booking.end_date }}
+                  </div>
+                </td>
+
+                <!-- Status -->
+                <td>
+                  {% if booking.status == 'Active' %}
+                  <span class="status-badge status-active">
+                    <i class="fas fa-circle" style="font-size:.45rem;"></i> Active
+                  </span>
+                  {% elif booking.status == 'Expired' %}
+                  <span class="status-badge status-expired">
+                    <i class="fas fa-hourglass-end" style="font-size:.7rem;"></i> Expired
+                  </span>
+                  {% else %}
+                  <span class="status-badge status-pending">
+                    <i class="fas fa-clock" style="font-size:.7rem;"></i> {{ booking.status }}
+                  </span>
+                  {% endif %}
+                </td>
+
+                <!-- Actions -->
+                <td>
+                  <div class="d-flex" style="gap:6px; flex-wrap:wrap;">
+                    {% if booking.status != 'Expired' %}
+                    <form method="POST" action="{% url 'delete_booking' booking.id %}"
+                          onsubmit="return confirm('Delete this booking?');"
+                          {% if not booking.id %}style="display:none;"{% endif %}>
+                      {% csrf_token %}
+                      <button type="submit" class="action-btn action-delete">
+                        <i class="fas fa-trash"></i> Delete
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    {% if user and "admin" in user %}
+                    <form method="POST" action="{% url 'admin_delete_booking' booking.id %}"
+                          onsubmit="return confirm('Remove this booking from the database?');"
+                          {% if not booking.id %}style="display:none;"{% endif %}>
+                      {% csrf_token %}
+                      <button type="submit" class="action-btn action-admin-delete">
+                        <i class="fas fa-database"></i> Remove from DB
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fas fa-calendar-times"></i></div>
+          <h6 class="font-weight-bold text-dark mb-1">No Bookings Yet</h6>
+          <p class="text-sm text-secondary mb-4">You haven't made any GPU bookings.</p>
+          <a href="/maia/gpu-booking/"
+             style="display:inline-flex; align-items:center; gap:7px;
+                    padding:10px 22px; border-radius:10px;
+                    background:linear-gradient(310deg,#3a0ca3,#7209b7);
+                    color:#fff; font-weight:700; font-size:.85rem;
+                    text-decoration:none;
+                    box-shadow:0 4px 15px rgba(58,12,163,.35);">
+            <i class="fas fa-plus"></i> Make a Booking
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  {% include "includes/footer.html" %}
+</section>
+{% endblock content %}
+
+{% block javascripts %}{% endblock javascripts %}

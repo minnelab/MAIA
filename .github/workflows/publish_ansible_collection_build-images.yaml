@@ -1,0 +1,91 @@
+name: Publish Ansible Collection
+
+on:
+  push:
+    tags:
+      - 'ansible-maia.build-images-v*'
+
+jobs:
+  publish-ansible-collection:
+    name: Build and publish Ansible collection to Galaxy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core
+          pip install pypandoc
+      - name: Install Pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: "3.1.12"  # optional, omit for latest
+
+      - name: Verify
+        run: pandoc --version
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          # Extract version from tag
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#ansible-maia.build-images-v}"
+          echo "Version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Update galaxy.yml version
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          echo "Updating galaxy.yml with version: $VERSION"
+          
+          # Update the version field in galaxy.yml
+          sed -i "s/^version:.*/version: $VERSION/" ansible/MAIA/Build-Images/galaxy.yml
+          
+          # Verify the change
+          echo "Updated galaxy.yml version:"
+          grep "^version:" ansible/MAIA/Build-Images/galaxy.yml
+
+      - name: Inject docs into README.md
+        run: |
+          cd ansible/MAIA/Build-Images/
+          python inject_docs.py
+
+      - name: Install Ansible collection
+        run: |
+          # Install collection from local directory to validate structure and dependencies
+          ansible-galaxy collection install ansible/MAIA/Build-Images/
+      
+      - name: Build Ansible collection
+        run: |
+          cd ansible/MAIA/Build-Images/
+          ansible-galaxy collection build
+          
+          # List the built collection
+          ls -la *.tar.gz
+      
+      - name: Publish to Ansible Galaxy
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          cd ansible/MAIA/Build-Images/
+          
+          # Publish the collection using the token from environment variable
+          ansible-galaxy collection publish \
+            maia-build_images-${VERSION}.tar.gz \
+            --token $ANSIBLE_GALAXY_API_TOKEN
+        env:
+          ANSIBLE_GALAXY_API_TOKEN: ${{ secrets.ANSIBLE_GALAXY_API_TOKEN }}
+      
+      - name: Upload collection artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ansible-collection-maia-build_images-${{ steps.extract_version.outputs.version }}
+          path: ansible/MAIA/Build-Images/maia-build_images-*.tar.gz

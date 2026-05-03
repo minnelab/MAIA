@@ -5,6 +5,11 @@ from pathlib import Path
 
 import yaml
 
+from MAIA.versions import define_maia_docker_versions
+
+kaniko_chart_version = define_maia_docker_versions()["kaniko_chart_version"]
+kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
+
 
 def deploy_maia_kaniko(
     namespace,
@@ -19,6 +24,7 @@ def deploy_maia_kaniko(
     subpath,
     build_args=None,
     registry_credentials=None,
+    git_repo_url=None,
 ):
     """
     Deploys a Kaniko job for building and pushing Docker images to a specified registry.
@@ -49,7 +55,8 @@ def deploy_maia_kaniko(
         A list of build arguments to be passed to the Kaniko job.
     registry_credentials : dict, optional
         A dictionary containing registry credentials with keys 'username', 'password', 'server', and 'email'.
-
+    custom_git_repo_url : str, optional
+        The URL of the Git repository where the Dockerfile is located.
     Returns
     -------
     dict
@@ -57,21 +64,24 @@ def deploy_maia_kaniko(
         chart name, repo URL, chart version, and values file path.
     """
 
-    if "MAIA_HELM_REPO_URL" not in os.environ:
-        raise ValueError(
-            "MAIA_HELM_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Helm repository. Example: https://kthcloud.github.io/MAIA/"  # noqa: B950
-        )
-
     kaniko_values = {
-        "chart_name": "mkg-kaniko",
-        "repo_url": os.environ["MAIA_HELM_REPO_URL"],
-        "chart_version": "1.0.3",
+        "chart_version": kaniko_chart_version,
         "namespace": "mkg-kaniko",
     }
 
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and kaniko_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and core_toolkit_chart_type is set to git_repo, which is not allowed")
+
+    if kaniko_chart_type == "helm_repo":
+        kaniko_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        kaniko_values["chart_name"] = "mkg-kaniko"
+    elif kaniko_chart_type == "git_repo":
+        kaniko_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        kaniko_values["path"] = "charts/maiakubegate-kaniko"
+
     if "MAIA_GIT_REPO_URL" not in os.environ:
         raise ValueError(
-            "MAIA_GIT_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Git repository with the Docker Image to build. Example: git://github.com/kthcloud/MAIA.git"  # noqa: B950
+            "MAIA_GIT_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Git repository with the Docker Image to build. Example: git://github.com/minnelab/MAIA.git"  # noqa: B950
         )
 
     if "GIT_USERNAME" not in os.environ:
@@ -89,13 +99,15 @@ def deploy_maia_kaniko(
     registry_password = registry_credentials.get("password") if registry_credentials else None
     registry_email = registry_credentials.get("email") if registry_credentials else None
 
+    registry_complete_url = registry_url
+    if registry_url.startswith("https://index.docker.io/v1/"):
+        registry_complete_url = registry_url.replace("https://index.docker.io/v1/", "")
+
     kaniko_values.update(
         {
             "docker_registry_secret": registry_secret_name,
             "namespace": "mkg-kaniko",
-            "dockerRegistryServer": (
-                "https://" + registry_server if "registry_server" not in cluster_config_dict else registry_server
-            ),
+            "dockerRegistryServer": ("https://" + registry_server if "registry_server" not in os.environ else registry_server),
             "dockerRegistryUsername": registry_username,
             "dockerRegistryPassword": registry_password,
             "dockerRegistryEmail": registry_email,
@@ -105,11 +117,13 @@ def deploy_maia_kaniko(
             "git_token": os.environ.get("GIT_TOKEN"),
             "args": [
                 "--dockerfile=Dockerfile",
-                f"--context={os.environ['MAIA_GIT_REPO_URL']}",  # refs/heads/mybranch
+                f"--context={git_repo_url if git_repo_url is not None else os.environ['MAIA_GIT_REPO_URL']}",  # git://github.com/acme/myproject.git#refs/heads/mybranch#<desired-commit-id>
                 "--context-sub-path=" + subpath,
-                "--destination={}/{}:{}".format(registry_url, image_name, image_tag),
+                "--destination={}/{}:{}".format(registry_complete_url, image_name, image_tag),
                 "--cache=true",
                 "--cache-dir=/cache",
+                "--insecure",
+                "--skip-tls-verify",
             ],
         }
     )
@@ -128,7 +142,7 @@ def deploy_maia_kaniko(
     return {
         "namespace": namespace,
         "release": f"{project_id}-{release_name}",
-        "chart": kaniko_values["chart_name"],
+        "chart": (kaniko_values["chart_name"] if kaniko_chart_type == "helm_repo" else kaniko_values["path"]),
         "repo": kaniko_values["repo_url"],
         "version": kaniko_values["chart_version"],
         "values": str(

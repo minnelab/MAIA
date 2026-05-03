@@ -1,0 +1,68 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include MicroK8s external variables (env.json)
+  include_vars:
+    file: "{{ config_folder }}/env.json"
+
+- name: Create directory for MicroK8s config
+  file:
+    path: "{{ microk8s_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy MicroK8s config file
+  copy:
+    src: "{{ config_folder }}/{{ microk8s_config_file }}"
+    dest: "{{ microk8s_config_dir }}/.microk8s.yaml"
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install snapd
+  apt:
+    name: snapd
+    state: present
+
+- name: Ensure snapd is started
+  service:
+    name: snapd
+    state: started
+
+- name: Install MicroK8s
+  snap:
+    name: microk8s
+    state: present
+    channel: "{{ microk8s_version }}"
+    classic: yes
+
+- name: Add user to microk8s group
+  user:
+    name: "{{ ansible_user }}"
+    groups: microk8s
+    append: yes
+
+- name: Enable MicroK8s addons
+  command: microk8s enable {{ microk8s_addons | join(' ') }}
+
+- name: Start MicroK8s
+  command: microk8s start
+
+- name: Allow firewall ports for MicroK8s
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+  loop: "{{ microk8s_firewall_ports }}"
+
+- name: Assign Roles to Node
+  command: microk8s.kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/master=master
+  when: "'control-plane' in group_names"
+  
+- name: Assign Roles to Node
+  command: microk8s.kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane=control-plane
+  when: "'control-plane' in group_names"
+
+- name: Run additional MicroK8s connect tasks
+  import_tasks: connect.yml
+

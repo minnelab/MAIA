@@ -17,12 +17,51 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from keycloak import KeycloakAdmin, KeycloakOpenIDConnection
 from kubernetes import config
+from loguru import logger
 from minio import Minio
 from pyhelm3 import Client
 
 from MAIA.keycloak_utils import get_groups_in_keycloak
-from MAIA.kubernetes_utils import generate_kubeconfig, get_namespaces
+from MAIA.kubernetes_utils import generate_kubeconfig, get_namespaces, get_minio_shareable_link
 from MAIA_scripts.MAIA_install_project_toolkit import verify_installed_maia_toolkit
+
+
+def upload_env_file_to_minio(env_file, namespace, settings):
+    client = Minio(
+        settings.MINIO_URL,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
+        secure=settings.MINIO_SECURE,
+    )
+    if env_file.name.endswith(".zip"):
+        with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
+            for chunk in env_file.chunks():
+                destination.write(chunk)
+        logger.info(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
+        client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.zip", f"/tmp/{namespace}_env.zip")
+        logger.info(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
+        filename = f"{namespace}_env.zip"
+    elif env_file.name.endswith(".yaml") or env_file.name.endswith(".yml"):
+        with open(f"/tmp/{namespace}_env.yaml", "wb+") as destination:
+            for chunk in env_file.chunks():
+                destination.write(chunk)
+        logger.info(f"Storing {namespace}_env.yaml in MinIO, in bucket {settings.BUCKET_NAME}")
+        client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.yaml", f"/tmp/{namespace}_env.yaml")
+        logger.info(get_minio_shareable_link(f"{namespace}_env.yaml", settings.BUCKET_NAME, settings))
+        filename = f"{namespace}_env.yaml"
+    elif env_file.name.endswith(".txt"):
+        with open(f"/tmp/{namespace}_env.txt", "wb+") as destination:
+            for chunk in env_file.chunks():
+                destination.write(chunk)
+        logger.info(f"Storing {namespace}_env.txt in MinIO, in bucket {settings.BUCKET_NAME}")
+        client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.txt", f"/tmp/{namespace}_env.txt")
+        logger.info(get_minio_shareable_link(f"{namespace}_env.txt", settings.BUCKET_NAME, settings))
+        filename = f"{namespace}_env.txt"
+    else:
+        msg = "Environment file must be a zip file, yaml file, or txt file"
+        success = False
+        return msg, success
+    return filename, True
 
 
 def verify_gpu_availability(global_existing_bookings, new_booking, gpu_specs):
@@ -165,35 +204,45 @@ def verify_gpu_booking_policy(existing_bookings, new_booking, global_existing_bo
         An error message if the booking policy is not verified, None otherwise.
     """
 
-    total_days = sum((booking.end_date - booking.start_date).days for booking in existing_bookings)
-
     ending_time = datetime.strptime(new_booking["ending_time"], "%Y-%m-%d %H:%M:%S")
     starting_time = datetime.strptime(new_booking["starting_time"], "%Y-%m-%d %H:%M:%S")
-    
+
     for booking in existing_bookings:
-        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(tz=booking.end_date.tzinfo):
+        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
             return False, "There is an active booking, you cannot book a new one while another is active."
-        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date <= datetime.now(tz=booking.end_date.tzinfo):
+        if booking.start_date <= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date <= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
             # Ensure starting_time is timezone-aware to match booking.end_date
             if booking.end_date.tzinfo is not None and starting_time.tzinfo is None:
                 starting_time_tz = starting_time.replace(tzinfo=booking.end_date.tzinfo)
             else:
                 starting_time_tz = starting_time
             if (starting_time_tz - booking.end_date).days < 14:
-                return False, "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on {}.".format(booking.end_date + timedelta(days=14))
-        if booking.start_date >= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(tz=booking.end_date.tzinfo):
-            return False, "You already have a planned booking [{} - {}], you cannot book a new one.".format(booking.start_date, booking.end_date)
-
+                return (
+                    False,
+                    "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on {}.".format(
+                        booking.end_date + timedelta(days=14)
+                    ),
+                )
+        if booking.start_date >= datetime.now(tz=booking.start_date.tzinfo) and booking.end_date >= datetime.now(
+            tz=booking.end_date.tzinfo
+        ):
+            return False, "You already have a planned booking [{} - {}], you cannot book a new one.".format(
+                booking.start_date, booking.end_date
+            )
 
     new_booking_days = (ending_time - starting_time).days
 
     if new_booking_days <= 0:
         return False, "The booking must be at least one day long."
-    
+
     if new_booking_days > 14:
         return False, "The booking cannot exceed 14 days."
     # Verify that the sum of existing bookings and the new booking does not exceed 60 days
-    #if total_days + new_booking_days > 60:
+    # if total_days + new_booking_days > 60:
     #    return False, "The total number of days for all bookings cannot exceed 60 days."
 
     overlapping_time_slots, gpu_availability_per_slot, total_replicas = verify_gpu_availability(
@@ -210,7 +259,7 @@ def verify_gpu_booking_policy(existing_bookings, new_booking, global_existing_bo
     return True, None
 
 
-def send_maia_info_email(receiver_email, register_project_url, register_user_url, discord_support_link):
+def send_maia_info_email(receiver_email, register_project_url, register_user_url, support_link):
     """
     Send an email with registration information for the MAIA platform.
     Parameters
@@ -221,8 +270,8 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
         The URL for project registration.
     register_user_url : str
         The URL for user registration.
-    discord_support_link : str
-        The URL for the MAIA support Discord.
+    support_link : str
+        The URL for the MAIA support webhook.
     Returns
     -------
     None
@@ -246,15 +295,13 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
             To create a user account, an active project must be available to select. Once a project is registered, you can sign up for an account linked to that project here:<br>
             <a href="{}">MAIA User Registration</a></p>
             <p>If you have any questions or need further assistance, feel free to join our Discord community:<br>
-            <a href="{}">MAIA Support Discord</a></p>
+            <a href="{}">MAIA Support Webhook</a></p>
             <br>
             <p>Best regards,</p>
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(  # noqa: B950
-        register_project_url, register_user_url, discord_support_link
-    )
+    """.format(register_project_url, register_user_url, support_link)  # noqa: B950
 
     # Turn these into plain/html MIMEText objects
     part1 = MIMEText(html, "html")
@@ -265,12 +312,11 @@ def send_maia_info_email(receiver_email, register_project_url, register_user_url
     password = os.environ["email_password"]
 
     # Create a secure SSL context
-    #context = ssl.create_default_context()
+    # context = ssl.create_default_context()
 
-    
     with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()           # identify ourselves to SMTP server
-        server.starttls()       # encrypt the session
+        server.ehlo()  # identify ourselves to SMTP server
+        server.starttls()  # encrypt the session
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, message.as_string())
 
@@ -283,13 +329,14 @@ def verify_minio_availability(settings):
     ----------
     settings : object
         An object containing the MinIO configuration settings.
-        - settings.MINIO_URL : str
+
+        MINIO_URL : str
             The URL of the MinIO server.
-        - settings.MINIO_ACCESS_KEY : str
+        MINIO_ACCESS_KEY : str
             The access key for the MinIO server.
-        - settings.MINIO_SECRET_KEY : str
+        MINIO_SECRET_KEY : str
             The secret key for the MinIO server.
-        - settings.BUCKET_NAME : str
+        BUCKET_NAME : str
             The name of the bucket to check for existence.
 
     Returns
@@ -307,78 +354,15 @@ def verify_minio_availability(settings):
         client.bucket_exists(settings.BUCKET_NAME)
         minio_available = True
     except Exception as e:
-        print(e)
+        logger.error(f"MinIO error: {e}")
         minio_available = False
 
     return minio_available
 
 
-def send_approved_registration_email(receiver_email, login_url, temp_password):
+def send_webhook_message(username, namespace, url, project_registration=False):
     """
-    Sends an email to notify the user that their MAIA account registration has been approved.
-
-    Parameters
-    ----------
-    receiver_email : str
-        The email address of the recipient.
-    login_url : str
-        The URL where the user can log in to MAIA.
-    temp_password : str
-        The temporary password assigned to the user.
-
-    Raises
-    ------
-    KeyError
-        If the environment variables 'email_account' or 'email_password' are not set.
-    smtplib.SMTPException
-        If there is an error sending the email.
-    """
-
-    sender_email = os.environ["email_account"]
-    message = MIMEMultipart()
-    message["Subject"] = "Account Registration Approved"
-    message["From"] = f"MAIA Registration <{sender_email}>"
-    message["To"] = receiver_email
-
-    html = """\
-    <html>
-        <head></head>
-        <body>
-            <p>Your MAIA Account has been approved.</p>
-            <p>Log in to MAIA at the following link: <a href="{}">MAIA</a></p>
-            <p>Your temporary password is: {}</p>
-            <p>Please change your password after logging in.</p>
-            <br>
-            <p>Best Regards,</p>
-            <p>MAIA Admin Team</p>
-        </body>
-    </html>
-    """.format(
-        login_url, temp_password
-    )
-
-    # Turn these into plain/html MIMEText objects
-    part1 = MIMEText(html, "html")
-
-    message.attach(part1)
-
-    port = 587  # For SSL
-    password = os.environ["email_password"]
-
-    # Create a secure SSL context
-    #context = ssl.create_default_context()
-
-    
-    with smtplib.SMTP(os.environ["email_smtp_server"], port) as server:
-        server.ehlo()           # identify ourselves to SMTP server
-        server.starttls()       # encrypt the session
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-
-
-def send_discord_message(username, namespace, url, project_registration=False):
-    """
-    Sends a message to a Discord webhook to request a MAIA account.
+    Sends a message to a webhook to request a MAIA account.
 
     Parameters
     ----------
@@ -387,7 +371,7 @@ def send_discord_message(username, namespace, url, project_registration=False):
     namespace : str
         The project namespace for which the account is being requested.
     url : str
-        The Discord webhook URL to which the message will be sent.
+        The webhook URL to which the message will be sent.
     project_registration : bool, optional
         If True, indicates that a project registration is also being requested (default is False).
 
@@ -403,22 +387,23 @@ def send_discord_message(username, namespace, url, project_registration=False):
     str
         Error message if the HTTP request fails.
     """
-    data = {"content": f"{username} is requesting a MAIA account for the project {namespace}.", "username": "MAIA-Bot"}
+    data = {"text": f"{username} is requesting a MAIA account for the project {namespace}.", "username": "maia-bot"}
 
     data["embeds"] = [{"description": "MAIA User Registration Request", "title": "MAIA Account Request"}]
     if project_registration:
         data["embeds"][0]["description"] = "MAIA Project Registration Request"
         data["embeds"][0]["title"] = "MAIA Project Registration Request"
-        data["content"] = f"{username} is requesting a MAIA account and a new project registration for {namespace}."
+        data["text"] = f"{username} is requesting a MAIA account and a new project registration for {namespace}."
 
+    data["content"] = data["text"]
     result = requests.post(url, json=data)
 
     try:
         result.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        print(err)
+        logger.error(f"Webhook error: {err}")
     else:
-        print("Payload delivered successfully, code {}.".format(result.status_code))
+        logger.info(f"Payload delivered successfully, code {result.status_code}")
 
 
 def get_pending_projects(settings, maia_project_model):
@@ -480,7 +465,7 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -502,65 +487,73 @@ def get_user_table(settings, maia_user_model, maia_project_model):
             secure=settings.MINIO_SECURE,
         )
 
-        minio_envs = [env.object_name[: -len("_env")] for env in list(client.list_objects(settings.BUCKET_NAME))]
+        minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
     except Exception:
-        minio_envs = []
-
+        minio_env_files = []
     for maia_group in maia_groups:
-        if maia_groups[maia_group] == "users":
+        if maia_groups[maia_group] in (
+            getattr(settings, "USERS_GROUP", "users"),
+            getattr(settings, "ADMIN_GROUP", "admin"),
+        ):
             continue
         users = keycloak_admin.get_group_members(group_id=maia_group)
 
         admin_users = []
-        cpu_limit = None
-        memory_limit = None
-        date = None
-        cluster = None
-        gpu = None
-        environment = None
-        conda_envs = []
+        env_files = []
 
         if maia_project_model.objects.filter(namespace=maia_groups[maia_group]).exists():
             project = maia_project_model.objects.filter(namespace=maia_groups[maia_group]).first()
 
-            admin_users = [project.email]
-            cpu_limit = project.cpu_limit
-            memory_limit = project.memory_limit
-            date = project.date
-            cluster = project.cluster
-            gpu = project.gpu
-            environment = project.minimal_env
+            if project.email:
+                admin_users = project.email.split(",") if "," in project.email else [project.email]
+            else:
+                admin_users = []
+            if project.supervisor:
+                for email in project.supervisor.split(","):
+                    if email not in admin_users:
+                        admin_users.append(email)
 
-        if maia_groups[maia_group] in minio_envs:
-            conda_envs.append(maia_groups[maia_group])
-        else:
-            conda_envs.append("N/A")
+        for env_file in minio_env_files:
+            if env_file.startswith(maia_groups[maia_group] + "_env"):
+                env_files.append(env_file)
+        if len(env_files) == 0:
+            env_files.append("N/A")
 
         group_users = []
         for user in users:
-            if user["username"] in admin_users:
+            # admin_users are email addresses (project.email, supervisor); compare with user email
+            if user.get("email") in admin_users:
                 group_users.append(user["email"] + " [Project Admin]")
             else:
                 group_users.append(user["email"])
-
         maia_group_dict[maia_groups[maia_group]] = {
             "users": group_users,
-            "conda": conda_envs,
+            "namespace": project.namespace,
+            "supervisor": project.supervisor,
             "admin_users": admin_users,
-            "cpu_limit": cpu_limit,
-            "memory_limit": memory_limit,
-            "date": date,
-            "cluster": cluster,
-            "gpu": gpu,
-            "environment": environment,
+            "env_file": env_files,
+            "cpu_limit": project.cpu_limit,
+            "email": project.email,
+            "memory_limit": project.memory_limit,
+            "date": project.date,
+            "cluster": project.cluster,
+            "gpu": project.gpu,
+            "project_tier": project.project_tier,
+            "email_to_username_map": project.email_to_username_map,
+            "memory_request": project.memory_request,
+            "cpu_request": project.cpu_request,
+            "auto_deploy": project.auto_deploy,
+            "auto_deploy_apps": project.auto_deploy_apps,
+            "project_configuration": project.project_configuration,
         }
 
     for pending_project in pending_projects:
-        conda_envs = []
-        if pending_project in minio_envs:
-            conda_envs.append(pending_project)
-        else:
-            conda_envs.append("N/A")
+        env_files = []
+        for env_file in minio_env_files:
+            if env_file.startswith(pending_project + "_env"):
+                env_files.append(env_file)
+        if len(env_files) == 0:
+            env_files.append("N/A")
 
         users = []
 
@@ -572,14 +565,25 @@ def get_user_table(settings, maia_user_model, maia_project_model):
         maia_group_dict[pending_project] = {
             "users": users,
             "pending": True,
-            "conda": conda_envs,
-            "admin_users": [],
+            "namespace": pending_project,
+            "env_file": env_files,
+            "email": project.email,
             "cpu_limit": project.cpu_limit,
             "memory_limit": project.memory_limit,
             "date": project.date,
-            "cluster": "N/A",
+            "cluster": project.cluster,
+            "admin_users": [project.supervisor],
             "gpu": project.gpu,
-            "environment": "Minimal",
+            "supervisor": project.supervisor,
+            "description": project.description,
+            "resource_needs": project.resource_needs,
+            "project_tier": project.project_tier,
+            "email_to_username_map": project.email_to_username_map,
+            "memory_request": project.memory_request,
+            "cpu_request": project.cpu_request,
+            "auto_deploy": project.auto_deploy,
+            "auto_deploy_apps": project.auto_deploy_apps,
+            "project_configuration": project.project_configuration,
         }
 
     users_to_register_in_keycloak = []
@@ -612,7 +616,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                     if user.email not in users_to_remove_from_group:
                         users_to_remove_from_group[user.email] = [user_group]
                     else:
-                        users_to_remove_from_group[user.email].append(user_group)
+                        if user_group not in users_to_remove_from_group[user.email]:
+                            users_to_remove_from_group[user.email].append(user_group)
 
     return users_to_register_in_group, users_to_register_in_keycloak, maia_group_dict, users_to_remove_from_group
 
@@ -648,7 +653,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         realm_name=settings.OIDC_REALM_NAME,
         client_id=settings.OIDC_RP_CLIENT_ID,
         client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-        verify=False,
+        verify=getattr(settings, "OIDC_CA_BUNDLE", True),
     )
 
     group_id = namespace
@@ -660,7 +665,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         if maia_groups[maia_group].lower().replace("_", "-") == namespace:
             group_id = maia_groups[maia_group]
 
-    print("Registering Existing Cluster for Group: ", group_id)
+    logger.info(f"Registering Existing Cluster for Group: {group_id}")
 
     if project_model.objects.filter(namespace=group_id).exists():
         project = project_model.objects.filter(namespace=group_id).first()
@@ -671,7 +676,7 @@ def register_cluster_for_project_in_db(project_model, settings, namespace, clust
         project_model.objects.create(namespace=group_id, cluster=cluster, memory_limit="2 Gi", cpu_limit="2")
 
 
-def update_user_table(form, user_model, maia_user_model, project_model):
+def update_user_table(form, user_model, maia_user_model):
     """
     Updates user and project information based on the cleaned data from a form.
 
@@ -683,8 +688,6 @@ def update_user_table(form, user_model, maia_user_model, project_model):
         The user model to query and update user information.
     maia_user_model : Model
         The MAIA user model to query and update namespace information.
-    project_model : Model
-        The project model to query and update project information.
     Notes
     -----
     - The function processes entries in the form's cleaned data to update user namespaces and project details.
@@ -692,13 +695,12 @@ def update_user_table(form, user_model, maia_user_model, project_model):
     - Project details are updated or created in the `project_model` based on the namespace.
     """
 
-    project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "minimal_environment"]
+    # project_entries = ["memory_limit", "cpu_limit", "date", "cluster", "gpu", "project_tier"]
 
-    namespace_list = []
-
+    # namespace_list = []
     for entry in form.cleaned_data:
         if entry.startswith("namespace_"):
-            user = user_model.objects.filter(email=entry.replace("namespace_", "")).first()
+            user = maia_user_model.objects.filter(email=entry.replace("namespace_", "")).first()
             if user:
                 user_id = user.id
                 if maia_user_model.objects.filter(id=user_id).exists():
@@ -712,7 +714,7 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                     maia_user_model.objects.filter(id=user_id).update(namespace=namespace)
                 else:
                     if user_id is not None:
-                        if user_model.objects.filter(id=user_id).exists():
+                        if maia_user_model.objects.filter(id=user_id).exists():
                             namespace = form.cleaned_data[entry]
                             # namespaces = []
                             # for namespace in namespace_list:
@@ -730,35 +732,9 @@ def update_user_table(form, user_model, maia_user_model, project_model):
                             #    else:
                             #        namespaces.append(namespace)
                             maia_user_model.objects.create(id=user_id, namespace=namespace)
-        for project_entry in project_entries:
-            if entry.startswith(project_entry + "_"):
-                namespace = entry[len(project_entry + "_") :]
-                namespace_list.append(namespace)
-
-    for namespace in namespace_list:
-        # namespaced_entries = [entry for entry in form.cleaned_data if entry.endswith(namespace)]
-        if project_model.objects.filter(namespace=namespace).exists():
-            project_model.objects.filter(namespace=namespace).update(
-                memory_limit=form.cleaned_data["memory_limit_" + namespace],
-                cpu_limit=form.cleaned_data["cpu_limit_" + namespace],
-                date=form.cleaned_data["date_" + namespace],
-                cluster=form.cleaned_data["cluster_" + namespace],
-                gpu=form.cleaned_data["gpu_" + namespace],
-                minimal_env=form.cleaned_data["minimal_environment_" + namespace],
-            )
-        else:
-            project_model.objects.create(
-                namespace=namespace,
-                memory_limit=form.cleaned_data["memory_limit_" + namespace],
-                cpu_limit=form.cleaned_data["cpu_limit_" + namespace],
-                date=form.cleaned_data["date_" + namespace],
-                cluster=form.cleaned_data["cluster_" + namespace],
-                gpu=form.cleaned_data["gpu_" + namespace],
-                minimal_env=form.cleaned_data["minimal_environment_" + namespace],
-            )
 
 
-def get_project(group_id, settings, maia_project_model, is_namespace_style=False):
+def get_project(group_id, settings, maia_project_model, is_namespace_style=False, return_only_cluster_id=False):
     """
     Retrieve project details and associated cluster ID based on the group ID.
 
@@ -772,6 +748,8 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
         The Django model representing MAIA projects.
     is_namespace_style : bool, optional
         Flag indicating whether the group ID is in namespace style (default is False).
+    return_only_cluster_id : bool, optional
+        Flag indicating whether to return only the cluster ID (default is False).
 
     Returns
     -------
@@ -783,6 +761,16 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
 
     cluster_id = None
 
+    if return_only_cluster_id:
+        for project in maia_project_model.objects.all():
+            if is_namespace_style:
+                if str(project.namespace).lower().replace("_", "-") == group_id:
+                    return None, project.cluster
+            else:
+                if project.namespace == group_id:
+                    return None, project.cluster
+        return None, None
+
     for project in maia_project_model.objects.all():
         if is_namespace_style:
             if str(project.namespace).lower().replace("_", "-") == group_id:
@@ -793,7 +781,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     realm_name=settings.OIDC_REALM_NAME,
                     client_id=settings.OIDC_RP_CLIENT_ID,
                     client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-                    verify=False,
+                    verify=getattr(settings, "OIDC_CA_BUNDLE", True),
                 )
 
                 keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -817,16 +805,36 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "group_subdomain": group_id.lower().replace("_", "-"),
                     "users": group_users,
                     "resources_limits": {
-                        "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
-                        "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
+                        "memory": [project.memory_request, project.memory_limit],
+                        "cpu": [project.cpu_request, project.cpu_limit],
                     },
-                    "environment": project.minimal_env,
+                    "project_tier": project.project_tier,
+                    "cluster": project.cluster,
+                    "email": project.email,
+                    "date": project.date,
+                    "supervisor": project.supervisor,
+                    "description": project.description,
+                    "resource_needs": project.resource_needs,
+                    "auto_deploy": project.auto_deploy,
+                    "auto_deploy_apps": project.auto_deploy_apps,
+                    "project_configuration": project.project_configuration,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
-                    namespace_form["gpu"] = "1"
+                    namespace_form["gpu_request"] = "1"
+                try:
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
 
-                if project.conda != "N/A" and project.conda is not None:
-                    namespace_form["minio_env_name"] = group_id + "_env"
+                    minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
+                except Exception:
+                    minio_env_files = []
+                for env_file in minio_env_files:
+                    if env_file.startswith(group_id + "_env"):
+                        namespace_form["minio_env_name"] = env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
@@ -841,7 +849,7 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     realm_name=settings.OIDC_REALM_NAME,
                     client_id=settings.OIDC_RP_CLIENT_ID,
                     client_secret_key=settings.OIDC_RP_CLIENT_SECRET,
-                    verify=False,
+                    verify=getattr(settings, "OIDC_CA_BUNDLE", True),
                 )
 
                 keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
@@ -865,16 +873,35 @@ def get_project(group_id, settings, maia_project_model, is_namespace_style=False
                     "group_subdomain": group_id.lower().replace("_", "-"),
                     "users": group_users,
                     "resources_limits": {
-                        "memory": [str(int(int(project.memory_limit[: -len(" Gi")]) / 2)) + " Gi", project.memory_limit],
-                        "cpu": [str(int(int(project.cpu_limit) / 2)), project.cpu_limit],
+                        "memory": [project.memory_request, project.memory_limit],
+                        "cpu": [project.cpu_request, project.cpu_limit],
                     },
-                    "environment": project.minimal_env,
+                    "project_tier": project.project_tier,
+                    "cluster": project.cluster,
+                    "email": project.email,
+                    "date": project.date,
+                    "supervisor": project.supervisor,
+                    "description": project.description,
+                    "resource_needs": project.resource_needs,
+                    "auto_deploy": project.auto_deploy,
+                    "auto_deploy_apps": project.auto_deploy_apps,
+                    "project_configuration": project.project_configuration,
                 }
                 if project.gpu != "N/A" and project.gpu != "NO":
                     namespace_form["gpu_request"] = "1"
-
-                if project.conda != "N/A" and project.conda is not None:
-                    namespace_form["minio_env_name"] = group_id + "_env"
+                try:
+                    client = Minio(
+                        settings.MINIO_URL,
+                        access_key=settings.MINIO_ACCESS_KEY,
+                        secret_key=settings.MINIO_SECRET_KEY,
+                        secure=settings.MINIO_SECURE,
+                    )
+                    minio_env_files = [env.object_name for env in list(client.list_objects(settings.BUCKET_NAME))]
+                except Exception:
+                    minio_env_files = []
+                for env_file in minio_env_files:
+                    if env_file.startswith(group_id + "_env"):
+                        namespace_form["minio_env_name"] = env_file
 
                 cluster_id = project.cluster
                 if cluster_id == "N/A":
@@ -937,7 +964,8 @@ async def get_list_of_deployed_projects():
     kubernetes.client.exceptions.ApiException
         If there is an error communicating with the Kubernetes API.
     """
-
+    if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
+        return [os.environ["PROJECT_NAME"]]
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
     releases = await client.list_releases(namespace="argocd")
@@ -971,13 +999,25 @@ def get_project_argo_status_and_user_table(request, settings, maia_user_model, m
         - project_argo_status (dict): Dictionary containing the Argo CD project status for each project.
     """
     argocd_cluster_id = settings.ARGOCD_CLUSTER
+    in_local_cluster_token = os.environ.get("MAIA_DASHBOARD_OIDC_AUTHENTICATION", False)
+    try:
+        id_token = request.session.get("oidc_id_token")
+        username = request.user.username
+    except Exception as e:
+        id_token = None
+        logger.info(f"Error getting ID token: {e}, using local cluster token instead")
+        username = "in-local-cluster-token"
 
-    id_token = request.session.get("oidc_id_token")
-    kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", argocd_cluster_id, settings=settings)
-    config.load_kube_config_from_dict(kubeconfig_dict)
-    with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
-        yaml.dump(kubeconfig_dict, f)
-        os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-argo"))
+    if argocd_cluster_id is None or argocd_cluster_id == "N/A":
+        ...
+    else:
+        kubeconfig_dict = generate_kubeconfig(
+            id_token, username, "default", argocd_cluster_id, settings=settings, in_local_cluster_token=in_local_cluster_token
+        )
+        config.load_kube_config_from_dict(kubeconfig_dict)
+        with open(Path("/tmp").joinpath("kubeconfig-argo"), "w") as f:
+            yaml.dump(kubeconfig_dict, f)
+            os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-argo"))
 
     to_register_in_groups, to_register_in_keycloak, maia_groups_dict, users_to_remove_from_group = get_user_table(
         settings=settings, maia_user_model=maia_user_model, maia_project_model=maia_project_model
@@ -1060,7 +1100,7 @@ def send_maia_message_email(receiver_emails, subject, message_body):
         return True
 
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logger.error(f"Error sending email: {str(e)}")
         return False
 
 
@@ -1100,7 +1140,7 @@ def generate_encryption_keys(folder_path):
             public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
         )
 
-    print("Keys generated successfully!")
+    logger.info("Keys generated successfully!")
 
 
 def encrypt_string(public_key, string):

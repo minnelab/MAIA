@@ -1,0 +1,89 @@
+{{- if .Values.dashboard.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: kubernetes-dashboard-transport
+  namespace: kube-system
+
+spec:
+  serverName: kubernetes-dashboard
+  insecureSkipVerify: true
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard-ingress
+  namespace: kube-system
+spec:
+  entryPoints:                      
+    - websecure
+  routes:                           
+  - kind: Rule
+    match:   Host(`{{ .Values.dashboard.dashboard_domain }}`) #&& PathPrefix(`/dashboard`)
+    priority: 10                    
+    services:                       
+    - kind: Service
+      name: kubernetes-dashboard
+      namespace: kube-system
+      port: 443                      
+      serversTransport: kubernetes-dashboard-transport
+    middlewares:
+    - name: dashboard-oidc
+    #- name: kubernetes-dashboard-replace-path
+  {{- if .Values.certResolver }}
+  tls:                              
+    certResolver: {{ .Values.certResolver }}
+  {{- end }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: kubernetes-dashboard-replace-path
+  namespace: kube-system
+spec:
+  replacePathRegex:
+    regex: ^/dashboard/(.*)
+    replacement: /$1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dashboard-oidc-secret
+  namespace: kube-system
+type: Opaque
+stringData:
+  pluginSecret: "{{ .Values.dashboard.plugin_secret }}"
+  providerClientSecret: "{{ .Values.dashboard.keycloak_client_secret }}"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-oidc
+  namespace: kube-system
+spec:
+  plugin:
+    traefik-oidc-auth: # same key as in the static configuration
+      Secret: "urn:k8s:secret:dashboard-oidc-secret:pluginSecret"
+      Provider:
+        # You could just write strings here for the values.
+        ClientId: "maia"
+        # Or you can reference a Secret in the same namespace as the Middleware.
+        # This will resolve to the value of the providerClientSecret key
+        # in the secret named oidc-secret.
+        ClientSecret: "urn:k8s:secret:dashboard-oidc-secret:providerClientSecret"
+        InsecureSkipVerify: true
+        Url: "https://iam.{{ .Values.dashboard.domain }}/realms/maia"
+        Scopes:
+          - openid
+          - email
+          - profile
+      Headers:
+      - Name: "Authorization"
+        Value: "{{`Bearer {{ .idToken }}`}}"
+      Authorization:
+          AssertClaims:
+            - Name: groups
+              AnyOf: ["{{ .Values.dashboard.admin_group_ID }}"]
+{{- end }}

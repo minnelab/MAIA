@@ -1,0 +1,30 @@
+#SPDX-License-Identifier: MIT-0
+---
+# NFS Client tasks
+- name: Ensure all pending package configurations are completed
+  ansible.builtin.command: sudo dpkg --configure -a
+  become: true
+
+- name: Install NFS client packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ nfs_client_packages }}"
+
+- name: Create NFS mount point
+  ansible.builtin.file:
+    path: "{{ nfs_mount_path }}"
+    state: directory
+    owner: "{{ nfs_export_owner }}"
+    group: "{{ nfs_export_group }}"
+    mode: "{{ nfs_export_mode }}"
+
+- name: Mount NFS share
+  ansible.builtin.mount:
+    src: "{{ hostvars[groups['nfs_server'][0]]['ansible_default_ipv4']['address'] }}:{{ nfs_export_path }}"
+    path: "{{ nfs_mount_path }}"
+    fstype: nfs
+    opts: "{{ nfs_mount_options }}"
+    state: mounted
+  when: groups['nfs_server'] is defined
+

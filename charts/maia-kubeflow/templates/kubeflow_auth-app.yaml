@@ -1,0 +1,24 @@
+# argo-apps/auth-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ml-auth-networking
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/minnelab/manifests.git'
+    targetRevision: HEAD
+    path: 'layers/02-auth-networking'
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: auth
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

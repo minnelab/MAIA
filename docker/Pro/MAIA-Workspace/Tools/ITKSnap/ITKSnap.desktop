@@ -1,0 +1,20 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=$HOME/Documents/itksnap-4.2.0-20240422-Linux-gcc64/bin/itksnap
+GenericName[en_US]=
+GenericName=
+Icon=/etc/ITKSnap.png
+MimeType=
+Name[en_US]=ITK-Snap
+Name=ITK-Snap
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

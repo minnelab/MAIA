@@ -1,0 +1,89 @@
+#!/bin/bash
+
+CPU_STAT="/sys/fs/cgroup/cpu.stat"
+CPU_MAX="/sys/fs/cgroup/cpu.max"
+MEM_STAT="/sys/fs/cgroup/memory.stat"
+MEM_LIMIT="/sys/fs/cgroup/memory.max"
+
+interval=0.1  # seconds
+
+bar_len=40  # Bar length for both
+
+draw_bar() {
+    local percent=$1
+    local color=$2
+    local filled_len=$((bar_len*percent/100))
+    local empty_len=$((bar_len-filled_len))
+    local bar=$(printf "%0.s█" $(seq 1 $filled_len))
+    local empty=$(printf "%0.s " $(seq 1 $empty_len))
+    local reset="\033[0m"
+    # Output colorized bar (no newline)
+    printf "%b%s%s%b" "$color" "$bar" "$empty" "$reset"
+}
+
+while true; do
+    # --- Memory ---
+    limit=$(cat $MEM_LIMIT)
+    current=$(cat /sys/fs/cgroup/memory.current)
+    used_mb=$((current/1024/1024))
+    total_mb=$((limit/1024/1024))
+    if [ "$limit" -gt 0 ]; then
+        percent=$((used_mb*100/total_mb))
+    else
+        percent=0
+    fi
+
+    # Memory color
+    if [ $percent -lt 50 ]; then
+        mem_color="\033[0;32m"
+    elif [ $percent -lt 80 ]; then
+        mem_color="\033[1;33m"
+    else
+        mem_color="\033[0;31m"
+    fi
+
+    mem_bar=$(draw_bar $percent "$mem_color")
+
+        # --- CPU start ---
+    cpu_start=$(awk '/usage_usec/{print $2}' "$CPU_STAT")
+
+    # --- Wait interval ---
+    sleep $interval
+
+    # --- CPU end ---
+    cpu_end=$(awk '/usage_usec/{print $2}' "$CPU_STAT")
+    delta=$((cpu_end - cpu_start))
+
+    # --- Max CPUs ---
+    read quota period < "$CPU_MAX"
+    if [ "$quota" = "max" ]; then
+        max_cpus=1
+    else
+        max_cpus=$(echo "scale=2; $quota / $period" | bc)
+    fi
+
+    # --- CPU % calculation ---
+    cpu_percent=$(echo "scale=0; ($delta / ($interval * 1000000)) * 100 / $max_cpus" | bc)
+    disp_cpu_percent=$((cpu_percent))
+    [ $disp_cpu_percent -lt 0 ] && disp_cpu_percent=0
+    [ $disp_cpu_percent -gt 100 ] && disp_cpu_percent=100
+
+    if [ $disp_cpu_percent -lt 50 ]; then
+        cpu_color="\033[0;32m"
+    elif [ $disp_cpu_percent -lt 80 ]; then
+        cpu_color="\033[1;33m"
+    else
+        cpu_color="\033[0;31m"
+    fi
+
+    cpu_bar=$(draw_bar $disp_cpu_percent "$cpu_color")
+
+    # Print both bars on one line
+    printf "\r$(date '+%H:%M:%S') | Mem: [%s] %4d MiB / %4d MiB (%3d%%) | CPU: [%s] %3d%% of %s core(s)   " \
+        "$mem_bar" "$used_mb" "$total_mb" "$percent" "$cpu_bar" "$disp_cpu_percent" "$max_cpus"
+
+done
+
+echo
+
+#echo "File cache: $((file_cache/1024/1024)) MiB"

@@ -32,8 +32,12 @@ if [ -n "$CUSTOM_SETUP_LINK" ]; then
     fi
 
     if [ -f "$HOME/setup/setup.sh" ]; then
+      /opt/conda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+      /opt/conda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
       bash "$HOME/setup/setup.sh"
     elif [ -f "$HOME/setup"/*/setup.sh ]; then
+      /opt/conda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+      /opt/conda/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
       bash "$HOME/setup"/*/setup.sh
     fi
 

@@ -1,0 +1,20 @@
+{{- if .Values.loginapp_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-loginapp
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.loginapp_values.chart_name }}
+    repoURL: {{ .Values.loginapp_values.repo_url }}
+    targetRevision: {{ .Values.loginapp_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-loginapp
+      valuesObject:
+      {{ .Values.loginapp_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.loginapp_values.namespace }}
+{{- end }}

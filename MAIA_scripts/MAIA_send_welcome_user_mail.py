@@ -15,6 +15,7 @@ from pathlib import Path
 from textwrap import dedent
 
 import dotenv
+from loguru import logger
 
 import MAIA
 
@@ -25,20 +26,18 @@ TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
 dotenv.load_dotenv()
 
-EPILOG = dedent(
-    """
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --email <recipient_email> --url <maia_platform_url>
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
-        description="Send welcome email to new MAIA users", epilog=EPILOG, formatter_class=RawTextHelpFormatter
+        description="Send welcome email to new MAIA users",
+        epilog=EPILOG,
+        formatter_class=RawTextHelpFormatter,
     )
     parser.add_argument("--email", required=True, help="Recipient email address")
     parser.add_argument("--url", required=True, help="MAIA platform URL")
@@ -102,9 +101,7 @@ def send_welcome_user_email(receiver_email, maia_url):
             <p>The MAIA Admin Team</p>
         </body>
     </html>
-    """.format(  # noqa: E501, B950
-        maia_url, maia_url
-    )
+    """.format(maia_url, maia_url)  # noqa: E501, B950
 
     part1 = MIMEText(html, "html")
     message.attach(part1)
@@ -121,13 +118,12 @@ def send_welcome_user_email(receiver_email, maia_url):
 
 
 def main():
-
     args = get_arg_parser().parse_args()
     try:
         send_welcome_user_email(args.email, args.url)
-        print(f"Welcome email sent successfully to {args.email}")
+        logger.info(f"Welcome email sent successfully to {args.email}")
     except Exception as e:
-        print(f"Error sending welcome email: {str(e)}", file=sys.stderr)
+        logger.error(f"Error sending welcome email: {str(e)}")
         sys.exit(1)
 
 

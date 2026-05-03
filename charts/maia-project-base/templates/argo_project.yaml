@@ -8,7 +8,7 @@ spec:
     - name: admin
       description: Admin privileges 
       policies:
-        - p, {{ .Values.group_ID }}, applications, get, {{ .Release.Name }}/*, allow
+        - p, proj:{{ .Release.Name }}:admin, applications, get, {{ .Release.Name }}/*, allow
       groups:
         - {{ .Values.group_ID}}
   clusterResourceWhitelist:

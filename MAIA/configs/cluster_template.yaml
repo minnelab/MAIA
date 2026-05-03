@@ -1,4 +1,0 @@
-domain: <your_domain>
-ingress_resolver_email: <your_email>
-cluster_name: demo-cluster
-k8s_distribution: microk8s

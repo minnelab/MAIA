@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maia-dashboard.fullname" . }}
+  labels:
+    {{- include "maia-dashboard.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "maia-dashboard.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "maia-dashboard.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml .Values.hostAliases | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "maia-dashboard.fullname" . }}
+        - name: db
+          persistentVolumeClaim:
+            claimName: {{ include "maia-dashboard.fullname" . }}-db
+        {{- if .Values.gpg_key }}
+        - name: gpg-key
+          secret:
+            secretName: {{ include "maia-dashboard.fullname" . }}-gpg-key
+        {{- end }}
+        {{- if .Values.cifs_public_key }}
+        - name: cifs-public-key
+          secret:
+            secretName: cifs-encryption-public-key
+        {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env: {{- toYaml .Values.env | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ .Values.dashboard.local_config_path }}
+            - name: db
+              mountPath: {{ .Values.dashboard.local_db_path }}
+            {{- if .Values.gpg_key }}
+            - name: gpg-key
+              mountPath: /var/keys
+            {{- end }}
+            {{- if .Values.cifs_public_key }}
+            - name: cifs-public-key
+              mountPath: /var/cifs/public-key.pem
+              subPath: public-key.pem
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# Local DB PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "maia-dashboard.fullname" . }}-db
+  labels:
+    {{- include "maia-dashboard.labels" . | nindent 4 }}
+spec:
+  storageClassName: {{ .Values.storageClass }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

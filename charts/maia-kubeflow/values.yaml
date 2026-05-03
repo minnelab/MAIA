@@ -1,0 +1,19 @@
+oidcClientId: kubeflow-oidc-authservice
+oidcClientSecret: pUBnBOY80SnXgjibTYM9ZWNzY2xreNGQok
+domain: kubeflow.maia-cloud.ai
+keycloakIssuerUrl: https://iam.maia-cloud.ai/realms/maia
+keycloakClientId: maia
+keycloakClientSecret: pUBnBOY80SnXgjibTYM9ZWNzY2xreNGQok
+cookieSecret: 7d16fee92f8d11b8940b081b3f8b8acb
+sslInsecureSkipVerify: false
+ingress:
+  enabled: true
+  className: maia-core-traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.tls.certresolver: maiaresolver
+    #cert-manager.io/cluster-issuer: cluster-issuer
+    #nginx.ingress.kubernetes.io/proxy-body-size: 8g
+    #nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+    #nginx.ingress.kubernetes.io/proxy-send-timeout: '300'

@@ -1,0 +1,15 @@
+# Default values for maia-docker-build-project.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+argo_namespace: argocd
+admin_group_ID: "MAIA:admin"
+destination_server: ""
+sourceRepos: []
+namespace: "argocd"
+dockerRegistrySecretName: ""
+dockerRegistryServer: ""
+dockerRegistryUsername: ""
+dockerRegistryPassword: ""
+dockerRegistryEmail: ""

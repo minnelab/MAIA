@@ -1,0 +1,11 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for get_kubeconfig_from_rancher_local
+
+# Path to the configuration folder containing env.json and cluster config YAML
+config_folder: /opt/maia/config
+
+# Name of the kubeconfig file to write into config_folder
+kubeconfig_file: local.yaml
+
+

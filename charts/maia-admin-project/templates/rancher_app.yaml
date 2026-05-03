@@ -1,0 +1,20 @@
+{{- if .Values.rancher_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-rancher
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.rancher_values.chart_name }}
+    repoURL: {{ .Values.rancher_values.repo_url }}
+    targetRevision: {{ .Values.rancher_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-rancher
+      valuesObject:
+      {{ .Values.rancher_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.rancher_values.namespace }}
+{{- end }}

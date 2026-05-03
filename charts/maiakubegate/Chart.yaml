@@ -1,0 +1,9 @@
+apiVersion: v2
+name: mkg
+description: A Helm chart to deploy environments (pods, services, ingresses) and run experiments and applications in MAIA cluster
+
+type: application
+
+version: 1.0.4
+
+appVersion: "1.0.4"

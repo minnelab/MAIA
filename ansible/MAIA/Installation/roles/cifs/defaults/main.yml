@@ -1,0 +1,22 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for cifs
+
+# Path to the volume driver plugin directory
+# For standard Kubernetes: /var/lib/kubelet/volumeplugins/fstab~cifs
+# For MicroK8s: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/fstab~cifs
+volume_driver_path: /var/lib/kubelet/volumeplugins/fstab~cifs
+
+# Name of the private key file in the config folder
+# The full path will be: {{ config_folder }}/{{ cifs_private_key_name }}
+cifs_private_key_name: cifs_key
+
+# URL for the CIFS plugin script
+cifs_script_url: https://raw.githubusercontent.com/minnelab/maia/master/CIFS/cifs
+
+# URL for the decrypt_string.py script
+cifs_decrypt_script_url: https://raw.githubusercontent.com/minnelab/maia/master/CIFS/decrypt_string.py
+
+# Config folder path (required, no default)
+# This should be set when using the role
+# config_folder: /path/to/config

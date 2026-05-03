@@ -1,0 +1,14 @@
+- name: Prepare hosts for Kubernetes installation
+  hosts: all
+  become: true
+
+  roles:
+    - role: maia.installation.nvidia_drivers
+      when: nvidia_drivers | default(true) | bool
+    - role: maia.installation.ufw
+      when: ufw | default(true) | bool
+    - role: maia.installation.nfs
+      when: nfs | default(true) | bool
+    - role: maia.installation.cifs
+      when: 
+        - cifs | default(true) | bool

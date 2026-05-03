@@ -1,0 +1,140 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include k0s external variables (env.json)
+  include_vars:
+    file: "{{ config_folder }}/env.json"
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+  delegate_to: localhost
+  run_once: true
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required packages for k0s
+  apt:
+    name:
+      - curl
+      - sudo
+    state: present
+
+- name: Install k0s binary (if not already installed)
+  ansible.builtin.shell: |
+    curl -sSLf https://get.k0s.sh | sh
+  args:
+    creates: /usr/local/bin/k0s
+
+- name: Install k0s controller in single-node mode (if not already installed)
+  ansible.builtin.command: >
+    k0s install controller --single
+  args:
+    creates: /etc/systemd/system/k0scontroller.service
+
+- name: Ensure k0s controller service is enabled and started
+  ansible.builtin.service:
+    name: k0scontroller
+    state: started
+    enabled: yes
+
+- name: Allow firewall ports for k0s
+  ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+  loop: "{{ k0s_firewall_ports }}"
+
+- name: Wait for k0s API to become available
+  ansible.builtin.shell: |
+    timeout 300 bash -c '
+      until k0s status 2>/dev/null | grep -q "Version"; do
+        sleep 5
+      done
+    '
+  register: k0s_status_wait
+  changed_when: false
+
+- name: Extract cluster domain
+  ansible.builtin.set_fact:
+    cluster_domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Add user to k0s group
+  user:
+    name: "{{ ansible_user }}"
+    groups: k0s
+    append: yes
+    
+- name: Ensure /etc/k0s/k0s.yaml exists (create if missing)
+  ansible.builtin.stat:
+    path: /etc/k0s/k0s.yaml
+  register: k0s_yaml_file
+
+- name: Create default k0s config if missing
+  ansible.builtin.shell: |
+    k0s config create > /etc/k0s/k0s.yaml
+  when: not k0s_yaml_file.stat.exists
+  become: true
+
+- name: Read current k0s configuration
+  ansible.builtin.slurp:
+    src: /etc/k0s/k0s.yaml
+  register: k0s_yaml_encoded
+  become: true
+
+- name: Parse configuration into a dictionary
+  ansible.builtin.set_fact:
+    k0s_config: "{{ (k0s_yaml_encoded['content'] | b64decode) | from_yaml }}"
+
+- name: Check if the SAN is already present
+  ansible.builtin.set_fact:
+    san_needs_adding: "{{ cluster_domain not in (k0s_config.spec.api.sans | default([])) }}"
+
+- name: Update configuration dictionary (in memory)
+  ansible.builtin.set_fact:
+    k0s_config: >-
+      {{
+        k0s_config | combine({
+          'spec': {
+            'api': {
+              'sans': (k0s_config.spec.api.sans | default([])) + [cluster_domain]
+            }
+          }
+        }, recursive=True)
+      }}
+  when: san_needs_adding
+
+- name: Write updated configuration back to k0s.yaml
+  ansible.builtin.copy:
+    content: "{{ k0s_config | to_nice_yaml(indent=2) }}"
+    dest: /etc/k0s/k0s.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  when: san_needs_adding
+
+
+- name: Restart k0s controller service
+  ansible.builtin.service:
+    name: k0scontroller
+    state: restarted
+  become: true
+
+- name: Wait for k0s API to become available
+  ansible.builtin.shell: |
+    timeout 300 bash -c '
+      until k0s status 2>/dev/null | grep -q "Version"; do
+        sleep 5
+      done
+    '
+  register: k0s_status_wait
+  changed_when: false
+
+- name: Run additional k0s connect tasks
+  import_tasks: connect.yml
+

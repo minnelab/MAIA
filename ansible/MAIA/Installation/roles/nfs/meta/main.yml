@@ -1,0 +1,94 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Configure NFS (Network File System) server and client for shared storage in Kubernetes clusters. Automatically configures server or client based on inventory group membership.
+  company: MAIA Project
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  # Choose a valid license ID from https://spdx.org - some suggested licenses:
+  # - BSD-3-Clause (default)
+  # - MIT
+  # - GPL-2.0-or-later
+  # - GPL-3.0-only
+  # - Apache-2.0
+  # - CC-BY-4.0
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.1
+
+  # If this a Container Enabled role, provide the minimum Ansible Container version.
+  # min_ansible_container_version:
+
+  galaxy_tags: [nfs, storage, network, filesystem, kubernetes]
+    # List tags for your role here, one per line. A tag is a keyword that describes
+    # and categorizes the role. Users find roles by searching for tags. Be sure to
+    # remove the '[]' above, if you add tags to this list.
+    #
+    # NOTE: A tag is limited to a single word comprised of alphanumeric characters.
+    #       Maximum 20 tags per role.
+
+dependencies: []
+  # List your role dependencies here, one per line. Be sure to remove the '[]' above,
+  # if you add dependencies to this list.
+
+
+argument_specs:
+  main:
+    description: Configure NFS (Network File System) server and client for shared storage in Kubernetes clusters. Automatically configures server or client based on inventory group membership.
+    short_description: Configure NFS (Network File System) server and client for shared storage in Kubernetes clusters
+    options:
+        nfs_export_path:
+          type: str
+          required: false
+          default: /nfs
+          description: "NFS export path on server (optional)"
+        nfs_mount_path:
+          type: str
+          required: false
+          default: /nfs
+          description: "NFS mount path on client (optional)"
+        nfs_export_options:
+          type: str
+          required: false
+          default: "*(rw,sync,no_subtree_check,no_root_squash)"
+          description: "NFS export options in format 'client_spec(options)' (optional)"
+        nfs_mount_options:
+          type: str
+          required: false
+          default: "rw,sync,vers=4"
+          description: "NFS mount options (optional)"
+        nfs_export_owner:
+          type: str
+          required: false
+          default: nobody
+          description: "Owner of export/mount directories (optional)"
+        nfs_export_group:
+          type: str
+          required: false
+          default: nogroup
+          description: "Group of export/mount directories (optional)"
+        nfs_export_mode:
+          type: str
+          required: false
+          default: '0777'
+          description: "Permissions for export/mount directories in octal format (optional)"
+        nfs_server_packages:
+          type: list
+          required: false
+          default: [nfs-kernel-server, nfs-common, rpcbind]
+          elements: str
+          description: "NFS server packages to install (optional)"
+        nfs_client_packages:
+          type: list
+          required: false
+          default: [nfs-common, rpcbind]
+          elements: str
+          description: "NFS client packages to install (optional)"
+        nfs_port:
+          type: int
+          required: false
+          default: 2049
+          description: "NFS port for firewall rules (optional)"

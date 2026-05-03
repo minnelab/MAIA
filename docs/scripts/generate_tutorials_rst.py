@@ -5,7 +5,7 @@ def find_notebooks(directory):
     notebooks = []
     for root, _, files in os.walk(directory):
         for file in files:
-            if file.endswith(".ipynb") or file.endswith(".md"):
+            if file.endswith(".ipynb") or file.endswith(".md") or file.endswith(".rst"):
                 notebooks.append(os.path.relpath(os.path.join(root, file), directory))
     return notebooks
 

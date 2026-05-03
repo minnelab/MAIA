@@ -1,0 +1,67 @@
+---
+- name: Include k3s external variables (env.json)
+  include_vars:
+    file: "{{ config_folder }}/env.json"
+
+- name: Copy k3s server CA certificate to local file
+  fetch:
+    src: "{{ k3s_data_dir }}/server/tls/server-ca.crt"
+    dest: "{{ config_folder }}/ca.crt"
+    flat: yes
+    mode: '0600'
+
+- name: Copy k3s client admin certificate to local file
+  fetch:
+    src: "{{ k3s_data_dir }}/server/tls/client-admin.crt"
+    dest: "{{ config_folder }}/client-admin.crt"
+    flat: yes
+    mode: '0600'
+
+- name: Copy k3s client admin key to local file
+  fetch:
+    src: "{{ k3s_data_dir }}/server/tls/client-admin.key"
+    dest: "{{ config_folder }}/client-admin.key"
+    flat: yes
+    mode: '0600'
+
+- name: Write k3s kubeconfig to local file (with local cert paths and localhost server)
+  ansible.builtin.copy:
+    content: |
+      apiVersion: v1
+      kind: Config
+      clusters:
+      - cluster:
+          certificate-authority: {{ config_folder }}/ca.crt
+          server: https://127.0.0.1:{{ k3s_port_forward_port }}
+        name: default
+      contexts:
+      - context:
+          cluster: default
+          user: default
+        name: default
+      current-context: default
+      users:
+      - name: default
+        user:
+          client-certificate: {{ config_folder }}/client-admin.crt
+          client-key: {{ config_folder }}/client-admin.key
+    dest: "{{ DEPLOY_KUBECONFIG }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Kill any process currently listening on port forwarding port (if exists)
+  ansible.builtin.shell: |
+    if lsof -i :{{ k3s_port_forward_port }} -t >/dev/null 2>&1; then
+      lsof -i :{{ k3s_port_forward_port }} -t | xargs kill -9
+    fi
+  ignore_errors: true
+  delegate_to: localhost
+  when: k3s_enable_port_forwarding | bool
+
+- name: Start SSH port forward in background (localhost)
+  ansible.builtin.shell: |
+    nohup ssh -L {{ k3s_port_forward_port }}:127.0.0.1:6443 {{ inventory_hostname }} -N -o ExitOnForwardFailure=yes &
+  async: 0
+  poll: 0
+  delegate_to: localhost
+  when: k3s_enable_port_forwarding | bool

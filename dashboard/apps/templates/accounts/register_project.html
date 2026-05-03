@@ -1,0 +1,283 @@
+{% extends 'layouts/base-fullscreen.html' %}
+
+{% block title %} Register Project {% endblock title %}
+
+{% block stylesheets %}
+<style>
+  .auth-hero {
+    background-image: url('{{ ASSETS_ROOT }}/img/MAIA/MAIA_room.png');
+  }
+
+  .auth-card {
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.14);
+    border: none;
+  }
+
+  .auth-card-header {
+    border-radius: 16px 16px 0 0 !important;
+    padding: 24px 28px 16px;
+    background: linear-gradient(310deg, #3a0ca3, #7209b7) !important;
+  }
+  .auth-card-title { font-size: 1.3rem; font-weight: 700; color: #fff; margin: 0; }
+  .auth-card-subtitle { font-size: 0.82rem; color: rgba(255,255,255,.75); margin-top: 3px; }
+
+  /* Field groups */
+  .form-section {
+    border-radius: 10px; background: #f8f9fa;
+    padding: 14px 16px; margin-bottom: 18px;
+  }
+  .form-section-title {
+    font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .08em; color: #8392ab;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .form-section-title i { color: #5e72e4; }
+
+  .form-group-label {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #8392ab; margin-bottom: 5px; display: block;
+  }
+  .auth-field { margin-bottom: 14px; }
+  .auth-field:last-child { margin-bottom: 0; }
+
+  .form-control, .form-select, select {
+    border-radius: 8px !important;
+    border: 1px solid #e9ecef !important;
+    padding: 9px 13px !important;
+    font-size: 0.84rem !important;
+    background-color: #fff !important;
+    transition: border-color .15s, box-shadow .15s !important;
+    width: 100%;
+  }
+  .form-control:focus, .form-select:focus, select:focus {
+    border-color: #5e72e4 !important;
+    box-shadow: 0 0 0 3px rgba(94,114,228,.15) !important;
+    outline: none !important;
+  }
+  textarea.form-control { resize: vertical; min-height: 80px; }
+
+  .auth-btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px 20px; border-radius: 10px;
+    background: linear-gradient(310deg, #3a0ca3, #7209b7);
+    color: #fff; font-weight: 700; font-size: 0.88rem;
+    border: none; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(58,12,163,.4);
+    transition: box-shadow .2s, transform .15s;
+  }
+  .auth-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(58,12,163,.5);
+    color: #fff;
+  }
+
+  .error-text { font-size: 0.78rem; color: #f5365c; margin-top: 4px; display: block; }
+
+  .hint-text { font-size: 0.72rem; color: #8392ab; margin-top: 3px; }
+
+  .success-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(310deg, #2dce89, #2dcecc);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: 0 6px 24px rgba(45,206,137,.35);
+  }
+  .success-icon i { color: #fff; font-size: 1.8rem; }
+
+  .col-half { flex: 0 0 50%; max-width: 50%; }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="container position-sticky z-index-sticky top-1">
+  <div class="row">
+    <div class="col-12">
+      {% include "includes/navigation-fullscreen.html" %}
+    </div>
+  </div>
+</div>
+
+<main class="main-content mt-0">
+  <section class="min-vh-100 mb-8">
+
+    <!-- Hero banner -->
+    <div class="page-header auth-hero align-items-start min-vh-50 pt-5 pb-11 m-3 border-radius-lg">
+      <span class="mask bg-gradient-dark opacity-6"></span>
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-6 text-center mx-auto">
+            <h1 class="text-white mb-2 mt-5">New Project</h1>
+            <p class="text-white mb-0" style="opacity:.75; font-size:.9rem;">
+              Request a new MAIA workspace for your research
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card overlapping hero -->
+    <div class="container">
+      <div class="row mt-lg-n10 mt-md-n11 mt-n10">
+        <div class="col-xl-5 col-lg-7 col-md-9 mx-auto">
+          <div class="card auth-card z-index-0">
+
+            <div class="card-header auth-card-header">
+              <div class="auth-card-title">
+                <i class="fas fa-project-diagram me-2" style="opacity:.85;"></i>Register Project
+              </div>
+              <div class="auth-card-subtitle">Fill in your project details and resource requirements</div>
+            </div>
+
+            <div class="card-body px-4 pt-3 pb-4">
+
+              {% if success %}
+
+              <!-- Success state -->
+              <div class="text-center py-4">
+                <div class="success-icon"><i class="fas fa-check"></i></div>
+                <h6 class="font-weight-bold text-dark mb-1">Project Request Submitted!</h6>
+                <p class="text-sm text-secondary mb-4">
+                  Your project registration has been received. You will be notified once it is reviewed and approved.
+                </p>
+                <a href="{% url 'login' %}" class="auth-btn-primary">
+                  <i class="fas fa-sign-in-alt"></i> Back to Sign In
+                </a>
+              </div>
+
+              {% else %}
+
+              <!-- Error message -->
+              {% if msg %}
+              <div style="background:#fff5f5; border:1px solid #fed7d7; border-radius:10px; padding:10px 14px; margin-bottom:16px; color:#c53030; font-size:.82rem; display:flex; align-items:flex-start; gap:8px;">
+                <i class="fas fa-exclamation-circle" style="margin-top:2px; flex-shrink:0;"></i>
+                <span>{{ msg|safe }}</span>
+              </div>
+              {% endif %}
+
+              <form method="post" action="" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- ── Section 1: Project Identity ── -->
+                <div class="form-section">
+                  <div class="form-section-title">
+                    <i class="fas fa-id-card"></i> Project Identity
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Project Name <span style="color:#f5365c;">*</span></label>
+                    {{ form.namespace }}
+                    <span class="hint-text">Lowercase letters and hyphens only. No spaces, capitals, or underscores.</span>
+                    {% if form.namespace.errors %}<span class="error-text">{{ form.namespace.errors }}</span>{% endif %}
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Contact Email <span style="color:#f5365c;">*</span></label>
+                    {{ form.email }}
+                    <span class="hint-text">If a Principal Investigator is specified below, they become the project admin.</span>
+                    {% if form.email.errors %}<span class="error-text">{{ form.email.errors }}</span>{% endif %}
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Project Description</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}<span class="error-text">{{ form.description.errors }}</span>{% endif %}
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Principal Investigator Email</label>
+                    {{ form.supervisor }}
+                    <span class="hint-text">Optional — for student projects supervised by a PI.</span>
+                    {% if form.supervisor.errors %}<span class="error-text">{{ form.supervisor.errors }}</span>{% endif %}
+                  </div>
+                </div>
+
+                <!-- ── Section 2: Resource Allocation ── -->
+                <div class="form-section">
+                  <div class="form-section-title">
+                    <i class="fas fa-server"></i> Resource Allocation
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">GPU Type <span style="color:#f5365c;">*</span></label>
+                    {{ form.gpu }}
+                    {% if form.gpu.errors %}<span class="error-text">{{ form.gpu.errors }}</span>{% endif %}
+                  </div>
+
+                  <div class="d-flex" style="gap: 12px;">
+                    <div class="auth-field" style="flex:1;">
+                      <label class="form-group-label">CPU Request</label>
+                      {{ form.cpu_limit }}
+                      {% if form.cpu_limit.errors %}<span class="error-text">{{ form.cpu_limit.errors }}</span>{% endif %}
+                    </div>
+                    <div class="auth-field" style="flex:1;">
+                      <label class="form-group-label">Memory Request</label>
+                      {{ form.memory_limit }}
+                      {% if form.memory_limit.errors %}<span class="error-text">{{ form.memory_limit.errors }}</span>{% endif %}
+                    </div>
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Allocation Until <span style="color:#f5365c;">*</span></label>
+                    {{ form.date }}
+                    {% if form.date.errors %}<span class="error-text">{{ form.date.errors }}</span>{% endif %}
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Resource Needs</label>
+                    {{ form.resource_needs }}
+                    <span class="hint-text">Optional — describe expected usage to help us right-size the allocation.</span>
+                    {% if form.resource_needs.errors %}<span class="error-text">{{ form.resource_needs.errors }}</span>{% endif %}
+                  </div>
+                </div>
+
+                <!-- ── Section 3: Optional ── -->
+                {% if minio_available %}
+                <div class="form-section">
+                  <div class="form-section-title">
+                    <i class="fas fa-file-code"></i> Environment (Optional)
+                  </div>
+                  <div class="auth-field">
+                    <label class="form-group-label">Conda / PIP Environment File</label>
+                    {{ form.env_file }}
+                    <br>
+                    <span class="hint-text">Upload a Conda <code>environment.yml</code> or PIP <code>requirements.txt</code> file to pre-configure your workspace (optional).</span>
+                    {% if form.env_file.errors %}<span class="error-text">{{ form.env_file.errors }}</span>{% endif %}
+                  </div>
+                </div>
+                {% endif %}
+
+                {% if form.jupyterhub.errors %}
+                <span class="error-text">{{ form.jupyterhub.errors }}</span>
+                {% endif %}
+
+                <button type="submit" name="register" class="auth-btn-primary mt-2">
+                  <i class="fas fa-paper-plane"></i> Submit Project Request
+                </button>
+
+              </form>
+
+              <div class="text-center mt-3">
+                <span class="text-xs text-secondary">Already have an account?</span>
+                <a href="{% url 'login' %}" class="text-xs font-weight-bold ms-1" style="color:#2152ff;">Sign In</a>
+                <span class="text-xs text-secondary ms-2">&middot;</span>
+                <a href="{% url 'register' %}" class="text-xs font-weight-bold ms-1" style="color:#5e72e4;">Join Existing Project</a>
+              </div>
+
+              {% endif %}
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% include "includes/footer-fullscreen.html" %}
+
+  </section>
+</main>
+
+{% endblock content %}
+
+{% block javascripts %}{% endblock javascripts %}

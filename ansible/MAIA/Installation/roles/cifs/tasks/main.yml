@@ -1,0 +1,52 @@
+--- 
+- name: Install cifs-utils
+  apt:
+    name: cifs-utils
+    state: present
+    update_cache: yes
+
+- name: Install python-is-python3
+  apt:
+    name: python-is-python3
+    state: present
+    update_cache: yes
+
+- name: Ensure directory for CIFS plugin exists
+  file:
+    path: "{{ volume_driver_path }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Download cifs script
+  get_url:
+    url: "{{ cifs_script_url }}"
+    dest: "{{ volume_driver_path }}/cifs"
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Download decrypt_string.py script
+  get_url:
+    url: "{{ cifs_decrypt_script_url }}"
+    dest: "{{ volume_driver_path }}/decrypt_string.py"
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Copy Private Key
+  copy:
+    src: "{{ config_folder }}/{{ cifs_private_key_name }}"
+    dest: "{{ volume_driver_path }}/private_key.pem"
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Run cifs init script
+  command: "{{ volume_driver_path }}/cifs init"
+  register: cifs_init_output
+
+- name: Output cifs init script stdout
+  debug:
+    msg: "{{ cifs_init_output.stdout }}"

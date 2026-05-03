@@ -1,0 +1,20 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=$HOME/Documents/MITK-v2024.12-linux-x86_64/MitkWorkbench.sh
+GenericName[en_US]=
+GenericName=
+Icon=/etc/MITK.png
+MimeType=
+Name[en_US]=MITK
+Name=MITK
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

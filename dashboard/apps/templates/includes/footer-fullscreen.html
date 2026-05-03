@@ -1,0 +1,292 @@
+<footer class="footer py-5">
+  <div class="container-fluid">
+    <div class="row align-items-center justify-content-lg-between">
+
+      <!-- Left: brand + copyright -->
+      <div class="col-lg-5 mb-lg-0 mb-3">
+        <div class="d-flex align-items-center" style="gap: 10px;">
+          <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(310deg,#2152ff,#21d4fd);
+                      display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <img src="{{ ASSETS_ROOT }}/img/MAIA/MAIA_Logo.png" alt="MAIA Logo" style="height:30px;max-width:120px;">
+          </div>
+          <div>
+            <div style="font-size:.8rem; font-weight:700; color:#344767; line-height:1.2;">MAIA Dashboard</div>
+            <div style="font-size:.72rem; color:#8392ab;">
+              &copy; {% now "Y" %} MAIA &mdash; KTH Royal Institute of Technology, MinneLab
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: links -->
+      <div class="col-lg-7 d-flex justify-content-center">
+        <ul class="nav nav-footer justify-content-center flex-wrap" style="gap: 4px;">
+          <li class="nav-item">
+            <a href="/maia/info" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-info-circle me-1" style="opacity:.6;"></i>About MAIA
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/maia/spotlight" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-lightbulb me-1" style="opacity:.6;"></i>Spotlights
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="https://www.nature.com/articles/s44387-025-00042-6" target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-newspaper me-1" style="opacity:.6;"></i>NPJ AI Article
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="https://github.com/minnelab/maia" target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fab fa-github me-1" style="opacity:.6;"></i>GitHub
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="https://maia-toolkit.readthedocs.io" target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fas fa-book me-1" style="opacity:.6;"></i>Documentation
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href={{"SUPPORT_URL"|env}} target="_blank" class="nav-link text-muted text-sm px-2">
+              <i class="fa-brands fa-discord me-1" style="opacity:.6;"></i>Support Channel
+            </a>
+          </li>
+          <li class="nav-item">
+            <span class="text-muted text-sm px-2">Dashboard Version: {{dashboard_version}} (MAIA Version: {{MAIA_VERSION}})</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+<!-- 🧠 Chatbot Floating Widget -->
+<style>
+  /* Button styling */
+  #chatbot-button {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background-color: #2563eb;
+    color: white;
+    border-radius: 50%;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  #chatbot-button:hover {
+    background-color: #1d4ed8;
+    transform: scale(1.05);
+  }
+
+  /* Popup container */
+  #chatbot-popup {
+    position: fixed;
+    bottom: 100px;
+    right: 24px;
+    width: 340px;
+    height: 440px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    z-index: 999;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(30px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+
+  /* Popup visible state */
+  #chatbot-popup.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+
+  /* Header */
+  #chatbot-header {
+    background: #2563eb;
+    color: white;
+    padding: 10px 14px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Message area */
+  #chatbot-messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 14px;
+    background: #f9fafb;
+  }
+
+  .chat-message {
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .chat-message.user {
+    text-align: right;
+  }
+
+  .chat-message.ai {
+    text-align: left;
+  }
+
+  /* Input area */
+  #chatbot-input-container {
+    display: flex;
+    border-top: 1px solid #ddd;
+    background: #fff;
+  }
+
+  #chatbot-input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+  }
+
+  #chatbot-send {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s ease;
+  }
+
+  #chatbot-send:hover {
+    background: #1d4ed8;
+  }
+    /* Typing animation dots */
+    .typing {
+    display: inline-block;
+    width: 1em;
+  }
+
+  .typing::after {
+    content: '';
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0% { content: ''; }
+    33% { content: '.'; }
+    66% { content: '..'; }
+    100% { content: '...'; }
+  }
+</style>
+{% if 'OPENWEBAI_API_KEY'|global_env and 'OPENWEBAI_URL'|global_env and 'OPENWEBAI_MODEL'|global_env %}
+<!-- Chat bubble button -->
+<div id="chatbot-button">💬</div>
+
+<!-- Popup container -->
+<div id="chatbot-popup">
+  <div id="chatbot-header">
+    MAIA Assistant
+  </div>
+
+  <div id="chatbot-messages"></div>
+
+  <div id="chatbot-input-container">
+    <input id="chatbot-input" type="text" placeholder="Type a message..." />
+    <button id="chatbot-send">Send</button>
+  </div>
+</div>
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  
+  const chatbotButton = document.getElementById("chatbot-button");
+  const chatbotPopup = document.getElementById("chatbot-popup");
+  const sendBtn = document.getElementById("chatbot-send");
+  const input = document.getElementById("chatbot-input");
+  const messages = document.getElementById("chatbot-messages");
+
+  // Toggle open/close
+  chatbotButton.onclick = () => {
+    const isOpen = chatbotPopup.classList.toggle("open");
+
+    // Show welcome message on first open only
+    if (isOpen && !sessionStorage.getItem("chatbotWelcomed")) {
+      messages.innerHTML += `<div class="chat-message ai"><b>MAIA:</b> 👋 Hi! I’m MAIA Assistant. How can I help you today?</div>`;
+      messages.scrollTop = messages.scrollHeight;
+      sessionStorage.setItem("chatbotWelcomed", "true");
+    }
+  };
+
+  async function sendMessage() {
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = "";
+
+    messages.innerHTML += `<div class="chat-message user"><b>You:</b> ${msg}</div>`;
+    messages.scrollTop = messages.scrollHeight;
+
+    // Add typing animation
+    const typingId = `typing-${Date.now()}`;
+    const typingEl = document.createElement("div");
+    typingEl.id = typingId;
+    typingEl.className = "chat-message ai";
+    typingEl.innerHTML = `<b>MAIA:</b> <span class="typing">...</span>`;
+    messages.appendChild(typingEl);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      const history = Array.from(messages.querySelectorAll(".chat-message")).map(el => {
+        const isUser = el.classList.contains("user");
+        const isAI = el.classList.contains("ai");
+        let role = isUser ? "user" : (isAI ? "assistant" : "unknown");
+        // Extract message content (strip "You:" / "MAIA:" prefixes)
+        let content = el.innerText.trim();
+        content = content.replace(/^You:\s*/i, "").replace(/^MAIA:\s*/i, "");
+        return { role, content };
+      });
+ 
+ 
+      const res = await fetch("/maia/agent/chat/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg, history: history })
+      });
+
+      const data = await res.json();
+
+      // Replace typing animation with actual reply
+      if (data.response) {
+        typingEl.innerHTML = `<b>MAIA:</b><br><span>${marked.parse(data.response)}</span>`;
+      } else {
+        typingEl.innerHTML = `<b>MAIA:</b> Error: ${data.error}`;
+      }
+
+      messages.scrollTop = messages.scrollHeight;
+
+    } catch (err) {
+      typingEl.innerHTML = `<b>MAIA:</b> Error: ${err.message}`;
+    }
+  }
+
+  sendBtn.onclick = sendMessage;
+  input.addEventListener("keypress", e => {
+    if (e.key === "Enter") sendMessage();
+  });
+</script>
+  </footer>
+  

@@ -1,0 +1,28 @@
+{{- if .Values.minio.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+  {{- if .Values.minio.ingress.annotations }}
+    {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
+  {{- end }}
+  name: minio
+spec:
+  rules:
+    - host: {{ .Values.minio.ingress.host }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ .Values.minio.ingress.serviceName }}
+                port:
+                  number: 80
+            path: /{{ .Values.minio.ingress.path }}
+            pathType: Prefix
+  tls:
+    - hosts:
+        - {{ .Values.minio.ingress.host }}
+      {{- if .Values.minio.ingress.tlsSecretName }}
+      secretName: {{ .Values.minio.ingress.tlsSecretName }}
+      {{- end }}
+{{- end }}

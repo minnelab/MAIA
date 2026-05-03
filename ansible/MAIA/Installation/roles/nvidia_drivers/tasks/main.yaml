@@ -1,0 +1,16 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install NVIDIA driver
+  ansible.builtin.apt:
+    name: "{{ nvidia_driver_package }}"
+    state: present
+
+- name: Reboot to activate driver (optional)
+  ansible.builtin.reboot:
+    msg: "Rebooting to load NVIDIA driver"
+    reboot_timeout: "{{ nvidia_driver_reboot_timeout }}"
+  when: nvidia_driver_reboot | bool
+

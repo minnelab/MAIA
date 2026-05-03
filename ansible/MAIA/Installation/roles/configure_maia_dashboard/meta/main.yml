@@ -1,0 +1,32 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Configure the MAIA Dashboard by running the Admin Toolkit installer and synchronizing the dashboard ArgoCD application.
+  company: MAIA Project
+
+  license: GPL-3.0-only
+  min_ansible_version: 2.1
+
+  galaxy_tags: [maia, kubernetes, dashboard, argocd, admin]
+
+dependencies: []
+
+argument_specs:
+  main:
+    description: Configure the MAIA Dashboard by running the Admin Toolkit installer and synchronizing the dashboard ArgoCD application.
+    short_description: Configure the MAIA Dashboard
+    options:
+      config_folder:
+        type: str
+        required: true
+        description: "Path to the configuration folder containing env.json and the cluster config YAML (e.g. /opt/maia/config)."
+      auto_sync:
+        type: bool
+        required: false
+        default: true
+        description: "Enable ArgoCD application synchronization and deployment restart."
+      argocd_port:
+        type: int
+        required: false
+        default: 8080
+        description: "ArgoCD port for CLI login."

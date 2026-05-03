@@ -11,4 +11,3 @@ image:
 apiUrl: "https://maia.se/maia-api/gpu-schedulability/"
 apiToken: "S#perS3crEt_007"
 gpuStatsUrl: "https://maia.se/maia/resources/gpu_status_summary/"
-namespace: gpu-booking

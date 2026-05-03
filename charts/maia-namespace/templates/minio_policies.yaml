@@ -1,0 +1,53 @@
+{{- if .Values.minio.enabled }}
+{{- if .Values.minio.inject_policies }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.minio.namespace }}-policy-setup
+  namespace: {{ .Values.minio.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded, BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        env:
+        - name: MINIO_ROOT_USER
+          value: {{ .Values.minio.accessKey }}
+        - name: MINIO_ROOT_PASSWORD
+          value: {{ .Values.minio.secretKey }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Configure alias to the MinIO Service
+          # Service name is usually just the tenant name
+          echo "Setting alias to the MinIO Service";
+          # Try until mc alias set works. Sleep 10 seconds between retries.
+          until mc alias set myminio http://minio.{{ .Values.minio.namespace }}.svc.cluster.local:80 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+            echo "Failed to set MinIO alias, retrying in 10 seconds...";
+            sleep 10;
+          done
+          
+          # Create the policy file
+          echo '{
+            "Version": "2012-10-17",
+            "Statement": [
+              {"Effect": "Allow", "Action": ["admin:*"]},
+              {"Effect": "Allow", "Action": ["kms:*"]},
+              {"Effect": "Allow", "Action": ["s3:*"], "Resource": ["arn:aws:s3:::*"]}
+            ]
+          }' > /tmp/{{ .Values.minio.namespace }}-policy.json;
+          
+          # Apply the policy
+          mc admin policy create myminio MAIA:{{ .Values.minio.namespace }} /tmp/{{ .Values.minio.namespace }}-policy.json;
+          mc admin policy create myminio {{ .Values.minio.admin_group_ID }} /tmp/{{ .Values.minio.namespace }}-policy.json;
+          
+          echo "Setup complete.";
+      restartPolicy: OnFailure
+{{- end }}
+{{- end }}

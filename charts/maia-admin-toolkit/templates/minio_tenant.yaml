@@ -1,0 +1,118 @@
+{{- if .Values.minio.enabled }}
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: admin-minio-tenant
+  namespace: {{ .Values.minio.namespace }}
+spec:
+  initContainers:
+    - name: wait-for-keycloak
+      image: curlimages/curl:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Keycloak OIDC endpoint to become ready..."
+          while ! curl -k -sSf {{ .Values.minio.openIdConfigUrl }} > /dev/null; do
+            sleep 5
+          done
+          echo "Keycloak is up! Starting MinIO..."
+  buckets:
+    - name: maia-envs
+  requestAutoCert: false
+  {{- if .Values.minio.externalCA }}
+  externalCaCertSecret:
+    - name: {{ .Values.minio.externalCA.name }}
+      type: Opaque
+  {{- end }}
+  exposeServices:
+    console: false
+    minio: false
+  features:
+    domains:
+      console: https://{{ .Values.minio.consoleDomain }}
+  configuration:
+    name: admin-minio-storage-configuration
+  users:
+    - name: admin-minio-credentials
+  image: {{ .Values.minio.image }}
+  pools:
+    - servers: 1
+      name: pool-0
+      volumesPerServer: 1
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: {{ .Values.minio.storageClassName }}
+          resources:
+            requests:
+              storage: {{ .Values.minio.storageSize }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-console-ingress
+  namespace: {{ .Values.minio.namespace }}
+  annotations:
+    {{- if .Values.minio.ingress.annotations }}
+    {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  rules:
+    - host: {{ .Values.minio.consoleDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-minio-tenant-console
+                port:
+                  number: 9090
+  tls:
+    - hosts:
+        - {{ .Values.minio.consoleDomain }}
+      {{- if .Values.minio.ingress.tlsSecretName }}
+      secretName: {{ .Values.minio.ingress.tlsSecretName }}
+      {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-api-ingress
+  namespace: {{ .Values.minio.namespace }}
+  annotations:
+    {{- if .Values.minio.ingress.annotations }}
+    {{- toYaml .Values.minio.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.minio.apiDomain }}
+      {{- if .Values.minio.ingress.tlsSecretNameApi }}
+      secretName: {{ .Values.minio.ingress.tlsSecretNameApi }}
+      {{- end }}
+  rules:
+    - host: {{ .Values.minio.apiDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 80
+{{- if .Values.minio.externalCA }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.minio.externalCA.name }}
+  namespace: {{ .Values.minio.namespace }}
+type: Opaque
+data:
+  ca.crt: {{ .Values.minio.externalCA.cert | b64enc }}
+{{- end }}
+{{- end }}

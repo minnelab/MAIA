@@ -1,0 +1,101 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-minio
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+              - 127.0.0.1/16
+          {{- range .Values.podCIDR }}
+              - {{ . }}
+          {{- end }}
+  selector:
+    matchLabels:
+      v1.min.io/console: {{ .Values.namespace }}-console
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-mlflow
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+  selector:
+    matchLabels:
+      app: {{ .Values.namespace }}-mlflow
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-orthanc
+  namespace:  {{.Values.namespace}}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+      to:
+        - operation:
+            ports: ["80"]
+    - from:
+        - source:
+            remoteIpBlocks:
+              - 0.0.0.0/0
+      to:
+        - operation:
+            ports: ["4242"]
+  selector:
+    matchLabels:
+      app-name:  {{.Values.namespace}}-orthanc
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-filebrowser
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["80"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: maia-filebrowser 
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-nvflare-dashboard
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["80"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name : maia-nvflare-dashboard     

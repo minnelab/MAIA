@@ -1,0 +1,11 @@
+{{- if .Values.mlflow.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.namespace }}
+  namespace: {{ .Values.namespace }}
+data:
+  password: {{ .Values.mlflow.password }}
+  user: {{ .Values.mlflow.user }}
+type: Opaque
+{{- end }}

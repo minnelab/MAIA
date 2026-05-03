@@ -1,0 +1,98 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Include environment variables
+  ansible.builtin.include_vars:
+    file: "{{ config_folder }}/env.json"
+  when: config_folder is defined
+
+- name: Read cluster config YAML file
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/{{ cluster_name }}.yaml"
+  register: cluster_config_content
+  delegate_to: localhost
+  run_once: true
+
+- name: Extract cluster domain
+  ansible.builtin.set_fact:
+    cluster_domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Check if externalCA.cert key exists in cluster config
+  set_fact:
+    external_ca_cert: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA.cert }}"
+  when: "{{ (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0 }}"
+
+- name: Register externalCA.cert as oidc_ca_file if present
+  set_fact:
+    oidc_ca_file: "{{ external_ca_cert }}"
+  when: external_ca_cert is defined
+  
+- name: Share cluster domain with target hosts
+  ansible.builtin.set_fact:
+    cluster_domain_fact: "{{ cluster_domain }}"
+  delegate_facts: true
+
+- name: Ensure k0s is installed
+  become: true
+  ansible.builtin.command: k0s status
+  register: k0s_status_raw
+  failed_when: k0s_status_raw.rc != 0
+  changed_when: false
+
+- name: Parse k0s configuration YAML into dictionary
+  ansible.builtin.set_fact:
+    k0s_config: "{{ lookup('file', k0s_etc_dir + '/k0s.yaml') | from_yaml }}"
+
+- name: Set OIDC issuer URL
+  ansible.builtin.set_fact:
+    oidc_issuer_url: "https://{{ oidc_subdomain }}.{{ cluster_domain }}/realms/{{ oidc_realm }}"
+
+- name: Update k0s.yaml with OIDC settings
+  ansible.builtin.set_fact:
+    k0s_config: >-
+      {{
+        k0s_config | combine({
+          'spec': {
+            'api': {
+              'extraArgs': {
+                'oidc-issuer-url': oidc_issuer_url,
+                'oidc-client-id': oidc_client_id ,
+                'oidc-username-claim': oidc_username_claim ,
+                'oidc-groups-claim': oidc_groups_claim ,
+                'oidc-ca-file': oidc_ca_file
+              }
+            }
+          }
+        }, recursive=True)
+      }}
+
+- name: Write back updated k0s.yaml
+  become: true
+  ansible.builtin.copy:
+    content: "{{ k0s_config | to_nice_yaml(indent=2) }}"
+    dest: "{{ k0s_etc_dir }}/k0s.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Restart k0s controller service
+  become: true
+  ansible.builtin.service:
+    name: k0scontroller
+    state: restarted
+
+- name: Wait until k0s is fully operational
+  become: true
+  ansible.builtin.shell: |
+    k0s status
+  register: k0s_status_result
+  retries: "{{ oidc_k0s_retries }}"
+  delay: "{{ oidc_k0s_retry_delay }}"
+  until: k0s_status_result.rc == 0
+
+- name: Terminate playbook if k0s is not operational
+  ansible.builtin.fail:
+    msg: "k0s did not become operational in the expected time."
+  when: k0s_status_result is failed
+

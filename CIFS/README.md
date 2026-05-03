@@ -11,8 +11,8 @@ sudo apt-get install cifs-utils
 VOLUME_PLUGIN_DIR="/var/lib/kubelet/volumeplugins"
 mkdir -p "$VOLUME_PLUGIN_DIR/fstab~cifs"
 cd "$VOLUME_PLUGIN_DIR/fstab~cifs"
-curl -L -O https://raw.githubusercontent.com/kthcloud/maia/master/CIFS/cifs
-curl -L -O https://raw.githubusercontent.com/kthcloud/maia/master/CIFS/decrypt_string.py
+curl -L -O https://raw.githubusercontent.com/minnelab/maia/master/CIFS/cifs
+curl -L -O https://raw.githubusercontent.com/minnelab/maia/master/CIFS/decrypt_string.py
 chmod 755 cifs
 chmod 700 decrypt_string.py
 ```
