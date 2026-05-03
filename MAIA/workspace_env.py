@@ -38,9 +38,9 @@ def _read_namespace_file(path: str = NAMESPACE_FILE) -> Optional[str]:
 def _lookup_ssh_service(core_v1, namespace: str, jupyterhub_user: str):
     """Find the Service exposing this user's SSH port.
 
-    Returns ``(ssh_port, ssh_hostname)`` or ``(None, None)``. Service is matched
-    by name prefix (``jupyter-<user>`` with optional ``-ssh`` suffix to match
-    both the legacy and current naming used by ``maia-namespace-base``).
+    Returns ``(ssh_port, ssh_hostname)`` or ``(None, None)``. Service name must
+    exactly match either ``jupyter-<user>-ssh`` or ``jupyter-<user>`` to support
+    both the current and legacy naming used by ``maia-namespace-base``.
     """
     try:
         services = core_v1.list_namespaced_service(namespace).items
