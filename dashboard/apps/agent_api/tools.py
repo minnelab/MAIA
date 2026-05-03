@@ -59,6 +59,10 @@ USER_TOOL_DEFINITIONS = [
                 "email": {"type": "string", "description": "Primary PI / owner email address"},
                 "supervisor": {"type": "string", "description": "Supervisor email address (for student projects)"},
                 "description": {"type": "string", "description": "Human-readable project description"},
+                "resource_needs": {
+                    "type": "string",
+                    "description": "Free-text description of expected resource usage (GPU-hours, dataset size, training duration)",
+                },
             },
             "required": ["namespace", "gpu", "date", "memory_limit", "cpu_limit", "email"],
         },
@@ -198,6 +202,10 @@ TOOL_DEFINITIONS = [
                     "type": "string",
                     "description": "Human-readable project description",
                 },
+                "resource_needs": {
+                    "type": "string",
+                    "description": "Free-text description of expected resource usage (GPU-hours, dataset size, training duration)",
+                },
                 "memory_request": {
                     "type": "string",
                     "description": "Memory request (e.g. '8Gi', '16Gi'). Default: '2Gi'",
@@ -317,6 +325,7 @@ def execute_tool(name: str, arguments: dict) -> str:
                     "email",
                     "description",
                     "supervisor",
+                    "resource_needs",
                 )
             )
             return json.dumps(
@@ -343,6 +352,7 @@ def execute_tool(name: str, arguments: dict) -> str:
                 email_list=arguments.get("email_list", []),
                 description=arguments.get("description"),
                 supervisor=arguments.get("supervisor"),
+                resource_needs=arguments.get("resource_needs"),
             )
             return json.dumps(result)
 

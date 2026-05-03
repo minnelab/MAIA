@@ -707,6 +707,7 @@ class _MAIAProjectMeta:
             "date",
             "supervisor",
             "description",
+            "resource_needs",
             "auto_deploy",
             "auto_deploy_apps",
             "project_configuration",
@@ -891,6 +892,7 @@ class MAIAProject:
         date=None,
         supervisor=None,
         description=None,
+        resource_needs=None,
         auto_deploy=False,
         auto_deploy_apps=None,
         project_configuration=None,
@@ -915,6 +917,7 @@ class MAIAProject:
         self.date = date
         self.supervisor = supervisor
         self.description = description
+        self.resource_needs = resource_needs
         self.auto_deploy = auto_deploy
         self.auto_deploy_apps = auto_deploy_apps or []
         self.project_configuration = project_configuration or {}
@@ -939,6 +942,7 @@ class MAIAProject:
             "date": self._normalize_date_for_mongo(self.date),
             "supervisor": self.supervisor,
             "description": self.description,
+            "resource_needs": self.resource_needs,
             "auto_deploy": self.auto_deploy,
             "auto_deploy_apps": self.auto_deploy_apps,
             "project_configuration": self.project_configuration,
@@ -978,6 +982,7 @@ class MAIAProject:
             date=doc_date,
             supervisor=d.pop("supervisor", None),
             description=d.pop("description", None),
+            resource_needs=d.pop("resource_needs", None),
             auto_deploy=d.pop("auto_deploy", True),
             auto_deploy_apps=d.pop("auto_deploy_apps", []),
             project_configuration=d.pop("project_configuration", {}),
@@ -1095,6 +1100,7 @@ class MAIAProject:
             "date": self.date,
             "supervisor": self.supervisor,
             "description": self.description,
+            "resource_needs": self.resource_needs,
             "auto_deploy": self.auto_deploy,
             "auto_deploy_apps": self.auto_deploy_apps,
             "project_configuration": self.project_configuration,
