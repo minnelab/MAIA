@@ -113,17 +113,19 @@ def index_view(request):
     # Per-cluster and global health stats for the dashboard
     cluster_stats = {}
     for cluster_name, nodes in cluster_dict.items():
-        cs = {"total": len(nodes), "ready": 0, "maintenance": 0, "not_ready": 0}
-        for node in nodes:
-            node_status = status.get(node, [])
-            is_ready = len(node_status) > 0 and str(node_status[0]) == "True"
-            in_maintenance = len(node_status) > 1 and bool(node_status[1])
-            if is_ready and in_maintenance:
-                cs["maintenance"] += 1
-            elif is_ready:
-                cs["ready"] += 1
-            else:
-                cs["not_ready"] += 1
+        is_offline = nodes == ["Cluster API Not Reachable"]
+        cs = {"total": 0 if is_offline else len(nodes), "ready": 0, "maintenance": 0, "not_ready": 0, "offline": is_offline}
+        if not is_offline:
+            for node in nodes:
+                node_status = status.get(node, [])
+                is_ready = len(node_status) > 0 and str(node_status[0]) == "True"
+                in_maintenance = len(node_status) > 1 and bool(node_status[1])
+                if is_ready and in_maintenance:
+                    cs["maintenance"] += 1
+                elif is_ready:
+                    cs["ready"] += 1
+                else:
+                    cs["not_ready"] += 1
         cs["health_pct"] = round(100 * cs["ready"] / cs["total"]) if cs["total"] > 0 else 0
         cluster_stats[cluster_name] = cs
     global_stats = {
@@ -132,6 +134,7 @@ def index_view(request):
         "ready": sum(s["ready"] for s in cluster_stats.values()),
         "maintenance": sum(s["maintenance"] for s in cluster_stats.values()),
         "not_ready": sum(s["not_ready"] for s in cluster_stats.values()),
+        "offline": sum(1 for s in cluster_stats.values() if s.get("offline", False)),
     }
 
     context = {

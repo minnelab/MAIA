@@ -193,7 +193,13 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
                     cluster_dict[cluster] = ["Cluster API Not Reachable"]
                     node_status_dict["Cluster API Not Reachable"] = ["API"]
                     continue
-        nodes = json.loads(response.text)
+        try:
+            nodes = json.loads(response.text)
+        except Exception:
+            cluster = cluster_names[api_url]
+            cluster_dict[cluster] = ["Cluster API Not Reachable"]
+            node_status_dict["Cluster API Not Reachable"] = ["API"]
+            continue
 
         if "items" not in nodes:
             cluster = cluster_names[api_url]
