@@ -14,6 +14,8 @@ from kubernetes.client.rest import ApiException
 from loguru import logger
 import urllib3
 
+CLUSTER_OFFLINE_MARKER = "Cluster API Not Reachable"
+
 
 def get_minio_shareable_link(object_name, bucket_name, settings):
     try:
@@ -174,14 +176,14 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
             except Exception:
 
                 cluster = cluster_names[api_url]
-                cluster_dict[cluster] = ["Cluster API Not Reachable"]
-                node_status_dict["Cluster API Not Reachable"] = ["API"]
+                cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+                node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                 continue
         else:
             if api_url.endswith("None"):
                 cluster = cluster_names[api_url]
-                cluster_dict[cluster] = ["Cluster API Not Reachable"]
-                node_status_dict["Cluster API Not Reachable"] = ["API"]
+                cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+                node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                 continue
             else:
                 try:
@@ -190,21 +192,21 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
                     )
                 except Exception:
                     cluster = cluster_names[api_url]
-                    cluster_dict[cluster] = ["Cluster API Not Reachable"]
-                    node_status_dict["Cluster API Not Reachable"] = ["API"]
+                    cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+                    node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                     continue
         try:
             nodes = json.loads(response.text)
-        except Exception:
+        except json.JSONDecodeError:
             cluster = cluster_names[api_url]
-            cluster_dict[cluster] = ["Cluster API Not Reachable"]
-            node_status_dict["Cluster API Not Reachable"] = ["API"]
+            cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+            node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
             continue
 
         if "items" not in nodes:
             cluster = cluster_names[api_url]
-            cluster_dict[cluster] = ["Cluster API Not Reachable"]
-            node_status_dict["Cluster API Not Reachable"] = ["API"]
+            cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+            node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
             continue
         for node in nodes["items"]:
             node_name = node["metadata"]["name"]

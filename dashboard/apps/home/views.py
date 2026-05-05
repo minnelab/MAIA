@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.conf import settings
 from django.shortcuts import redirect
 from django.template.defaultfilters import register
-from MAIA.kubernetes_utils import get_namespaces, get_cluster_status
+from MAIA.kubernetes_utils import get_namespaces, get_cluster_status, CLUSTER_OFFLINE_MARKER
 from MAIA.keycloak_utils import get_groups_in_keycloak
 import urllib3
 import os
@@ -113,7 +113,7 @@ def index_view(request):
     # Per-cluster and global health stats for the dashboard
     cluster_stats = {}
     for cluster_name, nodes in cluster_dict.items():
-        is_offline = nodes == ["Cluster API Not Reachable"]
+        is_offline = nodes == [CLUSTER_OFFLINE_MARKER]
         cs = {"total": 0 if is_offline else len(nodes), "ready": 0, "maintenance": 0, "not_ready": 0, "offline": is_offline}
         if not is_offline:
             for node in nodes:
