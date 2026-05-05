@@ -36,7 +36,8 @@ filtered_table = []
 for project in projects:
     filtered_project = {'users': []}
     for user in users:
-        if project['namespace'] in user['namespace']:
+        user_namespaces = [namespace.strip() for namespace in user['namespace'].split(',') if namespace.strip()]
+        if project['namespace'] in user_namespaces:
             filtered_project['users'].append(user['email'])
     for k, v in project.items():
       
