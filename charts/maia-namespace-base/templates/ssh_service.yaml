@@ -4,10 +4,15 @@ kind: Service
 metadata:
     name: jupyter-{{ .jupyterhub_username }}-ssh
     namespace: {{ $.Values.namespace }}
-    {{- if and $.Values.metallbSharedIp $.Values.metallbIpPool }}
+    {{- if or (and $.Values.metallbSharedIp $.Values.metallbIpPool) $.Values.sshHostname }}
     annotations:
+        {{- if and $.Values.metallbSharedIp $.Values.metallbIpPool }}
         metallb.universe.tf/allow-shared-ip: {{ $.Values.metallbSharedIp }}
-        metallb.io/ip-allocated-from-pool: {{ $.Values.metallbIpPool }}
+        metallb.universe.tf/ip-allocated-from-pool: {{ $.Values.metallbIpPool }}
+        {{- end }}
+        {{- if $.Values.sshHostname }}
+        maia.kthcloud.io/ssh-hostname: {{ $.Values.sshHostname | quote }}
+        {{- end }}
     {{- end }}
 spec:
     {{- if $.Values.loadBalancerIp }}
