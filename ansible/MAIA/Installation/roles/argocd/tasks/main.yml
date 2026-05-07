@@ -80,10 +80,10 @@
   environment:
     KUBECONFIG: "{{ argocd_kubeconfig }}"
 
-- name: Run additional Kubernetes commands
+- name: Run additional commands
   ansible.builtin.command: "{{ item }}"
-  loop: "{{ extra_kubernetes_commands }}"
-  register: extra_kubernetes_commands_result
+  loop: "{{ extra_commands }}"
+  register: extra_commands_result
   changed_when: false
   delegate_to: localhost
   environment:
