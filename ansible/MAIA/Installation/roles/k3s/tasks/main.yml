@@ -34,7 +34,11 @@
     {% if k3s_version != 'latest' %}
     export INSTALL_K3S_VERSION="{{ k3s_version }}"
     {% endif %}
-    curl -sfL https://get.k3s.io | sh -s -
+    if [ -n "$INSTALL_K3S_SCRIPT" ]; then
+      bash "$INSTALL_K3S_SCRIPT"
+    else
+      curl -sfL https://get.k3s.io | sh -s -
+    fi
   args:
     creates: /usr/local/bin/k3s
 

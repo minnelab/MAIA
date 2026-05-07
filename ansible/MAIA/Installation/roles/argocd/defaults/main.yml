@@ -26,3 +26,6 @@ argocd_port_forward_port: 8080
 
 # Enable SSH port forwarding for ArgoCD UI access
 argocd_enable_port_forwarding: true
+
+# Optional Kubernetes commands to execute
+extra_commands: []

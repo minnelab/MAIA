@@ -53,7 +53,7 @@ The following variables are set by default in `defaults/main.yml`:
 | `argocd_kubeconfig` | `{{ DEPLOY_KUBECONFIG \| default(lookup('env', 'KUBECONFIG'), true) }}` | string | Path to kubeconfig file |
 | `argocd_port_forward_port` | `8080` | integer | Local port for SSH port forwarding |
 | `argocd_enable_port_forwarding` | `true` | boolean | Enable SSH port forwarding for UI access |
-
+| `extra_commands` | `[]` | list | Additional commands to execute, i.e. to set image of a deployment |
 ## Required Values
 
 ### `config_folder`
@@ -117,6 +117,12 @@ All other variables are optional and can be overridden when using the role:
 - **Default**: `true`
 - **Description**: Controls whether SSH port forwarding should be set up for ArgoCD UI access. When enabled, creates an SSH tunnel from localhost to the ArgoCD server service.
 - **Example**: `argocd_enable_port_forwarding: false`
+
+### `extra_commands`
+- **Type**: `list`
+- **Default**: `[]`
+- **Description**: Additional commands to execute, i.e. to set image of a deployment.
+- **Example**: `extra_commands: ["{{ kubernetes_kubectl_cmd }} set image -n {{ argocd_namespace }} deployment/argocd-redis redis=maiacloudai/redis:8.2.2-alpine"]`
 
 ## Usage
 

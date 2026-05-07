@@ -140,6 +140,10 @@ Include the role in a playbook with the required `config_folder` (and `cluster_n
         k3s_enable_port_forwarding: false
 ```
 
+### Install k3s from a local script
+
+To install k3s from a local script, set the `INSTALL_K3S_SCRIPT` variable, pointing to the script.
+
 ## Tasks
 
 The role performs the following high-level tasks:

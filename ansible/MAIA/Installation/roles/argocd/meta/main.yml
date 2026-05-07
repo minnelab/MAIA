@@ -84,3 +84,8 @@ argument_specs:
           required: false
           default: true
           description: "Enable SSH port forwarding for ArgoCD UI access (optional)"
+        extra_commands:
+          type: list
+          required: false
+          default: []
+          description: "Additional commands to execute, i.e. to set image of a deployment (optional)"
