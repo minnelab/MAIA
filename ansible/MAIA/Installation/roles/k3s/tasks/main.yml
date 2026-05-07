@@ -31,6 +31,7 @@
 - name: Install k3s server (if not already installed)
   ansible.builtin.shell: |
     export INSTALL_K3S_EXEC="server --tls-san={{ cluster_domain }}"
+    export INSTALL_K3S_SCRIPT="{{ install_k3s_script | default(null) }}"
     {% if k3s_version != 'latest' %}
     export INSTALL_K3S_VERSION="{{ k3s_version }}"
     {% endif %}

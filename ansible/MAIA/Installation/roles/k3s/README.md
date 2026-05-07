@@ -93,6 +93,11 @@ The following variables are set by default in `defaults/main.yml`:
 - **Default**: `/etc/rancher/k3s`
 - **Description**: k3s config directory on the target host (kubeconfig location).
 
+### `install_k3s_script`
+- **Type**: `string`
+- **Default**: `null`
+- **Description**: Path to the k3s installer script. If set, the role will use the script to install k3s instead of the official installer.
+
 ## Usage
 
 ### Basic Usage

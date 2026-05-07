@@ -62,3 +62,8 @@ argument_specs:
         required: false
         default: v0.0.34
         description: "Rancher local path provisioner version to install (optional)"
+      install_k3s_script:
+        type: str
+        required: false
+        default: null
+        description: "Path to the k3s installer script (optional)"

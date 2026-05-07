@@ -37,3 +37,6 @@ k3s_data_dir: /var/lib/rancher/k3s
 k3s_config_dir: /etc/rancher/k3s
 
 rancher_local_path_provisioner_version: v0.0.34
+
+# Path to the k3s installer script
+install_k3s_script: null
