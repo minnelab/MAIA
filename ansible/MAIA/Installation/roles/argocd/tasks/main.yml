@@ -62,7 +62,6 @@
 
 - name: Ensure automation service account exists
   ansible.builtin.command: >
-    api_version: v1
     {{ kubernetes_kubectl_cmd }} create serviceaccount "{{ argocd_service_account }}" -n "{{ argocd_namespace }}"
   register: create_argocd_service_account
   failed_when: create_argocd_service_account.rc != 0 and 'AlreadyExists' not in (create_argocd_service_account.stderr | default(''))
