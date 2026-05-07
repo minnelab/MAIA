@@ -154,6 +154,13 @@
               <div class="hero-stat-label">Unhealthy</div>
             </div>
             {% endif %}
+            {% if global_stats.offline > 0 %}
+            <div class="hero-divider d-none d-sm-block"></div>
+            <div class="hero-stat">
+              <div class="hero-stat-value c-red">{{ global_stats.offline }}</div>
+              <div class="hero-stat-label">Offline</div>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -180,7 +187,10 @@
               <div>
                 <div class="cluster-title">{{ cluster_name|to_space|lower|title|maia }}</div>
                 <div class="d-flex align-items-center" style="gap: 7px; margin-top: 3px;">
-                  {% if cstats.not_ready == 0 and cstats.maintenance == 0 %}
+                  {% if cstats.offline %}
+                    <span class="status-dot dot-red pulse-red"></span>
+                    <span class="text-xs font-weight-bold text-danger">Offline</span>
+                  {% elif cstats.not_ready == 0 and cstats.maintenance == 0 %}
                     <span class="status-dot dot-green pulse-green"></span>
                     <span class="text-xs font-weight-bold text-success">All Healthy</span>
                   {% elif cstats.not_ready > 0 %}
@@ -201,11 +211,12 @@
               </div>
               <!-- Health % badge -->
               <span class="badge badge-sm
-                {% if cstats.not_ready == 0 and cstats.maintenance == 0 %}bg-gradient-success
+                {% if cstats.offline %}bg-gradient-secondary
+                {% elif cstats.not_ready == 0 and cstats.maintenance == 0 %}bg-gradient-success
                 {% elif cstats.not_ready > 0 %}bg-gradient-danger
                 {% else %}bg-gradient-warning{% endif %}"
                 style="font-size:.72rem; padding: 5px 10px;">
-                {{ cstats.health_pct }}% healthy
+                {% if cstats.offline %}Unreachable{% else %}{{ cstats.health_pct }}% healthy{% endif %}
               </span>
             </div>
 
@@ -287,6 +298,13 @@
                   </tr>
                 </thead>
                 <tbody>
+                  {% if cstats.offline %}
+                  <tr>
+                    <td colspan="3" class="text-center py-3 text-sm text-danger">
+                      <i class="fa fa-exclamation-triangle me-1"></i>Cluster API not reachable
+                    </td>
+                  </tr>
+                  {% else %}
                   {% for node in k|dict_val %}
                   <tr class="node-row">
                     <td class="text-center ps-3">
@@ -312,6 +330,7 @@
                     </td>
                   </tr>
                   {% endfor %}
+                  {% endif %}
                 </tbody>
               </table>
             </div>

@@ -223,6 +223,13 @@
                     {{ form.date }}
                     {% if form.date.errors %}<span class="error-text">{{ form.date.errors }}</span>{% endif %}
                   </div>
+
+                  <div class="auth-field">
+                    <label class="form-group-label">Resource Needs</label>
+                    {{ form.resource_needs }}
+                    <span class="hint-text">Optional — describe expected usage to help us right-size the allocation.</span>
+                    {% if form.resource_needs.errors %}<span class="error-text">{{ form.resource_needs.errors }}</span>{% endif %}
+                  </div>
                 </div>
 
                 <!-- ── Section 3: Optional ── -->

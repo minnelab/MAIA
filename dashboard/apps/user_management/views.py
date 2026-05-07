@@ -95,6 +95,7 @@ _UPDATABLE_GROUP_FIELDS = {
     "project_tier",
     "description",
     "supervisor",
+    "resource_needs",
     "email",
 }
 
@@ -286,6 +287,7 @@ class UserManagementAPIListGroupsView(APIView):
             "email",
             "description",
             "supervisor",
+            "resource_needs",
         )
         keycloak_groups = {v: k for k, v in get_groups_in_keycloak(settings=env_settings).items()}
         # Fetch all Keycloak users once and build a mapping from group_id to users

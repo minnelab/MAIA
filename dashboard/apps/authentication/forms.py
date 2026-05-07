@@ -133,6 +133,17 @@ class RegisterProjectForm(forms.ModelForm):
         ),
     )
 
+    resource_needs = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "placeholder": "Describe expected resource usage (e.g. training a 3D U-Net for ~2 weeks, 1 GPU full-time, 50 GB data).",
+                "class": "form-control",
+                "rows": 3,
+            }
+        ),
+    )
+
     class Meta:
         model = MAIAProject
         if settings.MONGO_DB_ENABLED:
@@ -147,6 +158,18 @@ class RegisterProjectForm(forms.ModelForm):
                 "cpu_limit",
                 "description",
                 "supervisor",
+                "resource_needs",
             )
         else:
-            fields = ("namespace", "gpu", "env_file", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
+            fields = (
+                "namespace",
+                "gpu",
+                "env_file",
+                "date",
+                "email",
+                "memory_limit",
+                "cpu_limit",
+                "description",
+                "supervisor",
+                "resource_needs",
+            )
