@@ -64,7 +64,11 @@
   ansible.builtin.command: >
     {{ kubernetes_kubectl_cmd }} create serviceaccount "{{ argocd_service_account }}" -n "{{ argocd_namespace }}"
   register: create_argocd_service_account
-  failed_when: create_argocd_service_account.rc != 0 and 'AlreadyExists' not in (create_argocd_service_account.stderr | default(''))
+  failed_when: create_argocd_service_account.rc != 0 and
+    (
+      'AlreadyExists' not in (create_argocd_service_account.stderr | default('')) and
+      'already exists' not in (create_argocd_service_account.stderr | default(''))
+    )
   changed_when: "'Created' in (create_argocd_service_account.stdout | default(''))"
   delegate_to: localhost
   environment:
