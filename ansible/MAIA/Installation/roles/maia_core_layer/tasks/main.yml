@@ -26,27 +26,19 @@
   delegate_to: localhost
 
 - name: Ensure MAIA Core related namespaces exist
-  ansible.builtin.command: >
-    kubectl create namespace "{{ item }}"
+  ansible.builtin.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+    state: present
   loop: "{{ maia_core_namespaces }}"
-  loop_control:
-    loop_var: item
   delegate_to: localhost
-  register: create_namespace_result
-  ignore_errors: true
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-
-- name: Ignore AlreadyExists error for namespace creation
-  ansible.builtin.assert:
-    that:
-      - item.rc == 0 or 'AlreadyExists' in (item.stderr | default(''))
-    fail_msg: "Namespace creation failed for {{ item.item }}: {{ item.stderr | default(item.msg) }}"
-    success_msg: "Namespace {{ item.item }} exists or was created"
-  loop: "{{ create_namespace_result.results }}"
-  loop_control:
-    loop_var: item
-  delegate_to: localhost
+    http_proxy: ""
+    https_proxy: ""
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
 
 - name: Run MAIA Core Toolkit installer
   ansible.builtin.command: >
