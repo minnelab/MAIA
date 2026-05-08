@@ -93,12 +93,13 @@
   set_fact:
     _extra_commands_list: >-
       {% if extra_commands is defined and extra_commands is string %}
-        {{ extra_commands | from_yaml | default([]) }}
+        {{ extra_commands | trim(" []") | replace("'", "") | split(", ") }}
       {% elif extra_commands is defined and extra_commands is sequence %}
         {{ extra_commands }}
       {% else %}
         []
       {% endif %}
+ 
 
 - name: Run additional commands
   ansible.builtin.command: "{{ item }}"
