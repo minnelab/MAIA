@@ -21,7 +21,7 @@
       - "login.{{ cluster_domain }}"
       - "kubeflow.{{ cluster_domain }}"
     environment_variables_list: |
-      {% if proxy_ip is not defined or proxy_ip|length == 0 or no_proxy_ips is not defined or no_proxy_ips|length == 0 %}
+      {% if proxy_ip is not defined or no_proxy_ips is not defined %}
       []
       {% else %}
       [
