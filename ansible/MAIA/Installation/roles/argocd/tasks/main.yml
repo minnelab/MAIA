@@ -92,16 +92,18 @@
 - name: Ensure extra_commands is a list
   set_fact:
     _extra_commands_list: >-
-      {% if extra_commands is string %}
-        {{ extra_commands | from_yaml }}
+      {% if extra_commands is defined and extra_commands is string %}
+        {{ extra_commands | from_yaml | default([]) }}
+      {% elif extra_commands is defined and extra_commands is sequence %}
+        {{ extra_commands }}
       {% else %}
-        {{ extra_commands | default([]) }}
+        []
       {% endif %}
 
 - name: Run additional commands
   ansible.builtin.command: "{{ item }}"
   loop: "{{ _extra_commands_list }}"
-  when: _extra_commands_list | length > 0
+  when: _extra_commands_list is defined and (_extra_commands_list | length > 0)
   register: extra_commands_result
   changed_when: false
   delegate_to: localhost
@@ -110,4 +112,3 @@
 
 - name: Run additional ArgoCD connect tasks
   import_tasks: connect.yml
-
