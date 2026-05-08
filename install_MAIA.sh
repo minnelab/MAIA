@@ -55,6 +55,9 @@ sudo chmod +x /usr/local/bin/argocd
 
 mkdir -p $CONFIG_FOLDER
 
+if [[ "$@" =~ --skip-configuration ]]; then
+    :
+else
 echo "Do you want to run Step 1: prepare hosts (install NVIDIA drivers, NFS & CIFS storage drivers, and configure UFW firewall for SSH and node-to-node communication)?"
 select yn in "Yes" "No"; do
     case $yn in
@@ -299,6 +302,7 @@ cat <<EOF > $CONFIG_FOLDER/inventory
 [control-plane]
 $hostname ansible_host=127.0.0.1 ansible_connection=local ansible_user=$USER ansible_become_password=$PW ansible_become=true ansible_become_method=sudo
 EOF
+fi
 
 if [[ " $@ " =~ " --dry-run " ]]; then
     :
