@@ -1,4 +1,4 @@
-- name: Install k0s, enable OIDC and CA, and install ArgoCD
+- name: Install k3s, enable OIDC and CA, and install ArgoCD
   hosts: control-plane
   become: false
   environment:

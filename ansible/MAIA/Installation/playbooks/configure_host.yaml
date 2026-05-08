@@ -20,6 +20,20 @@
       - "minio-api.test.{{ cluster_domain }}"
       - "login.{{ cluster_domain }}"
       - "kubeflow.{{ cluster_domain }}"
+    environment_variables: >-
+      {%- if proxy_ip is not defined or proxy_ip|length == 0 or no_proxy_ips is not defined or no_proxy_ips|length == 0 -%}
+      null
+      {%- else -%}
+      [
+        "http_proxy=http://{{ proxy_ip }}:3130",
+        "https_proxy=http://{{ proxy_ip }}:3130",
+        "no_proxy=localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}",
+        "HTTP_PROXY=http://{{ proxy_ip }}:3130",
+        "HTTPS_PROXY=http://{{ proxy_ip }}:3130",
+        "NO_PROXY=localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}"
+      ]
+      {%- endif -%}
+ 
   tasks:
     - name: Ensure /etc/hosts contains all required host mappings
       ansible.builtin.lineinfile:
@@ -29,3 +43,12 @@
         regexp: "^{{ host_ip | regex_escape() }}\\s+{{ item | regex_escape() }}$"
         line: "{{ host_ip }} {{ item }}"
       loop: "{{ hostnames }}"
+    - name: Configure environment variables
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        create: yes
+        state: present
+        regexp: "^{{ item | regex_escape() }}$"
+        line: "{{ item }}"
+      when: environment_variables is not null
+      loop: "{{ environment_variables }}"

@@ -42,7 +42,7 @@
 
 - name: Install ArgoCD manifests
   ansible.builtin.command: >
-    {{ kubernetes_kubectl_cmd }} apply -n "{{ argocd_namespace }}" -f "{{ argocd_manifest_url }}"
+    {{ kubernetes_kubectl_cmd }} apply -n "{{ argocd_namespace }}" --server-side --force-conflicts -f "{{ argocd_manifest_url }}"
   register: apply_argocd_manifests
   # Do not fail on 'Too long' CRD annotation error or annotation warnings
   failed_when: >
