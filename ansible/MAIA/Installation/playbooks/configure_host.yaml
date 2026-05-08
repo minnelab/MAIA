@@ -48,6 +48,9 @@
         _parsed_environment_variables_list: "{{ environment_variables_list | from_yaml }}"
       when: environment_variables_list is string
 
+    - name: Debug _parsed_environment_variables_list
+      ansible.builtin.debug:
+        var: _parsed_environment_variables_list
     - name: Configure environment variables
       ansible.builtin.lineinfile:
         path: /etc/environment
