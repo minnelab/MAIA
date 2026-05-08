@@ -92,7 +92,7 @@
  
 - name: Debug _extra_commands_list
   ansible.builtin.debug:
-    var: {"extra_commands": "{{ extra_commands }}"}
+    var: extra_commands
 
 - name: Run additional commands
   ansible.builtin.command: "{{ item }}"
