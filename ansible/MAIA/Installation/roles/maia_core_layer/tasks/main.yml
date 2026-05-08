@@ -27,7 +27,7 @@
 
 - name: Ensure MAIA Core related namespaces exist
   ansible.builtin.command: >
-    {{ kubernetes_kubectl_cmd }} create namespace "{{ item }}"
+    kubectl create namespace "{{ item }}"
   loop: "{{ maia_core_namespaces }}"
   delegate_to: localhost
   failed_when: create_maia_core_namespaces.rc != 0 and 'AlreadyExists' not in (create_maia_core_namespaces.stderr | default(''))
