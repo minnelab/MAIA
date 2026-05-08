@@ -100,6 +100,9 @@
         []
       {% endif %}
  
+- name: Debug _extra_commands_list
+  ansible.builtin.debug:
+    var: _extra_commands_list
 
 - name: Run additional commands
   ansible.builtin.command: "{{ item }}"
