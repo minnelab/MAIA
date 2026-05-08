@@ -91,7 +91,8 @@
 
 - name: Run additional commands
   ansible.builtin.command: "{{ item }}"
-  loop: "{{ extra_commands }}"
+  loop: "{{ extra_commands | from_yaml | default([]) }}"
+  when: extra_commands is defined and (extra_commands | from_yaml | length > 0)
   register: extra_commands_result
   changed_when: false
   delegate_to: localhost
