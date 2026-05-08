@@ -313,6 +313,14 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         A dictionary containing the namespace, repository URL, chart version, path to the
         values YAML file, release name, and chart name.
     """
+    http_proxy = os.environ.get('http_proxy', '')
+    https_proxy = os.environ.get('https_proxy', '')
+    HTTP_PROXY = os.environ.get('HTTP_PROXY', '')
+    HTTPS_PROXY = os.environ.get('HTTPS_PROXY', '')
+    os.environ['http_proxy'] = ''
+    os.environ['https_proxy'] = ''
+    os.environ['HTTP_PROXY'] = ''
+    os.environ['HTTPS_PROXY'] = ''
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
         kubeconfig = os.environ.get("KUBECONFIG", None)
@@ -408,6 +416,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(core_toolkit_values))
 
+    os.environ['http_proxy'] = http_proxy
+    os.environ['https_proxy'] = https_proxy
+    os.environ['HTTP_PROXY'] = HTTP_PROXY
+    os.environ['HTTPS_PROXY'] = HTTPS_PROXY
     return {
         "namespace": core_toolkit_values["namespace"],
         "repo": core_toolkit_values["repo_url"],
