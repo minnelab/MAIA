@@ -89,25 +89,15 @@
   environment:
     KUBECONFIG: "{{ argocd_kubeconfig }}"
 
-- name: Ensure extra_commands is a list
-  set_fact:
-    _extra_commands_list: >-
-      {% if extra_commands is defined and extra_commands is string %}
-        {{ extra_commands | trim(" []") | replace("'", "") | split(", ") }}
-      {% elif extra_commands is defined and extra_commands is sequence %}
-        {{ extra_commands }}
-      {% else %}
-        []
-      {% endif %}
  
 - name: Debug _extra_commands_list
   ansible.builtin.debug:
-    var: _extra_commands_list
+    var: {"extra_commands": "{{ extra_commands }}"}
 
 - name: Run additional commands
   ansible.builtin.command: "{{ item }}"
-  loop: "{{ _extra_commands_list }}"
-  when: _extra_commands_list is defined and (_extra_commands_list | length > 0)
+  loop: "{{ extra_commands | from_yaml | default([]) }}"
+  when: extra_commands is defined and (extra_commands | length > 0)
   register: extra_commands_result
   changed_when: false
   delegate_to: localhost
