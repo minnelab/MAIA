@@ -68,6 +68,12 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     dict
         A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
     """
+    # Unset proxy environment variables specifically for this function
+    os.environ['http_proxy'] = ''
+    os.environ['https_proxy'] = ''
+    os.environ['HTTP_PROXY'] = ''
+    os.environ['HTTPS_PROXY'] = ''
+
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
         kubeconfig = os.environ.get("KUBECONFIG", None)
