@@ -80,6 +80,11 @@
   register: create_argocd_role_binding
   failed_when: create_argocd_role_binding.rc != 0 and 'AlreadyExists' not in (create_argocd_role_binding.stderr | default(''))
   changed_when: "'Created' in (create_argocd_role_binding.stdout | default(''))"
+  failed_when: create_argocd_role_binding.rc != 0 and
+    (
+      'AlreadyExists' not in (create_argocd_role_binding.stderr | default('')) and
+      'already exists' not in (create_argocd_role_binding.stderr | default(''))
+    )
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ argocd_kubeconfig }}"
