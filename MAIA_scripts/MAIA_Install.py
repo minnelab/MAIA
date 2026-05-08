@@ -263,6 +263,20 @@ def main():
                 "-e",
                 f"host_ip={host_ip}",
             ]
+            if "proxy_ip" in config_dict["cluster_config_extra_env"]:
+                configure_host_linux_cmd.extend(
+                    [
+                        "-e",
+                        f"proxy_ip={config_dict['cluster_config_extra_env']['proxy_ip']}",
+                    ]
+                )
+            if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
+                configure_host_linux_cmd.extend(
+                    [
+                        "-e",
+                        f"no_proxy_ips={config_dict['cluster_config_extra_env']['no_proxy_ips']}",
+                    ]
+                )
             try:
                 run_command(configure_host_linux_cmd)
             except subprocess.CalledProcessError as e:
