@@ -57,10 +57,6 @@
     core_project_chart: "{{ core_project_chart }}"
     core_project_repo: "{{ core_project_repo }}"
     core_project_version: "{{ core_project_version }}"
-    http_proxy: ""
-    https_proxy: ""
-    HTTP_PROXY: ""
-    HTTPS_PROXY: ""
   register: maia_install_output
 
 - name: Show MAIA Core Toolkit installer output
