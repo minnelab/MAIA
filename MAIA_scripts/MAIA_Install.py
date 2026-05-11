@@ -330,7 +330,7 @@ def main():
     if f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
             if "proxy_ip" in config_dict["cluster_config_extra_env"]:
-            config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["proxy_ip"] = config_dict["cluster_config_extra_env"]["proxy_ip"]
+                config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["proxy_ip"] = config_dict["cluster_config_extra_env"]["proxy_ip"]
             if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
                 config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["no_proxy_ips"] = config_dict["cluster_config_extra_env"]["no_proxy_ips"]
             yaml.dump(config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"], tf)

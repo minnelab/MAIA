@@ -66,6 +66,8 @@
   failed_when: kyverno_helm_install.rc != 0 and 'cannot re-use a name that is still in use' not in (kyverno_helm_install.stderr | default(''))
   changed_when: "'deployed' in (kyverno_helm_install.stdout | default(''))"
   when: (install_kyverno | default(false) | bool)
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 - name: Apply ClusterPolicy to inject proxy environment variables (Kyverno)
   ansible.builtin.blockinfile:
     path: /tmp/kyverno-proxy-policy.yaml
