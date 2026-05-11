@@ -44,19 +44,33 @@
   tags: k3s-proxy
 
 
+- name: Check if Kyverno is already installed
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} get deployment kyverno -n kyverno
+  register: kyverno_check_result
+  failed_when: false
+  changed_when: false
+  when: (install_kyverno | default(false) | bool)
+
 - name: Add Kyverno helm repo
   ansible.builtin.command: >
     helm repo add kyverno https://kyverno.github.io/kyverno/
   register: kyverno_helm_repo_add
   changed_when: "'has been added' in kyverno_helm_repo_add.stdout or 'exists' in kyverno_helm_repo_add.stderr"
   failed_when: kyverno_helm_repo_add.rc != 0 and 'exists' not in (kyverno_helm_repo_add.stderr | default(''))
-  when: (install_kyverno | default(false) | bool)
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
 
 - name: Update helm repos
   ansible.builtin.command: helm repo update
   register: kyverno_helm_repo_update
   changed_when: false
-  when: (install_kyverno | default(false) | bool)
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
 
 - name: Install Kyverno via Helm
   ansible.builtin.command: >
@@ -65,12 +79,16 @@
   # Do not fail if already installed
   failed_when: kyverno_helm_install.rc != 0 and 'cannot re-use a name that is still in use' not in (kyverno_helm_install.stderr | default(''))
   changed_when: "'deployed' in (kyverno_helm_install.stdout | default(''))"
-  when: (install_kyverno | default(false) | bool)
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
 - name: Apply ClusterPolicy to inject proxy environment variables (Kyverno)
   ansible.builtin.blockinfile:
-    path: /tmp/kyverno-proxy-policy.yaml
+    path: {{ config_folder }}/kyverno-proxy-policy.yaml
     create: yes
     block: |
       apiVersion: kyverno.io/v1
@@ -103,18 +121,24 @@
                     value: "{{ proxy_ip }}:3130"
                   - name: no_proxy
                     value: "localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}"
-  when: (install_kyverno | default(false) | bool)
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
 
 - name: Apply Kyverno ClusterPolicy for proxy env injection
   ansible.builtin.command: >
-    {{ kubernetes_kubectl_cmd }} apply -f /tmp/kyverno-proxy-policy.yaml
+    {{ kubernetes_kubectl_cmd }} apply -f {{ config_folder }}/kyverno-proxy-policy.yaml
   register: kyverno_proxy_policy_apply
   changed_when: "'created' in (kyverno_proxy_policy_apply.stdout | default('')) or 'configured' in (kyverno_proxy_policy_apply.stdout | default(''))"
   failed_when: kyverno_proxy_policy_apply.rc != 0
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  when: (install_kyverno | default(false) | bool)
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
 
 
 - name: Ensure ArgoCD namespace exists
