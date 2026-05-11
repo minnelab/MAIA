@@ -296,6 +296,20 @@ def main():
             "-e",
             f"cluster_domain={cluster_domain}",
         ]
+        if "proxy_ip" in config_dict["cluster_config_extra_env"]:
+            configure_host_cmd.extend(
+                [
+                    "-e",
+                    f"proxy_ip={config_dict['cluster_config_extra_env']['proxy_ip']}",
+                ]
+            )
+        if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
+            configure_host_cmd.extend(
+                [
+                    "-e",
+                    f"no_proxy_ips={config_dict['cluster_config_extra_env']['no_proxy_ips']}",
+                ]
+            )
         try:
             run_command(configure_host_cmd)
         except subprocess.CalledProcessError as e:
@@ -314,13 +328,15 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict:
-        for key, value in config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"].items():
-            install_k8s_distribution_cmd.extend(
-                [
-                    "-e",
-                    f"{key}={value}",
-                ]
-            )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
+            if "proxy_ip" in config_dict["cluster_config_extra_env"]:
+            config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["proxy_ip"] = config_dict["cluster_config_extra_env"]["proxy_ip"]
+            if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
+                config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["no_proxy_ips"] = config_dict["cluster_config_extra_env"]["no_proxy_ips"]
+            yaml.dump(config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"], tf)
+            vars_file = tf.name
+
+        install_k8s_distribution_cmd.extend(["-e", f"@{vars_file}"])
     if "steps" in config_dict and f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict["steps"]:
         try:
             run_command(install_k8s_distribution_cmd)
