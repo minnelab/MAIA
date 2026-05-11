@@ -111,6 +111,9 @@ def main(cluster_config, config_folder):
 
 
 def install_maia_core_toolkit(cluster_config, config_folder):
+    # If MAIA_PRIVATE_REGISTRY is set to an empty string, unset it
+    if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
+        del os.environ["MAIA_PRIVATE_REGISTRY"]
     private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
 
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())

@@ -161,6 +161,9 @@ def deploy_maia_toolkit_api(
     return_values_only=False,
     custom_project_dict=None,
 ):
+    # If MAIA_PRIVATE_REGISTRY is set to an empty string, unset it
+    if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
+        del os.environ["MAIA_PRIVATE_REGISTRY"]
     # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
     # Unset all the environment variables ending with _namespace_id

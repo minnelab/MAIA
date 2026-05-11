@@ -95,6 +95,8 @@ def main(cluster_config, config_folder):
 
 
 def install_maia_admin_toolkit(cluster_config, config_folder):
+    if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
+        del os.environ["MAIA_PRIVATE_REGISTRY"]
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
     private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
     admin_group_id = os.environ["admin_group_ID"]
