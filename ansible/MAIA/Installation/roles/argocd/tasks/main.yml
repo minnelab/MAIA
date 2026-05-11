@@ -72,9 +72,42 @@
     - kyverno_check_result is defined
     - kyverno_check_result.rc != 0
 
+- name: Create Kyverno Helm Values file
+  ansible.builtin.copy:
+    dest: "{{ config_folder }}/kyverno-values.yaml"
+    content: |
+      admissionController:
+        container:
+          image:
+            defaultRegistry: ghcr.io
+        initContainer:
+          image:
+            defaultRegistry: ghcr.io
+
+      backgroundController:
+        image:
+          defaultRegistry: ghcr.io
+
+      cleanupController:
+        image:
+          defaultRegistry: ghcr.io
+
+      crds:
+        migration:
+          image:
+            defaultRegistry: ghcr.io
+
+      reportsController:
+        image:
+          defaultRegistry: ghcr.io
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+
 - name: Install Kyverno via Helm
   ansible.builtin.command: >
-    helm install kyverno kyverno/kyverno -n kyverno --create-namespace
+    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace --values "{{ config_folder }}/kyverno-values.yaml"
   register: kyverno_helm_install
   # Do not fail if already installed
   failed_when: kyverno_helm_install.rc != 0 and 'cannot re-use a name that is still in use' not in (kyverno_helm_install.stderr | default(''))
