@@ -739,7 +739,7 @@ def create_cert_manager_values(config_folder, project_id):
     cert_manager_chart_info = {
         "namespace": "cert-manager",
         "chart_version": cert_manager_chart_version,
-        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://charts.jetstack.io",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),  # "https://charts.jetstack.io",
         "chart_name": "cert-manager",
     }
 
@@ -1232,7 +1232,7 @@ def create_minio_operator_values(config_folder, project_id):
     """
     minio_operator_values = {
         "namespace": "minio-operator",
-        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://operator.min.io",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),  # "https://operator.min.io",
         "chart_name": "operator",
         "chart_version": minio_operator_chart_version,
     }
