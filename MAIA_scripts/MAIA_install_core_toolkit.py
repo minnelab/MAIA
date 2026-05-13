@@ -41,6 +41,7 @@ from MAIA.maia_core import (
     create_metrics_server_values,
     create_local_path_values,
     create_kubeflow_values,
+    create_nvidia_dra_values,
 )
 
 version = MAIA.__version__
@@ -140,7 +141,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     helm_commands.append(create_loki_values(config_folder, project_id))
     helm_commands.append(create_tempo_values(config_folder, project_id))
     helm_commands.append(create_core_toolkit_values(config_folder, project_id, cluster_config_dict))
-
+    helm_commands.append(create_nvidia_dra_values(config_folder, project_id))
     # Allow either traefik or nginx ingress controller
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         helm_commands.append(create_traefik_values(config_folder, project_id, cluster_config_dict))
@@ -271,6 +272,7 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             {"loginapp_values": "loginapp_values"},
             {"minio_operator_values": "minio_operator_values"},
             {"gpu_operator_values": "gpu_operator_values"},
+            {"nvidia_dra_values": "nvidia_dra_values"},
             {"nfs_provisioner_values": "nfs_provisioner_values"},
             {"cert_manager_chart_info": "cert_manager_chart_info"},
             {"gpu_booking_values": "gpu_booking_values"},

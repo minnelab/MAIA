@@ -741,6 +741,58 @@ def create_cert_manager_values(config_folder, project_id):
     }
 
 
+def create_nvidia_dra_values(config_folder, project_id):
+    """
+    Creates and writes NVIDIA DRA Helm chart values to a YAML file.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The project identifier.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
+    """
+
+    nvidia_dra_values = {
+        "namespace": "nvidia-dra-driver-gpu",
+        "chart_version": nvidia_dra_chart_version,
+        "repo_url": "https://helm.ngc.nvidia.com/nvidia",
+        "chart_name": "nvidia-dra-driver-gpu",
+    }
+    
+    nvidia_dra_values.update({
+        "featureGates": {
+            "MPSSupport": True,
+            "TimeSlicingSettings": True,        
+        },
+        "gpuResourcesEnabledOverride": True,
+        "nvidiaDriverRoot": "/",
+        "resources": {
+            "gpus": {
+                "enabled": True,
+            }
+        }
+    })
+
+    Path(config_folder).joinpath(project_id, "nvidia_dra_values").mkdir(parents=True, exist_ok=True)
+
+    with open(Path(config_folder).joinpath(project_id, "nvidia_dra_values", "nvidia_dra_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(nvidia_dra_values))
+
+    return {
+        "namespace": nvidia_dra_values["namespace"],
+        "repo": nvidia_dra_values["repo_url"],
+        "version": nvidia_dra_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "nvidia_dra_values", "nvidia_dra_values.yaml")),
+        "release": f"{project_id}-nvidia-dra",
+        "chart": nvidia_dra_values["chart_name"],
+    }
+
 def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
     """
     Creates GPU operator values configuration for a Kubernetes cluster and writes it to a YAML file.
@@ -767,7 +819,27 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
         "chart_name": "gpu-operator",
     }  # TODO: Change this to updated values
 
+    gpu_operator_values.update({
+        "cdi": {
+            "enabled": True
+        },
+        "devicePlugin": {
+            "enabled": True,
+            "mps": {
+                "enabled": True
+            }
+        },
+        "driver": {
+            "enabled": False
+        }
+    })
+
     gpu_operator_values["toolkit"] = get_gpu_operator_toolkit(cluster_config_dict["k8s_distribution"])
+    
+    gpu_operator_values["toolkit"]["env"].append({
+        "name": "NODE_LABEL_FOR_GPU_POD_EVICTION",
+        "value": "nvidia.com/dra-kubelet-plugin"
+    })
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -782,7 +854,6 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
         "release": f"{project_id}-gpu-operator",
         "chart": gpu_operator_values["chart_name"],
     }
-
 
 def create_ingress_nginx_values(config_folder, project_id):
     """
