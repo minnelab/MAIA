@@ -32,6 +32,7 @@ loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
 minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
 kubeflow_chart_version = define_maia_core_versions()["kubeflow_chart_version"]
 kubeflow_chart_type = define_maia_core_versions()["kubeflow_chart_type"]
+nvidia_dra_chart_version = define_maia_core_versions()["nvidia_dra_chart_version"]
 logger = loguru.logger
 
 
@@ -69,14 +70,14 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
         A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
     """
     # Unset proxy environment variables specifically for this function
-    http_proxy = os.environ.get('http_proxy', '')
-    https_proxy = os.environ.get('https_proxy', '')
-    HTTP_PROXY = os.environ.get('HTTP_PROXY', '')
-    HTTPS_PROXY = os.environ.get('HTTPS_PROXY', '')
-    os.environ['http_proxy'] = ''
-    os.environ['https_proxy'] = ''
-    os.environ['HTTP_PROXY'] = ''
-    os.environ['HTTPS_PROXY'] = ''
+    http_proxy = os.environ.get("http_proxy", "")
+    https_proxy = os.environ.get("https_proxy", "")
+    HTTP_PROXY = os.environ.get("HTTP_PROXY", "")
+    HTTPS_PROXY = os.environ.get("HTTPS_PROXY", "")
+    os.environ["http_proxy"] = ""
+    os.environ["https_proxy"] = ""
+    os.environ["HTTP_PROXY"] = ""
+    os.environ["HTTPS_PROXY"] = ""
 
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
@@ -191,10 +192,10 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     with open(Path(config_folder).joinpath(project_id, "prometheus_values", "prometheus_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(prometheus_values))
 
-    os.environ['http_proxy'] = http_proxy
-    os.environ['https_proxy'] = https_proxy
-    os.environ['HTTP_PROXY'] = HTTP_PROXY
-    os.environ['HTTPS_PROXY'] = HTTPS_PROXY
+    os.environ["http_proxy"] = http_proxy
+    os.environ["https_proxy"] = https_proxy
+    os.environ["HTTP_PROXY"] = HTTP_PROXY
+    os.environ["HTTPS_PROXY"] = HTTPS_PROXY
     return {
         "namespace": prometheus_values["namespace"],
         "repo": prometheus_values["repo_url"],
@@ -313,14 +314,14 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         A dictionary containing the namespace, repository URL, chart version, path to the
         values YAML file, release name, and chart name.
     """
-    http_proxy = os.environ.get('http_proxy', '')
-    https_proxy = os.environ.get('https_proxy', '')
-    HTTP_PROXY = os.environ.get('HTTP_PROXY', '')
-    HTTPS_PROXY = os.environ.get('HTTPS_PROXY', '')
-    os.environ['http_proxy'] = ''
-    os.environ['https_proxy'] = ''
-    os.environ['HTTP_PROXY'] = ''
-    os.environ['HTTPS_PROXY'] = ''
+    http_proxy = os.environ.get("http_proxy", "")
+    https_proxy = os.environ.get("https_proxy", "")
+    HTTP_PROXY = os.environ.get("HTTP_PROXY", "")
+    HTTPS_PROXY = os.environ.get("HTTPS_PROXY", "")
+    os.environ["http_proxy"] = ""
+    os.environ["https_proxy"] = ""
+    os.environ["HTTP_PROXY"] = ""
+    os.environ["HTTPS_PROXY"] = ""
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
         kubeconfig = os.environ.get("KUBECONFIG", None)
@@ -416,10 +417,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(core_toolkit_values))
 
-    os.environ['http_proxy'] = http_proxy
-    os.environ['https_proxy'] = https_proxy
-    os.environ['HTTP_PROXY'] = HTTP_PROXY
-    os.environ['HTTPS_PROXY'] = HTTPS_PROXY
+    os.environ["http_proxy"] = http_proxy
+    os.environ["https_proxy"] = https_proxy
+    os.environ["HTTP_PROXY"] = HTTP_PROXY
+    os.environ["HTTPS_PROXY"] = HTTPS_PROXY
     return {
         "namespace": core_toolkit_values["namespace"],
         "repo": core_toolkit_values["repo_url"],
@@ -638,6 +639,21 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
 
+    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+        traefik_values.update(
+            {
+                "deployment": {
+                    "additionalVolumes": [
+                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}}
+                    ],
+                    "additionalVolumeMounts": [
+                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True}
+                    ],
+                    "env": [{"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"}],
+                }
+            }
+        )
+
     with open(Path(config_folder).joinpath(project_id, "traefik_values", "traefik_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(traefik_values))
 
@@ -681,6 +697,14 @@ def create_metallb_values(config_folder, project_id):
         "chart_name": "metallb",
     }  # TODO: Change this to updated values
 
+    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+        metallb_values.update(
+            {
+                "controller": {"image": {"repository": "maiacloudai/controller"}},
+                "speaker": {"image": {"repository": "maiacloudai/speaker"}, "frr": {"image": {"repository": "maiacloudai/frr"}}},
+            }
+        )
+
     Path(config_folder).joinpath(project_id, "metallb_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "metallb_values", "metallb_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(metallb_values))
@@ -715,12 +739,22 @@ def create_cert_manager_values(config_folder, project_id):
     cert_manager_chart_info = {
         "namespace": "cert-manager",
         "chart_version": cert_manager_chart_version,
-        "repo_url": "https://charts.jetstack.io",
+        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://charts.jetstack.io",
         "chart_name": "cert-manager",
     }
 
     cert_manager_values = {}
     cert_manager_values.update({"crds": {"enabled": True}})
+
+    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+        cert_manager_values.update(
+            {
+                "cainjector": {"image": {"repository": "maiacloudai/cert-manager-cainjector"}},
+                "webhook": {"image": {"repository": "maiacloudai/cert-manager-webhook"}},
+                "startupapicheck": {"image": {"repository": "maiacloudai/cert-manager-startupapicheck"}},
+                "image": {"repository": "maiacloudai/cert-manager-controller"},
+            }
+        )
 
     Path(config_folder).joinpath(project_id, "cert_manager_values").mkdir(parents=True, exist_ok=True)
     Path(config_folder).joinpath(project_id, "cert_manager_chart_info").mkdir(parents=True, exist_ok=True)
@@ -764,20 +798,22 @@ def create_nvidia_dra_values(config_folder, project_id):
         "repo_url": "https://helm.ngc.nvidia.com/nvidia",
         "chart_name": "nvidia-dra-driver-gpu",
     }
-    
-    nvidia_dra_values.update({
-        "featureGates": {
-            "MPSSupport": True,
-            "TimeSlicingSettings": True,        
-        },
-        "gpuResourcesEnabledOverride": True,
-        "nvidiaDriverRoot": "/",
-        "resources": {
-            "gpus": {
-                "enabled": True,
-            }
+
+    nvidia_dra_values.update(
+        {
+            "featureGates": {
+                "MPSSupport": True,
+                "TimeSlicingSettings": True,
+            },
+            "gpuResourcesEnabledOverride": True,
+            "nvidiaDriverRoot": "/",
+            "resources": {
+                "gpus": {
+                    "enabled": True,
+                }
+            },
         }
-    })
+    )
 
     Path(config_folder).joinpath(project_id, "nvidia_dra_values").mkdir(parents=True, exist_ok=True)
 
@@ -792,6 +828,7 @@ def create_nvidia_dra_values(config_folder, project_id):
         "release": f"{project_id}-nvidia-dra",
         "chart": nvidia_dra_values["chart_name"],
     }
+
 
 def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
     """
@@ -819,27 +856,15 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
         "chart_name": "gpu-operator",
     }  # TODO: Change this to updated values
 
-    gpu_operator_values.update({
-        "cdi": {
-            "enabled": True
-        },
-        "devicePlugin": {
-            "enabled": True,
-            "mps": {
-                "enabled": True
-            }
-        },
-        "driver": {
-            "enabled": False
-        }
-    })
+    gpu_operator_values.update(
+        {"cdi": {"enabled": True}, "devicePlugin": {"enabled": True, "mps": {"enabled": True}}, "driver": {"enabled": False}}
+    )
 
     gpu_operator_values["toolkit"] = get_gpu_operator_toolkit(cluster_config_dict["k8s_distribution"])
-    
-    gpu_operator_values["toolkit"]["env"].append({
-        "name": "NODE_LABEL_FOR_GPU_POD_EVICTION",
-        "value": "nvidia.com/dra-kubelet-plugin"
-    })
+
+    gpu_operator_values["toolkit"]["env"].append(
+        {"name": "NODE_LABEL_FOR_GPU_POD_EVICTION", "value": "nvidia.com/dra-kubelet-plugin"}
+    )
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -854,6 +879,7 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
         "release": f"{project_id}-gpu-operator",
         "chart": gpu_operator_values["chart_name"],
     }
+
 
 def create_ingress_nginx_values(config_folder, project_id):
     """
@@ -976,6 +1002,7 @@ def create_metrics_server_values(config_folder, project_id):
         "repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
         "chart_name": "metrics-server",
         "chart_version": metrics_server_chart_version,
+        "image": {"repository": "maiacloudai/metrics-server"},
     }
 
     Path(config_folder).joinpath(project_id, "metrics_server_values").mkdir(parents=True, exist_ok=True)
@@ -1205,7 +1232,7 @@ def create_minio_operator_values(config_folder, project_id):
     """
     minio_operator_values = {
         "namespace": "minio-operator",
-        "repo_url": "https://operator.min.io",
+        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://operator.min.io",
         "chart_name": "operator",
         "chart_version": minio_operator_chart_version,
     }
