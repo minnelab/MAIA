@@ -1,0 +1,20 @@
+{{- if .Values.nvidia_dra_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-nvidia-dra-driver-gpu
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    chart: {{ .Values.nvidia_dra_values.chart_name }}
+    repoURL: {{ .Values.nvidia_dra_values.repo_url }}
+    targetRevision: {{ .Values.nvidia_dra_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-nvidia-dra-driver-gpu
+      valuesObject:
+      {{ .Values.nvidia_dra_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.nvidia_dra_values.namespace }}
+{{- end }}

@@ -58,7 +58,7 @@ The following variables are set by default in `defaults/main.yml`:
 | `argocd_login_retry_delay` | `10` | integer | Delay in seconds between login retries |
 | `argocd_sync_retries` | `3` | integer | Number of retries for ArgoCD sync |
 | `argocd_sync_retry_delay` | `10` | integer | Delay in seconds between sync retries |
-| `maia_core_argocd_applications` | `[maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]` | list | ArgoCD applications to sync |
+| `maia_core_argocd_applications` | `[maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-nvidia-dra-driver-gpu, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]` | list | ArgoCD applications to sync |
 
 ## Required Values
 
@@ -78,7 +78,7 @@ All other variables are optional and can be overridden when using the role:
 
 ### `maia_core_namespaces`
 - **Type**: `list` (of strings)
-- **Default**: `[observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]`
+- **Default**: `[observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, nvidia-dra-driver-gpu, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]`
 - **Description**: List of Kubernetes namespaces to create for MAIA Core components.
 - **Example**: 
   ```yaml
@@ -150,7 +150,7 @@ All other variables are optional and can be overridden when using the role:
 
 ### `maia_core_argocd_applications`
 - **Type**: `list` (of strings)
-- **Default**: `[maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]`
+- **Default**: `[maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-nvidia-dra-driver-gpu, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]`
 - **Description**: List of ArgoCD application names to synchronize. These applications should be created by the MAIA Core Toolkit installer.
 - **Example**: 
   ```yaml
@@ -311,6 +311,7 @@ The role creates the following namespaces by default:
 - `metallb-system`: For load balancer
 - `cert-manager`: For certificate management
 - `gpu-operator`: For GPU support
+- `nvidia-dra-driver-gpu`: For NVIDIA DRA driver for GPU support
 - `maia-core-toolkit`: For MAIA Core toolkit components
 - `ingress-nginx`: For additional ingress support
 - `minio-operator`: For object storage
@@ -324,6 +325,7 @@ The role synchronizes the following ArgoCD applications by default:
 - `maia-core-traefik`: Ingress controller
 - `maia-core-cert-manager`: Certificate management
 - `maia-core-gpu-operator`: GPU operator for NVIDIA GPUs
+- `maia-core-nvidia-dra-driver-gpu`: NVIDIA DRA driver for GPU support
 - `maia-core-metallb`: Load balancer
 - `maia-core-loki`: Log aggregation
 - `maia-core-tempo`: Distributed tracing

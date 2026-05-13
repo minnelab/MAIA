@@ -10,6 +10,7 @@ maia_core_namespaces:
   - metallb-system
   - cert-manager
   - gpu-operator
+  - nvidia-dra-driver-gpu
   - maia-core-toolkit
   - ingress-nginx
   - minio-operator
@@ -49,6 +50,7 @@ maia_core_argocd_applications:
   - maia-core-traefik
   - maia-core-cert-manager
   - maia-core-gpu-operator
+  - maia-core-nvidia-dra-driver-gpu
   - maia-core-metallb
   - maia-core-local-path
   - maia-core-loki

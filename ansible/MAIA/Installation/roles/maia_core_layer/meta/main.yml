@@ -103,6 +103,6 @@ argument_specs:
         maia_core_argocd_applications:
           type: list
           required: false
-          default: [maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]
+          default: [maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-nvidia-dra-driver-gpu, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]
           elements: str
           description: "List of ArgoCD applications to sync (optional)"
