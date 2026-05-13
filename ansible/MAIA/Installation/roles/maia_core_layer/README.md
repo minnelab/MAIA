@@ -78,7 +78,7 @@ All other variables are optional and can be overridden when using the role:
 
 ### `maia_core_namespaces`
 - **Type**: `list` (of strings)
-- **Default**: `[observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]`
+- **Default**: `[observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, nvidia-dra-driver-gpu, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]`
 - **Description**: List of Kubernetes namespaces to create for MAIA Core components.
 - **Example**: 
   ```yaml
@@ -311,6 +311,7 @@ The role creates the following namespaces by default:
 - `metallb-system`: For load balancer
 - `cert-manager`: For certificate management
 - `gpu-operator`: For GPU support
+- `nvidia-dra-driver-gpu`: For NVIDIA DRA driver for GPU support
 - `maia-core-toolkit`: For MAIA Core toolkit components
 - `ingress-nginx`: For additional ingress support
 - `minio-operator`: For object storage
