@@ -1,5 +1,7 @@
 import os
 
+MAIA_VERSION = "2.5.0"
+
 
 def define_maia_core_versions():
 
@@ -36,7 +38,7 @@ def define_maia_core_versions():
     if os.environ.get("GPU_OPERATOR_CHART_VERSION") is not None:
         gpu_operator_chart_version = os.environ.get("GPU_OPERATOR_CHART_VERSION")
     else:
-        gpu_operator_chart_version = "25.3.1"
+        gpu_operator_chart_version = "25.10.1"
 
     if os.environ.get("INGRESS_NGINX_CHART_VERSION") is not None:
         ingress_nginx_chart_version = os.environ.get("INGRESS_NGINX_CHART_VERSION")
@@ -82,6 +84,11 @@ def define_maia_core_versions():
         local_path_chart_type = os.environ.get("LOCAL_PATH_CHART_TYPE")
     else:
         local_path_chart_type = "git_repo"  # or "helm_repo"
+
+    if os.environ.get("NVIDIA_DRA_CHART_VERSION") is not None:
+        nvidia_dra_chart_version = os.environ.get("NVIDIA_DRA_CHART_VERSION")
+    else:
+        nvidia_dra_chart_version = "25.12.0"
 
     if os.environ.get("CORE_PROJECT_CHART_VERSION") is not None:
         core_project_chart_version = os.environ.get("CORE_PROJECT_CHART_VERSION")
@@ -130,6 +137,7 @@ def define_maia_core_versions():
         "local_path_chart_type": local_path_chart_type,
         "kubeflow_chart_version": kubeflow_chart_version,
         "kubeflow_chart_type": kubeflow_chart_type,
+        "nvidia_dra_chart_version": nvidia_dra_chart_version,
     }
 
 
@@ -311,7 +319,7 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
     else:
-        maia_dashboard_image_version = "2.5.0"
+        maia_dashboard_image_version = MAIA_VERSION
 
     if os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION") is not None:
         monai_toolkit_image_version = os.environ.get("MONAI_TOOLKIT_IMAGE_VERSION")
