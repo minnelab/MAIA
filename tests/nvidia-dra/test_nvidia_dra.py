@@ -11,7 +11,6 @@ import kubernetes as k8s
 import pytest
 from kubernetes.client import ApiException
 
-
 NAMESPACE = "default"
 RESOURCE_CLAIM_NAME_MPS = "default-mps"
 RESOURCE_CLAIM_NAME_TIMESLICE = "default-timeslice"
@@ -110,7 +109,7 @@ def _resource_claim_timeslice() -> dict[str, Any]:
                         },
                         "requests": ["ts-gpu"],
                     }
-                ]
+                ],
             }
         },
     }
@@ -295,7 +294,9 @@ def _wait_for_resource_claim_to_delete(custom_api: k8s.client.CustomObjectsApi, 
     pytest.fail(f"Timed out waiting for ResourceClaim {resource_claim_name} to delete")
 
 
-def _wait_for_pods_to_succeed(core_api: k8s.client.CoreV1Api, pods: list[dict[str, Any]], output: LogEmitter | None = None) -> None:
+def _wait_for_pods_to_succeed(
+    core_api: k8s.client.CoreV1Api, pods: list[dict[str, Any]], output: LogEmitter | None = None
+) -> None:
     deadline = time.time() + POD_READY_TIMEOUT_SECONDS
     pending_pods = {pod["metadata"]["name"]: pod for pod in pods}
     last_phases: dict[str, str] = {}
