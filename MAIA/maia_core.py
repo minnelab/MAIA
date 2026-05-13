@@ -825,7 +825,7 @@ def create_nvidia_dra_values(config_folder, project_id):
         "repo": nvidia_dra_values["repo_url"],
         "version": nvidia_dra_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "nvidia_dra_values", "nvidia_dra_values.yaml")),
-        "release": f"{project_id}-nvidia-dra",
+        "release": f"{project_id}-nvidia-dra-driver-gpu",
         "chart": nvidia_dra_values["chart_name"],
     }
 
