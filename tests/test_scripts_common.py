@@ -1,8 +1,6 @@
 """Unit tests for MAIA_scripts argument parsers and basic functions."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 
@@ -20,8 +18,6 @@ class TestArgumentParsers:
         # Test parsing valid arguments
         args = parser.parse_args(
             [
-                "--maia-config-file",
-                "/path/to/maia_config.yaml",
                 "--cluster-config",
                 "/path/to/cluster_config.yaml",
                 "--config-folder",
@@ -31,7 +27,6 @@ class TestArgumentParsers:
             ]
         )
 
-        assert args.maia_config_file == "/path/to/maia_config.yaml"
         assert args.cluster_config == "/path/to/cluster_config.yaml"
         assert args.config_folder == "/path/to/config"
         assert args.project_id == "maia-base"
@@ -53,22 +48,12 @@ class TestArgumentParsers:
         # Test parsing valid arguments
         args = parser.parse_args(
             [
-                "--chart-name",
-                "test-chart",
-                "--release-name",
-                "test-release",
-                "--namespace",
-                "test-namespace",
-                "--repo",
-                "https://charts.example.com",
-                "--chart-version",
-                "1.0.0",
+                "--config-file",
+                "/path/to/config.json",
             ]
         )
 
-        assert args.chart_name == "test-chart"
-        assert args.release_name == "test-release"
-        assert args.namespace == "test-namespace"
+        assert args.config_file == "/path/to/config.json"
 
     def test_install_admin_toolkit_get_arg_parser(self):
         """Test MAIA_install_admin_toolkit argument parser."""
@@ -80,8 +65,6 @@ class TestArgumentParsers:
         # Test parsing valid arguments
         args = parser.parse_args(
             [
-                "--maia-config-file",
-                "/path/to/maia_config.yaml",
                 "--cluster-config",
                 "/path/to/cluster_config.yaml",
                 "--config-folder",
@@ -89,7 +72,6 @@ class TestArgumentParsers:
             ]
         )
 
-        assert args.maia_config_file == "/path/to/maia_config.yaml"
         assert args.cluster_config == "/path/to/cluster_config.yaml"
         assert args.config_folder == "/path/to/config"
 
@@ -103,8 +85,6 @@ class TestArgumentParsers:
         # Test parsing valid arguments
         args = parser.parse_args(
             [
-                "--maia-config-file",
-                "/path/to/maia_config.yaml",
                 "--cluster-config",
                 "/path/to/cluster_config.yaml",
                 "--config-folder",
@@ -112,7 +92,7 @@ class TestArgumentParsers:
             ]
         )
 
-        assert args.maia_config_file == "/path/to/maia_config.yaml"
+        assert args.cluster_config == "/path/to/cluster_config.yaml"
 
     def test_install_project_toolkit_get_arg_parser(self):
         """Test MAIA_install_project_toolkit argument parser."""
@@ -126,8 +106,6 @@ class TestArgumentParsers:
             [
                 "--project-config-file",
                 "/path/to/project_config.yaml",
-                "--maia-config-file",
-                "/path/to/maia_config.yaml",
                 "--cluster-config",
                 "/path/to/cluster_config.yaml",
                 "--config-folder",
@@ -136,7 +114,7 @@ class TestArgumentParsers:
         )
 
         assert args.project_config_file == "/path/to/project_config.yaml"
-        assert args.maia_config_file == "/path/to/maia_config.yaml"
+        assert args.cluster_config == "/path/to/cluster_config.yaml"
 
     def test_send_welcome_user_mail_get_arg_parser(self):
         """Test MAIA_send_welcome_user_mail argument parser."""
@@ -148,37 +126,24 @@ class TestArgumentParsers:
         # Test parsing valid arguments
         args = parser.parse_args(
             [
-                "--receiver-email",
+                "--email",
                 "user@example.com",
-                "--maia-url",
+                "--url",
                 "https://maia.example.com",
             ]
         )
 
-        assert args.receiver_email == "user@example.com"
-        assert args.maia_url == "https://maia.example.com"
+        assert args.email == "user@example.com"
+        assert args.url == "https://maia.example.com"
 
 
 @pytest.mark.unit
 class TestScriptBasicFunctions:
     """Test basic functions in MAIA_scripts that don't require full integration."""
 
-    @patch("MAIA_scripts.MAIA_build_images.deploy_maia_kaniko")
-    @patch("MAIA_scripts.MAIA_build_images.create_helm_repo_secret_from_context")
-    @patch("MAIA_scripts.MAIA_build_images.requests.get")
-    @patch("MAIA_scripts.MAIA_build_images.OmegaConf.load")
-    @patch("MAIA_scripts.MAIA_build_images.config.load_kube_config")
-    def test_build_maia_images_function_exists(
-        self, mock_load_config, mock_omegaconf, mock_requests, mock_helm_secret, mock_kaniko
-    ):
+    def test_build_maia_images_function_exists(self):
         """Test that build_maia_images function exists and can be called."""
         from MAIA_scripts.MAIA_build_images import build_maia_images
-
-        # Mock responses
-        mock_omegaconf.return_value = {"test": "config"}
-        mock_response = MagicMock()
-        mock_response.text = "docker_versions:\n  test: 1.0"
-        mock_requests.return_value = mock_response
 
         # Verify function exists and accepts expected parameters
         assert callable(build_maia_images)
