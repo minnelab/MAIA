@@ -75,6 +75,8 @@ def main():
            
         with open(f"{env_name}_conda_env.yaml", "w") as f:
             f.write(os.environ["CONDA_ENV"])
+        subprocess.run(["/opt/conda/bin/conda", "tos", "accept", "--override-channels", "--channel", "https://repo.anaconda.com/pkgs/main"])
+        subprocess.run(["/opt/conda/bin/conda", "tos", "accept", "--override-channels", "--channel", "https://repo.anaconda.com/pkgs/r"])
         subprocess.run(["/opt/conda/bin/conda", "env", "create", "--prefix", f"/home/{user}/.conda/envs/{env_name}", f"--file={env_name}_conda_env.yaml"])
     #    with open("/home/{}/.bashrc".format(user), "a+") as f:
     #        subprocess.run(["echo", "conda","activate","{}".format(env_name)], stdout=f)
@@ -84,7 +86,7 @@ def main():
         with open("pip_env.txt", "w") as f:
             f.write(os.environ["PIP_ENV"])
         subprocess.run(
-            ["python", "-m", "pip", "install", "-r", "pip_env.txt"])
+            ["python", "-m", "pip", "install", "--break-system-packages", "-r", "pip_env.txt"])
 
 if __name__ == "__main__":
     main()

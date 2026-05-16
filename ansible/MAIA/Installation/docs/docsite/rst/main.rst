@@ -19,9 +19,9 @@ Required Values
 
 The script requires the following environment variables (will prompt if not set):
 
-- **MAIA_PRIVATE_REGISTRY**: The URL of the private MAIA Docker/Helm registry (e.g., ``https://harbor.example.com``). If left empty, the script will set PUBLIC_REGISTRY=1 and skip prompting for HARBOR_USERNAME and HARBOR_PASSWORD
-- **HARBOR_USERNAME**: Username for authenticating with the MAIA Harbor registry. Only required if ``MAIA_PRIVATE_REGISTRY`` is set.
-- **HARBOR_PASSWORD**: Password for authenticating with the MAIA Harbor registry. Only required if ``MAIA_PRIVATE_REGISTRY`` is set.
+- **MAIA_PRIVATE_REGISTRY**: The URL of the private MAIA Docker/Helm registry (e.g., ``https://harbor.example.com``). If left empty, the script will set PUBLIC_REGISTRY=1 and skip prompting for REGISTRY_USERNAME and REGISTRY_PASSWORD
+- **REGISTRY_USERNAME**: Username for authenticating with a private registry. Only required if ``MAIA_PRIVATE_REGISTRY`` is set.
+- **REGISTRY_PASSWORD**: Password for authenticating with a private registry. Only required if ``MAIA_PRIVATE_REGISTRY`` is set.
 - **CLUSTER_DOMAIN**: The public domain or base domain for the MAIA cluster (e.g., ``maia.example.com``).
 - **CLUSTER_NAME**: Name to assign to the MAIA Kubernetes cluster (e.g., ``maia-cluster``).
 - **CONFIG_FOLDER**: Directory path to store MAIA/cluster configuration files (e.g., ``/opt/maia/config``).
@@ -31,14 +31,14 @@ The script requires the following environment variables (will prompt if not set)
 Optional Values
 ---------------
 
-- **PUBLIC_REGISTRY**: Set to ``1`` to skip prompting for ``HARBOR_USERNAME`` and ``HARBOR_PASSWORD`` (uses public registry)
+- **PUBLIC_REGISTRY**: Set to ``1`` to skip prompting for ``REGISTRY_USERNAME`` and ``REGISTRY_PASSWORD`` (uses public registry)
 - **JSON_KEY_PATH**: Path to a JSON file containing Harbor credentials in the format:
 
   .. code-block:: json
 
       {
-        "harbor_username": "username",
-        "harbor_password": "password"
+        "username": "username",
+        "password": "password"
       }
 - **CIFS Key Generation**: The script will prompt to generate a CIFS public-private key pair for CIFS shared storage support
 

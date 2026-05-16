@@ -84,3 +84,23 @@ argument_specs:
           required: false
           default: true
           description: "Enable SSH port forwarding for ArgoCD UI access (optional)"
+        install_kyverno:
+          type: bool
+          required: false
+          default: false
+          description: "Install Kyverno via Helm (optional)"
+        proxy_ip:
+          type: str
+          required: false
+          default: null
+          description: "Proxy IP address (optional)"
+        no_proxy_ips:
+          type: str
+          required: false
+          default: null
+          description: "No proxy IPs (optional)"
+        extra_commands:
+          type: list
+          required: false
+          default: []
+          description: "Additional commands to execute, i.e. to set image of a deployment (optional)"

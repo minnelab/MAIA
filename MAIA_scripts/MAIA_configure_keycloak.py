@@ -8,19 +8,21 @@ from pathlib import Path
 
 from loguru import logger
 
-EPILOG = dedent(
-    """
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --client_secret <client_secret> --server_url <server_url>
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def create_admin_user_and_group(
-    server_url: str, client_secret: str, admin_email="admin@maia.se", group_id="users", admin_password="Admin"
+    server_url: str,
+    client_secret: str,
+    admin_email="admin@maia.se",
+    group_id="users",
+    admin_password="admin",
+    is_admin=True,
+    admin_group_id="admin",
 ):
     keycloak_connection = KeycloakOpenIDConnection(
         server_url=server_url,
@@ -76,17 +78,46 @@ def create_admin_user_and_group(
                 if group["name"] == f"MAIA:{group_id}":
                     gid = group["id"]
                     keycloak_admin.group_user_add(uid, gid)
+                if is_admin:
+                    if group["name"] == f"MAIA:{admin_group_id}":
+                        gid = group["id"]
+                        keycloak_admin.group_user_add(uid, gid)
 
     client_uuid = keycloak_admin.get_client_id("realm-management")
+    if client_uuid is None:
+        raise ValueError("Client UUID not found in Keycloak")
     client_roles = keycloak_admin.get_client_roles(client_uuid)
     for group in groups:
-        if group["name"] == "MAIA:admin":
+        if group["name"] == f"MAIA:{admin_group_id}":
             gid = group["id"]
             keycloak_admin.assign_group_client_roles(
                 group_id=gid,
                 client_id=client_uuid,
                 roles=client_roles,
             )
+
+
+def create_public_client(server_url: str, client_secret: str):
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=server_url,
+        username="user",
+        password="",
+        realm_name="maia",
+        client_id="maia",
+        client_secret_key=client_secret,
+        verify=False,
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    keycloak_admin.create_client(
+        {
+            "name": "maia-public",
+            "clientId": "maia-public",
+            "redirectUris": ["http://localhost:8080"],
+            "publicClient": True,
+            "standardFlowEnabled": True,
+            "directAccessGrantsEnabled": True,
+        }
+    )
 
 
 def get_arg_parser():
@@ -97,12 +128,25 @@ def get_arg_parser():
     )
     parser.add_argument("--client_secret", type=str, required=True, help="The client secret to use")
     parser.add_argument("--server_url", type=str, required=True, help="The server URL to configure")
+    parser.add_argument("--admin_email", type=str, required=True, help="The admin email to use")
+    parser.add_argument("--admin_password", type=str, required=False, default="admin", help="The admin password to use")
+    parser.add_argument("--admin_group_id", type=str, required=False, default="admin", help="The admin group ID to use")
     return parser
 
 
 def main():
     args = get_arg_parser().parse_args()
-    create_admin_user_and_group(args.server_url, args.client_secret)
+    create_public_client(
+        server_url=args.server_url,
+        client_secret=args.client_secret,
+    )
+    create_admin_user_and_group(
+        server_url=args.server_url,
+        client_secret=args.client_secret,
+        admin_email=args.admin_email,
+        admin_password=args.admin_password,
+        admin_group_id=args.admin_group_id,
+    )
 
 
 if __name__ == "__main__":

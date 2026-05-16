@@ -37,5 +37,6 @@ RUN apt-get update && \
 ENV TZ="Europe/Stockholm"
 
 COPY default.template /etc/default.template
+COPY minio.conf.template /etc/minio.conf.template
 ENTRYPOINT ["bash", "./start.sh"]
 CMD ["/usr/sbin/sshd", "-D"]

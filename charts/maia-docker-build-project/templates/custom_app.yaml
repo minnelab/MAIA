@@ -1,0 +1,38 @@
+{{- if .Values.custom_app_values }}
+{{- range $name := .Values.custom_app_values }}
+{{- $cfg := index $.Values $name }}
+{{- $app_name := trimSuffix "_values" $name }}
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-{{ $app_name }}
+  namespace: {{ $.Values.argo_namespace }}
+
+spec:
+  project: {{ $.Release.Name }}
+
+  source:
+    repoURL: {{ $cfg.repo_url }}
+    targetRevision: {{ $cfg.chart_version }}
+
+    {{- if $cfg.chart_name }}
+    chart: {{ $cfg.chart_name }}
+    {{- end }}
+
+    {{- if $cfg.path }}
+    path: {{ $cfg.path }}
+    {{- end }}
+
+    helm:
+      releaseName: {{ $.Release.Name }}-{{ $app_name }}
+      valuesObject:
+{{ $cfg | toYaml | nindent 8 }}
+
+  destination:
+    server: {{ $.Values.destination_server }}
+    namespace: {{ $.Values.namespace }}
+
+---
+{{- end }}
+{{- end }}

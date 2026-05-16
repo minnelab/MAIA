@@ -26,3 +26,14 @@ argocd_port_forward_port: 8080
 
 # Enable SSH port forwarding for ArgoCD UI access
 argocd_enable_port_forwarding: true
+
+# Install Kyverno via Helm
+install_kyverno: false
+
+# Proxy IP address
+proxy_ip: null
+
+# No proxy IPs
+no_proxy_ips: null
+# Optional Kubernetes commands to execute
+extra_commands: []

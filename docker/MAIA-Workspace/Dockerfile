@@ -34,6 +34,9 @@ COPY Tools/ZSH/install_zsh.sh /etc/install_zsh.sh
 RUN chmod 777 /etc/install_zsh.sh && \
     chmod a+x /etc/install_zsh.sh
 
+COPY Tools/MTOP/mtop /usr/local/bin/mtop
+RUN chmod 755 /usr/local/bin/mtop
+RUN chmod +x /usr/local/bin/mtop
 
 USER 1000
 ENV HOME=/home/maia-user

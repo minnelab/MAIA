@@ -11,28 +11,22 @@ from textwrap import dedent
 import MAIA
 import json
 import yaml
-
+import tempfile
 from loguru import logger
 
 version = MAIA.__version__
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to install MAIA on a Kubernetes cluster. This script:
     1. Installs the MAIA Ansible collection
     2. Runs MAIA_Configure_Installation.sh to configure the installation
     3. Executes the MAIA installation playbooks in sequence
-    """
-)
-EPILOG = dedent(
-    """
+    """)
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --config-folder /path/to/config
-    """.format(
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))
 
 
 def get_arg_parser():
@@ -77,6 +71,37 @@ def get_arg_parser():
         help="Run MAIA_Configure_Installation.sh without prompts (requires env.json to exist).",
     )
 
+    pars.add_argument(
+        "--steps",
+        nargs="+",
+        default=None,
+        help="Steps to run. Default: None. If provided, only the specified steps will be run, overriding the steps in the config.yaml file.",
+    )
+
+    pars.add_argument(
+        "--upgrade-maia-core",
+        action="store_true",
+        help="Upgrade MAIA core. Default: False. If provided, the MAIA core will be upgraded.",
+    )
+
+    pars.add_argument(
+        "--upgrade-maia-admin",
+        action="store_true",
+        help="Upgrade MAIA admin. Default: False. If provided, the MAIA admin will be upgraded.",
+    )
+
+    pars.add_argument(
+        "--upgrade-maia-dashboard",
+        action="store_true",
+        help="Upgrade MAIA dashboard. Default: False. If provided, the MAIA dashboard will be upgraded.",
+    )
+
+    pars.add_argument(
+        "--auto-sync",
+        action="store_true",
+        help="Auto sync. Default: False. If provided, the auto sync will be enabled.",
+    )
+
     pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
@@ -105,11 +130,26 @@ def main():
         os.environ["CONFIG_FOLDER"] = str(config_folder)
         if "env" in config_dict:
             for key, value in config_dict["env"].items():
-                if key != "MAIA_PRIVATE_REGISTRY" and key != "INGRESS_RESOLVER_EMAIL":
-                    os.environ[key] = value
+                if key != "MAIA_PRIVATE_REGISTRY":
+                    logger.info(f"Setting environment variable {key} to {value}")
+                    if key == "INGRESS_RESOLVER_EMAIL" and value != "" and value is not None:
+                        os.environ[key] = value
+                    elif value is not None and value != "":
+                        os.environ[key] = value
     else:
         config_dict = {}
 
+    if args.steps:
+        config_dict["steps"] = args.steps
+    if args.upgrade_maia_core:
+        config_dict["steps"] = ["install_maia_core"]
+        config_dict["install_maia_core"] = {"auto_sync": args.auto_sync}
+    if args.upgrade_maia_admin:
+        config_dict["steps"] = ["install_maia_admin"]
+        config_dict["install_maia_admin"] = {"auto_sync": args.auto_sync}
+    if args.upgrade_maia_dashboard:
+        config_dict["steps"] = ["configure_maia_dashboard"]
+        config_dict["configure_maia_dashboard"] = {"auto_sync": args.auto_sync}
     playbooks_dir = "maia.installation"
 
     # Step 1: Install Ansible collection
@@ -223,6 +263,20 @@ def main():
                 "-e",
                 f"host_ip={host_ip}",
             ]
+            if "proxy_ip" in config_dict["cluster_config_extra_env"]:
+                configure_host_linux_cmd.extend(
+                    [
+                        "-e",
+                        f"proxy_ip={config_dict['cluster_config_extra_env']['proxy_ip']}",
+                    ]
+                )
+            if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
+                configure_host_linux_cmd.extend(
+                    [
+                        "-e",
+                        f"no_proxy_ips={config_dict['cluster_config_extra_env']['no_proxy_ips']}",
+                    ]
+                )
             try:
                 run_command(configure_host_linux_cmd)
             except subprocess.CalledProcessError as e:
@@ -242,6 +296,20 @@ def main():
             "-e",
             f"cluster_domain={cluster_domain}",
         ]
+        if "proxy_ip" in config_dict["cluster_config_extra_env"]:
+            configure_host_cmd.extend(
+                [
+                    "-e",
+                    f"proxy_ip={config_dict['cluster_config_extra_env']['proxy_ip']}",
+                ]
+            )
+        if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
+            configure_host_cmd.extend(
+                [
+                    "-e",
+                    f"no_proxy_ips={config_dict['cluster_config_extra_env']['no_proxy_ips']}",
+                ]
+            )
         try:
             run_command(configure_host_cmd)
         except subprocess.CalledProcessError as e:
@@ -249,32 +317,38 @@ def main():
             sys.exit(1)
         else:
             logger.info("\n=== Step 3.2: Skipping configure_host.yaml for all hosts ===")
-    # Step 4: Run install_microk8s.yaml
-    logger.info("\n=== Step 4: Running install_microk8s.yaml ===")
-    install_microk8s_cmd = [
+    # Step 4: Run install_k8s_distribution.yaml
+    logger.info(f"\n=== Step 4: Running install_{os.environ['K8S_DISTRIBUTION']}.yaml ===")
+    install_k8s_distribution_cmd = [
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        str(playbooks_dir + ".install_microk8s"),
+        str(playbooks_dir + f".install_{os.environ['K8S_DISTRIBUTION']}"),
         "-e",
         f"config_folder={config_folder_env}",
     ]
-    if "install_microk8s" in config_dict:
-        for key, value in config_dict["install_microk8s"].items():
-            install_microk8s_cmd.extend(
-                [
-                    "-e",
-                    f"{key}={value}",
+    if f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
+            if "proxy_ip" in config_dict["cluster_config_extra_env"]:
+                config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["proxy_ip"] = config_dict["cluster_config_extra_env"][
+                    "proxy_ip"
                 ]
-            )
-    if "steps" in config_dict and "install_microk8s" in config_dict["steps"]:
+            if "no_proxy_ips" in config_dict["cluster_config_extra_env"]:
+                config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"]["no_proxy_ips"] = config_dict[
+                    "cluster_config_extra_env"
+                ]["no_proxy_ips"]
+            yaml.dump(config_dict[f"install_{os.environ['K8S_DISTRIBUTION']}"], tf)
+            vars_file = tf.name
+
+        install_k8s_distribution_cmd.extend(["-e", f"@{vars_file}"])
+    if "steps" in config_dict and f"install_{os.environ['K8S_DISTRIBUTION']}" in config_dict["steps"]:
         try:
-            run_command(install_microk8s_cmd)
+            run_command(install_k8s_distribution_cmd)
         except subprocess.CalledProcessError as e:
-            logger.error(f"Error running install_microk8s.yaml: {e}")
+            logger.error(f"Error running install_{os.environ['K8S_DISTRIBUTION']}.yaml: {e}")
             sys.exit(1)
     else:
-        logger.info("\n=== Step 4: Skipping install_microk8s.yaml ===")
+        logger.info(f"\n=== Step 4: Skipping install_{os.environ['K8S_DISTRIBUTION']}.yaml ===")
     # Step 5: Run install_maia_core.yaml
     logger.info("\n=== Step 5: Running install_maia_core.yaml ===")
     install_maia_core_cmd = [
@@ -286,13 +360,11 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if "install_maia_core" in config_dict:
-        for key, value in config_dict["install_maia_core"].items():
-            install_maia_core_cmd.extend(
-                [
-                    "-e",
-                    f"{key}={value}",
-                ]
-            )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
+            yaml.dump(config_dict["install_maia_core"], tf)
+            vars_file = tf.name
+
+        install_maia_core_cmd.extend(["-e", f"@{vars_file}"])
     if "steps" in config_dict and "install_maia_core" in config_dict["steps"]:
         try:
             run_command(install_maia_core_cmd)
@@ -313,13 +385,11 @@ def main():
         f"config_folder={config_folder_env}",
     ]
     if "install_maia_admin" in config_dict:
-        for key, value in config_dict["install_maia_admin"].items():
-            install_maia_admin_cmd.extend(
-                [
-                    "-e",
-                    f"{key}={value}",
-                ]
-            )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tf:
+            yaml.dump(config_dict["install_maia_admin"], tf)
+            vars_file = tf.name
+
+        install_maia_admin_cmd.extend(["-e", f"@{vars_file}"])
     if "steps" in config_dict and "install_maia_admin" in config_dict["steps"]:
         try:
             run_command(install_maia_admin_cmd)

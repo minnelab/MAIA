@@ -13,10 +13,6 @@
   ansible.builtin.set_fact:
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
-- name: Extract rancher_password from cluster config
-  ansible.builtin.set_fact:
-    rancher_password: "{{ (cluster_config_content.content | b64decode | from_yaml).rancher_password }}"
-
 - name: Get ArgoCD admin token via curl
   ansible.builtin.command: >
     curl -k -X POST -H 'Content-Type: application/json'
@@ -70,12 +66,19 @@
   ansible.builtin.set_fact:
     rancher_token: "{{ (kubeconfig_yaml | from_yaml).users[0].user.token }}"
 
-- name: Write rancher token to cluster config
-  ansible.builtin.lineinfile:
-    path: "{{ config_folder }}/{{ cluster_name }}.yaml"
-    line: "rancher_token: {{ rancher_token }}"
-    create: true
-    regexp: "^rancher_token:.*$"
+- name: Read existing env.json (if it exists)
+  ansible.builtin.slurp:
+    src: "{{ config_folder }}/env.json"
+  register: env_file
+  delegate_to: localhost
+
+- name: Write rancher token to env.json file, keeping other keys unchanged
+  ansible.builtin.copy:
+    dest: "{{ config_folder }}/env.json"
+    content: "{{ existing_data | combine({'rancher_token': rancher_token}) | to_nice_json }}"
+  vars:
+    # If the file exists, decode and parse it. If not, default to an empty dictionary {}
+    existing_data: "{{ (env_file.content | b64decode | from_json) if env_stat.stat.exists else {} }}"
   delegate_to: localhost
 
 

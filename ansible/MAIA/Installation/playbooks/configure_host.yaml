@@ -16,7 +16,23 @@
       - "maia.{{ cluster_domain }}"
       - "test.{{ cluster_domain }}"
       - "minio.test.{{ cluster_domain }}"
+      - "minio-api.{{ cluster_domain }}"
+      - "minio-api.test.{{ cluster_domain }}"
       - "login.{{ cluster_domain }}"
+      - "kubeflow.{{ cluster_domain }}"
+    environment_variables_list: |
+      {% if proxy_ip is not defined or no_proxy_ips is not defined %}
+      []
+      {% else %}
+      [
+        "http_proxy=http://{{ proxy_ip }}:3130",
+        "https_proxy=http://{{ proxy_ip }}:3130",
+        "no_proxy=localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}",
+        "HTTP_PROXY=http://{{ proxy_ip }}:3130",
+        "HTTPS_PROXY=http://{{ proxy_ip }}:3130",
+        "NO_PROXY=localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}"
+      ]
+      {% endif %}
   tasks:
     - name: Ensure /etc/hosts contains all required host mappings
       ansible.builtin.lineinfile:
@@ -26,3 +42,22 @@
         regexp: "^{{ host_ip | regex_escape() }}\\s+{{ item | regex_escape() }}$"
         line: "{{ host_ip }} {{ item }}"
       loop: "{{ hostnames }}"
+
+    - name: Set parsed environment variable list fact
+      set_fact:
+        _parsed_environment_variables_list: "{{ environment_variables_list | from_yaml }}"
+      when: environment_variables_list is string
+
+    - name: Debug _parsed_environment_variables_list
+      ansible.builtin.debug:
+        var: _parsed_environment_variables_list
+    - name: Configure environment variables
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        create: yes
+        state: present
+        regexp: "^{{ item | regex_escape() }}$"
+        line: "{{ item }}"
+      when: (_parsed_environment_variables_list | length > 0)
+      loop: "{{ _parsed_environment_variables_list }}"
+ 

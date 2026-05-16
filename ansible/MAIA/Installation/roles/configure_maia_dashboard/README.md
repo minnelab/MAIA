@@ -63,6 +63,7 @@ Additionally, the following environment variables must be provided (typically fr
 - `minio_root_password`: Root password for MinIO tenant
 - `dashboard_api_secret`: API secret for MAIA dashboard
 - `mysql_dashboard_password`: Password for dashboard MySQL backend
+- `mongodb_dashboard_password`: Password for dashboard MongoDB backend
 - `ARGOCD_PASSWORD`: Password for ArgoCD CLI login
 
 ## Optional Values

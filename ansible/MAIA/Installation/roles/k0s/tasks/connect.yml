@@ -1,0 +1,49 @@
+---
+- name: Include k0s external variables (env.json)
+  include_vars:
+    file: "{{ config_folder }}/env.json"
+
+- name: Get k0s admin kubeconfig
+  command: k0s kubeconfig admin
+  register: k0s_kubeconfig_output
+
+- name: Write k0s kubeconfig to local file
+  become: false
+  local_action:
+    module: copy
+    content: "{{ k0s_kubeconfig_output.stdout }}"
+    dest: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Replace server in kubeconfig to use localhost
+  become: false
+  local_action:
+    module: lineinfile
+    path: "{{ DEPLOY_KUBECONFIG }}"
+    regexp: '^(\s*server\s*:\s*)https?://.*:\d+'
+    line: "    server: https://127.0.0.1:{{ k0s_port_forward_port }}"
+    backrefs: yes
+
+- name: Copy k0s root CA certificate to local file
+  fetch:
+    src: "{{ k0s_data_dir }}/pki/ca.crt"
+    dest: "{{ config_folder }}/ca.crt"
+    flat: yes
+    mode: '0600'
+
+- name: Kill any process currently listening on port forwarding port (if exists)
+  ansible.builtin.shell: |
+    if lsof -i :{{ k0s_port_forward_port }} -t >/dev/null 2>&1; then
+      lsof -i :{{ k0s_port_forward_port }} -t | xargs kill -9
+    fi
+  ignore_errors: true
+  delegate_to: localhost
+  when: k0s_enable_port_forwarding | bool
+
+- name: Start SSH port forward in background (localhost)
+  ansible.builtin.shell: |
+    nohup ssh -L {{ k0s_port_forward_port }}:127.0.0.1:6443 {{ inventory_hostname }} -N -o ExitOnForwardFailure=yes &
+  async: 0
+  poll: 0
+  delegate_to: localhost
+  when: k0s_enable_port_forwarding | bool
+

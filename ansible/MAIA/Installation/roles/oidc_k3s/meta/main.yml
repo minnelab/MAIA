@@ -1,0 +1,68 @@
+#SPDX-License-Identifier: MIT-0
+galaxy_info:
+  author: Simone Bendazzoli <simben@kth.se>
+  description: Enable OIDC (OpenID Connect) authentication for k3s. Configures the Kubernetes API server managed by k3s to authenticate users using JWT tokens from an OIDC provider (typically Keycloak).
+  company: MAIA Project
+
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.1
+
+  galaxy_tags: [oidc, k3s, kubernetes, authentication, keycloak]
+
+dependencies: []
+
+argument_specs:
+  main:
+    description: Enable OIDC (OpenID Connect) authentication for k3s. Configures the Kubernetes API server managed by k3s to authenticate users using JWT tokens from an OIDC provider (typically Keycloak).
+    short_description: Enable OIDC (OpenID Connect) authentication for k3s
+    options:
+      config_folder:
+        type: str
+        required: true
+        description: "Path to the configuration folder containing the cluster YAML file (required)"
+      oidc_username_claim:
+        type: str
+        required: false
+        default: email
+        description: "JWT claim to use as username (optional)"
+      oidc_groups_claim:
+        type: str
+        required: false
+        default: groups
+        description: "JWT claim to use for groups (optional)"
+      oidc_client_id:
+        type: str
+        required: false
+        default: maia
+        description: "OIDC client ID (optional)"
+      oidc_realm:
+        type: str
+        required: false
+        default: maia
+        description: "OIDC realm name used in issuer URL (optional)"
+      oidc_subdomain:
+        type: str
+        required: false
+        default: iam
+        description: "Subdomain prefix for OIDC issuer URL (optional)"
+      oidc_ca_file:
+        type: str
+        required: false
+        default: /var/lib/rancher/k3s/server/tls/server-ca.crt
+        description: "Path to CA certificate file for OIDC verification (optional)"
+      k3s_config_dir:
+        type: str
+        required: false
+        default: /etc/rancher/k3s
+        description: "Path to k3s config directory (optional)"
+      oidc_k3s_retries:
+        type: int
+        required: false
+        default: 10
+        description: "Number of retries when waiting for k3s to become operational (optional)"
+      oidc_k3s_retry_delay:
+        type: int
+        required: false
+        default: 15
+        description: "Delay in seconds between retries when waiting for k3s (optional)"

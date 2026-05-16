@@ -1,0 +1,4 @@
+local_path_provisioner:
+  enabled: False
+  storage_class: "local-path"
+  local_path_provisioner_path: "/opt/local-path-provisioner"

@@ -25,7 +25,7 @@ spec:
             claimName: {{ include "maia-dashboard.fullname" . }}-mysql
       containers:
         - name: {{ .Chart.Name }}
-          image: mysql:8.0.28
+          image: {{ .Values.mysql.image }}:{{ .Values.mysql.tag }}
           env:
             - name: NVIDIA_VISIBLE_DEVICES
             - name: MYSQL_ROOT_PASSWORD

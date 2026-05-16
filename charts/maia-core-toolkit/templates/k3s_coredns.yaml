@@ -1,0 +1,23 @@
+{{ if .Values.k3s_coredns.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  # The key must end in .server for k3s to inject it as a new block
+  selfsigned-services.server: |
+    {{ .Values.selfsigned.cluster_domain }}:53 {
+      hosts {
+        {{ .Values.selfsigned.coredns_ip }} iam.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} registry.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} mgmt.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} argocd.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} kubeflow.{{ .Values.selfsigned.cluster_domain }}
+        {{ .Values.selfsigned.coredns_ip }} {{ .Values.selfsigned.cluster_domain }}
+        fallthrough
+      }
+      forward . /etc/resolv.conf
+      cache 30
+    }
+{{ end }}

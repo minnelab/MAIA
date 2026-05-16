@@ -9,6 +9,7 @@ ADMIN_PROJECT_VERSION=$(python3 -c "from MAIA.versions import define_maia_admin_
 ARGOCD_NAMESPACE="argocd"
 ADMIN_GROUP_ID="MAIA:admin"
 
+# Load environment variables from JSON file, passed as the first argument
 if [ $# -ge 1 ]; then
   ENV_JSON="$1"
   if [ ! -f "$ENV_JSON" ]; then
@@ -25,11 +26,12 @@ if [ $# -ge 1 ]; then
     export ${key}=${value}
     echo "Read $key from $ENV_JSON"
   done < <(jq -r 'to_entries|map("\(.key)=\(.value|tostring)")|.[]' "$ENV_JSON")
+  # Set CONFIG_FOLDER to the directory of the JSON file
   export CONFIG_FOLDER=$(dirname "$(realpath "$ENV_JSON")")
   if [ -n "$CONFIG_FOLDER" ]; then
     echo "Exported CONFIG_FOLDER from $ENV_JSON"
   fi
-  # Extract CLUSTER_NAME from DEPLOY_KUBECONFIG if possible
+  # Extract CLUSTER_NAME from DEPLOY_KUBECONFIG if possible (kubeconfig file name without the -kubeconfig.yaml suffix)
   if [ -n "$DEPLOY_KUBECONFIG" ]; then
     CLUSTER_NAME=$(basename "$DEPLOY_KUBECONFIG" | sed -E 's/-kubeconfig\.yaml$//')
     export CLUSTER_NAME=${CLUSTER_NAME}
@@ -43,17 +45,24 @@ if [ -n "$JSON_KEY_PATH" ] && [ -f "$JSON_KEY_PATH" ]; then
     echo "Error: 'jq' is required but not installed."
     exit 1
   fi
-  export HARBOR_USERNAME=$(jq -r '.harbor_username // empty' "$JSON_KEY_PATH")
-  export HARBOR_PASSWORD=$(jq -r '.harbor_password // empty' "$JSON_KEY_PATH")
-  if [ -n "$HARBOR_USERNAME" ]; then
-    echo "Exported HARBOR_USERNAME from $JSON_KEY_PATH"
+  export REGISTRY_USERNAME=$(jq -r '.username // empty' "$JSON_KEY_PATH")
+  export REGISTRY_PASSWORD=$(jq -r '.password // empty' "$JSON_KEY_PATH")
+  if [ -n "$REGISTRY_USERNAME" ]; then
+    echo "Exported REGISTRY_USERNAME from $JSON_KEY_PATH"
   fi
-  if [ -n "$HARBOR_PASSWORD" ]; then
-    echo "Exported HARBOR_PASSWORD from $JSON_KEY_PATH"
+  if [ -n "$REGISTRY_PASSWORD" ]; then
+    echo "Exported REGISTRY_PASSWORD from $JSON_KEY_PATH"
   fi
 fi
 
+# If CLUSTER_NAME and CONFIG_FOLDER are set, load cluster configuration from the file
+# The configuration parameters loaded are:
+# - CLUSTER_DOMAIN
+# - K8S_DISTRIBUTION
+# - INGRESS_RESOLVER_EMAIL
+# - RANCHER_TOKEN
 if [ -n "$CLUSTER_NAME" ]; then
+  # Check if CONFIG_FOLDER is set
   if [ -z "$CONFIG_FOLDER" ]; then
     echo "Error: CONFIG_FOLDER must be set to read cluster configuration."
     exit 1
@@ -70,30 +79,29 @@ if [ -n "$CLUSTER_NAME" ]; then
     if [ -n "$CLUSTER_DOMAIN_VAL" ]; then
       # Remove quotes only if present
       export CLUSTER_DOMAIN=$(echo "${CLUSTER_DOMAIN_VAL}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded CLUSTER_DOMAIN from $CLUSTER_CONFIG_FILE"
+      echo "Loaded CLUSTER_DOMAIN from $CLUSTER_CONFIG_FILE: $CLUSTER_DOMAIN"
     fi
     export K8S_DISTRIBUTION=$(yq '.k8s_distribution // empty' "$CLUSTER_CONFIG_FILE")
     if [ -n "$K8S_DISTRIBUTION" ]; then
       export K8S_DISTRIBUTION=$(echo "${K8S_DISTRIBUTION}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded K8S_DISTRIBUTION from $CLUSTER_CONFIG_FILE"
+      echo "Loaded K8S_DISTRIBUTION from $CLUSTER_CONFIG_FILE: $K8S_DISTRIBUTION"
     fi
-    export INGRESS_RESOLVER_EMAIL=$(yq '.ingress_resolver_email // empty' "$CLUSTER_CONFIG_FILE" | sed 's/^"\(.*\)"$/\1/')
-    echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE"
-    export RANCHER_TOKEN=$(yq '.rancher_token // empty' "$CLUSTER_CONFIG_FILE")
-    if [ -n "$RANCHER_TOKEN" ]; then
-      export RANCHER_TOKEN=$(echo "${RANCHER_TOKEN}" | sed 's/^"\(.*\)"$/\1/')
-      echo "Loaded RANCHER_TOKEN from $CLUSTER_CONFIG_FILE"
+    # Set INGRESS_RESOLVER_EMAIL if the entry exists in YAML (even if it is empty),
+    # but do NOT set if the entry does not exist at all.
+    if yq 'has("ingress_resolver_email")' "$CLUSTER_CONFIG_FILE" | grep -q 'true'; then
+      INGRESS_RESOLVER_EMAIL_VAL=$(yq '.ingress_resolver_email' "$CLUSTER_CONFIG_FILE" | sed 's/^"\(.*\)"$/\1/')
+      export INGRESS_RESOLVER_EMAIL="$INGRESS_RESOLVER_EMAIL_VAL"
+      echo "Loaded INGRESS_RESOLVER_EMAIL from $CLUSTER_CONFIG_FILE: $INGRESS_RESOLVER_EMAIL"
     fi
   fi
-fi
-
+fi  
 
 # Required environment variables:
 # Verify required environment variables are set
 # List of required environment variables with short descriptions:
 # MAIA_PRIVATE_REGISTRY   - The URL of the private MAIA Docker/Helm registry.
-# HARBOR_USERNAME        - Username for authenticating with the MAIA Harbor registry.
-# HARBOR_PASSWORD        - Password for authenticating with the MAIA Harbor registry.
+# REGISTRY_USERNAME        - Username for authenticating with the MAIA Harbor registry.
+# REGISTRY_PASSWORD        - Password for authenticating with the MAIA Harbor registry.
 # KUBECONFIG             - Path to the kubeconfig file for the Kubernetes cluster.
 # CLUSTER_DOMAIN         - The public domain or base domain for the MAIA cluster.
 # CONFIG_FOLDER          - Directory path to store MAIA/cluster configuration files.
@@ -102,8 +110,8 @@ fi
 # K8S_DISTRIBUTION       - Chosen Kubernetes distribution (e.g., "microk8s", "rke2").
 required_vars=(
   "MAIA_PRIVATE_REGISTRY"
-  "HARBOR_USERNAME"
-  "HARBOR_PASSWORD"
+  "REGISTRY_USERNAME"
+  "REGISTRY_PASSWORD"
   "CLUSTER_DOMAIN"
   "CLUSTER_NAME"
   "CONFIG_FOLDER"
@@ -120,9 +128,9 @@ for var in "${required_vars[@]}"; do
     if [ "$var" = "INGRESS_RESOLVER_EMAIL" ] && [ -v INGRESS_RESOLVER_EMAIL ]; then
       continue
     fi
-    # If PUBLIC_REGISTRY=1, skip prompting for HARBOR_USERNAME and HARBOR_PASSWORD
+    # If PUBLIC_REGISTRY=1, skip prompting for REGISTRY_USERNAME and REGISTRY_PASSWORD
     if [ "$PUBLIC_REGISTRY" = "1" ]; then
-      if [ "$var" = "HARBOR_USERNAME" ] || [ "$var" = "HARBOR_PASSWORD" ] || [ "$var" = "MAIA_PRIVATE_REGISTRY" ]; then
+      if [ "$var" = "REGISTRY_USERNAME" ] || [ "$var" = "REGISTRY_PASSWORD" ] || [ "$var" = "MAIA_PRIVATE_REGISTRY" ]; then
         continue
       fi
     fi
@@ -131,8 +139,8 @@ for var in "${required_vars[@]}"; do
     # Dictionary containing short descriptions of each required variable
     declare -A var_descriptions=(
       ["MAIA_PRIVATE_REGISTRY"]="The URL of the private MAIA Docker/Helm registry."
-      ["HARBOR_USERNAME"]="Username for authenticating with the MAIA Harbor registry."
-      ["HARBOR_PASSWORD"]="Password for authenticating with the MAIA Harbor registry."
+      ["REGISTRY_USERNAME"]="Username for authenticating with the MAIA Harbor registry."
+      ["REGISTRY_PASSWORD"]="Password for authenticating with the MAIA Harbor registry."
       ["CLUSTER_DOMAIN"]="The public domain or base domain for the MAIA cluster."
       ["CONFIG_FOLDER"]="Directory path to store MAIA/cluster configuration files."
       ["CLUSTER_NAME"]="Name to assign to the MAIA Kubernetes cluster."
@@ -211,11 +219,7 @@ else
 fi
 
 if [ -f "$CONFIG_FOLDER/env.json" ]; then
-  if [ -f "$CONFIG_FOLDER/$CLUSTER_NAME.yaml" ]; then
-    existing_rancher_password=$(yq -r '.rancher_password // empty' "$CONFIG_FOLDER/$CLUSTER_NAME.yaml")
-  else
-    existing_rancher_password=""
-  fi
+    existing_rancher_password=$(jq -r '.rancher_password // empty' "$CONFIG_FOLDER/env.json")
 else
   existing_rancher_password=""
 fi
@@ -226,14 +230,24 @@ else
   rancher_password=$(openssl rand -hex 12)
 fi
 
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  existing_keycloak_admin_password=$(jq -r '.keycloak_admin_password // empty' "$CONFIG_FOLDER/env.json")
+else
+  existing_keycloak_admin_password=""
+fi  
+
+if [ -n "$existing_keycloak_admin_password" ] && [ "$existing_keycloak_admin_password" != "null" ]; then
+  keycloak_admin_password="$existing_keycloak_admin_password"
+else
+  keycloak_admin_password=$(openssl rand -hex 10)
+fi
 export SSH_PORT_TYPE=${SSH_PORT_TYPE:-NodePort}
 export PORT_RANGE_LOWER_BOUND=${PORT_RANGE_LOWER_BOUND:-30000}
 export PORT_RANGE_UPPER_BOUND=${PORT_RANGE_UPPER_BOUND:-31000}
 
-if [ "$K8S_DISTRIBUTION" = "microk8s" ]; then
-  export STORAGE_CLASS=${STORAGE_CLASS:-microk8s-hostpath}
-  export SHARED_STORAGE_CLASS=${SHARED_STORAGE_CLASS:-nfs-client}
-fi
+DEFAULT_STORAGE_CLASS=$(python3 -c "from MAIA.maia_k8s_distros import get_storage_class; print(get_storage_class('$K8S_DISTRIBUTION'))")
+export STORAGE_CLASS=${STORAGE_CLASS:-$DEFAULT_STORAGE_CLASS}
+export SHARED_STORAGE_CLASS=${SHARED_STORAGE_CLASS:-nfs-client}
 export URL_TYPE=${URL_TYPE:-subdomain}
 export BUCKET_NAME=${BUCKET_NAME:-maia-envs}
 
@@ -245,8 +259,6 @@ cluster_name: "$CLUSTER_NAME"
 k8s_distribution: "$K8S_DISTRIBUTION"
 traefik_resolver: "maiaresolver"
 traefik_dashboard_password: "$traefik_dashboard_password"
-rancher_password: "$rancher_password"
-rancher_token: "$RANCHER_TOKEN"
 rootCA: $CONFIG_FOLDER/ca.crt
 bucket_name: $BUCKET_NAME
 ssh_port_type: $SSH_PORT_TYPE
@@ -277,8 +289,8 @@ EOF
 JSON_KEY_PATH=$CONFIG_FOLDER/maia-registry-credentials.json
 cat <<EOF > $JSON_KEY_PATH
 {
-  "harbor_username": "$HARBOR_USERNAME",
-  "harbor_password": "$HARBOR_PASSWORD"
+  "username": "$REGISTRY_USERNAME",
+  "password": "$REGISTRY_PASSWORD"
 }
 EOF
 
@@ -359,6 +371,34 @@ else
   mysql_dashboard_password=$(openssl rand -hex 12)
 fi
 
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  existing_mongodb_dashboard_password=$(jq -r '.mongodb_dashboard_password' "$CONFIG_FOLDER/env.json")
+else
+  existing_mongodb_dashboard_password=""
+fi
+
+if [ -n "$existing_mongodb_dashboard_password" ] && [ "$existing_mongodb_dashboard_password" != "null" ]; then
+  mongodb_dashboard_password="$existing_mongodb_dashboard_password"
+else
+  mongodb_dashboard_password=$(openssl rand -hex 12)
+fi
+
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  existing_admin_email=$(jq -r '.admin_email' "$CONFIG_FOLDER/env.json")
+else
+  existing_admin_email=""
+fi
+
+if [ -n "$existing_admin_email" ] && [ "$existing_admin_email" != "null" ]; then
+  admin_email="$existing_admin_email"
+else
+  if [ -n "$ADMIN_EMAIL" ]; then
+    admin_email="$ADMIN_EMAIL"
+  else
+    admin_email="admin@maia.io"
+  fi
+fi
+
 cat <<EOF > $CONFIG_FOLDER/env.json
 {
   "MAIA_PRIVATE_REGISTRY": "$MAIA_PRIVATE_REGISTRY",
@@ -375,12 +415,17 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "core_project_version": "$CORE_PROJECT_VERSION",
   "ARGOCD_PASSWORD": "$ARGOCD_PASSWORD",
   "argocd_bcrypt_password": "$ARGOCD_BCRYPT_PASSWORD",
+  "rancher_password": "$rancher_password",
+  "keycloak_admin_password": "$keycloak_admin_password",
+  "rancher_token": "$RANCHER_TOKEN",
   "admin_project_chart": "$ADMIN_PROJECT_CHART",
   "admin_project_repo": "$ADMIN_PROJECT_REPO",
   "admin_project_version": "$ADMIN_PROJECT_VERSION",
   "minio_admin_password": "$minio_admin_password",
   "minio_root_password": "$minio_root_password",
-  "mysql_dashboard_password": "$mysql_dashboard_password"
+  "mysql_dashboard_password": "$mysql_dashboard_password",
+  "mongodb_dashboard_password": "$mongodb_dashboard_password",
+  "admin_email": "$admin_email"
 }
 EOF
 

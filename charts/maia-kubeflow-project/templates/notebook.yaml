@@ -1,0 +1,91 @@
+---
+apiVersion: kubeflow.org/v1alpha1
+kind: PodDefault
+metadata:
+  name: access-ml-pipeline
+  namespace: {{ .Values.namespace }}
+spec:
+  desc: Allow access to Kubeflow Pipelines
+  selector:
+    matchExpressions:
+        - key: app
+          operator: In
+          values:
+            - {{ .Values.user_id }}
+  env:
+  - name: KF_PIPELINES_SA_TOKEN_PATH
+    value: /var/run/secrets/kubeflow/pipelines/token
+  volumes:
+    - name: volume-kf-pipeline-token
+      projected:
+        sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 7200
+              ## defined by the `TOKEN_REVIEW_AUDIENCE` environment variable on the `ml-pipeline` deployment
+              audience: pipelines.kubeflow.org      
+  volumeMounts:
+    - mountPath: /var/run/secrets/kubeflow/pipelines
+      name: volume-kf-pipeline-token
+      readOnly: true
+---
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  annotations:
+    notebooks.kubeflow.org/creator: {{ .Values.user_email }}
+    notebooks.kubeflow.org/server-type: jupyter
+  labels:
+    app: {{ .Values.user_id }}
+    hub.jupyter.org/username: {{ .Values.user_id }}
+  name: {{ .Values.user_id }}
+  namespace: {{ .Values.namespace }}
+spec:
+  template:
+    spec:
+      containers:
+        - env: {{ toYaml .Values.extraEnv | nindent 10 }}
+          image: {{ .Values.image }}
+          imagePullPolicy: IfNotPresent
+          workingDir: {{ .Values.homeMountPath }}
+          name: {{ .Values.user_id }}
+          resources:
+            limits:
+              cpu: {{ .Values.cpu.limit }}
+              memory: {{ .Values.memory.limit }}
+              {{- if .Values.extraResourceLimits }}{{ .Values.extraResourceLimits | toYaml | nindent 14 }}
+              {{- end }}
+            requests:
+              cpu: {{ .Values.cpu.guarantee }}
+              memory: {{ .Values.memory.guarantee }}
+              {{- if .Values.extraResourceLimits }}{{ .Values.extraResourceLimits | toYaml | nindent 14 }}
+              {{- end }}
+          volumeMounts:
+            - mountPath: {{ .Values.homeMountPath }}
+              name: {{ .Values.homePVC }}{{ .Values.extraVolumeMounts | toYaml | nindent 12 }}
+      serviceAccountName: default-editor
+      tolerations: []
+      volumes:
+        - name: {{ .Values.homePVC }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.homePVC }}{{ .Values.extraVolumes | toYaml | nindent 8 }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-ssh
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["2022"]
+  selector:
+    matchLabels:
+      app: {{ .Values.user_id }}   

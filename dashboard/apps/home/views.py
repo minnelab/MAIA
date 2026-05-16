@@ -6,7 +6,8 @@ from django.urls import reverse
 from django.conf import settings
 from django.shortcuts import redirect
 from django.template.defaultfilters import register
-from MAIA.kubernetes_utils import get_namespaces, get_cluster_status
+from MAIA.kubernetes_utils import get_namespaces, get_cluster_status, CLUSTER_OFFLINE_MARKER
+from MAIA.keycloak_utils import get_groups_in_keycloak
 import urllib3
 import os
 from django.http import JsonResponse
@@ -107,24 +108,58 @@ def index_view(request):
             id_token, api_urls=settings.API_URL, cluster_names=settings.CLUSTER_NAMES, private_clusters=settings.PRIVATE_CLUSTERS
         )
     except Exception:
-        return redirect("/login/")
+        return redirect("/maia/login/")
+
+    # Per-cluster and global health stats for the dashboard
+    cluster_stats = {}
+    for cluster_name, nodes in cluster_dict.items():
+        is_offline = nodes == [CLUSTER_OFFLINE_MARKER]
+        cs = {"total": 0 if is_offline else len(nodes), "ready": 0, "maintenance": 0, "not_ready": 0, "offline": is_offline}
+        if not is_offline:
+            for node in nodes:
+                node_status = status.get(node, [])
+                is_ready = len(node_status) > 0 and str(node_status[0]) == "True"
+                in_maintenance = len(node_status) > 1 and bool(node_status[1])
+                if is_ready and in_maintenance:
+                    cs["maintenance"] += 1
+                elif is_ready:
+                    cs["ready"] += 1
+                else:
+                    cs["not_ready"] += 1
+        cs["health_pct"] = round(100 * cs["ready"] / cs["total"]) if cs["total"] > 0 else 0
+        cluster_stats[cluster_name] = cs
+    global_stats = {
+        "clusters": len(cluster_dict),
+        "total": sum(s["total"] for s in cluster_stats.values()),
+        "ready": sum(s["ready"] for s in cluster_stats.values()),
+        "maintenance": sum(s["maintenance"] for s in cluster_stats.values()),
+        "not_ready": sum(s["not_ready"] for s in cluster_stats.values()),
+        "offline": sum(1 for s in cluster_stats.values() if s.get("offline", False)),
+    }
+
     context = {
         "segment": "index",
         "status": status,
         "id_token": id_token,
         "clusters": cluster_dict,
         "external_links": settings.CLUSTER_LINKS,
+        "cluster_stats": cluster_stats,
+        "global_stats": global_stats,
     }
     groups = request.user.groups.all()
 
     namespaces = []
     is_user = False
     if request.user.is_superuser:
-        namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
-
+        namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+        keycloak_groups = get_groups_in_keycloak(settings)
+        for group in keycloak_groups:
+            group_name = keycloak_groups[group]
+            if group_name.lower().replace("_", "-") in namespaces_global:
+                namespaces.append(group_name)
     else:
         for group in groups:
-            if str(group) != "MAIA:users":
+            if str(group) != "MAIA:" + settings.USERS_GROUP:
 
                 namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
             else:
@@ -168,11 +203,16 @@ def pages(request):
         namespaces = []
         is_user = False
         if request.user.is_superuser:
-            namespaces = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            namespaces_global = get_namespaces(id_token, api_urls=settings.API_URL, private_clusters=settings.PRIVATE_CLUSTERS)
+            keycloak_groups = get_groups_in_keycloak(settings)
+            for group in keycloak_groups:
+                group_name = keycloak_groups[group]
+                if group_name.lower().replace("_", "-") in namespaces_global:
+                    namespaces.append(group_name)
 
         else:
             for group in groups:
-                if str(group) != "MAIA:users":
+                if str(group) != "MAIA:" + settings.USERS_GROUP:
                     namespaces.append(str(group).split(":")[-1].lower().replace("_", "-"))
                 else:
                     is_user = True
@@ -223,19 +263,60 @@ def maia_spotlight(request):
     return HttpResponse(html_template.render(context, request))
 
 
+@login_required(login_url="/maia/login/")
+def agent_api_view(request):
+    if not request.user.is_superuser:
+        html_template = loader.get_template("home/page-403.html")
+        return HttpResponse(html_template.render({}, request))
+
+    provider = getattr(settings, "AGENT_PROVIDER", os.environ.get("AGENT_PROVIDER", "anthropic")).lower()
+
+    if provider == "openai":
+        is_ready = bool(getattr(settings, "OPENAI_API_KEY", None))
+        active_model = getattr(settings, "OPENAI_MODEL", "gpt-4o")
+        active_base_url = getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1")
+    elif provider == "ollama":
+        is_ready = True
+        active_model = getattr(settings, "OPENWEBAI_MODEL", "llama3")
+        active_base_url = getattr(settings, "OPENWEBAI_URL", "http://localhost:11434/v1")
+    else:
+        provider = "anthropic"
+        is_ready = bool(getattr(settings, "ANTHROPIC_API_KEY", None))
+        active_model = getattr(settings, "AGENT_MODEL", "claude-sonnet-4-6")
+        active_base_url = None
+
+    context = {
+        "segment": "agent-api",
+        "hostname": getattr(settings, "HOSTNAME", "localhost"),
+        "agent_provider": provider,
+        "agent_is_ready": is_ready,
+        "agent_model": active_model,
+        "agent_base_url": active_base_url,
+        "agent_token_configured": bool(getattr(settings, "AGENT_API_TOKEN", None)),
+        # legacy keys kept for the env-var table
+        "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
+        "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", None)),
+        "ollama_key_configured": bool(getattr(settings, "OPENWEBAI_API_KEY", None)),
+        "user": ["admin"],
+        "username": request.user.username + " [ADMIN]",
+    }
+    html_template = loader.get_template("home/agent-api.html")
+    return HttpResponse(html_template.render(context, request))
+
+
 @csrf_exempt
 def chat(request):
     if request.method == "POST":
         data = json.loads(request.body)
         user_message = data.get("message", "")
-        if not settings.OPENWEBAI_API_KEY or not settings.OPENWEBAI_URL:
-            return JsonResponse({"error": "OPENWEBAI_API_KEY or OPENWEBAI_URL is not set"}, status=500)
+        if not settings.OPENWEBAI_API_KEY or not settings.OPENWEBAI_URL or not settings.OPENWEBAI_MODEL:
+            return JsonResponse({"error": "OPENWEBAI_API_KEY or OPENWEBAI_URL or OPENWEBAI_MODEL is not set"}, status=500)
         headers = {
             "Authorization": f"Bearer {settings.OPENWEBAI_API_KEY}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": "llama3:latest",
+            "model": settings.OPENWEBAI_MODEL,
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},

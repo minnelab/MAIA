@@ -129,8 +129,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .idea
-/Forms/
-/tutorials/
 .vscode/
-configs/
-maia-dev-config/
+maia-config/

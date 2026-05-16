@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/name: argocd-cm
     app.kubernetes.io/part-of: argocd
 data:
+  accounts.admin: apiKey,login
   oidc.config: |
     name: Keycloak
 
@@ -51,6 +52,7 @@ data:
     p, role:maia-user, projects, get, maia-user, allow
     p, {{ .Values.admin_group_ID }}, *, *, *, allow
     g, {{ .Values.admin_group_ID }}, role:admin
+    p, role:admin, applications, *, *, allow
   policy.default: role:maia-user
 ---
 apiVersion: v1

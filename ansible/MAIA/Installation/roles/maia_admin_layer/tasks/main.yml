@@ -4,6 +4,10 @@
     file: "{{ config_folder }}/env.json"
   when: config_folder is defined
 
+- name: Ensure admin_email is set
+  set_fact:
+    admin_email: "{{ admin_email | default('admin@maia.io') }}"
+
 - name: Read cluster config YAML file
   ansible.builtin.slurp:
     src: "{{ config_folder }}/{{ cluster_name }}.yaml"
@@ -16,6 +20,13 @@
 - name: Extract domain from cluster config
   set_fact:
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
+
+- name: Ensure DEPLOY_KUBECONFIG is absolute
+  ansible.builtin.set_fact:
+    DEPLOY_KUBECONFIG: >-
+      {{ DEPLOY_KUBECONFIG if DEPLOY_KUBECONFIG is match('^/') else (config_folder ~ '/' ~ DEPLOY_KUBECONFIG) }}
+  when: DEPLOY_KUBECONFIG is defined and (DEPLOY_KUBECONFIG is not match('^/'))
+  delegate_to: localhost
 
 - name: Create namespaces
   kubernetes.core.k8s:
@@ -33,6 +44,28 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
+- name: Check if externalCA key exists in cluster config
+  ansible.builtin.set_fact:
+    external_ca_set: "{{ (cluster_config_content.content | b64decode | from_yaml).keys() | list | select('equalto', 'externalCA') | list | length > 0 }}"
+  delegate_to: localhost
+
+- name: Ensure external CA secret exists in maia-dashboard namespace, used by MinIO Tenant
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ (cluster_config_content.content | b64decode | from_yaml).externalCA.name }}"
+        namespace: maia-dashboard
+      type: Opaque
+      data:
+        public.crt: "{{ lookup('file', (cluster_config_content.content | b64decode | from_yaml).externalCA.cert) | b64encode }}"
+  when: external_ca_set | bool
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
 - name: Run MAIA Admin Toolkit installer
   ansible.builtin.command: >
     MAIA_install_admin_toolkit
@@ -41,6 +74,7 @@
   environment:
     argocd_namespace: "{{ argocd_namespace }}"
     admin_group_ID: "{{ admin_group_ID }}"
+    ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
     admin_project_chart: "{{ admin_project_chart }}"
     admin_project_repo: "{{ admin_project_repo }}"
     admin_project_version: "{{ admin_project_version }}"
@@ -50,6 +84,9 @@
     minio_root_password: "{{ minio_root_password }}"
     dashboard_api_secret: "{{ dashboard_api_secret }}"
     mysql_dashboard_password: "{{ mysql_dashboard_password }}"
+    keycloak_admin_password: "{{ keycloak_admin_password }}"
+    rancher_token: "{{ rancher_token }}"
+    rancher_password: "{{ rancher_password }}"
   register: maia_install_admin_output
   delegate_to: localhost
 
@@ -79,7 +116,7 @@
 - name: Create MAIA Realm Import Config Map for keycloak
   ansible.builtin.command: >
     kubectl create configmap -n keycloak maia-realm-import --from-file=MAIA_realm.json={{ config_folder }}/MAIA_realm.json
-  when: configmap_check.rc != 0 and auto_sync | bool
+  when: auto_sync | bool and configmap_check.rc != 0
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
@@ -108,7 +145,6 @@
   register: argocd_cli_login
   changed_when: false
   delegate_to: localhost
-  when: auto_sync | bool
   
 
 - name: Show ArgoCD CLI login output
@@ -122,7 +158,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-rancher' in maia_admin_argocd_applications
 - name: Check if maia-admin-keycloak ArgoCD app is synced
   ansible.builtin.shell: |
     argocd app get maia-admin-keycloak -o json | jq -r '.status.operationState.phase'
@@ -130,11 +166,10 @@
   changed_when: false
   failed_when: false
   delegate_to: localhost
-  when: auto_sync | bool
+
 - name: Set keycloak_synced fact if app is synced
   ansible.builtin.set_fact:
     keycloak_synced: "{{ keycloak_app_status.stdout == 'Succeeded' }}"
-  when: auto_sync | bool
 
 - name: Sync maia-admin-keycloak ArgoCD application
   ansible.builtin.shell: |
@@ -143,7 +178,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: keycloak_synced == false and auto_sync | bool
+  when: keycloak_synced == false and auto_sync | bool and 'maia-admin-keycloak' in maia_admin_argocd_applications
 
 - name: Patch maia-admin-keycloak StatefulSet image
   ansible.builtin.shell: |
@@ -201,6 +236,16 @@
   ignore_errors: true
   when: keycloak_synced == false
 
+- name: Sync maia-admin-admin-toolkit ArgoCD application
+  ansible.builtin.shell: |
+    argocd app sync maia-admin-admin-toolkit
+  register: argocd_sync_admin_toolkit_result
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  timeout: 120
+  when: auto_sync | bool and 'maia-admin-admin-toolkit' in maia_admin_argocd_applications
+
 - name: Wait until maia-admin-keycloak-0 pod is ready
   ansible.builtin.shell: |
     kubectl -n keycloak wait --for=condition=Ready pod/maia-admin-keycloak-0 --timeout=300s
@@ -212,11 +257,19 @@
   retries: 10
   delay: 10
   until: keycloak_pod_ready.rc == 0
-  when: keycloak_synced == false and auto_sync | bool 
+  when: auto_sync | bool 
+
+- name: Download MAIA Keycloak Theme inside Keycloak container
+  ansible.builtin.shell: |
+    kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -f -sSL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && cd /opt/bitnami/keycloak/themes && tar -xvf maia-theme.tar.gz'
+  delegate_to: localhost
+  when: auto_sync | bool
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
 - name: Run MAIA_configure_keycloak to configure Keycloak
   ansible.builtin.command: >
-    MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}"
+    MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}" --admin_email "{{ admin_email }}"
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   register: configure_keycloak_result
@@ -235,7 +288,7 @@
   ignore_errors: true
   delegate_to: localhost
   timeout: 120
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-admin-toolkit' in maia_admin_argocd_applications
 
 - name: Rollout restart argocd-server deployment in argocd namespace
   ansible.builtin.shell: |
@@ -270,7 +323,7 @@
   delegate_to: localhost
   retries: 5
   delay: 20
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-admin-harbor' in maia_admin_argocd_applications
 - name: Sync maia-core-loginapp ArgoCD application
   ansible.builtin.shell: |
     argocd app sync maia-core-loginapp
@@ -278,7 +331,7 @@
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-core-loginapp' in maia_admin_argocd_applications
 - name: Wait for admin-minio-tenant-pool-0-0 pod to be running
   kubernetes.core.k8s_info:
     kind: Pod
@@ -303,7 +356,7 @@
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
   when: auto_sync | bool
-- name: Add 'MAIA:admin' as minio admin policy user
+- name: Add MAIA Admin as minio admin policy user
   kubernetes.core.k8s_exec:
     namespace: maia-dashboard
     pod: admin-minio-tenant-pool-0-0
@@ -336,7 +389,7 @@
           }
         ]
       }" > /tmp/maia-admin-policy.json;
-      mc admin policy create local "MAIA:admin" /tmp/maia-admin-policy.json;
+      mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json;
       '
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'

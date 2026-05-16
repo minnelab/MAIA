@@ -1,14 +1,20 @@
 - name: Install MicroK8s, enable OIDC and CA, and install ArgoCD
   hosts: control-plane
   become: false
+  environment:
+    PATH: "/snap/bin:{{ ansible_env.PATH }}"
+  vars:
+    kubernetes_kubectl_cmd: "microk8s.kubectl"
+    kubernetes_ca_crt_path: /var/snap/microk8s/current/certs/ca.crt
+    kubernetes_ca_key_path: /var/snap/microk8s/current/certs/ca.key
 
   roles:
     - role: maia.installation.microk8s
       when: install_microk8s | default(true) | bool
     - role: maia.installation.oidc_microk8s
       when: enable_oidc_microk8s | default(true) | bool
-    - role: maia.installation.ca_microk8s
-      when: enable_ca_microk8s | default(true) | bool
+    - role: maia.installation.ca
+      when: enable_ca | default(true) | bool
     - role: maia.installation.argocd
       when: install_argocd | default(true) | bool
 
