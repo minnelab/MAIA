@@ -33,3 +33,7 @@ rich
 loguru
 ansible
 dotenv
+pytest>=8.0
+pytest-cov
+pytest-mock
+beautifulsoup4
