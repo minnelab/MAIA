@@ -1,8 +1,6 @@
 """Unit tests for MAIA/helm_values.py functions."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
@@ -12,8 +10,7 @@ from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
 class TestHelmValues:
     """Test Helm values generation functions."""
 
-    @patch("MAIA.helm_values.config.load_kube_config_from_dict")
-    def test_read_config_dict_basic_structure(self, mock_load_config, sample_kubeconfig):
+    def test_read_config_dict_basic_structure(self, sample_kubeconfig):
         """Test that basic config dict generates valid helm values."""
         config_dict = {
             "namespace": "test-namespace",
@@ -27,8 +24,7 @@ class TestHelmValues:
         assert isinstance(result, dict)
         assert "namespace" in result or "chart_name" in result
 
-    @patch("MAIA.helm_values.config.load_kube_config_from_dict")
-    def test_read_config_dict_with_deployment(self, mock_load_config, sample_kubeconfig):
+    def test_read_config_dict_with_deployment(self, sample_kubeconfig):
         """Test config dict with deployment settings."""
         config_dict = {
             "namespace": "test-namespace",
@@ -44,8 +40,7 @@ class TestHelmValues:
 
         assert isinstance(result, dict)
 
-    @patch("MAIA.helm_values.config.load_kube_config_from_dict")
-    def test_read_config_dict_with_ports(self, mock_load_config, sample_kubeconfig):
+    def test_read_config_dict_with_ports(self, sample_kubeconfig):
         """Test config dict with port configuration."""
         config_dict = {
             "namespace": "test-namespace",
@@ -59,8 +54,7 @@ class TestHelmValues:
 
         assert isinstance(result, dict)
 
-    @patch("MAIA.helm_values.config.load_kube_config_from_dict")
-    def test_read_config_dict_with_persistent_volume(self, mock_load_config, sample_kubeconfig):
+    def test_read_config_dict_with_persistent_volume(self, sample_kubeconfig):
         """Test config dict with persistent volume configuration."""
         config_dict = {
             "namespace": "test-namespace",
@@ -81,8 +75,7 @@ class TestHelmValues:
 
         assert isinstance(result, dict)
 
-    @patch("MAIA.helm_values.config.load_kube_config_from_dict")
-    def test_read_config_dict_with_env_variables(self, mock_load_config, sample_kubeconfig):
+    def test_read_config_dict_with_env_variables(self, sample_kubeconfig):
         """Test config dict with environment variables."""
         config_dict = {
             "namespace": "test-namespace",
@@ -96,8 +89,7 @@ class TestHelmValues:
 
         assert isinstance(result, dict)
 
-    @patch("MAIA.helm_values.config.load_kube_config_from_dict")
-    def test_read_config_dict_with_ingress(self, mock_load_config, sample_kubeconfig):
+    def test_read_config_dict_with_ingress(self, sample_kubeconfig):
         """Test config dict with ingress configuration."""
         config_dict = {
             "namespace": "test-namespace",

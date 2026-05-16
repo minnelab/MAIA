@@ -1,6 +1,8 @@
 """Unit tests for MAIA_scripts/MAIA_deploy_helm_chart.py."""
 from __future__ import annotations
 
+import argparse
+
 import pytest
 
 from MAIA_scripts.MAIA_deploy_helm_chart import str2bool
@@ -24,12 +26,12 @@ class TestStr2Bool:
 
     def test_str2bool_invalid_value(self):
         """Test that invalid values raise an error."""
-        with pytest.raises(Exception):
+        with pytest.raises(argparse.ArgumentTypeError):
             str2bool("invalid")
 
     def test_str2bool_empty_string(self):
         """Test that empty string raises an error."""
-        with pytest.raises(Exception):
+        with pytest.raises(argparse.ArgumentTypeError):
             str2bool("")
 
     def test_str2bool_boolean_input(self):

@@ -1,7 +1,6 @@
 """Pytest configuration and fixtures for MAIA tests."""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, Mock
 
@@ -21,12 +20,17 @@ def temp_config_folder(tmp_path):
 def sample_cluster_config():
     """Provide a sample cluster configuration for tests."""
     return {
+        "cluster_name": "test-cluster",
         "domain": "example.com",
+        "ingress_resolver_email": "admin@example.com",
         "storage_class": "standard",
         "shared_storage_class": "shared-storage",
         "url_type": "subdomain",
         "ssh_port_type": "NodePort",
         "ingress_class": "nginx",
+        "traefik_dashboard_password": "admin",
+        "traefik_resolver": "letsencrypt",
+        "port_range": [30000, 32767],
         "keycloak": {
             "issuer_url": "https://iam.example.com/realms/maia",
             "client_id": "maia",
@@ -79,8 +83,8 @@ def mock_keycloak_admin(mocker):
     """Mock Keycloak admin client for tests."""
     mock_admin = MagicMock()
     mock_connection = MagicMock()
-    mocker.patch("keycloak.KeycloakOpenIDConnection", return_value=mock_connection)
-    mocker.patch("keycloak.KeycloakAdmin", return_value=mock_admin)
+    mocker.patch("MAIA.keycloak_utils.KeycloakOpenIDConnection", return_value=mock_connection)
+    mocker.patch("MAIA.keycloak_utils.KeycloakAdmin", return_value=mock_admin)
     return mock_admin
 
 
@@ -121,9 +125,29 @@ def mock_settings():
 @pytest.fixture(autouse=True)
 def mock_environment_variables(monkeypatch):
     """Set up mock environment variables for all tests."""
-    monkeypatch.setenv("KUBECONFIG", "/tmp/test-kubeconfig")
-    monkeypatch.setenv("KUBECONFIG_LOCAL", "/tmp/test-kubeconfig")
+    kubeconfig_path = "/tmp/test-kubeconfig"
+    Path(kubeconfig_path).write_text(
+        yaml.dump(
+            {
+                "apiVersion": "v1",
+                "kind": "Config",
+                "clusters": [{"name": "test", "cluster": {"server": "https://example.invalid"}}],
+                "contexts": [{"name": "test", "context": {"cluster": "test", "user": "test"}}],
+                "current-context": "test",
+                "users": [{"name": "test", "user": {"token": "x"}}],
+            }
+        )
+    )
+    monkeypatch.setenv("KUBECONFIG", kubeconfig_path)
+    monkeypatch.setenv("KUBECONFIG_LOCAL", kubeconfig_path)
     monkeypatch.setenv("MAIA_PRIVATE_REGISTRY", "registry.example.com")
+    monkeypatch.setenv("admin_group_ID", "admin")
+    monkeypatch.setenv("keycloak_client_id", "maia")
+    monkeypatch.setenv("keycloak_client_secret", "test-secret")
+    monkeypatch.setenv("keycloak_issuer_url", "https://iam.example.com/realms/maia")
+    monkeypatch.setenv("minio_admin_password", "minio-admin-pass")
+    monkeypatch.setenv("minio_root_password", "minio-root-pass")
+    monkeypatch.setenv("ARGOCD_PASSWORD", "argocd-pass")
 
 
 @pytest.fixture

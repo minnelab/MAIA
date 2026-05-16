@@ -6,7 +6,6 @@ that the functions execute and return properly structured data.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,7 +18,7 @@ class TestPrometheusValues:
     @patch("MAIA.maia_core.config.load_kube_config")
     @patch("MAIA.maia_core.client.CoreV1Api")
     def test_create_prometheus_values_structure(
-        self, mock_core_api, mock_load_config, temp_config_folder, sample_cluster_config, sample_maia_config
+        self, mock_core_api, mock_load_config, temp_config_folder, sample_cluster_config
     ):
         """Test that prometheus values have proper structure."""
         from MAIA.maia_core import create_prometheus_values
@@ -39,14 +38,12 @@ class TestPrometheusValues:
         mock_nodes.items = [mock_node]
         mock_v1.list_node.return_value = mock_nodes
 
-        result = create_prometheus_values(
-            temp_config_folder, "test-project", sample_cluster_config, sample_maia_config
-        )
+        result = create_prometheus_values(temp_config_folder, "test-project", sample_cluster_config)
 
         assert isinstance(result, dict)
         assert "namespace" in result
-        assert "chart_name" in result
-        assert "repo_url" in result
+        assert "chart" in result
+        assert "repo" in result
 
 
 @pytest.mark.unit
@@ -68,7 +65,7 @@ class TestLokiValues:
 
         assert isinstance(result, dict)
         assert "namespace" in result
-        assert "chart_name" in result
+        assert "chart" in result
 
 
 @pytest.mark.unit
@@ -90,7 +87,7 @@ class TestTempoValues:
 
         assert isinstance(result, dict)
         assert "namespace" in result
-        assert "chart_name" in result
+        assert "chart" in result
 
 
 @pytest.mark.unit
@@ -100,8 +97,10 @@ class TestCoreToolkitValues:
     @patch("MAIA.maia_core.OmegaConf.to_yaml")
     @patch("builtins.open")
     @patch("MAIA.maia_core.Path")
+    @patch("MAIA.maia_core.config.load_kube_config")
+    @patch("MAIA.maia_core.client.CoreV1Api")
     def test_create_core_toolkit_values(
-        self, mock_path, mock_open, mock_to_yaml, temp_config_folder, sample_cluster_config
+        self, mock_core_v1, _mock_load_config, mock_path, mock_open, mock_to_yaml, temp_config_folder, sample_cluster_config
     ):
         """Test that core toolkit values are created."""
         from MAIA.maia_core import create_core_toolkit_values
@@ -109,6 +108,7 @@ class TestCoreToolkitValues:
         # Setup mocks
         mock_path.return_value.joinpath.return_value.mkdir = MagicMock()
         mock_to_yaml.return_value = "test: config"
+        mock_core_v1.return_value.list_node.return_value = MagicMock(items=[])
 
         result = create_core_toolkit_values(temp_config_folder, "test-project", sample_cluster_config)
 
@@ -122,8 +122,9 @@ class TestTraefikValues:
     @patch("MAIA.maia_core.OmegaConf.to_yaml")
     @patch("builtins.open")
     @patch("MAIA.maia_core.Path")
+    @patch("MAIA.maia_core.config.load_kube_config")
     def test_create_traefik_values(
-        self, mock_path, mock_open, mock_to_yaml, temp_config_folder, sample_cluster_config
+        self, _mock_load_config, mock_path, mock_open, mock_to_yaml, temp_config_folder, sample_cluster_config
     ):
         """Test that Traefik values are created."""
         from MAIA.maia_core import create_traefik_values
@@ -136,7 +137,7 @@ class TestTraefikValues:
 
         assert isinstance(result, dict)
         assert "namespace" in result
-        assert "chart_name" in result
+        assert "chart" in result
 
 
 @pytest.mark.unit

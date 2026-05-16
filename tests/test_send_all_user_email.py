@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -132,7 +132,7 @@ class TestSendAllUsersReminderEmail:
         settings_dict = {"OIDC_SERVER_URL": "https://iam.example.com"}
 
         with pytest.raises(EnvironmentError) as exc_info:
-            send_all_users_reminder_email(settings_dict)
+            send_all_users_reminder_email(settings_dict, email_list=["user@example.com"])
 
         assert "Missing required environment variables" in str(exc_info.value)
 

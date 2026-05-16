@@ -1,7 +1,7 @@
 """Unit tests for MAIA/keycloak_utils.py functions."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -60,7 +60,7 @@ class TestKeycloakUserFunctions:
 
         mock_keycloak_admin.get_group_members.return_value = [{"email": "user1@example.com"}]
 
-        result = get_user_ids(mock_settings)
+        get_user_ids(mock_settings)
 
         # Should only call get_group_members once for the MAIA group
         assert mock_keycloak_admin.get_group_members.call_count == 1

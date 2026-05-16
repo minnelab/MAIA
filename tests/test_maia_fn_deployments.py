@@ -113,7 +113,6 @@ class TestDeployMLflow:
         temp_config_folder,
         sample_cluster_config,
         sample_user_config,
-        sample_maia_config,
         sample_kubeconfig,
     ):
         """Test basic MLflow deployment."""
@@ -126,9 +125,7 @@ class TestDeployMLflow:
         mysql_config = {"mysql_user": "testuser", "mysql_password": "testpass"}
         minio_config = {"console_access_key": "bWluaW8=", "console_secret_key": "bWluaW8xMjM="}
 
-        result = deploy_mlflow(
-            sample_cluster_config, sample_user_config, temp_config_folder, sample_maia_config, mysql_config, minio_config
-        )
+        result = deploy_mlflow(sample_cluster_config, sample_user_config, temp_config_folder, mysql_config, minio_config)
 
         assert isinstance(result, dict)
         assert "namespace" in result
@@ -140,23 +137,18 @@ class TestDeployOrthanc:
     """Test Orthanc deployment function."""
 
     @patch("MAIA.maia_fn.OmegaConf.to_yaml")
-    @patch("builtins.open")
-    @patch("MAIA.maia_fn.Path")
+    @patch("MAIA.maia_fn.get_orthanc_config_if_exists", return_value={})
     def test_deploy_orthanc_basic(
         self,
-        mock_path,
-        mock_open_func,
+        _mock_existing_orthanc,
         mock_to_yaml,
         temp_config_folder,
         sample_cluster_config,
         sample_user_config,
-        sample_maia_config,
     ):
         """Test basic Orthanc deployment."""
-        # Create mock namespace values file
-        mock_file = MagicMock()
-        mock_path.return_value.joinpath.return_value = temp_config_folder
-
+        sample_cluster_config.pop("nginx_cluster_issuer", None)
+        mock_to_yaml.return_value = "test: config"
         # Create the directory structure
         namespace_values_path = Path(temp_config_folder) / sample_user_config["group_ID"] / "maia_namespace_values"
         namespace_values_path.mkdir(parents=True, exist_ok=True)
@@ -167,7 +159,7 @@ class TestDeployOrthanc:
         with open(namespace_values_path / "namespace_values.yaml", "w") as f:
             yaml.dump({"orthanc": {"port": 8042}}, f)
 
-        result = deploy_orthanc(sample_cluster_config, sample_user_config, sample_maia_config, temp_config_folder)
+        result = deploy_orthanc(sample_cluster_config, sample_user_config, temp_config_folder)
 
         assert isinstance(result, dict)
         assert "namespace" in result

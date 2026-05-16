@@ -4,11 +4,9 @@ from __future__ import annotations
 import base64
 import json
 import string
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, mock_open, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-import yaml
 
 from MAIA.maia_fn import (
     convert_username_to_jupyterhub_username,
@@ -47,27 +45,24 @@ class TestPasswordGeneration:
         assert len(set(passwords)) == 10  # All should be unique
 
     @patch("MAIA.maia_fn.nltk.download")
-    @patch("MAIA.maia_fn.words.words")
-    def test_generate_human_memorable_password_default_length(self, mock_words, mock_download):
+    def test_generate_human_memorable_password_default_length(self, mock_download, monkeypatch):
         """Test that human memorable password generation works with default length."""
-        mock_words.return_value = ["apple", "banana", "cherry", "date", "elderberry"]
+        monkeypatch.setattr("MAIA.maia_fn.words", MagicMock(words=lambda: ["apple", "banana", "cherry", "date", "elderberry"]))
         password = generate_human_memorable_password()
         assert len(password) >= 12
         mock_download.assert_called_once_with("words")
 
     @patch("MAIA.maia_fn.nltk.download")
-    @patch("MAIA.maia_fn.words.words")
-    def test_generate_human_memorable_password_contains_hyphen(self, mock_words, mock_download):
+    def test_generate_human_memorable_password_contains_hyphen(self, mock_download, monkeypatch):
         """Test that human memorable password contains hyphens."""
-        mock_words.return_value = ["apple", "banana", "cherry"]
+        monkeypatch.setattr("MAIA.maia_fn.words", MagicMock(words=lambda: ["apple", "banana", "cherry"]))
         password = generate_human_memorable_password(length=18)
         assert "-" in password
 
     @patch("MAIA.maia_fn.nltk.download")
-    @patch("MAIA.maia_fn.words.words")
-    def test_generate_human_memorable_password_custom_length(self, mock_words, mock_download):
+    def test_generate_human_memorable_password_custom_length(self, mock_download, monkeypatch):
         """Test that human memorable password respects custom length."""
-        mock_words.return_value = ["word1", "word2", "word3"]
+        monkeypatch.setattr("MAIA.maia_fn.words", MagicMock(words=lambda: ["word1", "word2", "word3"]))
         password = generate_human_memorable_password(length=24)
         assert len(password) >= 24
 
@@ -190,7 +185,7 @@ class TestConfigMapCreation:
 @pytest.mark.unit
 class TestSSHPortFunctions:
     """Test SSH port management functions.
-    
+
     Note: These functions require Kubernetes cluster access and are challenging to test
     without integration tests. Tests focus on verifying the function structure and mocking.
     """

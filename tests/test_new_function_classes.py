@@ -1,10 +1,8 @@
 """Tests for newer modules/classes/functions added from master."""
 from __future__ import annotations
 
-import base64
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -144,4 +142,3 @@ class TestNewScriptsParsersAndHelpers:
         updated = json.loads(realm_file.read_text())
         maia_client = [c for c in updated["clients"] if c["clientId"] == "maia"][0]
         assert maia_client["secret"] == "new-secret"
-

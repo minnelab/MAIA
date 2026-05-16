@@ -1,8 +1,8 @@
 """Unit tests for MAIA/dashboard_utils.py functions."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from collections import namedtuple
+from datetime import datetime
 
 import pytest
 
@@ -185,13 +185,7 @@ class TestGPUBookingPolicy:
 
     def test_verify_gpu_booking_policy_user_with_existing_booking(self):
         """Test booking policy when user is within booking limits."""
-        class Booking:
-            def __init__(self, user, gpu, namespace, start_date, end_date):
-                self.user = user
-                self.gpu = gpu
-                self.namespace = namespace
-                self.start_date = start_date
-                self.end_date = end_date
+        Booking = namedtuple("Booking", ["user", "gpu", "namespace", "start_date", "end_date"])
 
         existing_bookings = [
             Booking(
@@ -218,7 +212,11 @@ class TestGPUBookingPolicy:
 
         # The function returns results based on policy checks
         assert is_bookable is False
-        assert error_msg == "The time between your old booking and the new booking must be at least 14 days. You can start a new booking on 2024-01-16 11:00:00."
+        assert (
+            error_msg
+            == "The time between your old booking and the new booking must be at least 14 days. "
+            "You can start a new booking on 2024-01-16 11:00:00."
+        )
 
     def test_verify_gpu_booking_policy_handles_empty_bookings(self):
         """Test booking policy with no existing bookings."""

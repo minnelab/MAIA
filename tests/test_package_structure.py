@@ -65,7 +65,7 @@ class TestMAIAScripts:
         assert MAIA_send_all_user_email is not None
 
 
-@pytest.mark.unit  
+@pytest.mark.unit
 class TestVersionModule:
     """Test version module functionality."""
 
