@@ -6,12 +6,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from MAIA.keycloak_utils import (
+    delete_user_in_keycloak,
     delete_group_in_keycloak,
     get_groups_for_user,
     get_groups_in_keycloak,
     get_list_of_groups_requesting_a_user,
     get_list_of_users_requesting_a_group,
     get_maia_users_from_keycloak,
+    get_user_username_from_email,
     get_user_ids,
     register_group_in_keycloak,
     register_user_in_keycloak,
@@ -81,6 +83,21 @@ class TestKeycloakUserFunctions:
 
         assert "project1" in result
         assert "project2" not in result
+
+    def test_get_user_username_from_email_found(self, mock_settings, mock_keycloak_admin):
+        """Test retrieving username by email when user exists."""
+        mock_keycloak_admin.get_users.return_value = [
+            {"id": "u1", "email": "user1@example.com", "username": "user1"},
+            {"id": "u2", "email": "user2@example.com", "username": "user2"},
+        ]
+        assert get_user_username_from_email("user2@example.com", mock_settings) == "user2"
+
+    def test_get_user_username_from_email_not_found(self, mock_settings, mock_keycloak_admin):
+        """Test retrieving username by email when user does not exist."""
+        mock_keycloak_admin.get_users.return_value = [
+            {"id": "u1", "email": "user1@example.com", "username": "user1"},
+        ]
+        assert get_user_username_from_email("missing@example.com", mock_settings) is None
 
     def test_get_maia_users_from_keycloak(self, mock_settings, mock_keycloak_admin):
         """Test getting all MAIA users from Keycloak."""
@@ -181,6 +198,12 @@ class TestKeycloakUserGroupRegistration:
         remove_user_from_group_in_keycloak("user1@example.com", "project1", mock_settings)
 
         mock_keycloak_admin.group_user_remove.assert_called_once_with("user1", "group1")
+
+    def test_delete_user_in_keycloak(self, mock_settings, mock_keycloak_admin):
+        """Test deleting a user by email."""
+        mock_keycloak_admin.get_users.return_value = [{"id": "user1", "email": "user1@example.com"}]
+        delete_user_in_keycloak("user1@example.com", mock_settings)
+        mock_keycloak_admin.delete_user.assert_called_once_with("user1")
 
 
 @pytest.mark.unit
