@@ -61,6 +61,27 @@ class TestKeycloakScriptHelpers:
         with pytest.raises(ValueError, match="Client UUID not found"):
             configure_create_admin("https://iam.example.com", "secret")
 
+    @patch("MAIA_scripts.MAIA_configure_keycloak.KeycloakOpenIDConnection")
+    @patch("MAIA_scripts.MAIA_configure_keycloak.KeycloakAdmin")
+    def test_configure_create_admin_user_and_group_success(self, mock_admin_cls, _mock_conn_cls):
+        mock_admin = MagicMock()
+        mock_admin.get_groups.return_value = [
+            {"id": "g1", "name": "MAIA:users"},
+            {"id": "g2", "name": "MAIA:admin"},
+        ]
+        mock_admin.get_users.return_value = [{"id": "u1", "email": "admin@maia.se"}]
+        mock_admin.get_client_id.return_value = "realm-mgmt-id"
+        mock_admin.get_client_roles.return_value = [{"name": "role-a"}]
+        mock_admin_cls.return_value = mock_admin
+
+        configure_create_admin("https://iam.example.com", "secret")
+        assert mock_admin.group_user_add.call_count >= 2
+        mock_admin.assign_group_client_roles.assert_called_once_with(
+            group_id="g2",
+            client_id="realm-mgmt-id",
+            roles=[{"name": "role-a"}],
+        )
+
     @patch("MAIA_scripts.MAIA_configure_keycloak.create_admin_user_and_group")
     @patch("MAIA_scripts.MAIA_configure_keycloak.create_public_client")
     @patch("MAIA_scripts.MAIA_configure_keycloak.get_arg_parser")
