@@ -22,7 +22,8 @@ class TestHelmValues:
         result = read_config_dict_and_generate_helm_values_dict(config_dict, sample_kubeconfig)
 
         assert isinstance(result, dict)
-        assert "namespace" in result or "chart_name" in result
+        assert "image" in result
+        assert result["image"]["repository"] == "test-image"
 
     def test_read_config_dict_with_deployment(self, sample_kubeconfig):
         """Test config dict with deployment settings."""

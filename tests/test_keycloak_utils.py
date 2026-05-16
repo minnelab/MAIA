@@ -84,19 +84,20 @@ class TestKeycloakUserFunctions:
 
     def test_get_maia_users_from_keycloak(self, mock_settings, mock_keycloak_admin):
         """Test getting all MAIA users from Keycloak."""
-        mock_keycloak_admin.get_groups.return_value = [
-            {"id": "group1", "name": "MAIA:project1"},
+        mock_keycloak_admin.get_users.return_value = [
+            {"id": "u1", "email": "user1@example.com", "username": "user1"},
+            {"id": "u2", "email": "user2@example.com", "username": "user2"},
         ]
-
-        mock_keycloak_admin.get_group_members.return_value = [
-            {"email": "user1@example.com", "username": "user1"},
-            {"email": "user2@example.com", "username": "user2"},
+        mock_keycloak_admin.get_user_groups.side_effect = [
+            [{"name": "MAIA:project1"}],
+            [{"name": "other-group"}],
         ]
 
         result = get_maia_users_from_keycloak(mock_settings)
 
-        assert isinstance(result, dict)
-        assert len(result) >= 2
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]["email"] == "user1@example.com"
 
 
 @pytest.mark.unit
@@ -123,7 +124,7 @@ class TestKeycloakGroupFunctions:
 
         delete_group_in_keycloak("project1", mock_settings)
 
-        mock_keycloak_admin.delete_group.assert_called_once_with("group1")
+        mock_keycloak_admin.delete_group.assert_called_once_with(group_id="group1")
 
     def test_get_groups_in_keycloak(self, mock_settings, mock_keycloak_admin):
         """Test retrieving all MAIA groups from Keycloak."""
@@ -135,9 +136,10 @@ class TestKeycloakGroupFunctions:
 
         result = get_groups_in_keycloak(mock_settings)
 
-        # Should only return MAIA groups
-        assert isinstance(result, list)
-        assert "project1" in result or any("project1" in str(g) for g in result)
+        # Should only return MAIA groups dict
+        assert isinstance(result, dict)
+        assert "group1" in result
+        assert result["group1"] == "project1"
 
 
 @pytest.mark.unit
@@ -172,8 +174,7 @@ class TestKeycloakUserGroupRegistration:
         mock_keycloak_admin.get_groups.return_value = [
             {"id": "group1", "name": "MAIA:project1"},
         ]
-
-        mock_keycloak_admin.get_users.return_value = [
+        mock_keycloak_admin.get_group_members.return_value = [
             {"id": "user1", "email": "user1@example.com"},
         ]
 
@@ -190,17 +191,12 @@ class TestKeycloakListFunctions:
         """Test getting list of groups requesting a user."""
         # Create mock user model
         mock_user_model = MagicMock()
-        mock_query = MagicMock()
-        mock_user_model.query.filter_by.return_value = mock_query
-        mock_query.all.return_value = [
-            MagicMock(group_id="project1", approved=False),
-            MagicMock(group_id="project2", approved=False),
-        ]
+        mock_user_model.objects.filter.return_value.first.return_value.namespace = "project1,project2"
 
         result = get_list_of_groups_requesting_a_user("user@example.com", mock_user_model)
 
         assert isinstance(result, list)
-        assert len(result) >= 0
+        assert result == ["project1", "project2"]
 
     def test_get_list_of_users_requesting_a_group(self, mock_settings):
         """Test getting list of users requesting a group."""
