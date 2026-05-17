@@ -13,8 +13,13 @@ def main():
     db_host = os.environ["DB_HOST"]
     db_port = os.environ["DB_PORT"]
     db_name = os.environ["DB_NAME"]
-    uri = f"mongodb://{db_username}:{db_password}@{db_host}:{db_port}/?authSource=admin"
-    client = MongoClient(uri)
+    client = MongoClient(
+        host=db_host,
+        port=int(db_port),
+        username=db_username,
+        password=db_password,
+        authSource="admin",
+    )
 
     db = client[db_name]
     collection = db['maia_projects']
