@@ -43,9 +43,12 @@ def main():
     for project in projects:
         filtered_project = {'users': []}
         for user in users:
-            user_namespaces = [namespace.strip() for namespace in user['namespace'].split(',') if namespace.strip()]
+            user_namespace_value = user.get('namespace') or ''
+            user_namespaces = [namespace.strip() for namespace in user_namespace_value.split(',') if namespace.strip()]
             if project['namespace'] in user_namespaces:
-                filtered_project['users'].append(user['email'])
+                user_email = user.get('email')
+                if user_email:
+                    filtered_project['users'].append(user_email)
         for k, v in project.items():
         
             if k in metadata:
