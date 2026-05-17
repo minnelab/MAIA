@@ -79,4 +79,5 @@ for project in projects:
 
 
 
-#git clone https://{git_username}:{git_password}@github.com/minnelab/MAIA-configs.git
+# Clone using Git's standard authentication flow; do not embed credentials in the URL.
+# git clone https://github.com/minnelab/MAIA-configs.git
