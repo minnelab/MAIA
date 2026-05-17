@@ -89,7 +89,7 @@ def main():
                             filtered_project[k] = str(v)
 
                 elif k == "users":
-                    ...  # users are already filtered
+                    pass  # users are already filtered
                 else:
                     filtered_project[k] = v
         # Sanitize the namespace for use as a filename
