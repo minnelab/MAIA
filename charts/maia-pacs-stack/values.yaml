@@ -1,11 +1,17 @@
-# Default values for maia-pacs-stack (OHIF).
+# Default values for maia-pacs-stack.
 
-replicaCount: 1
-
-image:
-  repository: ohif
-  tag: latest
-  pullPolicy: IfNotPresent
+# OHIF viewer sidecar (docker-compose ohif service).
+ohif:
+  replicaCount: 1
+  image:
+    repository: ohif
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 80
+  resources: {}
 
 imagePullSecrets: []
 nameOverride: ""
@@ -138,11 +144,6 @@ maiaAgent:
     accessMode: ReadWriteOnce
   resources: {}
 
-service:
-  type: ClusterIP
-  port: 8080
-  targetPort: 80
-
 # Postgres (docker-compose postgres service) — Orthanc index database.
 postgres:
   image:
@@ -187,8 +188,6 @@ oauth2Proxy:
   emailDomains: "*"
   httpAddress: "0.0.0.0:4180"
   resources: {}
-
-resources: {}
 
 nodeSelector: {}
 tolerations: []

@@ -4,10 +4,11 @@ metadata:
   name: {{ include "maia-pacs-stack.fullname" . }}-ohif
   labels:
     {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ohif
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.ohif.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    - port: {{ .Values.ohif.service.port }}
       targetPort: http
       protocol: TCP
       name: http

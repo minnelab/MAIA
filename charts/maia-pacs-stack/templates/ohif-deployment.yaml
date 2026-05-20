@@ -4,8 +4,9 @@ metadata:
   name: {{ include "maia-pacs-stack.fullname" . }}-ohif
   labels:
     {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ohif
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.ohif.replicaCount }}
   selector:
     matchLabels:
       {{- include "maia-pacs-stack.ohifSelectorLabels" . | nindent 6 }}
@@ -33,17 +34,17 @@ spec:
       volumes:
         - name: ohif-config
           configMap:
-            name: {{ include "maia-pacs-stack.configMapName" . }}
+            name: {{ include "maia-pacs-stack.ohifConfigMapName" . }}
             defaultMode: 0555
       containers:
         - name: ohif
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.ohif.image.repository }}:{{ .Values.ohif.image.tag }}"
+          imagePullPolicy: {{ .Values.ohif.image.pullPolicy }}
           command: ["/etc/maia/ohif-entrypoint.sh"]
           args: ["nginx", "-g", "daemon off;"]
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }}
+              containerPort: {{ .Values.ohif.service.targetPort }}
               protocol: TCP
           env:
             - name: MAIA_PUBLIC_URL
@@ -62,7 +63,7 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.resources }}
+          {{- with .Values.ohif.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}

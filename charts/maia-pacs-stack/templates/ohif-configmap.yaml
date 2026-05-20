@@ -1,9 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "maia-pacs-stack.configMapName" . }}
+  name: {{ include "maia-pacs-stack.ohifConfigMapName" . }}
   labels:
     {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ohif
 data:
   ohif-entrypoint.sh: |
 {{ .Files.Get "files/maia-ohif-entrypoint.sh" | indent 4 }}

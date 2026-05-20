@@ -63,7 +63,7 @@ app.kubernetes.io/component: postgres
 {{- default (printf "%s-postgres" (include "maia-pacs-stack.fullname" .)) .Values.postgres.service.host }}
 {{- end }}
 
-{{- define "maia-pacs-stack.configMapName" -}}
+{{- define "maia-pacs-stack.ohifConfigMapName" -}}
 {{- printf "%s-ohif-config" (include "maia-pacs-stack.fullname" .) }}
 {{- end }}
 

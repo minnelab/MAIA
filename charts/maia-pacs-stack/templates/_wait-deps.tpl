@@ -99,7 +99,7 @@ Init containers approximate docker-compose depends_on ordering:
     - name: OHIF_HOST
       value: {{ include "maia-pacs-stack.ohifServiceHost" . | quote }}
     - name: OHIF_PORT
-      value: {{ .Values.service.targetPort | quote }}
+      value: {{ .Values.ohif.service.targetPort | quote }}
   {{- with .Values.waitForDependencies.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
