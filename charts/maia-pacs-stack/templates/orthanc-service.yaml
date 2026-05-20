@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maia-pacs-stack.fullname" . }}-orthanc
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: orthanc
+spec:
+  type: {{ .Values.orthanc.service.type }}
+  ports:
+    - port: {{ .Values.orthanc.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maia-pacs-stack.orthancSelectorLabels" . | nindent 4 }}

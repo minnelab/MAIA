@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "maia-pacs-stack.fullname" . }}-ohif
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "maia-pacs-stack.ohifSelectorLabels" . | nindent 4 }}

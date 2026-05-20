@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maia-pacs-stack.fullname" . }}-maia-agent
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: maia-agent
+spec:
+  replicas: {{ .Values.maiaAgent.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "maia-pacs-stack.maiaAgentSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "maia-pacs-stack.maiaAgentSelectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if trim (include "maia-pacs-stack.initMaiaAgentWaitOrthanc" .) }}
+      initContainers:
+{{ include "maia-pacs-stack.initMaiaAgentWaitOrthanc" . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- if .Values.maiaAgent.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "maia-pacs-stack.maiaAgentPvcName" . }}
+        {{- else }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+      containers:
+        - name: maia-agent
+          image: "{{ .Values.maiaAgent.image.repository }}:{{ .Values.maiaAgent.image.tag }}"
+          imagePullPolicy: {{ .Values.maiaAgent.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.maiaAgent.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: DICOMWEB_URL
+              value: {{ include "maia-pacs-stack.maiaAgentDicomwebUrl" . | quote }}
+            - name: DICOMWEB_STATIC_WADO
+              value: {{ .Values.maiaAgent.dicomweb.staticWado | quote }}
+            - name: DICOMWEB_SINGLEPART
+              value: {{ .Values.maiaAgent.dicomweb.singlepart | quote }}
+            - name: DICOMWEB_OMIT_QUOTATION_FOR_MULTIPART
+              value: {{ .Values.maiaAgent.dicomweb.omitQuotationForMultipart | quote }}
+            - name: OLLAMA_BASE_URL
+              value: {{ .Values.maiaAgent.ollama.baseUrl | quote }}
+            {{- if .Values.maiaAgent.ollama.existingSecret }}
+            - name: OLLAMA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.maiaAgent.ollama.existingSecret }}
+                  key: api-key
+            {{- else }}
+            - name: OLLAMA_API_KEY
+              value: {{ .Values.maiaAgent.ollama.apiKey | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          {{- with .Values.maiaAgent.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

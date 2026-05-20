@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maia-pacs-stack.fullname" . }}-ohif
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "maia-pacs-stack.ohifSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "maia-pacs-stack.ohifSelectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if trim (include "maia-pacs-stack.initOhifWaitOrthanc" .) }}
+      initContainers:
+{{ include "maia-pacs-stack.initOhifWaitOrthanc" . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: ohif-config
+          configMap:
+            name: {{ include "maia-pacs-stack.configMapName" . }}
+            defaultMode: 0555
+      containers:
+        - name: ohif
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/etc/maia/ohif-entrypoint.sh"]
+          args: ["nginx", "-g", "daemon off;"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: MAIA_PUBLIC_URL
+              value: {{ .Values.maiaPaths.maiaPublicUrl | quote }}
+            - name: OHIF_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.ohifPublicPath | quote }}
+            - name: DICOMWEB_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.dicomwebPublicPath | quote }}
+            - name: ORTHANC_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.orthancPublicPath | quote }}
+            - name: OAUTH2_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.oauth2PublicPath | quote }}
+            - name: AI_ASSIST_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.aiAssistPublicPath | quote }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: ohif-config
+              mountPath: /etc/maia/ohif-entrypoint.sh
+              subPath: ohif-entrypoint.sh
+              readOnly: true
+            - name: ohif-config
+              mountPath: /etc/maia/ohif-config.js.template
+              subPath: ohif-config.js.template
+              readOnly: true
+            - name: ohif-config
+              mountPath: /usr/src/default.conf.template
+              subPath: ohif-default.conf.template
+              readOnly: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

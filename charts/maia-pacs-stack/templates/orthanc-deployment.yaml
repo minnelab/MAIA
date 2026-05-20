@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maia-pacs-stack.fullname" . }}-orthanc
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: orthanc
+spec:
+  replicas: {{ .Values.orthanc.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "maia-pacs-stack.orthancSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "maia-pacs-stack.orthancSelectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if trim (include "maia-pacs-stack.initOrthancWaitPostgres" .) }}
+      initContainers:
+{{ include "maia-pacs-stack.initOrthancWaitPostgres" . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: orthanc-config
+          configMap:
+            name: {{ include "maia-pacs-stack.orthancConfigMapName" . }}
+        {{- if .Values.orthanc.persistence.storage.enabled }}
+        - name: orthanc-storage
+          persistentVolumeClaim:
+            claimName: {{ include "maia-pacs-stack.orthancStoragePvcName" . }}
+        {{- end }}
+        {{- if .Values.orthanc.persistence.folderToIndex.existingClaim }}
+        - name: folder-to-index
+          persistentVolumeClaim:
+            claimName: {{ .Values.orthanc.persistence.folderToIndex.existingClaim }}
+        {{- end }}
+      containers:
+        - name: orthanc
+          image: "{{ .Values.orthanc.image.repository }}:{{ .Values.orthanc.image.tag }}"
+          imagePullPolicy: {{ .Values.orthanc.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.orthanc.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: MAIA_PUBLIC_URL
+              value: {{ .Values.maiaPaths.maiaPublicUrl | quote }}
+            - name: OHIF_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.ohifPublicPath | quote }}
+            - name: DICOMWEB_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.dicomwebPublicPath | quote }}
+            - name: ORTHANC_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.orthancPublicPath | quote }}
+            - name: OAUTH2_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.oauth2PublicPath | quote }}
+            - name: AI_ASSIST_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.aiAssistPublicPath | quote }}
+            - name: ORTHANC__REGISTERED_USERS
+              value: {{ .Values.orthanc.env.registeredUsers | quote }}
+            - name: ORTHANC__NAME
+              value: {{ .Values.orthanc.env.name | quote }}
+            - name: BEFORE_ORTHANC_STARTUP_SCRIPT
+              value: {{ .Values.orthanc.env.beforeStartupScript | quote }}
+            - name: VERBOSE_ENABLED
+              value: {{ .Values.orthanc.env.verboseEnabled | quote }}
+            - name: VERBOSE_STARTUP
+              value: {{ .Values.orthanc.env.verboseStartup | quote }}
+            - name: ADVANCED_STORAGE_PLUGIN_ENABLED
+              value: {{ .Values.orthanc.env.advancedStoragePluginEnabled | quote }}
+            - name: WSI_PLUGIN_ENABLED
+              value: {{ .Values.orthanc.env.wsiPluginEnabled | quote }}
+            - name: ORTHANC__DICOM_AET
+              value: {{ .Values.orthanc.env.dicomAet | quote }}
+            - name: STONE_WEB_VIEWER_PLUGIN_ENABLED
+              value: {{ .Values.orthanc.env.stoneWebViewerPluginEnabled | quote }}
+            - name: OSIMIS_WEB_VIEWER1_PLUGIN_ENABLED
+              value: {{ .Values.orthanc.env.osimisWebViewer1PluginEnabled | quote }}
+            - name: DICOM_WEB_PLUGIN_ENABLED
+              value: {{ .Values.orthanc.env.dicomWebPluginEnabled | quote }}
+            - name: ORTHANC__AUTHENTICATION_ENABLED
+              value: {{ .Values.orthanc.env.authenticationEnabled | quote }}
+            - name: OHIF_PLUGIN_ENABLED
+              value: {{ .Values.orthanc.env.ohifPluginEnabled | quote }}
+            - name: ORTHANC__OVERWRITE_INSTANCES
+              value: {{ .Values.orthanc.env.overwriteInstances | quote }}
+            - name: ORTHANC__DICOM_MODALITIES
+              value: {{ .Values.orthanc.env.dicomModalities | quote }}
+            - name: ORTHANC__DICOM_WEB__PUBLIC_ROOT
+              value: {{ include "maia-pacs-stack.orthancDicomWebPublicRoot" . | quote }}
+            - name: ORTHANC__ORTHANC_EXPLORER_2__UI_OPTIONS__ENABLE_OPEN_IN_OHIF_VIEWER_3
+              value: {{ .Values.orthanc.env.explorer2EnableOpenInOhifViewer3 | quote }}
+            - name: ORTHANC__ORTHANC_EXPLORER_2__UI_OPTIONS__OHIF_VIEWER_3_PUBLIC_ROOT
+              value: {{ include "maia-pacs-stack.orthancOhifViewerPublicRoot" . | quote }}
+            - name: ORTHANC__OHIF
+              value: |
+                {
+                  "RouterBasename": "{{ .Values.maiaPaths.ohifPublicPath }}",
+                  "DataSource": "dicom-web",
+                  "UserConfiguration": "/ohif-config.js"
+                }
+            - name: ORTHANC__DICOM_WEB__SERVERS
+              value: {{ .Values.orthanc.env.dicomWebServers | quote }}
+          volumeMounts:
+            - name: orthanc-config
+              mountPath: /etc/orthanc/orthanc.json
+              subPath: orthanc.json
+              readOnly: true
+            - name: orthanc-config
+              mountPath: /ohif-config.js
+              subPath: ohif-config.js
+              readOnly: true
+            {{- if .Values.orthanc.persistence.storage.enabled }}
+            - name: orthanc-storage
+              mountPath: /orthanc-storage-1
+            {{- end }}
+            {{- if .Values.orthanc.persistence.folderToIndex.existingClaim }}
+            - name: folder-to-index
+              mountPath: /folder-to-index
+            {{- end }}
+          {{- with .Values.orthanc.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

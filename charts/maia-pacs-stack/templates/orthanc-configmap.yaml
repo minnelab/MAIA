@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "maia-pacs-stack.orthancConfigMapName" . }}
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: orthanc
+data:
+  orthanc.json: |
+{{ include "maia-pacs-stack.orthancJsonConfig" . | indent 4 }}
+  ohif-config.js: |
+{{ include "maia-pacs-stack.orthancOhifConfig" . | indent 4 }}

@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "maia-pacs-stack.fullname" . }}-nginx
+  labels:
+    {{- include "maia-pacs-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nginx
+spec:
+  replicas: {{ .Values.nginx.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "maia-pacs-stack.nginxSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "maia-pacs-stack.nginxSelectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.waitForDependencies.enabled (or .Values.waitForDependencies.nginx.waitForOrthanc .Values.waitForDependencies.nginx.waitForOhif .Values.waitForDependencies.nginx.waitForMaiaAgent) }}
+      initContainers:
+{{ include "maia-pacs-stack.initNginxWaitBackends" . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "maia-pacs-stack.nginxConfigMapName" . }}
+            defaultMode: 0555
+      containers:
+        - name: nginx
+          image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
+          imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+          command: ["/docker-entrypoint.sh"]
+          args: ["nginx", "-g", "daemon off;"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.nginx.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: MAIA_PUBLIC_URL
+              value: {{ .Values.maiaPaths.maiaPublicUrl | quote }}
+            - name: OHIF_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.ohifPublicPath | quote }}
+            - name: DICOMWEB_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.dicomwebPublicPath | quote }}
+            - name: ORTHANC_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.orthancPublicPath | quote }}
+            - name: OAUTH2_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.oauth2PublicPath | quote }}
+            - name: AI_ASSIST_PUBLIC_PATH
+              value: {{ .Values.maiaPaths.aiAssistPublicPath | quote }}
+          {{- with .Values.nginx.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /docker-entrypoint.sh
+              subPath: docker-entrypoint.sh
+              readOnly: true
+            - name: nginx-config
+              mountPath: /etc/nginx/templates/default.conf.template
+              subPath: default.conf.template
+              readOnly: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
