@@ -1215,7 +1215,7 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_minio_operator_values(config_folder, project_id):
+def create_minio_operator_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes MinIO operator values to a YAML file and returns a dictionary with deployment details.
 
