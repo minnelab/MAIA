@@ -667,7 +667,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_metallb_values(config_folder, project_id):
+def create_metallb_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes MetalLB Helm chart values to a YAML file and returns a dictionary with deployment details.
 
@@ -677,7 +677,8 @@ def create_metallb_values(config_folder, project_id):
         The path to the configuration folder where the YAML file will be created.
     project_id : str
         The project identifier used to create a unique directory and release name.
-
+    cluster_config_dict : dict
+        A dictionary containing the cluster configuration.
     Returns
     -------
     dict
@@ -719,7 +720,7 @@ def create_metallb_values(config_folder, project_id):
     }
 
 
-def create_cert_manager_values(config_folder, project_id):
+def create_cert_manager_values(config_folder, project_id, cluster_config_dict):
     """
     Creates a dictionary of values for configuring cert-manager and writes it to a YAML file.
 
@@ -729,7 +730,8 @@ def create_cert_manager_values(config_folder, project_id):
         The path to the configuration folder.
     project_id : str
         The project identifier.
-
+    cluster_config_dict : dict
+        A dictionary containing the cluster configuration.
     Returns
     -------
     dict
