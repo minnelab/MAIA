@@ -639,7 +639,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
 
-    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         traefik_values.update(
             {
                 "deployment": {
@@ -697,7 +697,7 @@ def create_metallb_values(config_folder, project_id):
         "chart_name": "metallb",
     }  # TODO: Change this to updated values
 
-    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         metallb_values.update(
             {
                 "controller": {"image": {"repository": "maiacloudai/controller"}},
@@ -746,7 +746,7 @@ def create_cert_manager_values(config_folder, project_id):
     cert_manager_values = {}
     cert_manager_values.update({"crds": {"enabled": True}})
 
-    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         cert_manager_values.update(
             {
                 "cainjector": {"image": {"repository": "maiacloudai/cert-manager-cainjector"}},
