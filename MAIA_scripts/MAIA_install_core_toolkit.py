@@ -148,8 +148,8 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     else:
         helm_commands.append(create_ingress_nginx_values(config_folder, project_id))
 
-    helm_commands.append(create_metallb_values(config_folder, project_id))
-    helm_commands.append(create_cert_manager_values(config_folder, project_id))
+    helm_commands.append(create_metallb_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_cert_manager_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_gpu_operator_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_nfs_server_provisioner_values(config_folder, project_id, cluster_config_dict))
 
