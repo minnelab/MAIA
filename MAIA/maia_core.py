@@ -1238,6 +1238,14 @@ def create_minio_operator_values(config_folder, project_id):
         "chart_name": "operator",
         "chart_version": minio_operator_chart_version,
     }
+    
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        minio_operator_values.update(
+            {
+                "operator": {"image": {"repository": "maiacloudai/minio-operator"}},
+            }
+        )
+
 
     Path(config_folder).joinpath(project_id, "minio_operator_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml"), "w") as f:
