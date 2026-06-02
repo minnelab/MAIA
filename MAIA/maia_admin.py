@@ -314,9 +314,10 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             },
         }
     )
-
+    
+    clusters = []
     if "CLUSTER_YAML_CONFIGS" in os.environ:
-        clusters = []
+        
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
         for cluster_file in cluster_files:
             if not os.path.isabs(cluster_file):
@@ -962,15 +963,16 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             gpg_key = open(Path(config_folder).joinpath(os.environ["GPG_KEY"]), "r").read()
         maia_dashboard_values["gpg_key"] = gpg_key
 
-    if os.environ.get("DEV_TAG") is not None:
+    if os.environ.get("MAIA_TAG") is not None:
         maia_dashboard_values["env"].extend(
             [
-                {"name": "DEV_TAG", "value": os.environ["DEV_TAG"]},
+                {"name": "MAIA_TAG", "value": os.environ["MAIA_TAG"]},
             ]
         )
+    if os.environ.get("MAIA_VERSION") is not None:
         maia_dashboard_values["env"].extend(
             [
-                {"name": "MAIA_VERSION", "value": os.environ["DEV_TAG"]},
+                {"name": "MAIA_VERSION", "value": os.environ["MAIA_VERSION"]},
             ]
         )
     if os.environ.get("CIFS_SERVER") is not None:
@@ -1133,6 +1135,36 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
 
     maia_dashboard_values["hostAliases"] = host_aliases
 
+    if "AGENT_PROVIDER" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "AGENT_PROVIDER", "value": os.environ["AGENT_PROVIDER"]},
+            ]
+        )
+    if "AGENT_API_TOKEN" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "AGENT_API_TOKEN", "value": os.environ["AGENT_API_TOKEN"]},
+            ]
+        )
+    if "OLLAMA_BASE_URL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OLLAMA_BASE_URL", "value": os.environ["OLLAMA_BASE_URL"]},
+            ]
+        )
+    if "OLLAMA_MODEL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OLLAMA_MODEL", "value": os.environ["OLLAMA_MODEL"]},
+            ]
+        )
+    if "OLLAMA_API_KEY" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OLLAMA_API_KEY", "value": os.environ["OLLAMA_API_KEY"]},
+            ]
+        )
     if "CLUSTER_YAML_CONFIGS" in os.environ:
         maia_dashboard_values["clusters"] = []
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
