@@ -567,6 +567,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
                     "cpu": "2",
                     "memory": "1024Mi",
                 },
+            },
             "extraVolumeMounts": [
                 {
                     "name": "keycloak-import",
