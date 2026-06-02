@@ -47,7 +47,7 @@ argument_specs:
         maia_core_namespaces:
           type: list
           required: false
-          default: [observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]
+          default: [observability, metrics-server, traefik, metallb-system, cert-manager, gpu-operator, nvidia-dra-driver-gpu, maia-core-toolkit, ingress-nginx, minio-operator, authentication, maia-webhooks, nfs-server-provisioner]
           elements: str
           description: "List of MAIA Core namespaces to create (optional)"
         auto_sync:
