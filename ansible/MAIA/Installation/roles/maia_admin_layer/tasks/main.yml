@@ -29,20 +29,19 @@
   delegate_to: localhost
 
 - name: Create namespaces
-  kubernetes.core.k8s:
+  ansible.builtin.k8s:
     api_version: v1
     kind: Namespace
     name: "{{ item }}"
     state: present
-  loop:
-    - harbor
-    - keycloak
-    - maia-admin-toolkit
-    - maia-dashboard
-    - cattle-system
+  loop: "{{ maia_admin_namespaces }}"
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    http_proxy: ""
+    https_proxy: ""
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
 
 - name: Check if externalCA key exists in cluster config
   ansible.builtin.set_fact:

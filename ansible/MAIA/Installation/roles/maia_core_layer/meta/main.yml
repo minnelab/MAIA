@@ -106,3 +106,8 @@ argument_specs:
           default: [maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-nvidia-dra-driver-gpu, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]
           elements: str
           description: "List of ArgoCD applications to sync (optional)"
+        extra_commands:
+          type: list
+          required: false
+          default: []
+          description: "Additional commands to execute, i.e. to set image of a deployment (optional)"
