@@ -406,7 +406,7 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
     domain = cluster_config_dict["domain"]
     harbor_values = {
         "namespace": "harbor",
-        "repo_url": "https://helm.goharbor.io",
+        "repo_url": "https://minnelab.github.io/MAIA/", #"https://helm.goharbor.io",
         "chart_name": "harbor",
         "chart_version": harbor_chart_version,
     }
@@ -527,7 +527,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
     """
     keycloak_values = {
         "namespace": "keycloak",
-        "repo_url": "https://charts.bitnami.com/bitnami",
+        "repo_url": "https://minnelab.github.io/MAIA/", #"https://charts.bitnami.com/bitnami",
         "chart_name": "keycloak",
         "chart_version": keycloak_chart_version,
     }
@@ -1216,7 +1216,7 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
 
     rancher_values = {
         "namespace": "cattle-system",
-        "repo_url": "https://releases.rancher.com/server-charts/latest",
+        "repo_url": "https://minnelab.github.io/MAIA/", #"https://releases.rancher.com/server-charts/latest",
         "chart_name": "rancher",
         "chart_version": rancher_chart_version,
     }  # TODO: Change this to updated values
