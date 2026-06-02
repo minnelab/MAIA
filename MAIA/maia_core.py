@@ -642,8 +642,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         traefik_values.update(
             {
-                "deployment": {
-                    "additionalVolumes": [
+                    "volumes": [
                         {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}},
                         {"name": "local-plugins", "hostPath": {"path": "/var/lib/traefik/plugins", "type": "Directory"}}
                     ],
@@ -652,7 +651,6 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                         {"name": "local-plugins", "mountPath": "/plugins-local", "readOnly": False}
                     ],
                     "env": [{"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"}],
-                },
                 "experimental": {},
                 "globalArguments": traefik_values["globalArguments"] + ["--experimental.localplugins.traefik-oidc-auth.modulename=github.com/sevensolutions/traefik-oidc-auth"]
                 
