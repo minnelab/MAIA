@@ -558,6 +558,15 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
             "auth": {
                 "adminPassword": os.environ.get("keycloak_admin_password", ""),
             },
+            "resources": {
+                "requests": {
+                    "cpu": "2",
+                    "memory": "512Mi",
+                },
+                "limits": {
+                    "cpu": "2",
+                    "memory": "1024Mi",
+                },
             "extraVolumeMounts": [
                 {
                     "name": "keycloak-import",
