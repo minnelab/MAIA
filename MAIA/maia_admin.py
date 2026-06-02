@@ -431,33 +431,33 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
                     "registry": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "registry",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                     "jobservice": {
                         "jobLog": {
                             "existingClaim": "pvc-harbor",
                             "subPath": "job_logs",
-                            "storageClass": cluster_config_dict["storage_class"],
+                            "storageClass": cluster_config_dict["shared_storage_class"],
                             "accessMode": "ReadWriteMany",
                         }
                     },
                     "database": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "database",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                     "redis": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "redis",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                     "trivy": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "trivy",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                 },
