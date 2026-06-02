@@ -285,7 +285,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             "admin_group_ID": admin_group_id,
             "harbor": {
                 "enabled": True,
-                "values": {"namespace": "harbor", "storageClassName": cluster_config_dict["storage_class"]},
+                "values": {"namespace": "harbor", "storageClassName": cluster_config_dict["shared_storage_class"]},
             },
             "keycloak": {
                 "enabled": True,
