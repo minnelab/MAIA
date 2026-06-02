@@ -277,20 +277,19 @@
   ignore_errors: true
   delegate_to: localhost
   when: auto_sync | bool and 'maia-core-loginapp' in maia_admin_argocd_applications
-- name: Wait for admin-minio-tenant-pool-0-0 pod to be running
-  kubernetes.core.k8s_info:
-    kind: Pod
-    namespace: maia-dashboard
-    api_version: v1
-    name: admin-minio-tenant-pool-0-0
-  register: minio_pod_info
+
+- name: Wait until maia-admin-minio-tenant-pool-0-0 pod is ready
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard wait --for=condition=Ready pod/admin-minio-tenant-pool-0-0 --timeout=300s
+  register: minio_pod_ready
+  changed_when: false
   delegate_to: localhost
   environment:
-    KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
-  retries: 20
-  delay: 15
-  until: minio_pod_info.resources is defined and minio_pod_info.resources | length > 0 and minio_pod_info.resources[0].status.phase == "Running"
-  when: auto_sync | bool
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  retries: 10
+  delay: 10
+  until: minio_pod_ready.rc == 0
+  when: auto_sync | bool 
 - name: Create bucket 'maia-envs' in MinIO Tenant
   kubernetes.core.k8s_exec:
     namespace: maia-dashboard
