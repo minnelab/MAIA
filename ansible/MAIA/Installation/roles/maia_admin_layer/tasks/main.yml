@@ -300,41 +300,51 @@
   register: minio_create_bucket_result
   changed_when: false
   when: auto_sync | bool
-- name: Add MAIA Admin as minio admin policy user
-  kubernetes.core.k8s_exec:
-    namespace: maia-dashboard
-    pod: admin-minio-tenant-pool-0-0
-    container: minio
-    command: >-
-      /bin/sh -c '
-      echo "{
-        \"Version\": \"2012-10-17\",
-        \"Statement\": [
+- name: Create maia-admin-policy.json locally
+  copy:
+    dest: /tmp/maia-admin-policy.json
+    content: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
           {
-            \"Effect\": \"Allow\",
-            \"Action\": [
-              \"admin:*\"
+            "Effect": "Allow",
+            "Action": [
+              "admin:*"
             ]
           },
           {
-            \"Effect\": \"Allow\",
-            \"Action\": [
-              \"kms:*\"
+            "Effect": "Allow",
+            "Action": [
+              "kms:*"
             ]
           },
           {
-            \"Effect\": \"Allow\",
-            \"Action\": [
-              \"s3:*\"
+            "Effect": "Allow",
+            "Action": [
+              "s3:*"
             ],
-            \"Resource\": [
-              \"arn:aws:s3:::*\"
+            "Resource": [
+              "arn:aws:s3:::*"
             ]
           }
         ]
-      }" > /tmp/maia-admin-policy.json;
-      mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json;
-      '
+      }
+  delegate_to: localhost
+  when: auto_sync | bool
+
+- name: Copy maia-admin-policy.json to admin-minio-tenant-pool-0-0 pod
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard cp /tmp/maia-admin-policy.json admin-minio-tenant-pool-0-0:/tmp/maia-admin-policy.json -c minio
+  environment:
+    KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
+  delegate_to: localhost
+  when: auto_sync | bool
+
+- name: Add MAIA Admin as minio admin policy user
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- \
+      /bin/sh -c 'mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json'
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
