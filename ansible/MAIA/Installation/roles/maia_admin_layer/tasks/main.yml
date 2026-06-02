@@ -341,11 +341,15 @@
   delegate_to: localhost
   when: auto_sync | bool
 
-- name: Add MAIA Admin as minio admin policy user
+- name: Add MAIA Admin as minio admin policy user (retry if policy.json not present)
   ansible.builtin.shell: |
     kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- \
-      /bin/sh -c 'mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json'
+      /bin/sh -c 'if [ -f /tmp/maia-admin-policy.json ] && [ -s /tmp/maia-admin-policy.json ]; then mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json; else echo "maia-admin-policy.json missing or empty" && exit 42; fi'
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
+  register: minio_policy_create_result
+  retries: 5
+  delay: 3
+  until: minio_policy_create_result.rc == 0
   when: auto_sync | bool
