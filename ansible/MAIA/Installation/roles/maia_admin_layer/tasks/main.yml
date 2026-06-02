@@ -333,9 +333,9 @@
   delegate_to: localhost
   when: auto_sync | bool
 
-- name: Copy maia-admin-policy.json to admin-minio-tenant-pool-0-0 pod
+- name: Copy maia-admin-policy.json to admin-minio-tenant-pool-0-0 pod without kubectl cp (tar not available)
   ansible.builtin.shell: |
-    kubectl -n maia-dashboard cp /tmp/maia-admin-policy.json admin-minio-tenant-pool-0-0:/tmp/maia-admin-policy.json -c minio
+    kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- /bin/sh -c "cat > /tmp/maia-admin-policy.json" < /tmp/maia-admin-policy.json
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
