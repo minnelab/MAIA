@@ -966,6 +966,9 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
         nfs_server_provisioner_values.update(
             {"nfs": {"server": cluster_config_dict["nfs_server"], "path": cluster_config_dict["nfs_path"]}}
         )
+        
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        nfs_server_provisioner_values.update({"image": {"repository": "maiacloudai/nfs-subdir-external-provisioner"}})
 
     Path(config_folder).joinpath(project_id, "nfs_provisioner_values").mkdir(parents=True, exist_ok=True)
 
