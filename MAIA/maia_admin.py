@@ -534,6 +534,14 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
 
     keycloak_values.update(
         {
+            "postgresql": {
+                "image": {
+                    "repository": "bitnamilegacy/postgresql"
+                },
+            },
+            "image": {
+                "repository": "bitnamilegacy/keycloak",
+            },
             "extraEnvVars": [
                 {"name": "KEYCLOAK_EXTRA_ARGS", "value": "--import-realm"},
                 {"name": "PROXY_ADDRESS_FORWARDING", "value": "true"},
