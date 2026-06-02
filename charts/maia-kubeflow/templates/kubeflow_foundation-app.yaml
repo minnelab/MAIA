@@ -12,10 +12,6 @@ spec:
     repoURL: 'https://github.com/minnelab/manifests.git'
     targetRevision: HEAD
     path: 'layers/01-foundation'
-    helm:
-      releaseName: ml-foundation
-      valuesObject:
-      {{ .Values.ml_foundation_values | toYaml | nindent 8 }}
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: istio-system
