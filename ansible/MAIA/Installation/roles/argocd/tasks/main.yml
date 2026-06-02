@@ -140,6 +140,9 @@
                 any:
                 - resources:
                     namespaces:
+                    - harbor
+                - resources:
+                    namespaces:
                     - kubeflow
                     selector:
                       matchExpressions:
