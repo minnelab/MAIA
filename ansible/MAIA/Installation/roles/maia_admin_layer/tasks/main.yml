@@ -291,14 +291,14 @@
   until: minio_pod_ready.rc == 0
   when: auto_sync | bool 
 - name: Create bucket 'maia-envs' in MinIO Tenant
-  kubernetes.core.k8s_exec:
-    namespace: maia-dashboard
-    pod: admin-minio-tenant-pool-0-0
-    container: minio
-    command: /bin/sh -c 'export MINIO_ROOT_USER="maia-admin"; export MINIO_ROOT_PASSWORD="{{ minio_admin_password }}"; mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc mb --ignore-existing local/maia-envs'
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- \
+      /bin/sh -c 'export MINIO_ROOT_USER="maia-admin"; export MINIO_ROOT_PASSWORD="{{ minio_admin_password }}"; mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc mb --ignore-existing local/maia-envs'
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
+  register: minio_create_bucket_result
+  changed_when: false
   when: auto_sync | bool
 - name: Add MAIA Admin as minio admin policy user
   kubernetes.core.k8s_exec:
