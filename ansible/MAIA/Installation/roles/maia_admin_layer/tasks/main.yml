@@ -215,6 +215,8 @@
     MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}" --admin_email "{{ admin_email }}"
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    no_proxy: "{{ domain }}"
+    NO_PROXY: "{{ domain }}"
   register: configure_keycloak_result
   ignore_errors: true
   when: auto_sync | bool
