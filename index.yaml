@@ -801,8 +801,7 @@ entries:
       name: terminals
       repository: https://helm.openwebui.com
       version: '>=0.2.0'
-    description: "Open WebUI: A User-Friendly Web Interface for Chat Interactions
-      \U0001F44B"
+    description: "Open WebUI: A User-Friendly Web Interface for Chat Interactions"
     digest: 898d2192c35c7a6cbdc24a2e0de43381a88205d3a2c090f4b989d2113b589b40
     home: https://www.openwebui.com/
     icon: https://raw.githubusercontent.com/open-webui/open-webui/main/static/favicon.png
