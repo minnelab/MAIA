@@ -1193,6 +1193,23 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                 cluster_config_dict = yaml.safe_load(f)
                 maia_dashboard_values["clusters"].append(cluster_config_dict)
 
+    
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        maia_dashboard_values.update(
+            {
+                    "additionalVolumes": [
+                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}}
+                    ],
+                    "additionalVolumeMounts": [
+                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
+                    ],
+            }
+        )
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"},
+            ]
+        )
     # CIFS
     # MAIA Segmentation Portal
     # GPU Booking
