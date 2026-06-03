@@ -67,6 +67,7 @@ setup(
             "MAIA_build_images = MAIA_scripts.MAIA_build_images:main",
             "MAIA_Install = MAIA_scripts.MAIA_Install:main",
             "MAIA_deploy_project = MAIA_scripts.MAIA_deploy_project:main",
+            "MAIA_setup_dashboard = MAIA_scripts.MAIA_setup_dashboard:main",
         ],
     },
     keywords=["helm", "kubernetes", "maia", "resource deployment"],
