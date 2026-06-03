@@ -25,7 +25,7 @@ fi
 
 ENTRYPOINT ["bash", "start-script.sh"]
 # gunicorn
-CMD ["MAIA_setup_dashboard"]
+CMD ["/root/.local/bin/MAIA_setup_dashboard"]
 #CMD [ "python", "manage.py", "runserver", "0.0.0.0:8000","--insecure"]
 #CMD ["gunicorn", "--config", "gunicorn-cfg.py", "core.wsgi"]
 
