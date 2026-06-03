@@ -6,8 +6,8 @@ Copyright (c) 2019 - present AppSeed.us
 import os
 import environ
 import yaml
-
 from MAIA.versions import define_maia_admin_versions
+from pymongo import MongoClient
 
 maia_dashboard_image_version = define_maia_admin_versions()["maia_dashboard_image_version"]
 
@@ -20,6 +20,7 @@ env = environ.Env(
 )
 
 DASHBOARD_VERSION = maia_dashboard_image_version
+MAIA_VERSION = os.environ.get("MAIA_VERSION", "N/A")
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 CORE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,16 +48,38 @@ MINIO_SECURE = env("MINIO_SECURE", default=True)
 MINIO_PUBLIC_SECURE = env("MINIO_PUBLIC_SECURE", default=MINIO_SECURE)
 BUCKET_NAME = env("BUCKET_NAME")
 
-DISCORD_URL = env("DISCORD_URL", default=None)
-DISCORD_SUPPORT_URL = env("DISCORD_SUPPORT_URL", default=None)
+WEBHOOK_URL = env("WEBHOOK_URL", default=None)
+SUPPORT_URL = env("SUPPORT_URL", default=None)
 
+SMTP_SENDER_EMAIL = env("SMTP_SENDER_EMAIL", default=None)
+SMTP_SERVER = env("SMTP_SERVER", default=None)
+SMTP_PORT = env("SMTP_PORT", default=None)
+SMTP_PASSWORD = env("SMTP_PASSWORD", default=None)
 
 DEFAULT_INGRESS_HOST = env("DEFAULT_INGRESS_HOST", default="localhost")
 
 OPENWEBAI_API_KEY = env("OPENWEBAI_API_KEY", default=None)
 OPENWEBAI_URL = env("OPENWEBAI_URL", default=None)
+OPENWEBAI_MODEL = env("OPENWEBAI_MODEL", default="llama3:latest")
 ARGOCD_SERVER = env("ARGOCD_SERVER", default=None)
 ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
+ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)
+
+# Agent API / MCP Server settings
+# Select the AI provider: anthropic (default) | openai | ollama
+AGENT_PROVIDER = env("AGENT_PROVIDER", default="anthropic")
+# Shared secret protecting /maia/agent/* endpoints (required in production)
+AGENT_API_TOKEN = env("AGENT_API_TOKEN", default=None)
+
+# Anthropic provider
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
+AGENT_MODEL = env("AGENT_MODEL", default="claude-sonnet-4-6")
+
+# OpenAI provider (also used for Azure OpenAI — set OPENAI_BASE_URL accordingly)
+OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
+OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
+OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
+
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
 
@@ -99,6 +122,7 @@ INSTALLED_APPS = [
     "mozilla_django_oidc",  # Load after auth
     "bootstrap5",
     "apps.gpu_scheduler",
+    "apps.agent_api",
 ]
 
 MIDDLEWARE = [
@@ -138,6 +162,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
+MONGO_DB_ENABLED = False
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
@@ -152,6 +177,18 @@ if os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mysql":
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", 3306),
         },
+    }
+elif os.environ.get("DB_ENGINE") and os.environ.get("DB_ENGINE") == "mongodb":
+    MONGO_CLIENT = MongoClient(
+        f'mongodb://{os.getenv("DB_USERNAME", "appseed_db_usr")}:{os.getenv("DB_PASS", "pass")}@{os.getenv("DB_HOST", "localhost")}:{os.getenv("DB_PORT", 27017)}'
+    )
+    MONGO_DB = MONGO_CLIENT[os.getenv("DB_NAME", "appseed_db")]
+    MONGO_DB_ENABLED = True
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")),
+        }
     }
 else:
     print("INFO: Using local sqlite database at " + str(os.path.join(LOCAL_DB_PATH, "db.sqlite3")))
@@ -218,6 +255,7 @@ GITHUB_SECRET = os.getenv("GITHUB_SECRET", None)
 GITHUB_AUTH = GITHUB_SECRET is not None and GITHUB_ID is not None
 
 OIDC_RP_CLIENT_ID = os.getenv("OIDC_RP_CLIENT_ID", None)
+OIDC_RP_PUBLIC_CLIENT_ID = os.getenv("OIDC_RP_PUBLIC_CLIENT_ID", OIDC_RP_CLIENT_ID)
 OIDC_RP_CLIENT_SECRET = os.getenv("OIDC_RP_CLIENT_SECRET", None)
 OIDC_USERNAME = os.getenv("OIDC_USERNAME", None)
 OIDC_ISSUER_URL = os.getenv("OIDC_ISSUER_URL", None)
@@ -235,6 +273,12 @@ ADMIN_GROUP = os.getenv("ADMIN_GROUP", "admin")
 USERS_GROUP = os.getenv("USERS_GROUP", "users")
 JWKS_TIMEOUT = int(os.getenv("JWKS_TIMEOUT", 10))
 OIDC_STORE_ID_TOKEN = True
+
+if isinstance(OIDC_CA_BUNDLE, str):
+    if OIDC_CA_BUNDLE.lower() == "true":
+        OIDC_CA_BUNDLE = True
+    elif OIDC_CA_BUNDLE.lower() == "false":
+        OIDC_CA_BUNDLE = False
 
 AUTHENTICATION_BACKENDS = (
     "core.MAIA_UA.HoneyCombOIDCAB",

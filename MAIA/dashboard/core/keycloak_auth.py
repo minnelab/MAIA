@@ -4,7 +4,12 @@ import requests
 import jwt
 import time
 from django.conf import settings
-from apps.models import MAIAUser, User
+from apps.models import User
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser
+else:
+    from apps.models import MAIAUser
 import threading
 from loguru import logger
 
@@ -98,7 +103,7 @@ class KeycloakAuthentication(BaseAuthentication):
             raise AuthenticationFailed("Unknown key ID")
         KEYCLOAK_REALM = settings.OIDC_REALM_NAME
         KEYCLOAK_SERVER_URL = settings.OIDC_SERVER_URL
-        KEYCLOAK_CLIENT_ID = settings.OIDC_RP_CLIENT_ID
+        KEYCLOAK_CLIENT_ID = [settings.OIDC_RP_PUBLIC_CLIENT_ID, settings.OIDC_RP_CLIENT_ID]
         try:
             payload = jwt.decode(
                 token,
@@ -113,10 +118,16 @@ class KeycloakAuthentication(BaseAuthentication):
         except jwt.InvalidTokenError as e:
             raise AuthenticationFailed("Invalid or malformed token") from e
 
-        # Optionally, map Keycloak username/email to Django user
+        # Map Keycloak token to Django user (username and email can differ in Keycloak)
         email = payload.get("email")
         if not email or not isinstance(email, str) or not email.strip():
             raise AuthenticationFailed("Token does not contain an email claim")
+        preferred_username = payload.get("preferred_username")
+        django_username = (
+            preferred_username
+            if preferred_username and isinstance(preferred_username, str) and preferred_username.strip()
+            else email
+        )
         try:
             user = MAIAUser.objects.get(email=email)
         except MAIAUser.DoesNotExist:
@@ -136,11 +147,11 @@ class KeycloakAuthentication(BaseAuthentication):
             user, created = MAIAUser.objects.get_or_create(
                 email=email,
                 defaults={
-                    "username": email,
+                    "username": django_username,
                     "namespace": ",".join(namespaces),
                     "is_staff": settings.ADMIN_GROUP in namespaces,
                     "is_superuser": settings.ADMIN_GROUP in namespaces,
-                }
+                },
             )
 
         return (user, None)

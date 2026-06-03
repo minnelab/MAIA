@@ -59,18 +59,22 @@ class MAIAProject(models.Model):
     id = models.AutoField(primary_key=True, null=False, auto_created=True)
     email = models.EmailField("email", max_length=150, null=True)
     namespace = models.CharField("namespace", max_length=150, blank=True, unique=True)
-    gpu = models.CharField("gpu", max_length=150, blank=True, null=True)
-    date = models.DateField("date", default=datetime.date.today)
-
-    memory_limit = models.TextField("memory_limit", default="2G", null=True)
+    users = models.JSONField("users", default=list, null=True)
+    email_to_username_map = models.JSONField("email_to_username_map", default=dict, null=True)
+    memory_limit = models.TextField("memory_limit", default="2 Gi", null=True)
     cpu_limit = models.TextField("memory_limit", default="2", null=True)
-
-    conda = models.TextField("conda", default="N/A", null=True)
-
+    memory_request = models.TextField("memory_request", default="2 Gi", null=True)
+    cpu_request = models.TextField("cpu_request", default="2", null=True)
+    project_tier = models.TextField("project_tier", default="Base", null=True)
+    gpu = models.CharField("gpu", max_length=150, blank=True, null=True)
     cluster = models.TextField("cluster", default="N/A", null=True)
-    minimal_env = models.TextField("minimal_env", default="Base", null=True)
+    date = models.DateField("date", default=datetime.date.today)
     description = models.TextField("description", blank=True, null=True)
     supervisor = models.EmailField("supervisor", max_length=150, null=True, blank=True)
+    resource_needs = models.TextField("resource_needs", blank=True, null=True)
+    auto_deploy = models.BooleanField("auto_deploy", default=False)
+    auto_deploy_apps = models.JSONField("auto_deploy_apps", default=list, null=True)
+    project_configuration = models.JSONField("project_configuration", default=dict, null=True)
 
 
 class MAIAUser(User):
