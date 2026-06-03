@@ -1208,6 +1208,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         maia_dashboard_values["env"].extend(
             [
                 {"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"},
+                {"name": "REQUESTS_CA_BUNDLE", "value": "/etc/ssl/certs/ca-certificates.crt"},  
             ]
         )
     # CIFS
