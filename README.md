@@ -5,10 +5,11 @@
 
 [![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
-![Version](https://img.shields.io/badge/MAIA-v2.0.0-blue)
+![Version](https://img.shields.io/github/v/tag/minnelab/MAIA?label=MAIA&color=blue&sort=semver&filter=v*)
 [![License](https://img.shields.io/badge/license-GPL%203.0-green.svg)](https://opensource.org/licenses/GPL-3.0)
 ![Python](https://img.shields.io/badge/python-3.8+-orange)
 [![Ansible Collection](https://img.shields.io/badge/Ansible%20Galaxy-maia.installation-blue?logo=ansible)](https://galaxy.ansible.com/maia/installation)
+![Ansible Collection Version](https://img.shields.io/github/v/tag/minnelab/MAIA?label=maia.installation&color=blue&sort=semver&filter=ansible-maia.installation-v*)
 
 
 ![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/minnelab/MAIA?logo=github)
@@ -92,7 +93,7 @@ configure_hosts:
 install_microk8s:
   install_microk8s: true
   enable_oidc_microk8s: true
-  enable_ca_microk8s: true
+  enable_ca: true
   install_argocd: true
   connect_to_microk8s: false
   connect_to_argocd: false
@@ -159,23 +160,25 @@ maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          
 
 For first-access, you can use the following credentials:
 ```bash
-username: admin@maia.se
-password [Temporary]: Admin
+username: admin@maia.io
+password [Temporary]: admin
 ```
 
-### Installation on Windows Subsystem for Linux (WSL)
+### Installation on Linux and Windows Subsystem for Linux (WSL)
 
-To install MAIA on Windows Subsystem for Linux (WSL), you can use the following one-command installer:
+To install MAIA on Linux and Windows Subsystem for Linux (WSL), you can use the following one-command installer:
 ```bash
 LATEST=$(curl -s https://api.github.com/repos/minnelab/MAIA/releases/latest | grep tag_name | cut -d '"' -f4)
-wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA_WSL.sh" && chmod +x install_MAIA_WSL.sh && ./install_MAIA_WSL.sh
+wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA.sh" && chmod +x install_MAIA.sh && ./install_MAIA.sh
 ```
-To access all the features of MAIA, verify that all the subdomains are mapped in your Windows hosts file:
+To access all the features of MAIA, verify that all the subdomains are mapped in your Windows or Linux hosts files:
 
 
 ```bash
 # Add the following lines to your Windows hosts file:
 # C:\Windows\System32\drivers\etc\hosts
+# Add the following lines to your Linux hosts file:
+# /etc/hosts
 <WSL_IP> <domain>
 <WSL_IP> traefik.<domain>
 <WSL_IP> dashboard.<domain>
@@ -316,10 +319,6 @@ Additionally, the MAIA platform provides access to a range of cloud services and
 - **Label Studio**: An open-source platform for data labeling and annotation.
 - **KubeFlow**: An open-source platform for deploying machine learning workflows on Kubernetes.
 - **MONAI Deploy [Experimental]**: An open-source platform for deploying deep learning models for medical imaging in clinical production settings.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/minnelab/maia/master/Workspace.png" width="70%" alt='MAIA'>
-</p>
 
 
 

@@ -18,6 +18,7 @@ from hydra import initialize_config_dir
 from loguru import logger
 from omegaconf import OmegaConf
 from pyhelm3 import Client
+from MAIA.maia_k8s_distros import get_storage_class, get_ingress_class
 
 import MAIA
 from MAIA.maia_admin import (
@@ -26,30 +27,24 @@ from MAIA.maia_admin import (
     create_maia_admin_toolkit_values,
     create_maia_dashboard_values,
     install_maia_project,
+    create_rancher_values,
 )
-from MAIA.maia_core import create_rancher_values
 
 version = MAIA.__version__
 
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to Install MAIA Admin Toolkit to a Kubernetes cluster from ArgoCD. The specific MAIA configuration
     is specified by setting the corresponding ``--maia-config-file``, and the cluster configuration is
     specified by setting the corresponding ``--cluster-config``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --cluster-config /PATH/TO/cluster_config.yaml --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
@@ -100,28 +95,46 @@ def main(cluster_config, config_folder):
 
 
 def install_maia_admin_toolkit(cluster_config, config_folder):
+    if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
+        del os.environ["MAIA_PRIVATE_REGISTRY"]
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
     private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
     admin_group_id = os.environ["admin_group_ID"]
     project_id = "maia-admin"
 
-    cluster_address = "https://kubernetes.default.svc"  # TODO: Change this to make it configurable
+    cluster_address = os.environ.get(
+        "MAIA_ADMIN_ARGOCD_DESTINATION_CLUSTER_ADDRESS", "https://kubernetes.default.svc"
+    )  # TODO: Change this to make it configurable
+    dashboard_cluster_address = os.environ.get("MAIA_ADMIN_DASHBOARD_CLUSTER_ADDRESS", cluster_address)
+    cluster_config_dict = cluster_config_dict
+    cluster_config_dict_dashboard = cluster_config_dict
+    if "CLUSTER_YAML_CONFIGS" in os.environ:
+        cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
+        for cluster_file in cluster_files:
+            if not os.path.isabs(cluster_file):
+                cluster_file = str(Path(config_folder).joinpath(cluster_file).resolve())
+            with open(cluster_file, "r") as f:
+                cluster_config_dict_temp = yaml.safe_load(f)
+            if cluster_config_dict_temp["argocd_destination_cluster_address"] == cluster_address:
+                cluster_config_dict = cluster_config_dict_temp
+            if cluster_config_dict_temp["argocd_destination_cluster_address"] == dashboard_cluster_address:
+                cluster_config_dict_dashboard = cluster_config_dict_temp
 
-    dev_distros = ["microk8s", "k0s"]
     if "ingress_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            cluster_config_dict["ingress_class"] = "maia-core-traefik"
-        else:
-            cluster_config_dict["ingress_class"] = "nginx"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["ingress_class"] = get_ingress_class(cluster_config_dict["k8s_distribution"])
 
     if "storage_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            if cluster_config_dict["k8s_distribution"] == "microk8s":
-                cluster_config_dict["storage_class"] = "microk8s-hostpath"
-            elif cluster_config_dict["k8s_distribution"] == "k0s":
-                cluster_config_dict["storage_class"] = "local-path"
-        else:
-            cluster_config_dict["storage_class"] = "local-path"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["storage_class"] = get_storage_class(cluster_config_dict["k8s_distribution"])
+
+    if "ingress_class" not in cluster_config_dict_dashboard:
+        if "k8s_distribution" in cluster_config_dict_dashboard:
+            cluster_config_dict_dashboard["ingress_class"] = get_ingress_class(cluster_config_dict_dashboard["k8s_distribution"])
+
+    if "storage_class" not in cluster_config_dict_dashboard:
+        if "k8s_distribution" in cluster_config_dict_dashboard:
+            cluster_config_dict_dashboard["storage_class"] = get_storage_class(cluster_config_dict_dashboard["k8s_distribution"])
 
     helm_commands = []
 
@@ -129,7 +142,16 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     helm_commands.append(create_keycloak_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_rancher_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_dict))
-    helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard))
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ):
+        helm_commands.append(
+            create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard, dev_mode=True)
+        )
 
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
     for helm_command in helm_commands:
@@ -141,8 +163,8 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             try:
                 with open(json_key_path, "r") as f:
                     docker_credentials = json.load(f)
-                    username = docker_credentials.get("harbor_username")
-                    password = docker_credentials.get("harbor_password")
+                    username = docker_credentials.get("username")
+                    password = docker_credentials.get("password")
             except Exception:
                 with open(json_key_path, "r") as f:
                     docker_credentials = f.read()
@@ -243,6 +265,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
         "argo_namespace": os.environ["argocd_namespace"],
         "admin_group_ID": admin_group_id,
         "destination_server": f"{cluster_address}",
+        "dashboard_destination_server": f"{dashboard_cluster_address}",
         "sourceRepos": [
             "https://minnelab.github.io/MAIA/",
             "https://github.com/minnelab/MAIA.git",
@@ -251,6 +274,13 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             "https://releases.rancher.com/server-charts/latest",
         ],
     }
+    if (
+        os.environ.get("DEV_BRANCH") is not None
+        or os.environ.get("GIT_EMAIL") is not None
+        or os.environ.get("GIT_NAME") is not None
+        or os.environ.get("GPG_KEY") is not None
+    ):
+        values["defaults"].append({"maia_dashboard_values_dev": "maia_dashboard_values_dev"})
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
 
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:
@@ -270,8 +300,8 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
         try:
             with open(json_key_path, "r") as f:
                 docker_credentials = json.load(f)
-                username = docker_credentials.get("harbor_username")
-                password = docker_credentials.get("harbor_password")
+                username = docker_credentials.get("username")
+                password = docker_credentials.get("password")
         except Exception:
             with open(json_key_path, "r") as f:
                 docker_credentials = f.read()

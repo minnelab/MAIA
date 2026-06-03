@@ -1,0 +1,20 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Comment[en_US]=
+Comment=
+Exec=$HOME/Documents/QuPath-v0.5.1-Linux/QuPath/bin/QuPath
+GenericName[en_US]=
+GenericName=
+Icon=/etc/QuPath.png
+MimeType=
+Name[en_US]=QuPath
+Name=QuPath
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

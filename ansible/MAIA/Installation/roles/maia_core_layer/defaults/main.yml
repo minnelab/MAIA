@@ -10,13 +10,15 @@ maia_core_namespaces:
   - metallb-system
   - cert-manager
   - gpu-operator
+  - nvidia-dra-driver-gpu
   - maia-core-toolkit
   - ingress-nginx
   - minio-operator
   - authentication
   - maia-webhooks
   - nfs-server-provisioner
-
+  - local-path-storage
+  - kubeflow
 # Enable automatic ArgoCD application synchronization
 auto_sync: true
 
@@ -48,7 +50,9 @@ maia_core_argocd_applications:
   - maia-core-traefik
   - maia-core-cert-manager
   - maia-core-gpu-operator
+  - maia-core-nvidia-dra-driver-gpu
   - maia-core-metallb
+  - maia-core-local-path
   - maia-core-loki
   - maia-core-tempo
   - maia-core-metrics-server
@@ -56,3 +60,7 @@ maia_core_argocd_applications:
   - maia-core-gpu-booking
   - maia-core-minio-operator
   - maia-core-nfs-provisioner
+  - maia-core-prometheus
+  - maia-core-kubeflow
+# Optional Kubernetes commands to execute
+extra_commands: []

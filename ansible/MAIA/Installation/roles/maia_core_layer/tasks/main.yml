@@ -18,8 +18,15 @@
   set_fact:
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
+- name: Ensure DEPLOY_KUBECONFIG is absolute
+  ansible.builtin.set_fact:
+    DEPLOY_KUBECONFIG: >-
+      {{ DEPLOY_KUBECONFIG if DEPLOY_KUBECONFIG is match('^/') else (config_folder ~ '/' ~ DEPLOY_KUBECONFIG) }}
+  when: DEPLOY_KUBECONFIG is defined and (DEPLOY_KUBECONFIG is not match('^/'))
+  delegate_to: localhost
+
 - name: Ensure MAIA Core related namespaces exist
-  kubernetes.core.k8s:
+  ansible.builtin.k8s:
     api_version: v1
     kind: Namespace
     name: "{{ item }}"
@@ -28,6 +35,10 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    http_proxy: ""
+    https_proxy: ""
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
 
 - name: Run MAIA Core Toolkit installer
   ansible.builtin.command: >
@@ -59,7 +70,7 @@
     helm upgrade --install {{ prometheus_release_name }} {{ prometheus_chart_name }} -n observability --values {{ config_folder }}/{{ prometheus_values_path }} --version {{ prometheus_chart_version }}
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  when: auto_sync | bool
+  when: auto_sync | bool and 'maia-core-prometheus' in maia_core_argocd_applications
 
 
 #- name: Install latest argocd CLI
@@ -113,6 +124,7 @@
 - name: Check if 'selfsigned' is present and true in cluster config
   ansible.builtin.set_fact:
     use_selfsigned: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).selfsigned | default(false) }}"
+    coredns_mappings: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).coredns_mappings | default([]) }}"
   delegate_to: localhost
 
 - name: Rollout restart maia-core-traefik deployment if selfsigned is enabled
@@ -127,8 +139,18 @@
 - name: Rollout restart coredns deployment if selfsigned is enabled
   ansible.builtin.shell: |
     kubectl rollout restart deployment/coredns -n kube-system
-  when: use_selfsigned | bool and auto_sync | bool
+  when: (use_selfsigned | bool or coredns_mappings | length > 0) and auto_sync | bool
   changed_when: true
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Run additional commands
+  ansible.builtin.command: "{{ item }}"
+  loop: "{{ extra_commands | from_yaml | default([]) }}"
+  when: extra_commands is defined and (extra_commands | length > 0)
+  register: extra_commands_result
+  changed_when: false
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"

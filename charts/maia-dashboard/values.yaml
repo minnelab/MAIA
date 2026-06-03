@@ -51,10 +51,14 @@ ingress:
       paths:
         - path: /
           pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+        - path: /maia-api/
+          pathType: ImplementationSpecific
+        - path: /maia/
+          pathType: ImplementationSpecific
+  tls:
+  - secretName: chart-example-tls
+    hosts:
+        - chart-example.local
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -73,8 +77,10 @@ mysql:
   mysqlUser: ""
   mysqlPassword: ""
   mysqlDatabase: ""
+  image: "mysql"
+  tag: "8.0.28"
 
-storage_class: ""
+storageClass: ""
 
 autoscaling:
   enabled: false
@@ -91,23 +97,22 @@ affinity: {}
 
 env: []
 
-clusters:    
-- api: ""
-  maia_dashboard:
-    enabled: True
-    token: <RANCHER_TOKEN>
-  cluster_name: demo-cluster
-  ssh_hostname: hostname of the cluster for SSH access to display on the namespace page
-  services:
-    argocd: https://argocd.maia.com
-    dashboard: https://dashboard.maia.com
-    grafana: https://grafana.maia-cloud.com
-    keycloak: https://iam.maia.com
-    login: https://login.maia.com
-    rancher: https://mgmt.maia.com
-    registry: https://registry.maia.com
-    traefik: https://traefik.maia.com
-
+clusters:    []
+#- api: ""
+#  maia_dashboard:
+#    enabled: True
+#    token: <RANCHER_TOKEN>
+#  cluster_name: demo-cluster
+#  ssh_hostname: "hostname of the cluster for SSH access to display on the namespace page"
+#  services:
+#    argocd: https://argocd.maia.com
+#    dashboard: https://dashboard.maia.com
+#    grafana: https://grafana.maia-cloud.com
+#    keycloak: https://iam.maia.com
+#    login: https://login.maia.com
+#    rancher: https://mgmt.maia.com
+#    registry: https://registry.maia.com
+#    traefik: https://traefik.maia.com
 gpuList: []
 
 dashboard:
@@ -115,9 +120,14 @@ dashboard:
   local_db_path: /etc/MAIA-Dashboard/db
 
 ## For private registry to pull image from
-dockerRegistrySecretName: registry.maia.com
+#dockerRegistrySecretName: registry.maia.com
 dockerRegistryUsername: registry_private_user
 dockerRegistryPassword: registry_private_password
 dockerRegistryEmail: admin@maia.com
 dockerRegistryServer: https://registry.maia.com
 
+mongodb:
+  enabled: false
+
+additionalVolumes: []
+additionalVolumeMounts: []

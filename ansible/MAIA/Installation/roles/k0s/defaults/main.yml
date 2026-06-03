@@ -1,0 +1,32 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for k0s
+
+# k0s version to install.
+# The default installer script installs the latest stable version.
+# You can override this to pin to a specific version, e.g. "v1.33.7+k0s.0".
+k0s_version: latest
+
+# Firewall ports to open for k0s
+# 6443: Kubernetes API server port (for port forwarding)
+# 80: HTTP port (for ingress)
+# 443: HTTPS port (for ingress)
+k0s_firewall_ports:
+  - port: 6443
+    proto: tcp
+  - port: 80
+    proto: tcp
+  - port: 443
+    proto: tcp
+
+# Enable SSH port forwarding for API access
+# This sets up an SSH tunnel from localhost to the k0s API server
+k0s_enable_port_forwarding: true
+
+# Port for SSH port forwarding (local port that forwards to k0s API)
+k0s_port_forward_port: 6443
+
+# k0s data directory on the target host
+k0s_data_dir: /var/lib/k0s
+
+rancher_local_path_provisioner_version: v0.0.34

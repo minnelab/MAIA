@@ -1,6 +1,8 @@
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from django.contrib.auth.models import Group
 
+from django.conf import settings
+
 
 class HoneyCombOIDCAB(OIDCAuthenticationBackend):
     def verify_claims(self, claims):
@@ -24,7 +26,7 @@ class HoneyCombOIDCAB(OIDCAuthenticationBackend):
         for group in claims.get("groups", []):
             new_group, created = Group.objects.get_or_create(name=group)
             groups_id.append(new_group.id)
-            if group == "MAIA:admin":
+            if group == "MAIA:" + settings.ADMIN_GROUP:
                 user.is_superuser = True
                 is_admin = True
                 user.is_staff = True
@@ -50,7 +52,7 @@ class HoneyCombOIDCAB(OIDCAuthenticationBackend):
             new_group.permissions.add(28)
 
             groups_id.append(new_group.id)
-            if group == "MAIA:admin":
+            if group == "MAIA:" + settings.ADMIN_GROUP:
                 user.is_superuser = True
                 is_admin = True
                 user.is_staff = True

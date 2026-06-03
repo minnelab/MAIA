@@ -7,7 +7,11 @@ metadata:
 spec:
   project: {{ .Release.Name }}
   source:
+    {{- if .Values.mysql_values.path }}
+    path: {{ .Values.mysql_values.path }}
+    {{- else }}
     chart: {{ .Values.mysql_values.chart_name }}
+    {{- end }}
     repoURL: {{ .Values.mysql_values.repo_url }}
     targetRevision: {{ .Values.mysql_values.chart_version }}
     helm:

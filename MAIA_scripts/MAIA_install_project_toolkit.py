@@ -22,11 +22,6 @@ from pyhelm3 import Client
 
 import MAIA
 from MAIA.maia_admin import (
-    create_filebrowser_values,
-    create_maia_namespace_values,
-    generate_minio_configs,
-    generate_mlflow_configs,
-    generate_mysql_configs,
     get_maia_toolkit_apps,
     install_maia_project,
 )
@@ -34,7 +29,14 @@ from MAIA.maia_fn import (
     deploy_mlflow,
     deploy_mysql,
     deploy_orthanc,
+    create_filebrowser_values,
+    create_maia_namespace_values,
+    generate_minio_configs,
+    generate_mlflow_configs,
+    generate_mysql_configs,
     copy_certificate_authority_secret,
+    deploy_kubeflow_project,
+    create_nvflare_dashboard_values,
 )
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
 
@@ -43,23 +45,17 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to deploy a MAIA Project Toolkit to a Kubernetes cluster. The target cluster is specified by setting
     the corresponding ``--cluster-config``, while the project-related configuration is specified with
     ``--project-config-file``. The necessary MAIA Configuration files should be found in ``--config-folder``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --project-config-file /PATH/TO/form.yaml --cluster-config /PATH/TO/cluster.yaml
         --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
@@ -163,12 +159,29 @@ def deploy_maia_toolkit_api(
     no_argocd=False,
     redeploy_enabled=True,
     return_values_only=False,
+    custom_project_dict=None,
 ):
+    # If MAIA_PRIVATE_REGISTRY is set to an empty string, unset it
+    if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
+        del os.environ["MAIA_PRIVATE_REGISTRY"]
     # Override cluster config with project-specific configuration, if found
     namespace_id = project_form_dict["group_ID"].lower().replace("_", "-")
-    if f"{namespace_id}-cluster-config" in cluster_config_dict:
-        for key, value in cluster_config_dict[f"{namespace_id}-cluster-config"].items():
-            cluster_config_dict[key] = value
+    # Unset all the environment variables ending with _namespace_id
+    for key in os.environ:
+        if key.endswith("_" + namespace_id):
+            os.environ.pop(key)
+    if "CLUSTER_CONFIG_PATH" in os.environ:
+        cluster_config_path = os.environ["CLUSTER_CONFIG_PATH"]
+        if Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").exists():
+            namespace_config_dict = yaml.safe_load(Path(cluster_config_path).joinpath(f"{namespace_id}.yaml").read_text())
+            for key, value in namespace_config_dict.items():
+                project_form_dict[key] = value
+                if key == "env":
+                    for env_key, env_value in value.items():
+                        os.environ[env_key + "_" + namespace_id] = env_value
+    if custom_project_dict:
+        for key, value in custom_project_dict.items():
+            project_form_dict[key] = value
             if key == "env":
                 for env_key, env_value in value.items():
                     os.environ[env_key + "_" + namespace_id] = env_value
@@ -190,12 +203,16 @@ def deploy_maia_toolkit_api(
 
     helm_commands = []
 
-    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"))
+    mlflow_configs = generate_mlflow_configs(namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict)
 
     if not minimal:
-        minio_configs = generate_minio_configs(namespace=group_id.lower().replace("_", "-"))
+        minio_configs = generate_minio_configs(
+            namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict
+        )
 
-        mysql_configs = generate_mysql_configs(namespace=group_id.lower().replace("_", "-"))
+        mysql_configs = generate_mysql_configs(
+            namespace=group_id.lower().replace("_", "-"), project_config_dict=project_form_dict
+        )
 
         project_form_dict["minio_access_key"] = minio_configs["console_access_key"]
         project_form_dict["minio_secret_key"] = minio_configs["console_secret_key"]
@@ -232,10 +249,41 @@ def deploy_maia_toolkit_api(
                 }
             )
 
-    copy_certificate_authority_secret(namespace)
-
-    helm_commands.append(create_jupyterhub_config_api(project_form_dict, cluster_config_dict, config_folder, minimal=minimal))
-
+    if cluster_config_dict.get("selfsigned", False):
+        copy_certificate_authority_secret(namespace)
+        copy_certificate_authority_secret(
+            namespace,
+            source_secret_name="kubernetes-ca",
+            target_secret_name="kubernetes-ca-minio",
+            opaque=True,
+            cert_name="public.crt",
+            key_name="private.key",
+        )
+    deploy_kubeflow = os.environ.get("DEPLOY_KUBEFLOW_" + namespace_id, "False") == "True"
+    deploy_nvflare_dashboard = os.environ.get("DEPLOY_NVFLARE_DASHBOARD_" + namespace_id, "False") == "True"
+    if deploy_nvflare_dashboard:
+        helm_commands.append(
+            create_nvflare_dashboard_values(
+                project_form_dict,
+                cluster_config_dict,
+                config_folder,
+            )
+        )
+    if deploy_kubeflow:
+        helm_commands.append(
+            deploy_kubeflow_project(
+                cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict, minimal=minimal
+            )
+        )
+    else:
+        helm_commands.append(
+            create_jupyterhub_config_api(
+                project_form_dict,
+                cluster_config_dict,
+                config_folder,
+                minimal=minimal,
+            )
+        )
     helm_commands.append(
         create_filebrowser_values(
             project_form_dict,
@@ -266,7 +314,9 @@ def deploy_maia_toolkit_api(
             )
         )
 
-        helm_commands.append(deploy_orthanc(cluster_config_dict, project_form_dict, config_folder))
+        helm_commands.append(
+            deploy_orthanc(cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict)
+        )
 
     if "JSON_KEY_PATH_" + namespace_id in os.environ:
         json_key_path = os.environ["JSON_KEY_PATH_" + namespace_id]
@@ -279,8 +329,8 @@ def deploy_maia_toolkit_api(
             try:
                 with open(json_key_path, "r") as f:
                     docker_credentials = json.load(f)
-                    username = docker_credentials.get("harbor_username")
-                    password = docker_credentials.get("harbor_password")
+                    username = docker_credentials.get("username")
+                    password = docker_credentials.get("password")
             except Exception:
                 with open(json_key_path, "r") as f:
                     docker_credentials = f.read()
@@ -358,8 +408,6 @@ def deploy_maia_toolkit_api(
         "defaults": [
             "_self_",
             {"maia_namespace_values": "namespace_values"},
-            {"jupyterhub_values": "jupyterhub_values"},
-            {"jupyterhub_chart_info": "jupyterhub_chart_info"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "group_ID": f"MAIA:{group_id}",
@@ -367,11 +415,19 @@ def deploy_maia_toolkit_api(
         "sourceRepos": [
             "https://minnelab.github.io/MAIA/",
             "https://github.com/minnelab/MAIA.git",
-            "https://hub.jupyter.org/helm-chart/",
-            "https://oauth2-proxy.github.io/manifests",
+            # "https://hub.jupyter.org/helm-chart/",
+            # "https://oauth2-proxy.github.io/manifests",
         ],
     }
     values["defaults"].append({"maia_filebrowser_values": "maia_filebrowser_values"})
+    if deploy_kubeflow:
+        values["defaults"].append({"kubeflow_values": "kubeflow_values"})
+    else:
+        values["defaults"].append({"jupyterhub_values": "jupyterhub_values"})
+        values["defaults"].append({"jupyterhub_chart_info": "jupyterhub_chart_info"})
+        values["sourceRepos"].append("https://hub.jupyter.org/helm-chart/")
+    if deploy_nvflare_dashboard:
+        values["defaults"].append({"maia_nvflare_dashboard_values": "maia_nvflare_dashboard_values"})
     if private_maia_registry:
         values["sourceRepos"].append(private_maia_registry)
     if not minimal:
@@ -385,8 +441,7 @@ def deploy_maia_toolkit_api(
 
     try:
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
+    except Exception:
         hydra.core.global_hydra.GlobalHydra.instance().clear()
         initialize_config_dir(config_dir=str(Path(config_folder).joinpath(group_id)), job_name=group_id)
     cfg = hydra_compose("values.yaml")

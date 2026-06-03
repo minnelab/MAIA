@@ -1,0 +1,25 @@
+{{- if .Values.local_path_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-local-path
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    {{- if .Values.local_path_values.chart_name }}
+    chart: {{ .Values.local_path_values.chart_name }}
+    {{- end }}
+    {{- if .Values.local_path_values.path }}
+    path: {{ .Values.local_path_values.path }}
+    {{- end }}
+    repoURL: {{ .Values.local_path_values.repo_url }}
+    targetRevision: {{ .Values.local_path_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-local-path
+      valuesObject:
+      {{ .Values.local_path_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.local_path_values.namespace }}
+{{- end }}

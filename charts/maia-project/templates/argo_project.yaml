@@ -18,7 +18,11 @@ spec:
       kind: ClusterRoleBinding
     - group: '*'
       kind: ClusterRole
+    - group: 'kubeflow.org'
+      kind: Profile
   destinations:
     - namespace: {{ .Release.Name }}
+      server: {{ .Values.destination_server }}
+    - namespace: kubeflow
       server: {{ .Values.destination_server }}
   sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}

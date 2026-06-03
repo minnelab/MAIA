@@ -1,0 +1,22 @@
+AllowAgentForwarding            yes
+AllowTcpForwarding              yes
+AuthorizedKeysFile              .ssh/authorized_keys
+ChallengeResponseAuthentication yes
+PermitRootLogin                 no
+PrintMotd                       yes
+PubkeyAuthentication            yes
+PasswordAuthentication          no
+UseDNS                          yes
+UsePAM                          no
+X11Forwarding yes
+AcceptEnv LANG LC_*
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+## Use a non-privileged port
+Port 2022
+HostKey /opt/ssh/ssh_host_rsa_key
+HostKey /opt/ssh/ssh_host_ecdsa_key
+HostKey /opt/ssh/ssh_host_ed25519_key
+LogLevel DEBUG3
+PrintMotd no
+## Provide a path to store PID file which is accessible by normal user for write purpose
+PidFile /opt/ssh/sshd.pid

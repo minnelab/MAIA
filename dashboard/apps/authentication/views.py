@@ -8,12 +8,14 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from .forms import LoginForm, SignUpForm, RegisterProjectForm, MAIAInfoForm
-from minio import Minio
-from MAIA.dashboard_utils import send_discord_message, verify_minio_availability, send_maia_info_email
-from MAIA.kubernetes_utils import get_minio_shareable_link
+from MAIA.dashboard_utils import send_webhook_message, verify_minio_availability, send_maia_info_email, upload_env_file_to_minio
 from core.settings import GITHUB_AUTH
 from django.conf import settings
-from apps.models import MAIAUser, MAIAProject
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser, MAIAProject
+else:
+    from apps.models import MAIAUser, MAIAProject
 import os
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -21,13 +23,16 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from loguru import logger
+from MAIA.notifications import confirm_request_registration_to_project, confirm_request_registration_for_group
 
 
 class RegisterAnonThrottle(AnonRateThrottle):
     scope = "post_anon"
 
+
 class RegisterUserThrottle(UserRateThrottle):
     scope = "post_user"
+
 
 def login_view(request):
     form = LoginForm(request.POST or None)
@@ -57,6 +62,7 @@ def login_view(request):
         {
             "BACKEND": backend,
             "dashboard_version": settings.DASHBOARD_VERSION,
+            "MAIA_VERSION": settings.MAIA_VERSION,
             "form": form,
             "msg": msg,
             "GITHUB_AUTH": GITHUB_AUTH,
@@ -64,95 +70,154 @@ def login_view(request):
     )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterAnonThrottle, RegisterUserThrottle])
 def register_user_api(request):
     return register_user(request, api=True)
 
+
 def register_user(request, api=False):
-    msg = None
-    success = False
+    try:
+        msg = None
+        success = False
 
-    if request.method == "POST":
-        request_data = request.POST
-        request_files = request.FILES
-        if api:
-            request_data = request.data
-            request_files = None
-        form = SignUpForm(request_data, request_files)
-        if form.is_valid():
+        if request.method == "POST":
+            request_data = request.POST
+            request_files = request.FILES
+            if api:
+                request_data = request.data
+                request_files = None
+            form = SignUpForm(request_data, request_files)
+            if form.is_valid():
 
-            namespace = form.cleaned_data.get("namespace")
-            if not namespace:
-                namespace = settings.USERS_GROUP
-            if namespace.endswith(" (Pending)"):
-                namespace = namespace[: -len(" (Pending)")]
-            form.instance.namespace = namespace + f",{settings.USERS_GROUP}"
-            form.save()
-            username = form.cleaned_data.get("username")
-            raw_password = form.cleaned_data.get("password1")
-            namespace = form.cleaned_data.get("namespace")
-            user = authenticate(username=username, password=raw_password)
+                namespace = form.cleaned_data.get("namespace")
+                if not namespace:
+                    namespace = settings.USERS_GROUP
+                if namespace.endswith(" (Pending)"):
+                    namespace = namespace[: -len(" (Pending)")]
+                if settings.USERS_GROUP not in namespace:
+                    form.instance.namespace = f"{namespace},{settings.USERS_GROUP}"
+                form.save()
+                username = form.cleaned_data.get("username")
+                # raw_password = form.cleaned_data.get("password1")
+                namespace = form.cleaned_data.get("namespace")
+                # user = authenticate(username=username, password=raw_password)
 
-            user.is_active = False
-            user.save()
+                user = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
+                user.is_active = False
+                user.save()
 
-            # if os.environ["DEBUG"] != "True":
-            # send_email(email, os.environ["admin_email"], email)
-            if settings.DISCORD_URL is not None:
-                send_discord_message(username=username, namespace=namespace, url=settings.DISCORD_URL)
-            msg = "Request for Account Registration submitted successfully. Please wait for the admin to approve your request."
-            success = True
+                # if os.environ["DEBUG"] != "True":
+                # send_email(email, os.environ["admin_email"], email)
+                if settings.WEBHOOK_URL is not None:
+                    send_webhook_message(username=username, namespace=namespace, url=settings.WEBHOOK_URL)
+                confirm_request_registration_to_project(
+                    project_name=namespace,
+                    user_email=form.cleaned_data.get("email"),
+                    support_link=settings.SUPPORT_URL,
+                    dashboard_url=settings.HOSTNAME + "/maia/",
+                    smtp_sender_email=settings.SMTP_SENDER_EMAIL,
+                    smtp_server=settings.SMTP_SERVER,
+                    smtp_port=settings.SMTP_PORT,
+                    smtp_password=settings.SMTP_PASSWORD,
+                )
+                msg = "Request for Account Registration submitted successfully. Please wait for the admin to approve your request. You should receive a confirmation email once your request is approved at the email address: {}.".format(
+                    form.cleaned_data.get("email")
+                )
+                success = True
 
-            # return redirect("/login/")
+                # return redirect("/login/")
 
-        else:
-            if "username" in form.errors and any("already exists" in str(e) for e in form.errors["username"]):
-                requested_namespace = form.cleaned_data.get("namespace")
-                if not requested_namespace:
-                    requested_namespace = settings.USERS_GROUP
-                user_in_db = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
-                namespace_is_already_registered = False
-                if user_in_db:
-                    user_id = user_in_db.id
-                    namespace = user_in_db.namespace
-                    for ns in namespace.split(","):
-                        if ns == requested_namespace:
-                            namespace_is_already_registered = True
-                    if not namespace_is_already_registered:
-                        namespace = f"{namespace},{requested_namespace}"
-                        MAIAUser.objects.filter(id=user_id).update(namespace=namespace)
-                        msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
-                            form.cleaned_data.get("email"), requested_namespace
-                        )
-                        if settings.DISCORD_URL is not None:
-                            send_discord_message(
-                                username=form.cleaned_data.get("email"), namespace=namespace, url=settings.DISCORD_URL
-                            )
-                        success = True
-                    else:
-                        msg = "A user with that username already exists and has been already registered to the project {}".format(
-                            requested_namespace
-                        )
-                        success = True
-                else:
-                    msg = "A user with that username does not exist."
-                    success = False
             else:
-                msg = "Form is not valid: " + str(form.errors)
-                success = False
-    else:
-        form = SignUpForm()
+                if "username" in form.errors and any("already exists" in str(e) for e in form.errors["username"]):
+                    requested_namespace = form.cleaned_data.get("namespace")
+                    if not requested_namespace:
+                        requested_namespace = settings.USERS_GROUP
+                        msg = "The requested namespace does not exist. Please choose a valid namespace."
+                        success = False
+                        if api:
+                            return Response(
+                                {"msg": msg, "success": success},
+                                status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST,
+                            )
+                        else:
+                            return render(
+                                request,
+                                "accounts/register.html",
+                                {
+                                    "dashboard_version": settings.DASHBOARD_VERSION,
+                                    "MAIA_VERSION": settings.MAIA_VERSION,
+                                    "form": form,
+                                    "msg": msg,
+                                    "success": success,
+                                },
+                            )
+                    user_in_db = MAIAUser.objects.filter(email=form.cleaned_data.get("email")).first()
+                    namespace_is_already_registered = False
+                    if user_in_db:
+                        user_id = user_in_db.id
+                        namespace = user_in_db.namespace
+                        for ns in namespace.split(","):
+                            if ns == requested_namespace and requested_namespace != settings.USERS_GROUP:
+                                namespace_is_already_registered = True
+                        if not namespace_is_already_registered and requested_namespace != settings.USERS_GROUP:
+                            namespace = f"{namespace},{requested_namespace}"
+                            MAIAUser.objects.filter(id=user_id).update(namespace=namespace)
+                            msg = "A user with that email already exists. {} has now requested to be registered to the project {}".format(
+                                form.cleaned_data.get("email"), requested_namespace
+                            )
+                            if settings.WEBHOOK_URL is not None:
+                                send_webhook_message(
+                                    username=form.cleaned_data.get("email"), namespace=namespace, url=settings.WEBHOOK_URL
+                                )
+                            confirm_request_registration_to_project(
+                                project_name=requested_namespace,
+                                user_email=form.cleaned_data.get("email"),
+                                support_link=settings.SUPPORT_URL,
+                                dashboard_url=settings.HOSTNAME + "/maia/",
+                                smtp_sender_email=settings.SMTP_SENDER_EMAIL,
+                                smtp_server=settings.SMTP_SERVER,
+                                smtp_port=settings.SMTP_PORT,
+                                smtp_password=settings.SMTP_PASSWORD,
+                            )
+                            msg = "A user with that email already exists. {} has now requested to be registered to the project {}. You should receive a confirmation email once your request is approved at the email address: {}.".format(
+                                form.cleaned_data.get("email"), requested_namespace, form.cleaned_data.get("email")
+                            )
+                            success = True
+                        else:
+                            msg = "A user with that email already exists and has already requested to be registered to the project {}".format(
+                                requested_namespace
+                            )
+                            success = False
+                    else:
+                        msg = "A user with that email does not exist."
+                        success = False
+                else:
+                    msg = "Form is not valid: " + str(form.errors)
+                    success = False
+        else:
+            form = SignUpForm()
 
-    if api:
-        return Response({"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
-    else:
-        return render(
-        request,
-        "accounts/register.html",
-        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
-    )
+        if api:
+            return Response(
+                {"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            return render(
+                request,
+                "accounts/register.html",
+                {
+                    "dashboard_version": settings.DASHBOARD_VERSION,
+                    "MAIA_VERSION": settings.MAIA_VERSION,
+                    "form": form,
+                    "msg": msg,
+                    "success": success,
+                },
+            )
+    except Exception as e:
+        logger.exception(e)
+        return Response({"msg": str(e), "success": False}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @login_required(login_url="/maia/login/")
@@ -164,7 +229,7 @@ def send_maia_email(request):
     hostname = settings.HOSTNAME
     register_project_url = f"https://{hostname}/maia/register_project/"
     register_user_url = f"https://{hostname}/maia/register/"
-    discord_support_link = settings.DISCORD_SUPPORT_URL
+    support_link = settings.SUPPORT_URL
     msg = None
     success = False
 
@@ -172,7 +237,7 @@ def send_maia_email(request):
 
         form = MAIAInfoForm(request.POST, request.FILES)
         if form.is_valid():
-            send_maia_info_email(form.cleaned_data.get("email"), register_project_url, register_user_url, discord_support_link)
+            send_maia_info_email(form.cleaned_data.get("email"), register_project_url, register_user_url, support_link)
             msg = "Request for MAIA Info submitted successfully."
             success = True
 
@@ -187,26 +252,40 @@ def send_maia_email(request):
     return render(
         request,
         "accounts/send_maia_info.html",
-        {"dashboard_version": settings.DASHBOARD_VERSION, "form": form, "msg": msg, "success": success},
+        {
+            "dashboard_version": settings.DASHBOARD_VERSION,
+            "MAIA_VERSION": settings.MAIA_VERSION,
+            "form": form,
+            "msg": msg,
+            "success": success,
+        },
     )
 
-@api_view(['POST'])
+
+@api_view(["POST"])
 @permission_classes([AllowAny])
 @throttle_classes([RegisterAnonThrottle, RegisterUserThrottle])
 def register_project_api(request):
     return register_project(request, api=True)
 
-def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
+
+def get_or_create_user_in_database(email: str, namespace: str, username: str = None) -> MAIAUser:
+    """
+    Get or create a MAIAUser by email. Username is only set when creating;
+    if not provided, email is used (backward compatibility).
+    """
     if not email or not namespace:
         return None
+    # Use email as username when not provided (username and email can differ)
+    django_username = username if username is not None and username.strip() else email
     if not MAIAUser.objects.filter(email=email).exists():
         if namespace != settings.USERS_GROUP:
-            if namespace!= "":
-                MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=email)
+            if namespace != "":
+                MAIAUser.objects.create(email=email, namespace=f"{namespace},{settings.USERS_GROUP}", username=django_username)
             else:
-                MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=email)
+                MAIAUser.objects.create(email=email, namespace=settings.USERS_GROUP, username=django_username)
         else:
-            MAIAUser.objects.create(email=email, namespace=namespace, username=email)
+            MAIAUser.objects.create(email=email, namespace=namespace, username=django_username)
         return MAIAUser.objects.filter(email=email).first()
     else:
         user = MAIAUser.objects.filter(email=email).first()
@@ -219,6 +298,7 @@ def get_or_create_user_in_database(email: str, namespace: str) -> MAIAUser:
             user.save()
         return user
 
+
 def register_project(request, api=False):
     msg = None
     success = False
@@ -229,7 +309,15 @@ def register_project(request, api=False):
         request_files = request.FILES
         if api:
             request_data = request.data
-            request_files = None
+            request_files = request.FILES
+        namespace = request_data.get("namespace")
+        exists = MAIAProject.objects.filter(namespace=namespace).exists()
+        if exists:
+            msg = "Project with namespace {} already exists or  it has already been requested.".format(namespace)
+            success = False
+            return Response(
+                {"msg": msg, "success": success}, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST
+            )
         form = RegisterProjectForm(request_data, request_files)
         if form.is_valid():
             form.save()
@@ -241,33 +329,36 @@ def register_project(request, api=False):
                 get_or_create_user_in_database(email=project.email, namespace=namespace)
                 if supervisor:
                     get_or_create_user_in_database(email=supervisor, namespace=namespace)
+                if "email_list" in request_data:
+                    email_list = request_data.get("email_list")
+                    if email_list:
+                        for email in email_list.split(","):
+                            get_or_create_user_in_database(email=email, namespace=namespace)
+            try:
+                if "env_file" in request_files and minio_available:
+                    env_file = request_files["env_file"]
+                    msg, success = upload_env_file_to_minio(env_file, namespace, settings)
+            except Exception as e:
+                logger.exception(e)
+                msg = "Error storing environment file in MinIO"
+                success = False
 
-            if "conda" in request.FILES and minio_available:
-                conda_file = request.FILES["conda"]
-                if conda_file.name.endswith(".zip"):
-                    client = Minio(
-                        settings.MINIO_URL,
-                        access_key=settings.MINIO_ACCESS_KEY,
-                        secret_key=settings.MINIO_SECRET_KEY,
-                        secure=settings.MINIO_SECURE,
-                    )
-                    with open(f"/tmp/{namespace}_env.zip", "wb+") as destination:
-                        for chunk in request.FILES["conda"].chunks():
-                            destination.write(chunk)
-                    logger.info(f"Storing {namespace}_env.zip in MinIO, in bucket {settings.BUCKET_NAME}")
-                    client.fput_object(settings.BUCKET_NAME, f"{namespace}_env.zip", f"/tmp/{namespace}_env.zip")
-                    logger.info(get_minio_shareable_link(f"{namespace}_env.zip", settings.BUCKET_NAME, settings))
-                else:
-                    with open(f"/tmp/{namespace}_env", "wb+") as destination:
-                        for chunk in request.FILES["conda"].chunks():
-                            destination.write(chunk)
-                    logger.info(f"Storing {namespace}_env in MinIO, in bucket {settings.BUCKET_NAME}")
-                    client.fput_object(settings.BUCKET_NAME, f"{namespace}_env", f"/tmp/{namespace}_env")
-                    logger.info(get_minio_shareable_link(f"{namespace}_env", settings.BUCKET_NAME, settings))
+            if settings.WEBHOOK_URL is not None:
+                send_webhook_message(username=email, namespace=namespace, url=settings.WEBHOOK_URL, project_registration=True)
 
-            if settings.DISCORD_URL is not None:
-                send_discord_message(username=email, namespace=namespace, url=settings.DISCORD_URL, project_registration=True)
-            msg = "Request for Project Registration submitted successfully."
+            confirm_request_registration_for_group(
+                group_name=namespace,
+                user_email=email,
+                support_link=settings.SUPPORT_URL,
+                dashboard_url=settings.HOSTNAME + "/maia/",
+                smtp_sender_email=settings.SMTP_SENDER_EMAIL,
+                smtp_server=settings.SMTP_SERVER,
+                smtp_port=settings.SMTP_PORT,
+                smtp_password=settings.SMTP_PASSWORD,
+            )
+            msg = "Request for Project Registration submitted successfully. You should receive a confirmation email once your request is approved at the email address: {}.".format(
+                email
+            )
             success = True
 
             # check_pending_projects_and_assign_id(settings=settings)
@@ -288,6 +379,7 @@ def register_project(request, api=False):
             "accounts/register_project.html",
             {
                 "dashboard_version": settings.DASHBOARD_VERSION,
+                "MAIA_VERSION": settings.MAIA_VERSION,
                 "minio_available": minio_available,
                 "form": form,
                 "msg": msg,

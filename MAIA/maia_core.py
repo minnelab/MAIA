@@ -7,8 +7,10 @@ import requests
 from kubernetes import client, config
 from omegaconf import OmegaConf
 import loguru
-from MAIA.versions import define_maia_core_versions, define_maia_admin_versions
-
+from MAIA.versions import define_maia_core_versions
+from secrets import token_urlsafe
+from MAIA.maia_k8s_distros import get_api_port
+from MAIA.maia_k8s_distros import get_gpu_operator_toolkit, get_storage_class
 
 prometheus_chart_version = define_maia_core_versions()["prometheus_chart_version"]
 loki_chart_version = define_maia_core_versions()["loki_chart_version"]
@@ -18,20 +20,26 @@ core_toolkit_chart_type = define_maia_core_versions()["core_toolkit_chart_type"]
 traefik_chart_version = define_maia_core_versions()["traefik_chart_version"]
 metallb_chart_version = define_maia_core_versions()["metallb_chart_version"]
 cert_manager_chart_version = define_maia_core_versions()["cert_manager_chart_version"]
-rancher_chart_version = define_maia_admin_versions()["rancher_chart_version"]
 gpu_operator_chart_version = define_maia_core_versions()["gpu_operator_chart_version"]
 ingress_nginx_chart_version = define_maia_core_versions()["ingress_nginx_chart_version"]
 nfs_server_provisioner_chart_version = define_maia_core_versions()["nfs_server_provisioner_chart_version"]
 metrics_server_chart_version = define_maia_core_versions()["metrics_server_chart_version"]
 gpu_booking_chart_version = define_maia_core_versions()["gpu_booking_chart_version"]
-
+gpu_booking_chart_type = define_maia_core_versions()["gpu_booking_chart_type"]
+local_path_chart_version = define_maia_core_versions()["local_path_chart_version"]
+local_path_chart_type = define_maia_core_versions()["local_path_chart_type"]
+loginapp_chart_version = define_maia_core_versions()["loginapp_chart_version"]
+minio_operator_chart_version = define_maia_core_versions()["minio_operator_chart_version"]
+kubeflow_chart_version = define_maia_core_versions()["kubeflow_chart_version"]
+kubeflow_chart_type = define_maia_core_versions()["kubeflow_chart_type"]
+nvidia_dra_chart_version = define_maia_core_versions()["nvidia_dra_chart_version"]
 logger = loguru.logger
 
 
 def sync_argocd_app(project_name, app_name, chart_version, argo_cd_host, password):
     headers = {"Authorization": f"Bearer {password}"}  # <- session cookie
     # 2. Trigger sync
-    url = f"{argo_cd_host}/api/v1/applications/{project_name}-{app_name}/sync"
+    url = f"{argo_cd_host}/api/v1/applications/{app_name}/sync"
     payload = {"revision": chart_version, "prune": False, "dryRun": False, "strategy": {"apply": {"force": False}}}
     response = requests.post(url, headers=headers, json=payload, verify=False)
 
@@ -61,6 +69,16 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     dict
         A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
     """
+    # Unset proxy environment variables specifically for this function
+    http_proxy = os.environ.get("http_proxy", "")
+    https_proxy = os.environ.get("https_proxy", "")
+    HTTP_PROXY = os.environ.get("HTTP_PROXY", "")
+    HTTPS_PROXY = os.environ.get("HTTPS_PROXY", "")
+    os.environ["http_proxy"] = ""
+    os.environ["https_proxy"] = ""
+    os.environ["HTTP_PROXY"] = ""
+    os.environ["HTTPS_PROXY"] = ""
+
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
         kubeconfig = os.environ.get("KUBECONFIG", None)
@@ -174,6 +192,10 @@ def create_prometheus_values(config_folder, project_id, cluster_config_dict):
     with open(Path(config_folder).joinpath(project_id, "prometheus_values", "prometheus_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(prometheus_values))
 
+    os.environ["http_proxy"] = http_proxy
+    os.environ["https_proxy"] = https_proxy
+    os.environ["HTTP_PROXY"] = HTTP_PROXY
+    os.environ["HTTPS_PROXY"] = HTTPS_PROXY
     return {
         "namespace": prometheus_values["namespace"],
         "repo": prometheus_values["repo_url"],
@@ -292,6 +314,14 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         A dictionary containing the namespace, repository URL, chart version, path to the
         values YAML file, release name, and chart name.
     """
+    http_proxy = os.environ.get("http_proxy", "")
+    https_proxy = os.environ.get("https_proxy", "")
+    HTTP_PROXY = os.environ.get("HTTP_PROXY", "")
+    HTTPS_PROXY = os.environ.get("HTTPS_PROXY", "")
+    os.environ["http_proxy"] = ""
+    os.environ["https_proxy"] = ""
+    os.environ["HTTP_PROXY"] = ""
+    os.environ["HTTPS_PROXY"] = ""
     kubeconfig = os.environ.get("DEPLOY_KUBECONFIG", None)
     if kubeconfig is None:
         kubeconfig = os.environ.get("KUBECONFIG", None)
@@ -339,9 +369,17 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         metallb_ip_pool = "-".join(internal_ips)
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        secret = token_urlsafe(32)[:32]
         core_toolkit_values.update(
             {
-                "dashboard": {"enabled": True, "dashboard_domain": "dashboard." + cluster_config_dict["domain"]},
+                "dashboard": {
+                    "enabled": True,
+                    "dashboard_domain": "dashboard." + cluster_config_dict["domain"],
+                    "plugin_secret": secret,
+                    "keycloak_client_secret": os.environ["keycloak_client_secret"],
+                    "admin_group_ID": os.environ["admin_group_ID"],
+                    "domain": cluster_config_dict["domain"],
+                },
                 "default_ingress_class": cluster_config_dict["ingress_class"],
                 "cert_manager": {"enabled": True, "email": cluster_config_dict["ingress_resolver_email"]},
                 "metallb": {"enabled": True, "addresses": metallb_ip_pool},
@@ -356,17 +394,33 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
                 "metallb": {"enabled": True, "addresses": metallb_ip_pool},
             }
         )
+    core_toolkit_values.update({"k3s_coredns": {"enabled": False}})
+    core_toolkit_values.update({"k3s_coredns_mappings": {"enabled": False}})
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         core_toolkit_values.update(
             {"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}}
         )
+        if cluster_config_dict["k8s_distribution"] == "k3s":
+            core_toolkit_values.update({"k3s_coredns": {"enabled": True}})
+
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
+
+    if "coredns_mappings" in cluster_config_dict:
+        core_toolkit_values.update(
+            {"cluster_domain": cluster_config_dict["domain"], "coredns_mappings": cluster_config_dict["coredns_mappings"]}
+        )
+        if cluster_config_dict["k8s_distribution"] == "k3s":
+            core_toolkit_values.update({"k3s_coredns_mappings": {"enabled": True}})
 
     Path(config_folder).joinpath(project_id, "core_toolkit_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(core_toolkit_values))
 
+    os.environ["http_proxy"] = http_proxy
+    os.environ["https_proxy"] = https_proxy
+    os.environ["HTTP_PROXY"] = HTTP_PROXY
+    os.environ["HTTPS_PROXY"] = HTTPS_PROXY
     return {
         "namespace": core_toolkit_values["namespace"],
         "repo": core_toolkit_values["repo_url"],
@@ -374,6 +428,51 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         "values": str(Path(config_folder).joinpath(project_id, "core_toolkit_values", "core_toolkit_values.yaml")),
         "release": f"{project_id}-toolkit",
         "chart": core_toolkit_values["chart_name"] if core_toolkit_chart_type == "helm_repo" else core_toolkit_values["path"],
+    }
+
+
+def create_local_path_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and saves the local path values for a Kubernetes cluster.
+    This function generates a dictionary of local path values based on the provided
+    configuration folder, project ID, and cluster configuration dictionary. It retrieves
+    the internal IP addresses of the nodes in the Kubernetes cluster and uses them to
+    configure the MetalLB addresses. The generated values are saved to a YAML file.
+    """
+
+    local_path_values = {
+        "namespace": "local-path-storage",
+        "chart_version": local_path_chart_version,
+    }
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and local_path_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and local_path_chart_type is set to git_repo, which is not allowed")
+
+    if local_path_chart_type == "helm_repo":
+        local_path_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        local_path_values["chart_name"] = "maia-core-local-path"
+    elif local_path_chart_type == "git_repo":
+        local_path_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        local_path_values["path"] = "charts/maia-core-local-path"
+
+    storage_class = get_storage_class(cluster_config_dict["k8s_distribution"])
+    if storage_class == "local-path":
+        local_path_values.update(
+            {"enabled": True, "storage_class": storage_class, "local_path_provisioner_path": "/opt/local-path-provisioner"}
+        )
+    else:
+        local_path_values.update({"enabled": False})
+
+    Path(config_folder).joinpath(project_id, "local_path_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "local_path_values", "local_path_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(local_path_values))
+
+    return {
+        "namespace": local_path_values["namespace"],
+        "repo": local_path_values["repo_url"],
+        "version": local_path_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "local_path_values", "local_path_values.yaml")),
+        "release": f"{project_id}-local-path",
+        "chart": local_path_values["chart_name"] if local_path_chart_type == "helm_repo" else local_path_values["path"],
     }
 
 
@@ -411,6 +510,8 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
         "chart_version": traefik_chart_version,
     }  # TODO: Change this to updated values
 
+    secret = token_urlsafe(32)[:32]
+
     traefik_values.update(
         {
             "ingressRoute": {
@@ -418,7 +519,11 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "enabled": True,
                     "matchRule": "Host(`{}`)".format("traefik." + cluster_config_dict["domain"]),  # && PathPrefix(`/dashboard`)
                     "entryPoints": ["websecure"],
-                    "middlewares": [{"name": "traefik-dashboard-auth"}, {"name": "traefik-dashboard-replace-path"}],
+                    "middlewares": [
+                        {"name": "oidc"},
+                        # {"name": "traefik-dashboard-auth"},
+                        {"name": "traefik-dashboard-replace-path"},
+                    ],
                 }
             },
             "extraObjects": [
@@ -441,11 +546,41 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "metadata": {"name": "traefik-dashboard-auth"},
                     "spec": {"basicAuth": {"secret": "traefik-dashboard-auth-secret"}},
                 },
+                {
+                    "apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {"name": "oidc-secret"},
+                    "stringData": {
+                        "pluginSecret": secret,
+                        "providerClientSecret": os.environ["keycloak_client_secret"],
+                    },
+                    "type": "Opaque",
+                },
+                {
+                    "apiVersion": "traefik.io/v1alpha1",
+                    "kind": "Middleware",
+                    "metadata": {"name": "oidc"},
+                    "spec": {
+                        "plugin": {
+                            "traefik-oidc-auth": {
+                                "Secret": "urn:k8s:secret:oidc-secret:pluginSecret",
+                                "Provider": {
+                                    "ClientId": "maia",
+                                    "ClientSecret": "urn:k8s:secret:oidc-secret:providerClientSecret",
+                                    "Url": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+                                    "Scopes": ["openid", "email", "profile"],
+                                    "InsecureSkipVerify": True,
+                                },
+                                "Authorization": {"AssertClaims": [{"Name": "groups", "AnyOf": [os.environ["admin_group_ID"]]}]},
+                            }
+                        }
+                    },
+                },
             ],
             "globalArguments": [
-                "--entrypoints.web.http.redirections.entryPoint.to=:443",
+                # "--entrypoints.web.http.redirections.entryPoint.to=:443",
                 # "--entrypoints.web.http.redirections.entrypoint.to=websecure",
-                "--entrypoints.web.http.redirections.entrypoint.scheme=https",
+                # "--entrypoints.web.http.redirections.entrypoint.scheme=https",
                 "--global.checknewversion",
                 "--global.sendanonymoususage",
                 # "--entrypoints.metrics.address=:9100/tcp",
@@ -469,6 +604,12 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                 # f"--certificatesresolvers.{resolver}.acme.storage=/data/acme.json",
                 # f"--certificatesresolvers.{resolver}.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
             ],
+            "experimental": {
+                "plugins": {
+                    "traefik-oidc-auth": {"moduleName": "github.com/sevensolutions/traefik-oidc-auth", "version": "v0.17.0"}
+                }
+            },
+            "persistence": {"enabled": True},
         }
     )
 
@@ -482,15 +623,40 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
                     "email": cluster_config_dict["ingress_resolver_email"],
                     # "httpchallenge": "true",
                     "httpchallenge": {"entryPoint": "web"},
-                    "caserver": "https://acme-v02.api.letsencrypt.org/directory",
-                    # "caServer": "https://acme-staging-v02.api.letsencrypt.org/directory",
                     "storage": "/data/acme.json",
                 }
             }
         }
+        if "staging_certificates" in cluster_config_dict and cluster_config_dict["staging_certificates"]:
+            traefik_values["certificatesResolvers"][cluster_config_dict["traefik_resolver"]]["acme"][
+                "caserver"
+            ] = "https://acme-staging-v02.api.letsencrypt.org/directory"
+        else:
+            traefik_values["certificatesResolvers"][cluster_config_dict["traefik_resolver"]]["acme"][
+                "caserver"
+            ] = "https://acme-v02.api.letsencrypt.org/directory"
 
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
+
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        traefik_values.update(
+            {
+                    "deployment":{"additionalVolumes": [
+                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}},
+                        {"name": "local-plugins", "hostPath": {"path": "/var/lib/traefik/plugins", "type": "Directory"}}
+                    ]
+                    },
+                    "additionalVolumeMounts": [
+                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
+                        {"name": "local-plugins", "mountPath": "/plugins-local", "readOnly": False}
+                    ],
+                    "env": [{"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"}],
+                "experimental": {},
+                "globalArguments": traefik_values["globalArguments"] + ["--experimental.localplugins.traefik-oidc-auth.modulename=github.com/sevensolutions/traefik-oidc-auth"]
+                
+            }
+        )
 
     with open(Path(config_folder).joinpath(project_id, "traefik_values", "traefik_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(traefik_values))
@@ -505,7 +671,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_metallb_values(config_folder, project_id):
+def create_metallb_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes MetalLB Helm chart values to a YAML file and returns a dictionary with deployment details.
 
@@ -515,7 +681,8 @@ def create_metallb_values(config_folder, project_id):
         The path to the configuration folder where the YAML file will be created.
     project_id : str
         The project identifier used to create a unique directory and release name.
-
+    cluster_config_dict : dict
+        A dictionary containing the cluster configuration.
     Returns
     -------
     dict
@@ -535,6 +702,14 @@ def create_metallb_values(config_folder, project_id):
         "chart_name": "metallb",
     }  # TODO: Change this to updated values
 
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        metallb_values.update(
+            {
+                "controller": {"image": {"repository": "maiacloudai/controller"}},
+                "speaker": {"image": {"repository": "maiacloudai/speaker"}, "frr": {"image": {"repository": "maiacloudai/frr"}}},
+            }
+        )
+
     Path(config_folder).joinpath(project_id, "metallb_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "metallb_values", "metallb_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(metallb_values))
@@ -549,7 +724,7 @@ def create_metallb_values(config_folder, project_id):
     }
 
 
-def create_cert_manager_values(config_folder, project_id):
+def create_cert_manager_values(config_folder, project_id, cluster_config_dict):
     """
     Creates a dictionary of values for configuring cert-manager and writes it to a YAML file.
 
@@ -559,7 +734,8 @@ def create_cert_manager_values(config_folder, project_id):
         The path to the configuration folder.
     project_id : str
         The project identifier.
-
+    cluster_config_dict : dict
+        A dictionary containing the cluster configuration.
     Returns
     -------
     dict
@@ -569,12 +745,22 @@ def create_cert_manager_values(config_folder, project_id):
     cert_manager_chart_info = {
         "namespace": "cert-manager",
         "chart_version": cert_manager_chart_version,
-        "repo_url": "https://charts.jetstack.io",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),  # "https://charts.jetstack.io",
         "chart_name": "cert-manager",
     }
 
     cert_manager_values = {}
     cert_manager_values.update({"crds": {"enabled": True}})
+
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        cert_manager_values.update(
+            {
+                "cainjector": {"image": {"repository": "maiacloudai/cert-manager-cainjector"}},
+                "webhook": {"image": {"repository": "maiacloudai/cert-manager-webhook"}},
+                "startupapicheck": {"image": {"repository": "maiacloudai/cert-manager-startupapicheck"}},
+                "image": {"repository": "maiacloudai/cert-manager-controller"},
+            }
+        )
 
     Path(config_folder).joinpath(project_id, "cert_manager_values").mkdir(parents=True, exist_ok=True)
     Path(config_folder).joinpath(project_id, "cert_manager_chart_info").mkdir(parents=True, exist_ok=True)
@@ -595,9 +781,9 @@ def create_cert_manager_values(config_folder, project_id):
     }
 
 
-def create_rancher_values(config_folder, project_id, cluster_config_dict):
+def create_nvidia_dra_values(config_folder, project_id):
     """
-    Generates Rancher values configuration and writes it to a YAML file.
+    Creates and writes NVIDIA DRA Helm chart values to a YAML file.
 
     Parameters
     ----------
@@ -605,62 +791,48 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
         The path to the configuration folder.
     project_id : str
         The project identifier.
-    cluster_config_dict : dict
-        A dictionary containing cluster configuration details.
 
     Returns
     -------
     dict
-        A dictionary containing Rancher deployment details including namespace, repo URL,
-        chart version, values file path, release name, and chart name.
+        A dictionary containing the namespace, repository URL, chart version, path to the values file, release name, and chart name.
     """
 
-    rancher_values = {
-        "namespace": "cattle-system",
-        "repo_url": "https://releases.rancher.com/server-charts/latest",
-        "chart_name": "rancher",
-        "chart_version": rancher_chart_version,
-    }  # TODO: Change this to updated values
+    nvidia_dra_values = {
+        "namespace": "nvidia-dra-driver-gpu",
+        "chart_version": nvidia_dra_chart_version,
+        "repo_url": "https://helm.ngc.nvidia.com/nvidia",
+        "chart_name": "nvidia-dra-driver-gpu",
+    }
 
-    rancher_values.update(
+    nvidia_dra_values.update(
         {
-            "hostname": "mgmt." + cluster_config_dict["domain"],
-            "ingress": {"extraAnnotations": {}, "tls": {"source": "letsEncrypt"}},
-            "letsEncrypt": {
-                "email": cluster_config_dict["ingress_resolver_email"],
-                "ingress": {"class": cluster_config_dict["ingress_class"]},
+            "featureGates": {
+                "MPSSupport": True,
+                "TimeSlicingSettings": True,
             },
-            "bootstrapPassword": cluster_config_dict["rancher_password"],
+            "gpuResourcesEnabledOverride": True,
+            "nvidiaDriverRoot": "/",
+            "resources": {
+                "gpus": {
+                    "enabled": True,
+                }
+            },
         }
     )
 
-    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
-        rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
-        rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
-        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            ...
-        else:
-            rancher_values["ingress"]["extraAnnotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
-                cluster_config_dict["traefik_resolver"]
-            )
-    elif cluster_config_dict["ingress_class"] == "nginx":
-        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
-            ...
-        else:
-            rancher_values["ingress"]["extraAnnotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+    Path(config_folder).joinpath(project_id, "nvidia_dra_values").mkdir(parents=True, exist_ok=True)
 
-    Path(config_folder).joinpath(project_id, "rancher_values").mkdir(parents=True, exist_ok=True)
-
-    with open(Path(config_folder).joinpath(project_id, "rancher_values", "rancher_values.yaml"), "w") as f:
-        f.write(OmegaConf.to_yaml(rancher_values))
+    with open(Path(config_folder).joinpath(project_id, "nvidia_dra_values", "nvidia_dra_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(nvidia_dra_values))
 
     return {
-        "namespace": rancher_values["namespace"],
-        "repo": rancher_values["repo_url"],
-        "version": rancher_values["chart_version"],
-        "values": str(Path(config_folder).joinpath(project_id, "rancher_values", "rancher_values.yaml")),
-        "release": f"{project_id}-rancher",
-        "chart": rancher_values["chart_name"],
+        "namespace": nvidia_dra_values["namespace"],
+        "repo": nvidia_dra_values["repo_url"],
+        "version": nvidia_dra_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "nvidia_dra_values", "nvidia_dra_values.yaml")),
+        "release": f"{project_id}-nvidia-dra-driver-gpu",
+        "chart": nvidia_dra_values["chart_name"],
     }
 
 
@@ -690,39 +862,15 @@ def create_gpu_operator_values(config_folder, project_id, cluster_config_dict):
         "chart_name": "gpu-operator",
     }  # TODO: Change this to updated values
 
-    if cluster_config_dict["k8s_distribution"] == "microk8s":
-        gpu_operator_values["toolkit"] = {
-            "env": [
-                {"name": "CONTAINERD_CONFIG", "value": "/var/snap/microk8s/current/args/containerd-template.toml"},
-                {"name": "CONTAINERD_SOCKET", "value": "/var/snap/microk8s/common/run/containerd.sock"},
-                {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
-            ]
-        }
+    gpu_operator_values.update(
+        {"cdi": {"enabled": True}, "devicePlugin": {"enabled": True, "mps": {"enabled": True}}, "driver": {"enabled": False}}
+    )
 
-    elif cluster_config_dict["k8s_distribution"] == "rke2":
-        gpu_operator_values["toolkit"] = {
-            "driver": {"enabled": False},
-            "env": [
-                {"name": "CONTAINERD_SOCKET", "value": "/run/k3s/containerd/containerd.sock"},
-                {"name": "CONTAINERD_CONFIG", "value": "/var/lib/rancher/rke2/agent/etc/containerd/config.toml.tmpl"},
-                {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                {"name": "CONTAINERD_SET_AS_DEFAULT", "value": "true"},
-            ],
-        }
-    elif cluster_config_dict["k8s_distribution"] == "k0s":
-        gpu_operator_values.update(
-            {
-                "operator": {"defaultRuntime": "containerd"},
-                "toolkit": {
-                    "env": [
-                        {"name": "CONTAINERD_CONFIG", "value": "/etc/k0s/containerd.d/nvidia.toml"},
-                        {"name": "CONTAINERD_SOCKET", "value": "/run/k0s/containerd.sock"},
-                        {"name": "CONTAINERD_RUNTIME_CLASS", "value": "nvidia"},
-                    ]
-                },
-            }
-        )
+    gpu_operator_values["toolkit"] = get_gpu_operator_toolkit(cluster_config_dict["k8s_distribution"])
+
+    gpu_operator_values["toolkit"]["env"].append(
+        {"name": "NODE_LABEL_FOR_GPU_POD_EVICTION", "value": "nvidia.com/dra-kubelet-plugin"}
+    )
 
     Path(config_folder).joinpath(project_id, "gpu_operator_values").mkdir(parents=True, exist_ok=True)
 
@@ -822,6 +970,9 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
         nfs_server_provisioner_values.update(
             {"nfs": {"server": cluster_config_dict["nfs_server"], "path": cluster_config_dict["nfs_path"]}}
         )
+        
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        nfs_server_provisioner_values.update({"image": {"repository": "maiacloudai/nfs-subdir-external-provisioner"}})
 
     Path(config_folder).joinpath(project_id, "nfs_provisioner_values").mkdir(parents=True, exist_ok=True)
 
@@ -860,6 +1011,7 @@ def create_metrics_server_values(config_folder, project_id):
         "repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
         "chart_name": "metrics-server",
         "chart_version": metrics_server_chart_version,
+        "image": {"repository": "maiacloudai/metrics-server"},
     }
 
     Path(config_folder).joinpath(project_id, "metrics_server_values").mkdir(parents=True, exist_ok=True)
@@ -912,21 +1064,30 @@ def create_gpu_booking_values(config_folder, project_id):
     """
     gpu_booking_values = {
         "namespace": "maia-webhooks",
-        "repo_url": "https://minnelab.github.io/MAIA/",
-        "chart_name": "gpu-booking",
         "chart_version": gpu_booking_chart_version,
     }
 
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and gpu_booking_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and gpu_booking_chart_type is set to git_repo, which is not allowed")
+
+    if gpu_booking_chart_type == "git_repo":
+        gpu_booking_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        gpu_booking_values["path"] = "charts/gpu-booking"
+    elif gpu_booking_chart_type == "helm_repo":
+        gpu_booking_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        gpu_booking_values["chart_name"] = "gpu-booking"
+
     maia_dashboard_domain = os.environ["MAIA_DASHBOARD_DOMAIN"]
+    default_registry = os.environ.get("MAIA_REGISTRY", "ghcr.io/minnelab")
     gpu_booking_values.update(
         {
             "image": {
                 "pod_terminator": {
-                    "repository": "ghcr.io/minnelab/gpu-booking-pod-terminator",
+                    "repository": f"{default_registry}/maia-gpu-booking-pod-terminator",
                     "pullPolicy": "IfNotPresent",
                     "tag": "1.4",
                 },
-                "repository": "ghcr.io/minnelab/gpu-booking-admission-controller",
+                "repository": f"{default_registry}/maia-gpu-booking-admission-controller",
                 "pullPolicy": "IfNotPresent",
                 "tag": "1.6",
             },
@@ -947,5 +1108,248 @@ def create_gpu_booking_values(config_folder, project_id):
         "version": gpu_booking_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "gpu_booking_values", "gpu_booking_values.yaml")),
         "release": f"{project_id}-gpu-booking",
-        "chart": gpu_booking_values["chart_name"],
+        "chart": gpu_booking_values["chart_name"] if gpu_booking_chart_type == "helm_repo" else gpu_booking_values["path"],
+    }
+
+
+def create_loginapp_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and writes the loginapp values configuration file for a given project and cluster configuration.
+
+    Parameters
+    ----------
+    config_folder : str
+        The base directory where the configuration files will be stored.
+    project_id : str
+        The unique identifier for the project.
+    cluster_config_dict : dict
+        A dictionary containing cluster configuration details, including:
+            - keycloak.client_secret (str): The client secret for Keycloak.
+            - domain (str): The domain name for the cluster.
+            - ingress_class (str): The ingress class to be used (e.g., "maia-core-traefik" or "nginx").
+            - traefik_resolver (str, optional): The Traefik resolver to be used if ingress_class is "maia-core-traefik".
+
+    Returns
+    -------
+    dict
+        A dictionary containing the namespace, release name, chart name, repository URL, chart version,
+        and the path to the generated values file.
+
+    Raises
+    ------
+    KeyError
+        If required keys are missing from the cluster_config_dict.
+    OSError
+        If there is an error creating directories or writing the configuration file.
+    """
+    loginapp_values = {
+        "namespace": "authentication",
+        "repo_url": "https://storage.googleapis.com/loginapp-releases/charts/",
+        "chart_name": "loginapp",
+        "chart_version": loginapp_chart_version,
+    }
+
+    secret = token_urlsafe(16).replace("-", "_")
+    client_id = "maia"
+    client_secret = os.environ["keycloak_client_secret"]
+    issuer_url = "https://iam." + cluster_config_dict["domain"] + "/realms/maia"
+    port = get_api_port(os.environ["K8S_DISTRIBUTION"])
+    cluster_server_address = f"https://{cluster_config_dict['domain']}:{port}"
+
+    ca_file = None
+    if "rootCA" in cluster_config_dict:
+        ca_text = Path(cluster_config_dict["rootCA"]).read_text()
+        ca_file = ca_text  # .base64.b64encode(ca_text.encode()).decode()
+
+    loginapp_values.update(
+        {
+            "env": {"LOGINAPP_NAME": "MAIA Login"},
+            "configOverwrites": {"oidc": {"scopes": ["openid", "profile", "email"]}, "service": {"type": "ClusterIP"}},
+            "ingress": {
+                "enabled": True,
+                "annotations": {},
+                "tls": [{"hosts": ["login." + cluster_config_dict["domain"]]}],
+                "hosts": [{"host": "login." + cluster_config_dict["domain"], "paths": [{"path": "/", "pathType": "Prefix"}]}],
+            },
+            "config": {
+                "tls": {"enabled": False},
+                "issuerInsecureSkipVerify": True,
+                "refreshToken": True,
+                "clientRedirectURL": "https://login." + cluster_config_dict["domain"] + "/callback",
+                "secret": secret,
+                "clientID": client_id,
+                "clientSecret": client_secret,
+                "issuerURL": issuer_url,
+                "clusters": [
+                    {
+                        "server": cluster_server_address,
+                        "name": "MAIA",
+                        "insecure-skip-tls-verify": True,
+                        "certificate-authority": ca_file,
+                    }
+                ],
+            },
+        }
+    )
+
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        loginapp_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        loginapp_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            loginapp_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
+    elif cluster_config_dict["ingress_class"] == "nginx":
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            loginapp_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            loginapp_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        loginapp_values["ingress"]["tls"][0]["secretName"] = "loginapp." + cluster_config_dict["domain"]
+
+    Path(config_folder).joinpath(project_id, "loginapp_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "loginapp_values", "loginapp_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(loginapp_values))
+
+    return {
+        "namespace": loginapp_values["namespace"],
+        "release": f"{project_id}-loginapp",
+        "chart": loginapp_values["chart_name"],
+        "repo": loginapp_values["repo_url"],
+        "version": loginapp_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "loginapp_values", "loginapp_values.yaml")),
+    }
+
+
+def create_minio_operator_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and writes MinIO operator values to a YAML file and returns a dictionary with deployment details.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The unique identifier for the project.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the namespace, release name, chart name, repository URL, chart version,
+        and the path to the generated YAML values file.
+    """
+    minio_operator_values = {
+        "namespace": "minio-operator",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"),  # "https://operator.min.io",
+        "chart_name": "operator",
+        "chart_version": minio_operator_chart_version,
+    }
+
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        minio_operator_values.update(
+            {
+                "operator": {"image": {"repository": "maiacloudai/minio-operator"}},
+            }
+        )
+
+    Path(config_folder).joinpath(project_id, "minio_operator_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(minio_operator_values))
+
+    return {
+        "namespace": minio_operator_values["namespace"],
+        "release": f"{project_id}-minio-operator",
+        "chart": minio_operator_values["chart_name"],
+        "repo": minio_operator_values["repo_url"],
+        "version": minio_operator_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml")),
+    }
+
+
+def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and writes Kubeflow values to a YAML file and returns a dictionary with deployment details.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The unique identifier for the project.
+    cluster_config_dict : dict
+        A dictionary containing cluster configuration details, including:
+            - domain (str): The domain name for the cluster.
+            - ingress_class (str): The ingress class to be used (e.g., "maia-core-traefik" or "nginx").
+            - traefik_resolver (str, optional): The Traefik resolver to be used if ingress_class is "maia-core-traefik".
+    """
+
+    kubeflow_values = {
+        "namespace": "kubeflow",
+        "chart_version": kubeflow_chart_version,
+    }
+
+    if "ARGOCD_DISABLED" in os.environ and os.environ["ARGOCD_DISABLED"] == "True" and kubeflow_chart_type == "git_repo":
+        raise ValueError("ARGOCD_DISABLED is set to True and kubeflow_chart_type is set to git_repo, which is not allowed")
+
+    if kubeflow_chart_type == "git_repo":
+        kubeflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        kubeflow_values["path"] = "charts/maia-kubeflow"
+    elif kubeflow_chart_type == "helm_repo":
+        kubeflow_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        kubeflow_values["chart_name"] = "maia-kubeflow"
+
+    kubeflow_values["kubeflow_values"] = {
+        "oidcClientId": "kubeflow-oidc-authservice",
+        "oidcClientSecret": token_urlsafe(16).replace("-", "_"),
+        "domain": "kubeflow." + cluster_config_dict["domain"],
+        "keycloakIssuerUrl": "https://iam." + cluster_config_dict["domain"] + "/realms/maia",
+        "keycloakClientId": "maia",
+        "keycloakClientSecret": os.environ["keycloak_client_secret"],
+        "cookieSecret": token_urlsafe(16).replace("-", "_"),
+        "sslInsecureSkipVerify": False,
+        "ingress": {
+            "enabled": True,
+            "className": cluster_config_dict["ingress_class"],
+            "annotations": {},
+        },
+    }
+
+    if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        kubeflow_values["kubeflow_values"]["sslInsecureSkipVerify"] = True
+
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
+            "traefik.ingress.kubernetes.io/router.entrypoints"
+        ] = "websecure"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
+                "traefik.ingress.kubernetes.io/router.tls.certresolver"
+            ] = cluster_config_dict["traefik_resolver"]
+    elif cluster_config_dict["ingress_class"] == "nginx":
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
+                "cert-manager.io/cluster-issuer"
+            ] = "kubernetes-ca-issuer"
+        else:
+            kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "cluster-issuer"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        kubeflow_values["kubeflow_values"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
+        kubeflow_values["kubeflow_values"]["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
+
+    Path(config_folder).joinpath(project_id, "kubeflow_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "kubeflow_values", "kubeflow_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(kubeflow_values))
+
+    return {
+        "namespace": kubeflow_values["namespace"],
+        "release": f"{project_id}-kubeflow",
+        "chart": kubeflow_values["chart_name"] if kubeflow_chart_type == "helm_repo" else kubeflow_values["path"],
+        "repo": kubeflow_values["repo_url"],
+        "version": kubeflow_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "kubeflow_values", "kubeflow_values.yaml")),
     }

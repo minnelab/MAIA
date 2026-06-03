@@ -11,7 +11,6 @@ from pathlib import Path
 from textwrap import dedent
 
 import click
-import requests
 import yaml
 from hydra import compose as hydra_compose
 from hydra import initialize_config_dir
@@ -23,28 +22,27 @@ import MAIA
 from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import install_maia_project
 from MAIA.maia_docker_images import deploy_maia_kaniko
+from MAIA.versions import define_maia_docker_versions, define_docker_image_versions, define_maia_admin_versions
+from MAIA.maia_k8s_distros import get_storage_class
 
+kaniko_chart_type = define_maia_docker_versions()["kaniko_chart_type"]
+build_versions = define_docker_image_versions()
+maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev_tag_suffix"]
 version = MAIA.__version__
 
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to Build MAIA Docker Images using Kaniko. The specific MAIA configuration is specified
     by setting the corresponding ``--maia-config-file``, and the cluster configuration is specified by setting
     the corresponding ``--cluster-config``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --cluster-config /PATH/TO/cluster_config.yaml --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
@@ -77,13 +75,6 @@ def get_arg_parser():
         help="Project ID to use for ArgoCD. This is used to identify the project in the cluster.",
     )
     pars.add_argument(
-        "--build-version-file",
-        type=str,
-        required=False,
-        default="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
-        help="Optional file containing the version of the Docker Images to build. If not provided, the default version is 1.0",
-    )
-    pars.add_argument(
         "--cluster-address",
         type=str,
         required=False,
@@ -91,6 +82,12 @@ def get_arg_parser():
         help="Optional address of the cluster. If not provided, the default is https://kubernetes.default.svc",
     )
 
+    pars.add_argument(
+        "--build-custom-images",
+        required=False,
+        default=None,
+        help="Build the custom images from the given YAML file.",
+    )
     pars.add_argument("-v", "--version", action="version", version="%(prog)s " + version)
 
     return pars
@@ -102,26 +99,22 @@ def get_arg_parser():
 @click.option("--registry-path", type=str, default="")
 @click.option("--project-id", required=True, type=str)
 @click.option("--cluster-address", type=str, default="https://kubernetes.default.svc")
-@click.option(
-    "--build-version-file",
-    type=str,
-    default="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
-)
+@click.option("--build-custom-images", type=str, default=None)
 def main(
     cluster_config,
     config_folder,
     project_id,
-    build_version_file,
     registry_path,
     cluster_address,
+    build_custom_images,
 ):
     build_maia_images(
         cluster_config,
         config_folder,
         project_id,
-        build_version_file,
         registry_path,
         cluster_address,
+        build_custom_images,
     )
 
 
@@ -129,24 +122,19 @@ def build_maia_images(
     cluster_config,
     config_folder,
     project_id,
-    build_version_file="https://raw.githubusercontent.com/minnelab/MAIA/master/MAIA/configs/docker_versions.yaml",
     registry_path="",
     cluster_address="https://kubernetes.default.svc",
+    build_custom_images=None,
 ):
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
-    dev_distros = ["microk8s", "k0s"]
 
     if "storage_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            if cluster_config_dict["k8s_distribution"] == "microk8s":
-                cluster_config_dict["storage_class"] = "microk8s-hostpath"
-            elif cluster_config_dict["k8s_distribution"] == "k0s":
-                cluster_config_dict["storage_class"] = "local-path"
-        else:
-            cluster_config_dict["storage_class"] = "local-path"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["storage_class"] = get_storage_class(cluster_config_dict["k8s_distribution"])
+
     # Docker Registry configuration where the images will be pushed
-    registry_username = os.environ["docker_username"]
-    registry_password = os.environ["docker_password"]
+    registry_username = os.environ["registry_username"]
+    registry_password = os.environ["registry_password"]
     registry_email = cluster_config_dict["ingress_resolver_email"]
     if "registry_server" in os.environ:
         registry_server = os.environ["registry_server"]
@@ -157,14 +145,6 @@ def build_maia_images(
     docker_secret_name = f"{registry_server}{registry_path}".replace(".", "-").replace("/", "-").replace(":", "-")
     if docker_secret_name.endswith("-"):
         docker_secret_name = docker_secret_name[:-1]
-
-    if build_version_file is not None:
-        if build_version_file.startswith("https"):
-            build_versions = yaml.safe_load(requests.get(build_version_file).text)
-        else:
-            build_versions = yaml.safe_load(Path(build_version_file).read_text())
-    else:
-        build_versions = {}
 
     xnat_env_vars = [
         "XNAT_VERSION=1.8.10",
@@ -199,12 +179,17 @@ def build_maia_images(
     }
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
 
-    if json_key_path is not None and "minnelab.github.io/MAIA" not in os.environ["MAIA_HELM_REPO_URL"]:
+    if kaniko_chart_type == "git_repo":
+        kaniko_repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+    else:
+        kaniko_repo_url = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+
+    if json_key_path is not None and "minnelab.github.io/MAIA" not in kaniko_repo_url:
         try:
             with open(json_key_path, "r") as f:
                 docker_credentials = json.load(f)
-                username = docker_credentials.get("harbor_username")
-                password = docker_credentials.get("harbor_password")
+                username = docker_credentials.get("username")
+                password = docker_credentials.get("password")
         except Exception:
             with open(json_key_path, "r") as f:
                 docker_credentials = f.read()
@@ -219,288 +204,368 @@ def build_maia_images(
                 "username": username,
                 "password": password,
                 "project": project_id,
-                "url": os.environ["MAIA_HELM_REPO_URL"],
+                "url": kaniko_repo_url,
                 "type": "helm",
                 "name": f"maia-registry-{project_id}",
                 "enableOCI": "true",
             },
         )
     helm_commands = []
+    if build_custom_images is None:
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-nvflare-dashboard",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-nvflare-dashboard",
+                build_versions["maia-nvflare-dashboard"],
+                "docker/Flare-Dashboard",
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-kube",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-kube",
+                build_versions["maia-kube"],
+                "docker/MAIA-Kube",
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-dashboard",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-dashboard",
+                build_versions["maia-dashboard"],
+                "dashboard",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}",
+                    f"MAIA_VERSION=v{build_versions['maia-dashboard']}",
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-dashboard-dev",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-dashboard",
+                build_versions["maia-dashboard"] + maia_dashboard_dev_tag_suffix,
+                "dashboard",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}",
+                    "DEVEL=1",
+                    f"DEV_BRANCH={os.environ['DEV_BRANCH']}",
+                    f"MAIA_VERSION=v{build_versions['maia-dashboard']}",
+                    "MAIA_DASHBOARD_PATH=/etc/MAIA/dashboard",
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-workspace",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-workspace",
+                build_versions["maia-workspace"],
+                "docker/Pro/MAIA-Workspace",
+                [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-workspace-notebook",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-workspace-notebook",
+                build_versions["maia-workspace-notebook"],
+                "docker/Pro/Notebooks/Base",
+                [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace:{build_versions['maia-workspace']}"],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-workspace-notebook-ssh",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-workspace-notebook-ssh",
+                build_versions["maia-workspace-notebook-ssh"],
+                "docker/Pro/Notebooks/SSH",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-lab-pro",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-lab-pro",
+                build_versions["maia-lab"],
+                "docker/Pro/Notebooks/Lab",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh-addons:{build_versions['maia-workspace-notebook-ssh-addons']}"
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-lab",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-lab",
+                build_versions["maia-lab"],
+                "docker/Notebooks/Lab",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base-notebook-ssh:{build_versions['maia-workspace-base-notebook-ssh']}"
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                build_versions["maia-workspace-notebook-ssh-addons-image-name"],
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                build_versions["maia-workspace-notebook-ssh-addons-image-name"],
+                build_versions["maia-workspace-notebook-ssh-addons"],
+                "docker/Pro/Notebooks/Addons",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh:{build_versions['maia-workspace-notebook-ssh']}"
+                ],
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "monai-toolkit",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "monai-toolkit",
+                build_versions["monai-toolkit"],
+                "docker/Pro/Notebooks/MONAI-Toolkit",
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-xnat",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-xnat",
+                build_versions["maia-xnat"],
+                "docker/xnat",
+                xnat_env_vars,
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-orthanc",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-orthanc",
+                build_versions["maia-orthanc"],
+                "docker/MAIA-Orthanc",
+                registry_credentials=registry_credentials,
+            )
+        )
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-mlflow",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-mlflow",
+                build_versions["maia-mlflow"],
+                "docker/base",
+                ["RUN_MLFLOW_SERVER=True"],
+                registry_credentials=registry_credentials,
+            )
+        )
 
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-kube",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-kube",
-            build_versions["maia-kube"],
-            "docker/MAIA-Kube",
-            registry_credentials=registry_credentials,
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-filebrowser",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-filebrowser",
+                build_versions["maia-filebrowser"],
+                "docker/base",
+                ["RUN_FILEBROWSER=True"],
+                registry_credentials=registry_credentials,
+            )
         )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-dashboard",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-dashboard",
-            build_versions["maia-dashboard"],
-            "dashboard",
-            [f"BASE_IMAGE={registry_server}{registry_path}/maia-kube:{build_versions['maia-kube']}"],
-            registry_credentials=registry_credentials,
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-workspace-base",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-workspace-base",
+                build_versions["maia-workspace-base"],
+                "docker/MAIA-Workspace",
+                registry_credentials=registry_credentials,
+            )
         )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace",
-            build_versions["maia-workspace"],
-            "docker/MAIA-Workspace",
-            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
-            registry_credentials=registry_credentials,
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-gpu-booking-admission-controller",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-gpu-booking-admission-controller",
+                build_versions["maia-gpu-booking-admission-controller"],
+                "docker/GPU_Booking_Admission_Controller",
+                registry_credentials=registry_credentials,
+            )
         )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace-notebook",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace-notebook",
-            build_versions["maia-workspace-notebook"],
-            "docker/Notebooks/Base",
-            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace:{build_versions['maia-workspace']}"],
-            registry_credentials=registry_credentials,
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-gpu-booking-pod-terminator",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-gpu-booking-pod-terminator",
+                build_versions["maia-gpu-booking-pod-terminator"],
+                "docker/GPU_Booking_Pod_Terminator",
+                registry_credentials=registry_credentials,
+            )
         )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace-notebook-ssh",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace-notebook-ssh",
-            build_versions["maia-workspace-notebook-ssh"],
-            "docker/Notebooks/SSH",
-            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook:{build_versions['maia-workspace-notebook']}"],
-            registry_credentials=registry_credentials,
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                "maia-workspace-base-notebook",
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                "maia-workspace-base-notebook",
+                build_versions["maia-workspace-base-notebook"],
+                "docker/Notebooks/Base",
+                [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
+                registry_credentials=registry_credentials,
+            )
         )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-lab-pro",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-lab-pro",
-            build_versions["maia-lab-pro"],
-            "docker/Notebooks/Lab",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh-addons:{build_versions['maia-workspace-notebook-ssh-addons']}"
-            ],
-            registry_credentials=registry_credentials,
+        helm_commands.append(
+            deploy_maia_kaniko(
+                "mkg-kaniko",
+                config_folder,
+                cluster_config_dict,
+                build_versions["maia-workspace-base-notebook-ssh-image-name"],
+                project_id,
+                registry_server + registry_path,
+                docker_secret_name,
+                build_versions["maia-workspace-base-notebook-ssh-image-name"],
+                build_versions["maia-workspace-base-notebook-ssh"],
+                "docker/Notebooks/SSH",
+                [
+                    f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base-notebook:{build_versions['maia-workspace-base-notebook']}"
+                ],
+                registry_credentials=registry_credentials,
+            )
         )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace-notebook-ssh-addons",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace-notebook-ssh-addons",
-            build_versions["maia-workspace-notebook-ssh-addons"],
-            "docker/Notebooks/Addons",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-notebook-ssh:{build_versions['maia-workspace-notebook-ssh']}"
-            ],
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "monai-toolkit",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "monai-toolkit",
-            build_versions["monai-toolkit"],
-            "docker/Notebooks/MONAI-Toolkit",
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-xnat",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-xnat",
-            build_versions["maia-xnat"],
-            "docker/xnat",
-            xnat_env_vars,
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-orthanc",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-orthanc",
-            build_versions["maia-orthanc"],
-            "docker/MAIA-Orthanc",
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-mlflow",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-mlflow",
-            build_versions["maia-mlflow"],
-            "docker/base",
-            ["RUN_MLFLOW_SERVER=True"],
-            registry_credentials=registry_credentials,
-        )
-    )
-
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-filebrowser",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-filebrowser",
-            build_versions["maia-filebrowser"],
-            "docker/base",
-            ["RUN_FILEBROWSER=True"],
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace-base",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace-base",
-            build_versions["maia-workspace-base"],
-            "docker/MAIA-Workspace",
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-gpu-booking-admission-controller",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-gpu-booking-admission-controller",
-            build_versions["maia-gpu-booking-admission-controller"],
-            "docker/GPU_Booking_Admission_Controller",
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-gpu-booking-pod-terminator",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-gpu-booking-pod-terminator",
-            build_versions["maia-gpu-booking-pod-terminator"],
-            "docker/GPU_Booking_Pod_Terminator",
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace-base-notebook",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace-base-notebook",
-            build_versions["maia-workspace-base-notebook"],
-            "docker/Notebooks/Base",
-            [f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base:{build_versions['maia-workspace-base']}"],
-            registry_credentials=registry_credentials,
-        )
-    )
-    helm_commands.append(
-        deploy_maia_kaniko(
-            "mkg-kaniko",
-            config_folder,
-            cluster_config_dict,
-            "maia-workspace-base-notebook-ssh",
-            project_id,
-            registry_server + registry_path,
-            docker_secret_name,
-            "maia-workspace-base-notebook-ssh",
-            build_versions["maia-workspace-base-notebook-ssh"],
-            "docker/Notebooks/SSH",
-            [
-                f"BASE_IMAGE={registry_server}{registry_path}/maia-workspace-base-notebook:{build_versions['maia-workspace-base-notebook']}"
-            ],
-            registry_credentials=registry_credentials,
-        )
-    )
-
+    else:
+        with open(build_custom_images, "r") as f:
+            custom_images = yaml.safe_load(f)
+        for custom_image in custom_images:
+            helm_commands.append(
+                deploy_maia_kaniko(
+                    "mkg-kaniko",
+                    config_folder,
+                    cluster_config_dict,
+                    custom_image["release_name"],
+                    project_id,
+                    registry_server + registry_path,
+                    docker_secret_name,
+                    custom_image["image_name"],
+                    custom_image["image_tag"],
+                    custom_image["subpath"],
+                    custom_image["build_args"],
+                    registry_credentials=registry_credentials,
+                    git_repo_url=custom_image["git_repo_url"],
+                )
+            )
     for helm_command in helm_commands:
         cmd = [
             "helm",
@@ -520,50 +585,56 @@ def build_maia_images(
         ]
         logger.debug(f"Helm command: {' '.join(cmd)}")
 
-    if "MAIA_HELM_REPO_URL" not in os.environ:
-        raise ValueError(
-            "MAIA_HELM_REPO_URL environment variable not set. Please set this variable to the URL of the MAIA Helm repository for mkg-kaniko. Example: https://minnelab.github.io/MAIA/"  # noqa: B950
-        )
-
     values = {
         "defaults": ["_self_"],
         "argo_namespace": os.environ["argocd_namespace"],
         "namespace": "mkg-kaniko",
         "admin_group_ID": admin_group_id,
         "destination_server": f"{cluster_address}",
-        "sourceRepos": [os.environ["MAIA_HELM_REPO_URL"]],
+        "sourceRepos": [kaniko_repo_url],
         "dockerRegistryServer": "https://" + registry_server if "registry_server" not in os.environ else registry_server,
         "dockerRegistryUsername": registry_username,
         "dockerRegistryPassword": registry_password,
         "dockerRegistryEmail": registry_email,
         "dockerRegistrySecretName": docker_secret_name,
     }
-
-    values["defaults"].extend(
-        [
-            {"maia_kube_values": "maia_kube_values"},
-            {"maia_dashboard_values": "maia_dashboard_values"},
-            {"maia_workspace_values": "maia_workspace_values"},
-            {"maia_workspace_notebook_values": "maia_workspace_notebook_values"},
-            {"maia_workspace_notebook_ssh_values": "maia_workspace_notebook_ssh_values"},
-            {"maia_workspace_notebook_ssh_addons_values": "maia_workspace_notebook_ssh_addons_values"},
-            {"maia_lab_pro_values": "maia_lab_pro_values"},
-            {"monai_toolkit_values": "monai_toolkit_values"},
-            {"maia_xnat_values": "maia_xnat_values"},
-            {"maia_orthanc_values": "maia_orthanc_values"},
-            {"maia_mlflow_values": "maia_mlflow_values"},
-        ]
-    )
-    values["defaults"].extend(
-        [
-            {"maia_workspace_base_values": "maia_workspace_base_values"},
-            {"maia_filebrowser_values": "maia_filebrowser_values"},
-            {"maia_workspace_base_notebook_values": "maia_workspace_base_notebook_values"},
-            {"maia_workspace_base_notebook_ssh_values": "maia_workspace_base_notebook_ssh_values"},
-            {"maia_gpu_booking_admission_controller_values": "maia_gpu_booking_admission_controller_values"},
-            {"maia_gpu_booking_pod_terminator_values": "maia_gpu_booking_pod_terminator_values"},
-        ]
-    )
+    if build_custom_images is None:
+        values["defaults"].extend(
+            [
+                {"maia_kube_values": "maia_kube_values"},
+                {"maia_dashboard_values": "maia_dashboard_values"},
+                {"maia_workspace_values": "maia_workspace_values"},
+                {"maia_workspace_notebook_values": "maia_workspace_notebook_values"},
+                {"maia_workspace_notebook_ssh_values": "maia_workspace_notebook_ssh_values"},
+                {"maia_workspace_notebook_ssh_addons_values": "maia_workspace_notebook_ssh_addons_values"},
+                {"maia_lab_pro_values": "maia_lab_pro_values"},
+                {"maia_dashboard_dev_values": "maia_dashboard_dev_values"},
+                {"maia_lab_values": "maia_lab_values"},
+                {"monai_toolkit_values": "monai_toolkit_values"},
+                {"maia_xnat_values": "maia_xnat_values"},
+                {"maia_orthanc_values": "maia_orthanc_values"},
+                {"maia_mlflow_values": "maia_mlflow_values"},
+                {"maia_nvflare_dashboard_values": "maia_nvflare_dashboard_values"},
+            ]
+        )
+        values["defaults"].extend(
+            [
+                {"maia_workspace_base_values": "maia_workspace_base_values"},
+                {"maia_filebrowser_values": "maia_filebrowser_values"},
+                {"maia_workspace_base_notebook_values": "maia_workspace_base_notebook_values"},
+                {"maia_workspace_base_notebook_ssh_values": "maia_workspace_base_notebook_ssh_values"},
+                {"maia_gpu_booking_admission_controller_values": "maia_gpu_booking_admission_controller_values"},
+                {"maia_gpu_booking_pod_terminator_values": "maia_gpu_booking_pod_terminator_values"},
+            ]
+        )
+    else:
+        with open(build_custom_images, "r") as f:
+            custom_images = yaml.safe_load(f)
+            custom_app_defaults = []
+            for custom_image in custom_images:
+                custom_app_defaults.append(f"{custom_image['release_name']}_values")
+            values["custom_app_values"] = custom_app_defaults
+            values["defaults"].append({f"{custom_image['release_name']}_values": f"{custom_image['release_name']}_values"})
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
 
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:

@@ -21,23 +21,27 @@ from pyhelm3 import Client
 import MAIA
 from MAIA.kubernetes_utils import create_helm_repo_secret_from_context
 from MAIA.maia_admin import (
-    create_loginapp_values,
-    create_minio_operator_values,
     install_maia_project,
 )
+from MAIA.maia_k8s_distros import get_ingress_class
 from MAIA.maia_core import (
     create_cert_manager_values,
     create_core_toolkit_values,
     create_gpu_booking_values,
     create_gpu_operator_values,
     create_ingress_nginx_values,
+    create_minio_operator_values,
     create_loki_values,
     create_metallb_values,
+    create_loginapp_values,
     create_nfs_server_provisioner_values,
     create_prometheus_values,
     create_tempo_values,
     create_traefik_values,
     create_metrics_server_values,
+    create_local_path_values,
+    create_kubeflow_values,
+    create_nvidia_dra_values,
 )
 
 version = MAIA.__version__
@@ -45,22 +49,16 @@ version = MAIA.__version__
 
 TIMESTAMP = "{:%Y-%m-%d_%H-%M-%S}".format(datetime.datetime.now())
 
-DESC = dedent(
-    """
+DESC = dedent("""
     Script to Install MAIA Core Toolkit to a Kubernetes cluster from ArgoCD. The specific MAIA configuration
     is specified by setting the corresponding ``--maia-config-file``, and the cluster configuration is specified
     by setting the corresponding ``--cluster-config``.
-    """  # noqa: E501
-)
-EPILOG = dedent(
-    """
+    """)  # noqa: E501
+EPILOG = dedent("""
     Example call:
     ::
         {filename} --cluster-config /PATH/TO/cluster_config.yaml --config-folder /PATH/TO/config_folder
-    """.format(  # noqa: E501
-        filename=Path(__file__).stem
-    )
-)
+    """.format(filename=Path(__file__).stem))  # noqa: E501
 
 
 def get_arg_parser():
@@ -114,6 +112,9 @@ def main(cluster_config, config_folder):
 
 
 def install_maia_core_toolkit(cluster_config, config_folder):
+    # If MAIA_PRIVATE_REGISTRY is set to an empty string, unset it
+    if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
+        del os.environ["MAIA_PRIVATE_REGISTRY"]
     private_maia_registry = os.environ.get("MAIA_PRIVATE_REGISTRY", None)
 
     cluster_config_dict = yaml.safe_load(Path(cluster_config).read_text())
@@ -130,12 +131,9 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     else:
         cluster_address = "https://kubernetes.default.svc"
 
-    dev_distros = ["microk8s", "k0s"]
     if "ingress_class" not in cluster_config_dict:
-        if "k8s_distribution" in cluster_config_dict and cluster_config_dict["k8s_distribution"] in dev_distros:
-            cluster_config_dict["ingress_class"] = "maia-core-traefik"
-        else:
-            cluster_config_dict["ingress_class"] = "nginx"
+        if "k8s_distribution" in cluster_config_dict:
+            cluster_config_dict["ingress_class"] = get_ingress_class(cluster_config_dict["k8s_distribution"])
 
     helm_commands = []
     helm_commands.append(create_prometheus_values(config_folder, project_id, cluster_config_dict))
@@ -143,21 +141,22 @@ def install_maia_core_toolkit(cluster_config, config_folder):
     helm_commands.append(create_loki_values(config_folder, project_id))
     helm_commands.append(create_tempo_values(config_folder, project_id))
     helm_commands.append(create_core_toolkit_values(config_folder, project_id, cluster_config_dict))
-
+    helm_commands.append(create_nvidia_dra_values(config_folder, project_id))
     # Allow either traefik or nginx ingress controller
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         helm_commands.append(create_traefik_values(config_folder, project_id, cluster_config_dict))
     else:
         helm_commands.append(create_ingress_nginx_values(config_folder, project_id))
 
-    helm_commands.append(create_metallb_values(config_folder, project_id))
-    helm_commands.append(create_cert_manager_values(config_folder, project_id))
+    helm_commands.append(create_metallb_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_cert_manager_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_gpu_operator_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_nfs_server_provisioner_values(config_folder, project_id, cluster_config_dict))
 
     helm_commands.append(create_loginapp_values(config_folder, project_id, cluster_config_dict))
-    helm_commands.append(create_minio_operator_values(config_folder, project_id))
-
+    helm_commands.append(create_minio_operator_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_local_path_values(config_folder, project_id, cluster_config_dict))
+    helm_commands.append(create_kubeflow_values(config_folder, project_id, cluster_config_dict))
     if "MAIA_DASHBOARD_DOMAIN" in os.environ and "dashboard_api_secret" in os.environ:
         helm_commands.append(create_gpu_booking_values(config_folder, project_id))
     json_key_path = os.environ.get("JSON_KEY_PATH", None)
@@ -170,8 +169,8 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             try:
                 with open(json_key_path, "r") as f:
                     docker_credentials = json.load(f)
-                    username = docker_credentials.get("harbor_username")
-                    password = docker_credentials.get("harbor_password")
+                    username = docker_credentials.get("username")
+                    password = docker_credentials.get("password")
             except Exception:
                 with open(json_key_path, "r") as f:
                     docker_credentials = f.read()
@@ -273,9 +272,12 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             {"loginapp_values": "loginapp_values"},
             {"minio_operator_values": "minio_operator_values"},
             {"gpu_operator_values": "gpu_operator_values"},
+            {"nvidia_dra_values": "nvidia_dra_values"},
             {"nfs_provisioner_values": "nfs_provisioner_values"},
             {"cert_manager_chart_info": "cert_manager_chart_info"},
             {"gpu_booking_values": "gpu_booking_values"},
+            {"local_path_values": "local_path_values"},
+            {"kubeflow_values": "kubeflow_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "admin_group_ID": admin_group_id,
@@ -321,8 +323,8 @@ def install_maia_core_toolkit(cluster_config, config_folder):
         try:
             with open(json_key_path, "r") as f:
                 docker_credentials = json.load(f)
-                username = docker_credentials.get("harbor_username")
-                password = docker_credentials.get("harbor_password")
+                username = docker_credentials.get("username")
+                password = docker_credentials.get("password")
         except Exception:
             with open(json_key_path, "r") as f:
                 docker_credentials = f.read()

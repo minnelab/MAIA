@@ -5,9 +5,13 @@ Copyright (c) 2019 - present AppSeed.us
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from apps.models import MAIAUser, MAIAProject
 from .models import MAIAInfo
 from django.conf import settings
+
+if settings.MONGO_DB_ENABLED:
+    from apps.mongodb_models import MAIAUser, MAIAProject
+else:
+    from apps.models import MAIAUser, MAIAProject
 from MAIA.keycloak_utils import get_groups_in_keycloak
 
 
@@ -54,9 +58,11 @@ class SignUpForm(UserCreationForm):
         )
         self.fields["password1"] = forms.CharField(
             initial="maiaPassword",
+            required=False,
         )
         self.fields["password2"] = forms.CharField(
             initial="maiaPassword",
+            required=False,
         )
 
     class Meta:
@@ -78,7 +84,10 @@ class RegisterProjectForm(forms.ModelForm):
 
     email = forms.EmailField(
         widget=forms.EmailInput(
-            attrs={"placeholder": "Your Email. If you specify a Principal Investigator below, they will be registered as the Project Admin instead.", "class": "form-control"}
+            attrs={
+                "placeholder": "Your Email. If you specify a Principal Investigator below, they will be registered as the Project Admin instead.",
+                "class": "form-control",
+            }
         )
     )
 
@@ -92,7 +101,7 @@ class RegisterProjectForm(forms.ModelForm):
         ),
     )
 
-    conda = forms.FileField(
+    env_file = forms.FileField(
         required=False,
         label="Upload here your Conda Environment/PIP Requirements file to automatically load it in your environment.",
     )
@@ -114,25 +123,53 @@ class RegisterProjectForm(forms.ModelForm):
 
     description = forms.CharField(
         required=False,
-        widget=forms.Textarea(
-            attrs={
-                "placeholder": "Brief description of your project",
-                "class": "form-control",
-                "rows": 3
-            }
-        )
+        widget=forms.Textarea(attrs={"placeholder": "Brief description of your project", "class": "form-control", "rows": 3}),
     )
 
     supervisor = forms.EmailField(
         required=False,
         widget=forms.EmailInput(
+            attrs={"placeholder": "Email of the Principal Investigator (optional for student projects)", "class": "form-control"}
+        ),
+    )
+
+    resource_needs = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
             attrs={
-                "placeholder": "Email of the Principal Investigator (optional for student projects)",
-                "class": "form-control"
+                "placeholder": "Describe expected resource usage (e.g. training a 3D U-Net for ~2 weeks, 1 GPU full-time, 50 GB data).",
+                "class": "form-control",
+                "rows": 3,
             }
-        )
+        ),
     )
 
     class Meta:
         model = MAIAProject
-        fields = ("id", "namespace", "gpu", "conda", "date", "email", "memory_limit", "cpu_limit", "description", "supervisor")
+        if settings.MONGO_DB_ENABLED:
+            fields = (
+                "id",
+                "namespace",
+                "gpu",
+                "env_file",
+                "date",
+                "email",
+                "memory_limit",
+                "cpu_limit",
+                "description",
+                "supervisor",
+                "resource_needs",
+            )
+        else:
+            fields = (
+                "namespace",
+                "gpu",
+                "env_file",
+                "date",
+                "email",
+                "memory_limit",
+                "cpu_limit",
+                "description",
+                "supervisor",
+                "resource_needs",
+            )

@@ -7,12 +7,12 @@ This Ansible role retrieves a kubeconfig for the local Rancher-managed cluster u
 The `get_kubeconfig_from_rancher_local` role:
 1. Loads environment variables from `env.json` in the specified `config_folder`
 2. Reads the cluster configuration YAML (`{{ cluster_name }}.yaml`) from the same folder
-3. Extracts `domain` and `rancher_password` from the cluster configuration
+3. Extracts `domain` from the cluster configuration
 4. Logs into Rancher and obtains an API token
 5. Creates a Rancher API key and extracts its secret
 6. Calls the Rancher `generateKubeconfig` action for the `local` cluster
 7. Saves the returned kubeconfig to `{{ config_folder }}/{{ kubeconfig_file }}`
-8. Extracts the Rancher bearer token from the kubeconfig and writes it back into the cluster configuration as `rancher_token`
+8. Extracts the Rancher bearer token from the kubeconfig and writes it back into the env.json file as `rancher_token`
 
 ## Requirements
 
@@ -43,7 +43,6 @@ The role requires a valid cluster configuration file at:
 
 This file must contain at least:
 - `domain`
-- `rancher_password`
 
 The `cluster_name` is expected to be provided via `env.json` or from the calling playbook.
 
@@ -77,12 +76,12 @@ The `cluster_name` is expected to be provided via `env.json` or from the calling
 Key tasks performed by the role:
 - Load environment variables from `env.json`
 - Read and decode the cluster configuration YAML
-- Extract `domain` and `rancher_password`
+- Extract `domain`
 - Login to Rancher and obtain a token
 - Create a Rancher API key and capture its secret
 - Call `generateKubeconfig` for the `local` cluster
 - Save the kubeconfig YAML to `config_folder`
-- Extract `rancher_token` from the kubeconfig and write it back into the cluster configuration
+- Extract `rancher_token` from the kubeconfig and write it back into the env.json file
 
 ## License
 

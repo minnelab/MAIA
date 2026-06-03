@@ -17,19 +17,192 @@
     state: present
   become: true
 
-- name: Ensure ArgoCD namespace exists
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Namespace
-    name: "{{ argocd_namespace }}"
-    state: present
+- name: Set proxy environment variables for k3s if proxy_ip and no_proxy_ips are set
+  when: proxy_ip is defined and proxy_ip != "" and no_proxy_ips is defined and no_proxy_ips != ""
+  block:
+    - name: Ensure /etc/systemd/system/k3s.service.env is present with proxy configuration
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s.service.env
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          http_proxy='https://{{ proxy_ip }}:3130/'
+          https_proxy='https://{{ proxy_ip }}:3130/'
+          NO_PROXY="{{ no_proxy_ips }},10.36.0.0/16,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,argocd-repo-server,argocd-server"
+    - name: Reload systemd manager configuration
+      become: true
+      ansible.builtin.command: systemctl daemon-reload
+      changed_when: false
+    - name: Restart k3s service to apply proxy configuration
+      become: true
+      ansible.builtin.systemd:
+        name: k3s
+        state: restarted
+        daemon_reload: yes
+  tags: k3s-proxy
+
+
+- name: Check if Kyverno is already installed
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} get deployment kyverno-admission-controller -n kyverno
+  register: kyverno_check_result
+  failed_when: false
+  changed_when: false
+  when: (install_kyverno | default(false) | bool)
+
+- name: Add Kyverno helm repo
+  ansible.builtin.command: >
+    helm repo add kyverno https://kyverno.github.io/kyverno/
+  register: kyverno_helm_repo_add
+  changed_when: "'has been added' in kyverno_helm_repo_add.stdout or 'exists' in kyverno_helm_repo_add.stderr"
+  failed_when: kyverno_helm_repo_add.rc != 0 and 'exists' not in (kyverno_helm_repo_add.stderr | default(''))
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+
+- name: Update helm repos
+  ansible.builtin.command: helm repo update
+  register: kyverno_helm_repo_update
+  changed_when: false
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+
+- name: Create Kyverno Helm Values file
+  ansible.builtin.copy:
+    dest: "{{ config_folder }}/kyverno-values.yaml"
+    content: |
+      admissionController:
+        container:
+          image:
+            defaultRegistry: ghcr.io
+        initContainer:
+          image:
+            defaultRegistry: ghcr.io
+
+      backgroundController:
+        image:
+          defaultRegistry: ghcr.io
+
+      cleanupController:
+        image:
+          defaultRegistry: ghcr.io
+
+      crds:
+        migration:
+          image:
+            defaultRegistry: ghcr.io
+
+      reportsController:
+        image:
+          defaultRegistry: ghcr.io
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+
+- name: Install Kyverno via Helm
+  ansible.builtin.command: >
+    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace --values "{{ config_folder }}/kyverno-values.yaml"
+  register: kyverno_helm_install
+  # Do not fail if already installed
+  failed_when: kyverno_helm_install.rc != 0 and 'cannot re-use a name that is still in use' not in (kyverno_helm_install.stderr | default(''))
+  changed_when: "'deployed' in (kyverno_helm_install.stdout | default(''))"
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Apply ClusterPolicy to inject proxy environment variables (Kyverno)
+  ansible.builtin.blockinfile:
+    path: "{{ config_folder }}/kyverno-proxy-policy.yaml"
+    create: yes
+    block: |
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        name: inject-proxy-env-vars
+      spec:
+        rules:
+        - name: inject-proxy
+          match:
+            any:
+            - resources:
+                kinds:
+                - Pod
+          exclude:
+                any:
+                - resources:
+                    namespaces:
+                    - harbor
+                - resources:
+                    namespaces:
+                    - kubeflow
+                    selector:
+                      matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                        - ml-pipeline
+                        - seaweedfs
+                        - ml-pipeline-scheduledworkflow
+          mutate:
+            patchStrategicMerge:
+              spec:
+                containers:
+                - (name): "?*"
+                  env:
+                  - name: HTTP_PROXY
+                    value: "{{ proxy_ip }}:3130"
+                  - name: HTTPS_PROXY
+                    value: "{{ proxy_ip }}:3130"
+                  - name: NO_PROXY
+                    value: "localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}"
+                  - name: http_proxy
+                    value: "{{ proxy_ip }}:3130"
+                  - name: https_proxy
+                    value: "{{ proxy_ip }}:3130"
+                  - name: no_proxy
+                    value: "localhost,127.0.0.1,{{ proxy_ip }},{{ no_proxy_ips }}"
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+
+- name: Apply Kyverno ClusterPolicy for proxy env injection
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} apply -f {{ config_folder }}/kyverno-proxy-policy.yaml
+  register: kyverno_proxy_policy_apply
+  changed_when: "'created' in (kyverno_proxy_policy_apply.stdout | default('')) or 'configured' in (kyverno_proxy_policy_apply.stdout | default(''))"
+  failed_when: kyverno_proxy_policy_apply.rc != 0
   delegate_to: localhost
   environment:
-    KUBECONFIG: "{{ argocd_kubeconfig }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  when: 
+    - (install_kyverno | default(false) | bool)
+    - kyverno_check_result is defined
+    - kyverno_check_result.rc != 0
+
+
+- name: Ensure ArgoCD namespace exists
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} create namespace "{{ argocd_namespace }}"
+  register: create_argocd_ns
+  failed_when: create_argocd_ns.rc != 0 and 'AlreadyExists' not in (create_argocd_ns.stderr | default(''))
+  changed_when: "'Created' in (create_argocd_ns.stdout | default(''))"
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
 - name: Update ArgoCD initial admin secret
   ansible.builtin.command: >
-    kubectl -n "{{ argocd_namespace }}"
+    {{ kubernetes_kubectl_cmd }} -n "{{ argocd_namespace }}"
     create secret generic argocd-secret
     --from-literal=admin.password="{{ argocd_bcrypt_password }}"
     --from-literal=admin.passwordMtime="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -41,54 +214,64 @@
     KUBECONFIG: "{{ argocd_kubeconfig }}"
 
 - name: Install ArgoCD manifests
-  kubernetes.core.k8s:
-    state: present
-    namespace: "{{ argocd_namespace }}"
-    src: "{{ argocd_manifest_url }}"
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} apply -n "{{ argocd_namespace }}" --server-side --force-conflicts -f "{{ argocd_manifest_url }}"
+  register: apply_argocd_manifests
+  # Do not fail on 'Too long' CRD annotation error or annotation warnings
+  failed_when: >
+    apply_argocd_manifests.rc != 0 and
+    (
+      "metadata.annotations: Too long:" not in (apply_argocd_manifests.stderr | default('')) and
+      "is missing the kubectl.kubernetes.io/last-applied-configuration annotation" not in (apply_argocd_manifests.stderr | default(''))
+    )
+  changed_when: "'created' in (apply_argocd_manifests.stdout | default(''))"
   delegate_to: localhost
   environment:
-    KUBECONFIG: "{{ argocd_kubeconfig }}"
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
 - name: Display ArgoCD UI URL
   ansible.builtin.debug:
     msg: "ArgoCD UI: {{ argocd_ui_url }}"
 
 - name: Ensure automation service account exists
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: ServiceAccount
-    namespace: "{{ argocd_namespace }}"
-    name: "{{ argocd_service_account }}"
-    state: present
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} create serviceaccount "{{ argocd_service_account }}" -n "{{ argocd_namespace }}"
+  register: create_argocd_service_account
+  failed_when: create_argocd_service_account.rc != 0 and
+    (
+      'AlreadyExists' not in (create_argocd_service_account.stderr | default('')) and
+      'already exists' not in (create_argocd_service_account.stderr | default(''))
+    )
+  changed_when: "'Created' in (create_argocd_service_account.stdout | default(''))"
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ argocd_kubeconfig }}"
 
 - name: Ensure RoleBinding for automation service account exists
-  kubernetes.core.k8s:
-    api_version: rbac.authorization.k8s.io/v1
-    kind: RoleBinding
-    namespace: "{{ argocd_namespace }}"
-    name: "{{ argocd_service_account }}-binding"
-    definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: RoleBinding
-      metadata:
-        name: "{{ argocd_service_account }}-binding"
-        namespace: "{{ argocd_namespace }}"
-      subjects:
-        - kind: ServiceAccount
-          name: "{{ argocd_service_account }}"
-          namespace: "{{ argocd_namespace }}"
-      roleRef:
-        kind: Role
-        name: "{{ argocd_role_name }}"
-        apiGroup: rbac.authorization.k8s.io
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} create rolebinding "{{ argocd_service_account }}-binding" -n "{{ argocd_namespace }}" --serviceaccount="{{ argocd_service_account }}:{{ argocd_namespace }}" --clusterrole="{{ argocd_role_name }}"
+  register: create_argocd_role_binding
+  failed_when: create_argocd_role_binding.rc != 0 and 'AlreadyExists' not in (create_argocd_role_binding.stderr | default(''))
+  changed_when: "'Created' in (create_argocd_role_binding.stdout | default(''))"
+  failed_when: create_argocd_role_binding.rc != 0 and
+    (
+      'AlreadyExists' not in (create_argocd_role_binding.stderr | default('')) and
+      'already exists' not in (create_argocd_role_binding.stderr | default(''))
+    )
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ argocd_kubeconfig }}"
 
+ 
+- name: Run additional commands
+  ansible.builtin.command: "{{ item }}"
+  loop: "{{ extra_commands | from_yaml | default([]) }}"
+  when: extra_commands is defined and (extra_commands | length > 0)
+  register: extra_commands_result
+  changed_when: false
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
 
 - name: Run additional ArgoCD connect tasks
   import_tasks: connect.yml
-

@@ -1,0 +1,3 @@
+[control-plane]
+maia-dev-node-0 ansible_user=root ansible_become=true
+

@@ -9,9 +9,12 @@ from minio import Minio
 import kubernetes
 import requests
 import yaml
-from kubernetes import config
+from kubernetes import config, client
 from kubernetes.client.rest import ApiException
 from loguru import logger
+import urllib3
+
+CLUSTER_OFFLINE_MARKER = "Cluster API Not Reachable"
 
 
 def get_minio_shareable_link(object_name, bucket_name, settings):
@@ -28,10 +31,27 @@ def get_minio_shareable_link(object_name, bucket_name, settings):
             object_name,
             expires=timedelta(hours=168),  # Link valid for 7 days
         )
+        logger.info(f"MinIO public URL: {settings.MINIO_PUBLIC_URL}")
+        logger.info(f"MinIO shareable link: {url}")
         return url
-    except Exception as e:
-        logger.error(f"Error connecting to MinIO: {e}")
-        return None
+
+    except Exception:
+        client = Minio(
+            settings.MINIO_PUBLIC_URL,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=settings.MINIO_PUBLIC_SECURE,
+            http_client=urllib3.PoolManager(cert_reqs="CERT_NONE"),
+        )
+        client.bucket_exists(settings.BUCKET_NAME)
+        url = client.presigned_get_object(
+            bucket_name,
+            object_name,
+            expires=timedelta(hours=168),  # Link valid for 7 days
+        )
+        logger.info(f"MinIO public URL: {settings.MINIO_PUBLIC_URL}")
+        logger.info(f"MinIO shareable link: {url}")
+        return url
 
 
 def label_pod_for_deletion(namespace, pod_name):
@@ -156,14 +176,14 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
             except Exception:
 
                 cluster = cluster_names[api_url]
-                cluster_dict[cluster] = ["Cluster API Not Reachable"]
-                node_status_dict["Cluster API Not Reachable"] = ["API"]
+                cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+                node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                 continue
         else:
             if api_url.endswith("None"):
                 cluster = cluster_names[api_url]
-                cluster_dict[cluster] = ["Cluster API Not Reachable"]
-                node_status_dict["Cluster API Not Reachable"] = ["API"]
+                cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+                node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                 continue
             else:
                 try:
@@ -172,15 +192,21 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
                     )
                 except Exception:
                     cluster = cluster_names[api_url]
-                    cluster_dict[cluster] = ["Cluster API Not Reachable"]
-                    node_status_dict["Cluster API Not Reachable"] = ["API"]
+                    cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+                    node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                     continue
-        nodes = json.loads(response.text)
+        try:
+            nodes = json.loads(response.text)
+        except json.JSONDecodeError:
+            cluster = cluster_names[api_url]
+            cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+            node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
+            continue
 
         if "items" not in nodes:
             cluster = cluster_names[api_url]
-            cluster_dict[cluster] = ["Cluster API Not Reachable"]
-            node_status_dict["Cluster API Not Reachable"] = ["API"]
+            cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+            node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
             continue
         for node in nodes["items"]:
             node_name = node["metadata"]["name"]
@@ -359,6 +385,8 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
 
                             elif req["memory"][-1:] == "M":
                                 container_memory = int(req["memory"][:-1]) / 1024.0
+                            elif req["memory"][-1:] == "G":
+                                container_memory = int(req["memory"][:-1])
                             else:
 
                                 container_memory = int(req["memory"]) / (1024 * 1024 * 1024)
@@ -389,11 +417,11 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
             gpu_dict[node_name] = []
 
             if node_status_dict[node_name][0] != "True":
-                gpu_dict[node_name].append("NA")
-                gpu_dict[node_name].append("NA")
+                gpu_dict[node_name].append(0)
+                gpu_dict[node_name].append(0)
             elif node_status_dict[node_name][1]:
-                gpu_dict[node_name].append("NA")
-                gpu_dict[node_name].append("NA")
+                gpu_dict[node_name].append(0)
+                gpu_dict[node_name].append(0)
             else:
                 gpu_dict[node_name].append(n_gpu_allocatable - n_gpu_requested)
                 gpu_dict[node_name].append(n_gpu_allocatable)
@@ -452,7 +480,7 @@ def get_filtered_available_nodes(gpu_dict, cpu_dict, ram_dict, gpu_request, cpu_
     )
 
 
-def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
+def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings, in_local_cluster_token=False):
     """
     Generates a Kubernetes configuration dictionary for a given user and cluster.
 
@@ -466,6 +494,8 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
         The Kubernetes namespace.
     cluster_id : str
         The cluster ID.
+    in_local_cluster_token : bool, optional
+        Whether to use the local cluster token instead of the ID token.
     settings : object
         An object containing various settings, including:
         - CLUSTER_NAMES (dict): A dictionary mapping cluster names to their IDs.
@@ -481,7 +511,11 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
     """
     cluster_apis = {k: v for v, k in settings.CLUSTER_NAMES.items()}
 
-    if cluster_apis[cluster_id] in settings.PRIVATE_CLUSTERS:
+    if cluster_apis[cluster_id] in settings.PRIVATE_CLUSTERS or in_local_cluster_token:
+        if not in_local_cluster_token:
+            token = settings.PRIVATE_CLUSTERS[cluster_apis[cluster_id]]
+        else:
+            token = open(Path("/var/run/secrets/kubernetes.io/serviceaccount/token")).read()
         kube_config = {
             "apiVersion": "v1",
             "kind": "Config",
@@ -500,7 +534,7 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
                     },
                 }
             ],
-            "users": [{"name": user_id, "user": {"token": settings.PRIVATE_CLUSTERS[cluster_apis[cluster_id]]}}],
+            "users": [{"name": user_id, "user": {"token": token}}],
         }
 
     else:
@@ -533,6 +567,7 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
                                 "client-id": settings.OIDC_RP_CLIENT_ID,
                                 "id-token": id_token,
                                 "client-secret": settings.OIDC_RP_CLIENT_SECRET,
+                                "refresh-token": "",
                             },
                             "name": "oidc",
                         }
@@ -540,6 +575,8 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings):
                 }
             ],
         }
+        if settings.OIDC_CA_BUNDLE and isinstance(settings.OIDC_CA_BUNDLE, str) and Path(settings.OIDC_CA_BUNDLE).exists():
+            kube_config["users"][0]["user"]["auth-provider"]["config"]["idp-certificate-authority"] = settings.OIDC_CA_BUNDLE
 
     return kube_config
 
@@ -641,6 +678,8 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                             if path["backend"]["service"]["name"] == namespace + "-orthanc-svc":
 
                                 maia_workspace_apps["orthanc"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["orthanc"] += "/"
                                 maia_workspace_apps["ohif"] = "https://" + rule["host"] + path["path"] + "/ohif/"
 
                             if "port" in path["backend"]["service"] and "name" in path["backend"]["service"]["port"]:
@@ -659,7 +698,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                             ):
                                 nvflare_dashboards.append(
                                     {
-                                        "name": ingress["metadata"]["name"][: -len("-maia-nvflare-dashboard")],
+                                        "name": ingress["metadata"]["name"][: -len("-nvflare-dashboard")],
                                         "url": "https://" + rule["host"] + path["path"],
                                     }
                                 )
@@ -667,10 +706,18 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 "mlflow"
                             ):
                                 maia_workspace_apps["mlflow"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["mlflow"] += "/"
                             if path["backend"]["service"]["name"] == namespace + "-mlflow-mkg" and path["path"].endswith(
-                                "minio-console"
+                                "minio-console-" + namespace
                             ):
                                 maia_workspace_apps["minio_console"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["minio_console"] += "/"
+                            if path["backend"]["service"]["name"] == namespace + "-filebrowser-maia-filebrowser":
+                                maia_workspace_apps["filebrowser"] = "https://" + rule["host"] + path["path"]
+                                if not path["path"].endswith("/"):
+                                    maia_workspace_apps["filebrowser"] += "/"
 
                 for service in services["items"]:
                     for port in service["spec"]["ports"]:
@@ -804,11 +851,227 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
         maia_workspace_apps["minio_console"] = "N/A"
     if "xnat" not in maia_workspace_apps:
         maia_workspace_apps["xnat"] = "N/A"
+    if "filebrowser" not in maia_workspace_apps:
+        maia_workspace_apps["filebrowser"] = "N/A"
 
     return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards
 
 
-def create_namespace_from_context(namespace_id):
+def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):
+    """
+    Creates ServiceAccounts, RoleBindings, and an Istio AuthorizationPolicy
+    for a Kubeflow profile namespace.
+    """
+    # Initialize K8s API clients
+    core_api = client.CoreV1Api()
+    rbac_api = client.RbacAuthorizationV1Api()
+    custom_api = client.CustomObjectsApi()
+
+    # Define the common owner reference linking these to the Kubeflow Profile
+    owner_ref = [
+        {
+            "apiVersion": "kubeflow.org/v1",
+            "kind": "Profile",
+            "name": namespace,
+            "uid": uid,
+            "controller": True,
+            "blockOwnerDeletion": True,
+        }
+    ]
+
+    # --- 1. Define Resource Manifests (as Python Dictionaries) ---
+
+    service_accounts = [
+        {
+            "apiVersion": "v1",
+            "kind": "ServiceAccount",
+            "metadata": {"name": "default-editor", "namespace": namespace, "ownerReferences": owner_ref},
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "ServiceAccount",
+            "metadata": {"name": "default-viewer", "namespace": namespace, "ownerReferences": owner_ref},
+        },
+    ]
+
+    role_bindings = [
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {
+                "name": "namespaceAdmin",
+                "namespace": namespace,
+                "ownerReferences": owner_ref,
+                "annotations": {"role": "admin", "user": owner},
+            },
+            "subjects": [{"kind": "User", "apiGroup": "rbac.authorization.k8s.io", "name": owner}],
+            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "kubeflow-admin"},
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {"name": "default-editor", "namespace": namespace, "ownerReferences": owner_ref},
+            "subjects": [{"kind": "ServiceAccount", "name": "default-editor", "namespace": namespace}],
+            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "kubeflow-edit"},
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "RoleBinding",
+            "metadata": {"name": "default-viewer", "namespace": namespace, "ownerReferences": owner_ref},
+            "subjects": [{"kind": "ServiceAccount", "name": "default-viewer", "namespace": namespace}],
+            "roleRef": {"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": "kubeflow-view"},
+        },
+    ]
+
+    auth_policy = {
+        "apiVersion": "security.istio.io/v1beta1",
+        "kind": "AuthorizationPolicy",
+        "metadata": {
+            "name": "ns-owner-access-istio",
+            "namespace": namespace,
+            "ownerReferences": owner_ref,
+            "annotations": {"role": "admin", "user": owner},
+        },
+        "spec": {
+            "rules": [
+                {
+                    "from": [
+                        {
+                            "source": {
+                                "principals": [
+                                    "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account",
+                                    "cluster.local/ns/kubeflow/sa/ml-pipeline-ui",
+                                ]
+                            }
+                        }
+                    ],
+                    "when": [{"key": "request.headers[kubeflow-userid]", "values": [owner]}],
+                },
+                {"when": [{"key": "source.namespace", "values": [namespace]}]},
+                {"to": [{"operation": {"paths": ["/healthz", "/metrics", "/wait-for-drain"]}}]},
+                {
+                    "from": [{"source": {"principals": ["cluster.local/ns/kubeflow/sa/notebook-controller-service-account"]}}],
+                    "to": [{"operation": {"methods": ["GET"], "paths": ["*/api/kernels"]}}],
+                },
+            ]
+        },
+    }
+
+    # --- 2. Create the Resources in K8s ---
+
+    def create_resource(api_call, name, kind, **kwargs):
+        try:
+            api_call(**kwargs)
+            logger.info(f"Created {kind}: {name}")
+        except ApiException as e:
+            if e.status == 409:
+                logger.info(f"{kind} '{name}' already exists. Skipping.")
+            else:
+                logger.error(f"Failed to create {kind} '{name}': {e}")
+
+    # Create ServiceAccounts
+    for sa in service_accounts:
+        create_resource(
+            core_api.create_namespaced_service_account, sa["metadata"]["name"], "ServiceAccount", namespace=namespace, body=sa
+        )
+
+    # Create RoleBindings
+    for rb in role_bindings:
+        create_resource(
+            rbac_api.create_namespaced_role_binding, rb["metadata"]["name"], "RoleBinding", namespace=namespace, body=rb
+        )
+
+    # Create AuthorizationPolicy (Custom Object)
+    create_resource(
+        custom_api.create_namespaced_custom_object,
+        auth_policy["metadata"]["name"],
+        "AuthorizationPolicy",
+        group="security.istio.io",
+        version="v1beta1",
+        namespace=namespace,
+        plural="authorizationpolicies",
+        body=auth_policy,
+    )
+
+
+def create_kubeflow_profile(namespace: str, owner: str):
+    """
+    Creates a Kubeflow Profile in the specified namespace.
+
+    Parameters
+    ----------
+    namespace : str
+        The namespace to create the Kubeflow Profile in.
+    owner : str
+        The owner of the Kubeflow Profile.
+    """
+    profile = {
+        "apiVersion": "kubeflow.org/v1",
+        "kind": "Profile",
+        "metadata": {
+            "name": namespace,
+        },
+        "spec": {
+            "owner": {
+                "kind": "User",
+                "name": owner,
+            }
+        },
+    }
+    try:
+        custom_api = client.CustomObjectsApi()
+        custom_api.create_namespaced_custom_object(
+            group="kubeflow.org",
+            version="v1",
+            namespace=namespace,
+            plural="profiles",
+            body=profile,
+        )
+    except ApiException as e:
+        if e.status == 409:
+            logger.info(f"Profile '{namespace}' already exists. Skipping.")
+            return
+        else:
+            logger.error(f"Failed to create profile '{namespace}': {e}")
+            return
+    return
+
+
+def get_profile_uid(profile_name: str) -> str:
+    """
+    Reads the UID of a Kubeflow Profile given its name.
+
+    Args:
+        profile_name (str): The name of the Profile resource.
+
+    Returns:
+        str: The UID of the resource, or None if not found/error.
+    """
+    # 2. Initialize the CustomObjectsApi
+    custom_api = client.CustomObjectsApi()
+
+    # 3. Define the CRD target parameters
+    group = "kubeflow.org"
+    version = "v1"
+    plural = "profiles"
+
+    try:
+        # 4. Fetch the cluster-scoped custom object
+        profile_resource = custom_api.get_cluster_custom_object(group=group, version=version, plural=plural, name=profile_name)
+
+        # 5. Extract the UID from the metadata
+        uid = profile_resource.get("metadata", {}).get("uid")
+        return uid
+
+    except ApiException as e:
+        if e.status == 404:
+            logger.info(f"Profile '{profile_name}' not found.")
+        else:
+            logger.error(f"An API error occurred: {e.reason} ({e.status})")
+        return None
+
+
+def create_namespace_from_context(namespace_id, kubeflow_namespace=False, owner_email=None):
     """
     Create a Kubernetes namespace using the provided namespace ID.
 
@@ -816,7 +1079,10 @@ def create_namespace_from_context(namespace_id):
     ----------
     namespace_id : str
         The ID of the namespace to be created.
-
+    kubeflow_namespace : bool, optional
+        Flag indicating if the namespace is a Kubeflow namespace. Defaults to False.
+    owner_email : str, optional
+        The email of the owner of the namespace. Defaults to None.
     Returns
     -------
     None
@@ -827,17 +1093,71 @@ def create_namespace_from_context(namespace_id):
     ApiException
         If there is an error when calling the Kubernetes CoreV1Api to create the namespace.
     """
+    # Check if the namespace already exists before trying to create it
+    skip_creation = False
     with kubernetes.client.ApiClient() as api_client:
         api_instance = kubernetes.client.CoreV1Api(api_client)
-        body = kubernetes.client.V1Namespace(metadata=kubernetes.client.V1ObjectMeta(name=namespace_id))
         try:
-            _ = api_instance.create_namespace(body)
-            logger.debug(f"Namespace {namespace_id} created successfully")
-        except ApiException as e:
-            logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
+            api_instance.read_namespace(name=namespace_id)
+            logger.info(f"Namespace {namespace_id} already exists.")
+            skip_creation = True
+        except kubernetes.client.exceptions.ApiException as e:
+            if e.status != 404:
+                logger.error(f"Exception when checking for existing namespace: {e}")
+                raise
+    if not skip_creation:
+        with kubernetes.client.ApiClient() as api_client:
+            api_instance = kubernetes.client.CoreV1Api(api_client)
+            body = kubernetes.client.V1Namespace(metadata=kubernetes.client.V1ObjectMeta(name=namespace_id))
+            try:
+                _ = api_instance.create_namespace(body)
+                logger.debug(f"Namespace {namespace_id} created successfully")
+            except ApiException as e:
+                logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
+
+    if kubeflow_namespace:
+        logger.info(f"Adding Kubeflow labels to namespace {namespace_id}")
+        create_kubeflow_profile(namespace=namespace_id, owner=owner_email)
+        namespace_uid = get_profile_uid(namespace_id)
+        # Add the specified labels to the namespace if this is a Kubeflow namespace
+        # The label "kubernetes.io/metadata.name" is usually the namespace name, so set it dynamically
+        labels = {
+            "app.kubernetes.io/part-of": "kubeflow-profile",
+            "istio-injection": "enabled",
+            "katib.kubeflow.org/metrics-collector-injection": "enabled",
+            "pipelines.kubeflow.org/enabled": "true",
+            "serving.kubeflow.org/inferenceservice": "enabled",
+        }
+        # Patch the namespace to add these labels
+        body = {
+            "metadata": {
+                "labels": labels,
+                "ownerReferences": [
+                    {
+                        "apiVersion": "kubeflow.org/v1",
+                        "kind": "Profile",
+                        "name": namespace_id,
+                        "uid": namespace_uid,
+                        "controller": True,
+                        "blockOwnerDeletion": True,
+                    }
+                ],
+            }
+        }
+        with kubernetes.client.ApiClient() as api_client:
+            api_instance = kubernetes.client.CoreV1Api(api_client)
+            try:
+                api_instance.patch_namespace(name=namespace_id, body=body)
+                logger.info(f"Labels added to namespace {namespace_id} successfully")
+            except ApiException as e:
+                logger.error(f"Exception when patching namespace labels: {e}")
+        if owner_email is not None:
+            create_kubeflow_profile_resources(namespace=namespace_id, owner=owner_email, uid=namespace_uid)
+    else:
+        logger.info(f"Namespace {namespace_id} is not a Kubeflow namespace, skipping labels addition")
 
 
-def create_namespace(request, settings, namespace_id, cluster_id):
+def create_namespace(request, settings, namespace_id, cluster_id, kubeflow_namespace=False, owner_email=None):
     """
     Creates a Kubernetes namespace using the provided request, settings, namespace ID, and cluster ID.
 
@@ -868,7 +1188,7 @@ def create_namespace(request, settings, namespace_id, cluster_id):
         yaml.dump(kubeconfig_dict, f)
         os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
 
-        create_namespace_from_context(namespace_id)
+        create_namespace_from_context(namespace_id, kubeflow_namespace=kubeflow_namespace, owner_email=owner_email)
 
 
 def create_cifs_secret_from_context(namespace, user_id, username, password, public_key):
@@ -1198,3 +1518,70 @@ def retrieve_json_key_for_maia_registry_authentication(request, cluster_id, sett
         os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
 
         return retrieve_json_key_for_maia_registry_authentication_from_context(namespace, secret_name, registry_url)
+
+
+def create_maia_rbac(request, cluster_id, settings, namespace):
+    id_token = request.session.get("oidc_id_token")
+    kubeconfig_dict = generate_kubeconfig(id_token, request.user.username, "default", cluster_id, settings=settings)
+    config.load_kube_config_from_dict(kubeconfig_dict)
+    with open(Path("/tmp").joinpath("kubeconfig-ns"), "w") as f:
+        yaml.dump(kubeconfig_dict, f)
+        os.environ["KUBECONFIG"] = str(Path("/tmp").joinpath("kubeconfig-ns"))
+
+        return create_maia_rbac_from_context(namespace)
+
+
+def create_maia_rbac_from_context(namespace):
+    rbac_api = client.RbacAuthorizationV1Api()
+    role = client.V1Role(
+        metadata=client.V1ObjectMeta(name="maia-namespace-role", namespace=namespace),
+        rules=[
+            client.V1PolicyRule(
+                api_groups=[""],
+                resources=["secrets", "services", "configmaps"],
+                verbs=["list", "create", "patch", "update", "get"],
+            ),
+            client.V1PolicyRule(
+                api_groups=["rbac.authorization.k8s.io"],
+                resources=["rolebindings"],
+                verbs=["create", "get", "list", "watch", "update", "patch", "delete"],
+            ),
+            client.V1PolicyRule(
+                api_groups=[""],
+                resources=["serviceaccounts"],
+                verbs=["create", "get", "list", "watch", "update", "patch", "delete"],
+            ),
+            client.V1PolicyRule(
+                api_groups=["security.istio.io"],
+                resources=["authorizationpolicies"],
+                verbs=["create", "get", "list", "watch", "update", "patch", "delete"],
+            ),
+        ],
+    )
+
+    try:
+        logger.info(f"Creating Role 'maia-namespace-role' in namespace '{namespace}'...")
+        rbac_api.create_namespaced_role(namespace=namespace, body=role)
+        logger.info("Role created successfully.\n")
+    except ApiException as e:
+        if e.status == 409:
+            logger.info("Role already exists. Skipping creation.\n")
+        else:
+            logger.error(f"Failed to create Role: {e}\n")
+
+    # --- 2. Define and Create the RoleBinding ---
+    role_binding = client.V1RoleBinding(
+        metadata=client.V1ObjectMeta(name="maia-namespace-role-binding", namespace=namespace),
+        subjects=[client.RbacV1Subject(kind="ServiceAccount", name="default", namespace="maia-dashboard")],
+        role_ref=client.V1RoleRef(kind="Role", name="maia-namespace-role", api_group="rbac.authorization.k8s.io"),
+    )
+
+    try:
+        logger.info(f"Creating RoleBinding 'maia-namespace-role-binding' in namespace '{namespace}'...")
+        rbac_api.create_namespaced_role_binding(namespace=namespace, body=role_binding)
+        logger.info("RoleBinding created successfully.\n")
+    except ApiException as e:
+        if e.status == 409:
+            logger.info("RoleBinding already exists. Skipping creation.\n")
+        else:
+            logger.error(f"Failed to create RoleBinding: {e}\n")

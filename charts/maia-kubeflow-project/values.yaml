@@ -1,0 +1,8 @@
+namespace: demo
+owner: admin@maia.io
+user_email: admin@maia.io
+user_id: admin
+podCIDR:
+  - 10.42.0.0/16
+ipList:
+  - 10.42.0.0/16

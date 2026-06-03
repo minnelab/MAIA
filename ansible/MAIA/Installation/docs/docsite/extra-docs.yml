@@ -3,3 +3,4 @@ sections:
 - title: Requirements
   toctree:
     - main
+    - example

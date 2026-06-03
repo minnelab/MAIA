@@ -7,12 +7,18 @@ metadata:
     {{- if and $.Values.metallbSharedIp $.Values.metallbIpPool }}
     annotations:
         metallb.universe.tf/allow-shared-ip: {{ $.Values.metallbSharedIp }}
-        metallb.universe.tf/ip-allocated-from-pool: {{ $.Values.metallbIpPool }}
+        metallb.io/ip-allocated-from-pool: {{ $.Values.metallbIpPool }}
     {{- end }}
 spec:
     {{- if $.Values.loadBalancerIp }}
   loadBalancerIP: {{ $.Values.loadBalancerIp }}
     {{- end }}
+  {{- if $.Values.ipWhitelist }}
+  loadBalancerSourceRanges:
+  {{- range $.Values.ipWhitelist }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
   ports:
   - port: {{ .sshPort }}
     targetPort: 2022

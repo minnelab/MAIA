@@ -1,0 +1,6 @@
+---
+sections:
+- title: Build Images
+  toctree:
+    - main
+    - example

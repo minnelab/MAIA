@@ -1,0 +1,54 @@
+pvc:
+  pvc_type: ""
+  access_mode: ReadWriteMany
+  size: 10Gi
+
+imagePullSecret: ""
+
+image:
+  repository: ""
+  tag: ""
+
+cpu: 1000m
+memory: 1Gi
+#gpu: false
+
+
+orthanc_dicom_service_annotations: {}
+  #metallb.universe.tf/allow-shared-ip: maia-admin
+  #metallb.universe.tf/ip-allocated-from-pool: maia-pool
+
+ingress_annotations: {}
+  #traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  #traefik.ingress.kubernetes.io/router.tls: "true"
+  #traefik.ingress.kubernetes.io/router.tls.certresolver: maiaresolver
+
+ingress_tls:
+  host: demo.maia-demo.se
+
+monai_label_path: demo
+orthanc_path: orthanc
+orthanc_node_port: 4242
+#  loadBalancer: None
+#loadBalancerIp: None
+
+serviceType: NodePort
+
+#nodeSelector:
+#  hostname: maia-cloud
+
+#ENABLE_MONAI_LABEL: Flag to enable MONAI Label
+
+#BUNDLE_ZOO_PATH: Location with the Zipped MONAI Bundle files
+#MONAI_LABEL_MODEL_PATH: Location to extract the Zipped MONAI Bundle
+#BUNDLE_MODEL_NAME: Bundle Model Name to use in the MONAI Label command
+#NIFTI_FOLDER NIFTI: Folder to use in the MONAI Label command
+
+
+## To download the MONAI Label Bundle from MLFlow
+#MLFLOW_MODEL: 
+#MLFLOW_TRACKING_URI: MLFlow Tracking URI
+
+#orthanc_config_map:
+#  enabled: false
+#  orthanc_config: {}

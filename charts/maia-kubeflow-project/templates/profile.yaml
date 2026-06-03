@@ -1,0 +1,14 @@
+apiVersion: kubeflow.org/v1
+kind: Profile
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Values.namespace }}-maia-kubeflow
+    meta.helm.sh/release-namespace: {{ .Values.namespace }}
+  #uid: {{ .Values.uid }}
+spec:
+  owner:
+    kind: User
+    name: {{ .Values.owner }}

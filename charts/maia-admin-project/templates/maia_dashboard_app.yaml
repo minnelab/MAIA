@@ -20,6 +20,6 @@ spec:
       valuesObject:
       {{ .Values.maia_dashboard_values | toYaml | nindent 8 }}
   destination:
-    server: {{ .Values.destination_server }}
+    server: {{ .Values.dashboard_destination_server }}
     namespace: {{ .Values.maia_dashboard_values.namespace }}
 {{- end }}

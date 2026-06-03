@@ -1,0 +1,28 @@
+# argo-apps/customization-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ml-customization
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/minnelab/manifests.git'
+    targetRevision: HEAD
+    path: 'maia-kubeflow'
+    helm:
+      releaseName: ml-customization
+      valuesObject:
+      {{ .Values.kubeflow_values | toYaml | nindent 8 }}
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: kubeflow
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
