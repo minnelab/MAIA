@@ -48,7 +48,7 @@ spec:
             secretName: cifs-encryption-public-key
         {{- end }}
         {{- if .Values.additionalVolumes }}
-        {{- toYaml .Values.additionalVolumes | nindent 12 }}
+        {{- toYaml .Values.additionalVolumes | nindent 8 }}
         {{- end }}
       containers:
         - name: {{ .Chart.Name }}
