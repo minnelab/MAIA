@@ -10,8 +10,8 @@ RUN apt-get update
 RUN apt-get install -y default-libmysqlclient-dev build-essential pkg-config
 WORKDIR /etc
 
-RUN cp start-script.sh /etc
-RUN cp start-script_dev.sh /etc
+COPY start-script.sh /etc
+COPY start-script_dev.sh /etc
 
 RUN chmod +x /etc/start-script.sh
 RUN chmod 777 /etc/start-script.sh
