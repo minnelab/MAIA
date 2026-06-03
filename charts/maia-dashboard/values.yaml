@@ -129,3 +129,5 @@ dockerRegistryServer: https://registry.maia.com
 mongodb:
   enabled: false
 
+additionalVolumes: []
+additionalVolumeMounts: []
