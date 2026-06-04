@@ -9,9 +9,9 @@ from pathlib import Path
 def main():
     """
     Export project documents from a MongoDB instance into per-project JSON files in a local Projects/ directory.
-    
+
     Connects to the database using credentials from environment variables, loads all projects and users, builds a filtered project object for each project (including only users whose namespace lists include the project's namespace and a selected set of metadata fields), normalizes `date` values to `YYYY-MM-DD` when possible, sanitizes the project `namespace` for a safe filename, and writes each filtered project to Projects/<safe_namespace>.json.
-    
+
     Raises:
         ValueError: If the sanitized project namespace is empty or would allow path traversal (unsafe filename).
     """
