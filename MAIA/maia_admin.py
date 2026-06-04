@@ -314,10 +314,10 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             },
         }
     )
-    
+
     clusters = []
     if "CLUSTER_YAML_CONFIGS" in os.environ:
-        
+
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
         for cluster_file in cluster_files:
             if not os.path.isabs(cluster_file):
@@ -406,7 +406,7 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
     domain = cluster_config_dict["domain"]
     harbor_values = {
         "namespace": "harbor",
-        "repo_url": "https://minnelab.github.io/MAIA/", #"https://helm.goharbor.io",
+        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://helm.goharbor.io",
         "chart_name": "harbor",
         "chart_version": harbor_chart_version,
     }
@@ -527,7 +527,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
     """
     keycloak_values = {
         "namespace": "keycloak",
-        "repo_url": "https://minnelab.github.io/MAIA/", #"https://charts.bitnami.com/bitnami",
+        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://charts.bitnami.com/bitnami",
         "chart_name": "keycloak",
         "chart_version": keycloak_chart_version,
     }
@@ -535,9 +535,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
     keycloak_values.update(
         {
             "postgresql": {
-                "image": {
-                    "repository": "bitnamilegacy/postgresql"
-                },
+                "image": {"repository": "bitnamilegacy/postgresql"},
             },
             "image": {
                 "repository": "bitnamilegacy/keycloak",
@@ -1193,22 +1191,21 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                 cluster_config_dict = yaml.safe_load(f)
                 maia_dashboard_values["clusters"].append(cluster_config_dict)
 
-    
     if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         maia_dashboard_values.update(
             {
-                    "additionalVolumes": [
-                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}}
-                    ],
-                    "additionalVolumeMounts": [
-                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
-                    ],
+                "additionalVolumes": [
+                    {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}}
+                ],
+                "additionalVolumeMounts": [
+                    {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
+                ],
             }
         )
         maia_dashboard_values["env"].extend(
             [
                 {"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"},
-                {"name": "REQUESTS_CA_BUNDLE", "value": "/etc/ssl/certs/ca-certificates.crt"},  
+                {"name": "REQUESTS_CA_BUNDLE", "value": "/etc/ssl/certs/ca-certificates.crt"},
             ]
         )
     # CIFS
@@ -1252,7 +1249,7 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
 
     rancher_values = {
         "namespace": "cattle-system",
-        "repo_url": "https://minnelab.github.io/MAIA/", #"https://releases.rancher.com/server-charts/latest",
+        "repo_url": "https://minnelab.github.io/MAIA/",  # "https://releases.rancher.com/server-charts/latest",
         "chart_name": "rancher",
         "chart_version": rancher_chart_version,
     }  # TODO: Change this to updated values
