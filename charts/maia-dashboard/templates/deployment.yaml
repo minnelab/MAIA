@@ -47,6 +47,9 @@ spec:
           secret:
             secretName: cifs-encryption-public-key
         {{- end }}
+        {{- if .Values.additionalVolumes }}
+        {{- toYaml .Values.additionalVolumes | nindent 8 }}
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -67,6 +70,9 @@ spec:
             - name: cifs-public-key
               mountPath: /var/cifs/public-key.pem
               subPath: public-key.pem
+            {{- end }}
+            {{- if .Values.additionalVolumeMounts }}
+            {{- toYaml .Values.additionalVolumeMounts | nindent 12 }}
             {{- end }}
           ports:
             - name: http

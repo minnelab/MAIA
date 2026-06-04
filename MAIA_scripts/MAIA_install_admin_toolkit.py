@@ -106,8 +106,8 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
         "MAIA_ADMIN_ARGOCD_DESTINATION_CLUSTER_ADDRESS", "https://kubernetes.default.svc"
     )  # TODO: Change this to make it configurable
     dashboard_cluster_address = os.environ.get("MAIA_ADMIN_DASHBOARD_CLUSTER_ADDRESS", cluster_address)
-    cluster_config_dict = None
-    cluster_config_dict_dashboard = None
+    cluster_config_dict = cluster_config_dict
+    cluster_config_dict_dashboard = cluster_config_dict
     if "CLUSTER_YAML_CONFIGS" in os.environ:
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
         for cluster_file in cluster_files:

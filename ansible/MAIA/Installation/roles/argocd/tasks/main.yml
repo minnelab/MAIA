@@ -46,7 +46,7 @@
 
 - name: Check if Kyverno is already installed
   ansible.builtin.command: >
-    {{ kubernetes_kubectl_cmd }} get deployment kyverno -n kyverno
+    {{ kubernetes_kubectl_cmd }} get deployment kyverno-admission-controller -n kyverno
   register: kyverno_check_result
   failed_when: false
   changed_when: false
@@ -136,6 +136,22 @@
             - resources:
                 kinds:
                 - Pod
+          exclude:
+                any:
+                - resources:
+                    namespaces:
+                    - harbor
+                - resources:
+                    namespaces:
+                    - kubeflow
+                    selector:
+                      matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                        - ml-pipeline
+                        - seaweedfs
+                        - ml-pipeline-scheduledworkflow
           mutate:
             patchStrategicMerge:
               spec:

@@ -639,18 +639,22 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     if self_signed_tls:
         traefik_values.update({"tlsStore": {"default": {"defaultCertificate": {"secretName": "wildcard-domain-tls"}}}})
 
-    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         traefik_values.update(
             {
-                "deployment": {
-                    "additionalVolumes": [
-                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}}
-                    ],
+                    "deployment":{"additionalVolumes": [
+                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}},
+                        {"name": "local-plugins", "hostPath": {"path": "/var/lib/traefik/plugins", "type": "Directory"}}
+                    ]
+                    },
                     "additionalVolumeMounts": [
-                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True}
+                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
+                        {"name": "local-plugins", "mountPath": "/plugins-local", "readOnly": False}
                     ],
                     "env": [{"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"}],
-                }
+                "experimental": {},
+                "globalArguments": traefik_values["globalArguments"] + ["--experimental.localplugins.traefik-oidc-auth.modulename=github.com/sevensolutions/traefik-oidc-auth"]
+                
             }
         )
 
@@ -667,7 +671,7 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_metallb_values(config_folder, project_id):
+def create_metallb_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes MetalLB Helm chart values to a YAML file and returns a dictionary with deployment details.
 
@@ -677,7 +681,8 @@ def create_metallb_values(config_folder, project_id):
         The path to the configuration folder where the YAML file will be created.
     project_id : str
         The project identifier used to create a unique directory and release name.
-
+    cluster_config_dict : dict
+        A dictionary containing the cluster configuration.
     Returns
     -------
     dict
@@ -697,7 +702,7 @@ def create_metallb_values(config_folder, project_id):
         "chart_name": "metallb",
     }  # TODO: Change this to updated values
 
-    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         metallb_values.update(
             {
                 "controller": {"image": {"repository": "maiacloudai/controller"}},
@@ -719,7 +724,7 @@ def create_metallb_values(config_folder, project_id):
     }
 
 
-def create_cert_manager_values(config_folder, project_id):
+def create_cert_manager_values(config_folder, project_id, cluster_config_dict):
     """
     Creates a dictionary of values for configuring cert-manager and writes it to a YAML file.
 
@@ -729,7 +734,8 @@ def create_cert_manager_values(config_folder, project_id):
         The path to the configuration folder.
     project_id : str
         The project identifier.
-
+    cluster_config_dict : dict
+        A dictionary containing the cluster configuration.
     Returns
     -------
     dict
@@ -746,7 +752,7 @@ def create_cert_manager_values(config_folder, project_id):
     cert_manager_values = {}
     cert_manager_values.update({"crds": {"enabled": True}})
 
-    if "proxy_ip" in os.environ and os.environ["proxy_ip"] != "":
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         cert_manager_values.update(
             {
                 "cainjector": {"image": {"repository": "maiacloudai/cert-manager-cainjector"}},
@@ -964,6 +970,9 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
         nfs_server_provisioner_values.update(
             {"nfs": {"server": cluster_config_dict["nfs_server"], "path": cluster_config_dict["nfs_path"]}}
         )
+        
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        nfs_server_provisioner_values.update({"image": {"repository": "maiacloudai/nfs-subdir-external-provisioner"}})
 
     Path(config_folder).joinpath(project_id, "nfs_provisioner_values").mkdir(parents=True, exist_ok=True)
 
@@ -1213,7 +1222,7 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
     }
 
 
-def create_minio_operator_values(config_folder, project_id):
+def create_minio_operator_values(config_folder, project_id, cluster_config_dict):
     """
     Creates and writes MinIO operator values to a YAML file and returns a dictionary with deployment details.
 
@@ -1236,6 +1245,13 @@ def create_minio_operator_values(config_folder, project_id):
         "chart_name": "operator",
         "chart_version": minio_operator_chart_version,
     }
+
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        minio_operator_values.update(
+            {
+                "operator": {"image": {"repository": "maiacloudai/minio-operator"}},
+            }
+        )
 
     Path(config_folder).joinpath(project_id, "minio_operator_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "minio_operator_values", "minio_operator_values.yaml"), "w") as f:

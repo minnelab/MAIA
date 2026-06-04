@@ -285,7 +285,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             "admin_group_ID": admin_group_id,
             "harbor": {
                 "enabled": True,
-                "values": {"namespace": "harbor", "storageClassName": cluster_config_dict["storage_class"]},
+                "values": {"namespace": "harbor", "storageClassName": cluster_config_dict["shared_storage_class"]},
             },
             "keycloak": {
                 "enabled": True,
@@ -314,9 +314,10 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
             },
         }
     )
-
+    
+    clusters = []
     if "CLUSTER_YAML_CONFIGS" in os.environ:
-        clusters = []
+        
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
         for cluster_file in cluster_files:
             if not os.path.isabs(cluster_file):
@@ -405,7 +406,7 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
     domain = cluster_config_dict["domain"]
     harbor_values = {
         "namespace": "harbor",
-        "repo_url": "https://helm.goharbor.io",
+        "repo_url": "https://minnelab.github.io/MAIA/", #"https://helm.goharbor.io",
         "chart_name": "harbor",
         "chart_version": harbor_chart_version,
     }
@@ -430,33 +431,33 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
                     "registry": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "registry",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                     "jobservice": {
                         "jobLog": {
                             "existingClaim": "pvc-harbor",
                             "subPath": "job_logs",
-                            "storageClass": cluster_config_dict["storage_class"],
+                            "storageClass": cluster_config_dict["shared_storage_class"],
                             "accessMode": "ReadWriteMany",
                         }
                     },
                     "database": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "database",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                     "redis": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "redis",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                     "trivy": {
                         "existingClaim": "pvc-harbor",
                         "subPath": "trivy",
-                        "storageClass": cluster_config_dict["storage_class"],
+                        "storageClass": cluster_config_dict["shared_storage_class"],
                         "accessMode": "ReadWriteMany",
                     },
                 },
@@ -526,13 +527,21 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
     """
     keycloak_values = {
         "namespace": "keycloak",
-        "repo_url": "https://charts.bitnami.com/bitnami",
+        "repo_url": "https://minnelab.github.io/MAIA/", #"https://charts.bitnami.com/bitnami",
         "chart_name": "keycloak",
         "chart_version": keycloak_chart_version,
     }
 
     keycloak_values.update(
         {
+            "postgresql": {
+                "image": {
+                    "repository": "bitnamilegacy/postgresql"
+                },
+            },
+            "image": {
+                "repository": "bitnamilegacy/keycloak",
+            },
             "extraEnvVars": [
                 {"name": "KEYCLOAK_EXTRA_ARGS", "value": "--import-realm"},
                 {"name": "PROXY_ADDRESS_FORWARDING", "value": "true"},
@@ -548,6 +557,16 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
             },
             "auth": {
                 "adminPassword": os.environ.get("keycloak_admin_password", ""),
+            },
+            "resources": {
+                "requests": {
+                    "cpu": "2",
+                    "memory": "512Mi",
+                },
+                "limits": {
+                    "cpu": "2",
+                    "memory": "2048Mi",
+                },
             },
             "extraVolumeMounts": [
                 {
@@ -962,15 +981,16 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             gpg_key = open(Path(config_folder).joinpath(os.environ["GPG_KEY"]), "r").read()
         maia_dashboard_values["gpg_key"] = gpg_key
 
-    if os.environ.get("DEV_TAG") is not None:
+    if os.environ.get("MAIA_TAG") is not None:
         maia_dashboard_values["env"].extend(
             [
-                {"name": "DEV_TAG", "value": os.environ["DEV_TAG"]},
+                {"name": "MAIA_TAG", "value": os.environ["MAIA_TAG"]},
             ]
         )
+    if os.environ.get("MAIA_VERSION") is not None:
         maia_dashboard_values["env"].extend(
             [
-                {"name": "MAIA_VERSION", "value": os.environ["DEV_TAG"]},
+                {"name": "MAIA_VERSION", "value": os.environ["MAIA_VERSION"]},
             ]
         )
     if os.environ.get("CIFS_SERVER") is not None:
@@ -1133,6 +1153,36 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
 
     maia_dashboard_values["hostAliases"] = host_aliases
 
+    if "AGENT_PROVIDER" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "AGENT_PROVIDER", "value": os.environ["AGENT_PROVIDER"]},
+            ]
+        )
+    if "AGENT_API_TOKEN" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "AGENT_API_TOKEN", "value": os.environ["AGENT_API_TOKEN"]},
+            ]
+        )
+    if "OLLAMA_BASE_URL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OLLAMA_BASE_URL", "value": os.environ["OLLAMA_BASE_URL"]},
+            ]
+        )
+    if "OLLAMA_MODEL" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OLLAMA_MODEL", "value": os.environ["OLLAMA_MODEL"]},
+            ]
+        )
+    if "OLLAMA_API_KEY" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "OLLAMA_API_KEY", "value": os.environ["OLLAMA_API_KEY"]},
+            ]
+        )
     if "CLUSTER_YAML_CONFIGS" in os.environ:
         maia_dashboard_values["clusters"] = []
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")
@@ -1143,6 +1193,24 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                 cluster_config_dict = yaml.safe_load(f)
                 maia_dashboard_values["clusters"].append(cluster_config_dict)
 
+    
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        maia_dashboard_values.update(
+            {
+                    "additionalVolumes": [
+                        {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}}
+                    ],
+                    "additionalVolumeMounts": [
+                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
+                    ],
+            }
+        )
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"},
+                {"name": "REQUESTS_CA_BUNDLE", "value": "/etc/ssl/certs/ca-certificates.crt"},  
+            ]
+        )
     # CIFS
     # MAIA Segmentation Portal
     # GPU Booking
@@ -1184,7 +1252,7 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
 
     rancher_values = {
         "namespace": "cattle-system",
-        "repo_url": "https://releases.rancher.com/server-charts/latest",
+        "repo_url": "https://minnelab.github.io/MAIA/", #"https://releases.rancher.com/server-charts/latest",
         "chart_name": "rancher",
         "chart_version": rancher_chart_version,
     }  # TODO: Change this to updated values
