@@ -1,0 +1,69 @@
+affinity: {}
+autoscaling:
+  apiVersion: autoscaling/v2
+  enabled: false
+  maxReplicas: 100
+  minReplicas: 1
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+config:
+  base_url: http://localhost/
+fullnameOverride: ""
+image:
+  pullPolicy: IfNotPresent
+  repository: apache/tika
+  tag: 3.2.2.0-full
+imagePullSecrets: []
+ingress:
+  annotations: {}
+  enabled: false
+  hosts:
+  - host: chart-example.local
+    paths: []
+  tls: []
+livenessProbe:
+  failureThreshold: 20
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  scheme: HTTP
+  timeoutSeconds: 30
+nameOverride: ""
+namespaceOverride: ""
+networkPolicy:
+  allowExternal: false
+  enabled: false
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext: {}
+readinessProbe:
+  failureThreshold: 20
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  scheme: HTTP
+  timeoutSeconds: 30
+replicaCount: 1
+resources:
+  limits:
+    cpu: "2"
+    memory: 2000Mi
+  requests:
+    cpu: "1"
+    memory: 1500Mi
+securityContext:
+  allowPrivilegeEscalation: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsGroup: 35002
+  runAsNonRoot: true
+  runAsUser: 35002
+service:
+  port: 9998
+  type: ClusterIP
+serviceAccount:
+  annotations: {}
+  create: true
+  name: ""
+tolerations: []
+topologySpreadConstraints: []

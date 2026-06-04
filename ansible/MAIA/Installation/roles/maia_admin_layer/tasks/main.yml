@@ -29,20 +29,19 @@
   delegate_to: localhost
 
 - name: Create namespaces
-  kubernetes.core.k8s:
+  ansible.builtin.k8s:
     api_version: v1
     kind: Namespace
     name: "{{ item }}"
     state: present
-  loop:
-    - harbor
-    - keycloak
-    - maia-admin-toolkit
-    - maia-dashboard
-    - cattle-system
+  loop: "{{ maia_admin_namespaces }}"
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    http_proxy: ""
+    https_proxy: ""
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
 
 - name: Check if externalCA key exists in cluster config
   ansible.builtin.set_fact:
@@ -180,62 +179,6 @@
   delegate_to: localhost
   when: keycloak_synced == false and auto_sync | bool and 'maia-admin-keycloak' in maia_admin_argocd_applications
 
-- name: Patch maia-admin-keycloak StatefulSet image
-  ansible.builtin.shell: |
-    kubectl -n keycloak patch statefulset maia-admin-keycloak --type=json -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "docker.io/bitnamilegacy/keycloak:26.0.5-debian-12-r0"}]'
-  register: keycloak_patch_result
-  changed_when: keycloak_patch_result.rc == 0
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  ignore_errors: true
-  when: keycloak_synced == false and auto_sync | bool
-
-- name: Patch maia-admin-keycloak StatefulSet initContainers image
-  ansible.builtin.shell: |
-    kubectl -n keycloak patch statefulset maia-admin-keycloak --type=json -p='[{"op": "replace", "path": "/spec/template/spec/initContainers/0/image", "value": "docker.io/bitnamilegacy/keycloak:26.0.5-debian-12-r0"}]'
-  register: keycloak_init_patch_result
-  changed_when: keycloak_init_patch_result.rc == 0
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  ignore_errors: true
-  when: keycloak_synced == false and auto_sync | bool
-
-
-- name: Patch maia-admin-keycloak-postgresql StatefulSet image
-  ansible.builtin.shell: |
-    kubectl -n keycloak patch statefulset maia-admin-keycloak-postgresql --type=json -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "docker.io/bitnamilegacy/postgresql:17.0.0-debian-12-r9"}]'
-  delegate_to: localhost
-  register: postgresql_patch_result
-  changed_when: postgresql_patch_result.rc == 0
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  ignore_errors: true
-  when: keycloak_synced == false and auto_sync | bool
-
-- name: Rollout restart maia-admin-keycloak-postgresql StatefulSet
-  ansible.builtin.shell: |
-    kubectl -n keycloak delete pod maia-admin-keycloak-postgresql-0
-  register: postgresql_rollout_result
-  changed_when: postgresql_rollout_result.rc == 0
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  ignore_errors: true
-  when: keycloak_synced == false and auto_sync | bool
-
-- name: Rollout restart maia-admin-keycloak StatefulSet
-  ansible.builtin.shell: |
-    kubectl -n keycloak delete pod maia-admin-keycloak-0
-  register: keycloak_rollout_result
-  changed_when: keycloak_rollout_result.rc == 0
-  delegate_to: localhost
-  environment:
-    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
-  ignore_errors: true
-  when: keycloak_synced == false
-
 - name: Sync maia-admin-admin-toolkit ArgoCD application
   ansible.builtin.shell: |
     argocd app sync maia-admin-admin-toolkit
@@ -261,7 +204,7 @@
 
 - name: Download MAIA Keycloak Theme inside Keycloak container
   ansible.builtin.shell: |
-    kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -f -sSL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && cd /opt/bitnami/keycloak/themes && tar -xvf maia-theme.tar.gz'
+    kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -f -sSkL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && cd /opt/bitnami/keycloak/themes && tar -xvf maia-theme.tar.gz'
   delegate_to: localhost
   when: auto_sync | bool
   environment:
@@ -272,6 +215,8 @@
     MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}" --admin_email "{{ admin_email }}"
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    no_proxy: "{{ domain }}"
+    NO_PROXY: "{{ domain }}"
   register: configure_keycloak_result
   ignore_errors: true
   when: auto_sync | bool
@@ -332,66 +277,79 @@
   ignore_errors: true
   delegate_to: localhost
   when: auto_sync | bool and 'maia-core-loginapp' in maia_admin_argocd_applications
-- name: Wait for admin-minio-tenant-pool-0-0 pod to be running
-  kubernetes.core.k8s_info:
-    kind: Pod
-    namespace: maia-dashboard
-    api_version: v1
-    name: admin-minio-tenant-pool-0-0
-  register: minio_pod_info
+
+- name: Wait until maia-admin-minio-tenant-pool-0-0 pod is ready
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard wait --for=condition=Ready pod/admin-minio-tenant-pool-0-0 --timeout=300s
+  register: minio_pod_ready
+  changed_when: false
   delegate_to: localhost
   environment:
-    KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
-  retries: 20
-  delay: 15
-  until: minio_pod_info.resources is defined and minio_pod_info.resources | length > 0 and minio_pod_info.resources[0].status.phase == "Running"
-  when: auto_sync | bool
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  retries: 10
+  delay: 10
+  until: minio_pod_ready.rc == 0
+  when: auto_sync | bool 
 - name: Create bucket 'maia-envs' in MinIO Tenant
-  kubernetes.core.k8s_exec:
-    namespace: maia-dashboard
-    pod: admin-minio-tenant-pool-0-0
-    container: minio
-    command: /bin/sh -c 'export MINIO_ROOT_USER="maia-admin"; export MINIO_ROOT_PASSWORD="{{ minio_admin_password }}"; mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc mb --ignore-existing local/maia-envs'
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- \
+      /bin/sh -c 'export MINIO_ROOT_USER="maia-admin"; export MINIO_ROOT_PASSWORD="{{ minio_admin_password }}"; mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc mb --ignore-existing local/maia-envs'
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
+  register: minio_create_bucket_result
+  changed_when: false
   when: auto_sync | bool
-- name: Add MAIA Admin as minio admin policy user
-  kubernetes.core.k8s_exec:
-    namespace: maia-dashboard
-    pod: admin-minio-tenant-pool-0-0
-    container: minio
-    command: >-
-      /bin/sh -c '
-      echo "{
-        \"Version\": \"2012-10-17\",
-        \"Statement\": [
+- name: Create maia-admin-policy.json locally
+  copy:
+    dest: /tmp/maia-admin-policy.json
+    content: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
           {
-            \"Effect\": \"Allow\",
-            \"Action\": [
-              \"admin:*\"
+            "Effect": "Allow",
+            "Action": [
+              "admin:*"
             ]
           },
           {
-            \"Effect\": \"Allow\",
-            \"Action\": [
-              \"kms:*\"
+            "Effect": "Allow",
+            "Action": [
+              "kms:*"
             ]
           },
           {
-            \"Effect\": \"Allow\",
-            \"Action\": [
-              \"s3:*\"
+            "Effect": "Allow",
+            "Action": [
+              "s3:*"
             ],
-            \"Resource\": [
-              \"arn:aws:s3:::*\"
+            "Resource": [
+              "arn:aws:s3:::*"
             ]
           }
         ]
-      }" > /tmp/maia-admin-policy.json;
-      mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json;
-      '
+      }
+  delegate_to: localhost
+  when: auto_sync | bool
+
+- name: Copy maia-admin-policy.json to admin-minio-tenant-pool-0-0 pod without kubectl cp (tar not available)
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard exec -i admin-minio-tenant-pool-0-0 -c minio -- /bin/sh -c "cat > /tmp/maia-admin-policy.json" < /tmp/maia-admin-policy.json
   environment:
     KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
   delegate_to: localhost
+  when: auto_sync | bool
+
+- name: Add MAIA Admin as minio admin policy user (retry if policy.json not present)
+  ansible.builtin.shell: |
+    kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- \
+      /bin/sh -c 'if [ -f /tmp/maia-admin-policy.json ] && [ -s /tmp/maia-admin-policy.json ]; then mc admin policy create local {{ admin_group_ID }} /tmp/maia-admin-policy.json; else echo "maia-admin-policy.json missing or empty" && exit 42; fi'
+  environment:
+    KUBECONFIG: '{{ DEPLOY_KUBECONFIG }}'
+  delegate_to: localhost
+  register: minio_policy_create_result
+  retries: 5
+  delay: 3
+  until: minio_policy_create_result.rc == 0
   when: auto_sync | bool
