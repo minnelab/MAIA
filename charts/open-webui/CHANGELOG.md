@@ -1,0 +1,270 @@
+
+# Changelog
+
+All notable changes to the Open WebUI Helm chart will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v14.1.0]
+
+### Changed
+Updated chart appVersion to v0.9.1.
+
+## [v14.0.0]
+
+### Changed
+Updated chart appVersion to v0.9.0.
+
+## [v13.3.1]
+
+### Fixed
+
+- Explicitly set `ENABLE_WEBSOCKET_SUPPORT` to `False` when `websocket.enabled: false`, fixing websocket errors caused by the app defaulting to `True` when the env var was absent
+
+## [v13.3.0]
+
+### Added
+
+- Add `openaiApiKeyExistingSecret`/`openaiApiKeyExistingSecretKey` and `openaiApiKeysExistingSecret`/`openaiApiKeysExistingSecretKey` values to allow sourcing `OPENAI_API_KEY` and `OPENAI_API_KEYS` from a Kubernetes Secret instead of plaintext values
+
+## [v13.2.1]
+
+### Fixed
+
+- Fix `openaiBaseApiUrls` and `openaiApiKeys` being ignored when `pipelines.enabled: false`, causing missing `OPENAI_API_BASE_URLS` and `OPENAI_API_KEYS` environment variables
+
+## [v13.2.0]
+
+### Added
+
+- Add `websocket.existingSecret` and `websocket.existingSecretKey` values to allow sourcing `REDIS_URL` and `WEBSOCKET_REDIS_URL` from a Kubernetes Secret instead of a plaintext value
+
+## [v13.1.2]
+
+### Fixed
+
+- Fix Route parentRefs forcing `sectionName: http` when no sectionName is specified, preventing routes from binding to all listeners
+- Fix Route httpsRedirect hardcoding `sectionName: https` on the main route, ignoring user-specified sectionName
+
+### Added
+
+- Add `route.redirect.parentRefs` option to independently configure parentRefs on the HTTP-to-HTTPS redirect route
+
+## [v13.1.1]
+
+### Fixed
+
+- Fix Tika service URL ignoring nameOverride/fullnameOverride (use release-based naming)
+- Fix Ollama service URL incorrectly using parent chart name instead of release-based naming
+
+### Note
+- `TIKA_SERVER_URL` and `OLLAMA_BASE_URLS` are PersistentConfig variables in Open WebUI. If your existing deployment had the wrong URL persisted in the database, upgrading the chart alone will not fix it. You must also update the URL via the Admin Panel, or set `RESET_CONFIG_ON_START=true` for one restart, or temporarily set `ENABLE_PERSISTENT_CONFIG=False`.
+
+## [v13.1.0]
+
+### Added
+
+- Add persistence.labels
+- Allow PVC values to be templated
+- Support tpl usage for Ingress labels and host and additionalHosts
+
+## [v13.0.1]
+
+### Changed
+- Updated minimal Terminals chart version to v0.2.0, which includes an AppVersion fix
+
+## [v13.0.0]
+
+### Added
+- **Terminals subchart integration** — Add `terminals` as a conditional dependency (`terminals.enabled: true` to activate)
+- `terminals.serviceEndpoint` and `open-webui.terminals.secretName` template helpers for service discovery and secret resolution
+- `TERMINAL_SERVER_CONNECTIONS` env var injection when terminals are enabled, with API key sourced from Kubernetes Secret via `secretKeyRef`
+
+### Changed
+- Ingress `host` field is now conditional, allowing ALB/NLB usage without a custom domain
+
+### Fixed
+- Terminals subchart image names corrected (`terminals-operator`, `terminals`)
+
+## [v12.13.0]
+
+### Changed
+Updated chart appVersion to v0.8.12.
+
+## [v12.12.0]
+
+### Changed
+Update many values to support templated values.
+Allow using existing secret for OAuth ClientID and existing configmap for OAuth Provider URL
+
+## [v12.11.0]
+
+### Changed
+Updated chart appVersion to v0.8.11. Updated Ollama and Pipelines dependencies to latest versions.
+
+## [v12.10.0]
+
+### Changed
+Updated chart appVersion to v0.8.10.
+
+## [v12.9.0]
+
+### Changed
+Updated chart appVersion to v0.8.9.
+
+## [v12.8.1]
+
+### Changed
+Updated helm dependencies (ollama 1.42.0 → 1.48.0).
+
+## [v12.8.0]
+
+### Changed
+Updated chart appVersion to v0.8.8.
+
+## [v12.7.0]
+
+### Changed
+Updated chart appVersion to v0.8.7.
+
+## [v12.6.0]
+
+### Changed
+Updated chart appVersion to v0.8.6.
+
+## [v12.5.0]
+
+### Changed
+Updated chart appVersion to v0.8.5.
+
+## [v12.4.0]
+
+### Changed
+Updated chart appVersion to v0.8.4.
+
+## [v12.3.0]
+
+### Changed
+Updated chart appVersion to v0.8.3.
+
+## [v12.2.0]
+
+### Changed
+Updated chart appVersion to v0.8.2.
+
+## [v12.1.1]
+
+### Fixed
+Fixed service account name handling to prevent unwanted suffix appending when using custom service account names. The `-sa` suffix is now only applied to auto-generated names, not user-provided names.
+
+## [v12.1.0]
+
+### Changed
+Updated chart appVersion to v0.8.1.
+
+## [v12.0.1]
+
+### Fixed
+
+#### Pipelines Subchart Resource Name Collision
+
+Fixed a critical bug where the Pipelines subchart would create resources with names that collided with the parent Open WebUI chart when the release name was "open-webui".
+
+**What was fixed:**
+- Pipelines subchart now includes proper `pipelines.fullname` helper that generates unique resource names
+- Pipelines subchart now supports `fullnameOverride` and `nameOverride` values
+- Parent chart's `pipelines.serviceEndpoint` helper now correctly generates Pipelines service URLs using the subchart's naming logic
+
+**Impact:**
+- **New installations**: No action required. Pipelines resources will be named correctly (e.g., "open-webui-pipelines").
+- **Existing deployments**: If you have Pipelines enabled, upgrade may cause Pipelines resources to be recreated with new names.
+
+## [v12.0.0]
+
+### Changed - BREAKING CHANGES
+
+#### Standard Helm Naming Conventions
+
+**⚠️ This is a breaking change that requires action when upgrading from chart version < 12.0.0**
+
+The chart now follows standard Helm naming conventions to align with best practices used in major open-source Helm charts.
+
+**What changed:**
+- `fullnameOverride` now defaults to `""` (empty string) instead of `"open-webui"`
+- `ollama.fullnameOverride` now defaults to `""` (empty string) instead of `"open-webui-ollama"`
+- `pipelines.fullnameOverride` added and defaults to `""` (empty string)
+- `websocket.url` now defaults to `""` (empty string, auto-generated) instead of `"redis://open-webui-redis:6379/0"`
+- Resource names are now dynamically generated based on release name and chart name
+- Removed redundant `websocket.redis.name` configuration value
+- `serviceAccount.name` now defaults to `""` (empty string)
+
+**Impact:**
+- **New installations**: No action required. Resources will be named using standard Helm patterns.
+- **Existing deployments upgrading**: You **MUST** set `fullnameOverride: "open-webui"` to maintain existing resource names.
+
+**Migration guide for existing deployments:**
+
+To upgrade safely without recreating resources:
+
+```yaml
+# In your values.yaml or via --set flags
+fullnameOverride: "open-webui"
+ollama:
+  fullnameOverride: "open-webui-ollama"
+pipelines:
+  fullnameOverride: "open-webui-pipelines"
+websocket:
+  url: "redis://open-webui-redis:6379/0"
+```
+
+Or via command line:
+```bash
+helm upgrade open-webui open-webui/open-webui \
+  --set fullnameOverride="open-webui" \
+  --set ollama.fullnameOverride="open-webui-ollama" \
+  --set pipelines.fullnameOverride="open-webui-pipelines" \
+  --set websocket.url="redis://open-webui-redis:6379/0"
+```
+
+Without this override, Helm will create new resources with different names, leaving your existing StatefulSet, PVC, and Services orphaned.
+
+**Benefits of this change:**
+- Aligns with Helm community standards
+- Enables easier multi-instance deployments in the same namespace
+- Provides more predictable and flexible resource naming
+- Simplifies chart maintenance and understanding for users familiar with Helm conventions
+
+**Examples of new naming behavior:**
+
+| Release Name     | Chart Name   | Result (with empty fullnameOverride)    |
+| ---------------- | ------------ | --------------------------------------- |
+| `open-webui`     | `open-webui` | Resources named `open-webui`            |
+| `open-webui-dev` | `open-webui` | Resources named `open-webui-dev`        |
+| `production`     | `open-webui` | Resources named `production-open-webui` |
+| `my-chat`        | `open-webui` | Resources named `my-chat-open-webui`    |
+
+### Changed
+
+- **`ollama.fullnameOverride`** default value changed from `"open-webui-ollama"` to `""` for dynamic naming
+- **`websocket.url`** default value changed from `"redis://open-webui-redis:6379/0"` to `""` for auto-generation
+
+### Added
+
+- **`pipelines.fullnameOverride`** configuration value for customizing Pipelines subchart naming (defaults to `""`)
+- **`websocket.redis.url`** helper template for dynamically generating Redis URLs
+- **`ollamaLocalUrl`** and **`pipelines.serviceEndpoint`** helpers now support dynamic naming
+
+### Removed
+
+- **`websocket.redis.name`** configuration value (was unused and redundant with fullname helper)
+
+### Documentation
+
+- Added comprehensive "Resource Naming" section to README explaining naming behavior
+- Added detailed upgrade instructions for users on older chart versions
+- Improved inline documentation in values.yaml for naming-related parameters
+
+---
+
+Previous releases did not maintain a changelog. This changelog starts from version 12.0.0.

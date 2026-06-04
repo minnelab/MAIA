@@ -62,3 +62,5 @@ maia_core_argocd_applications:
   - maia-core-nfs-provisioner
   - maia-core-prometheus
   - maia-core-kubeflow
+# Optional Kubernetes commands to execute
+extra_commands: []

@@ -1,0 +1,71 @@
+name: "Bump Ollama version"
+
+sources:
+  latestOllamaVersion:
+    kind: githubrelease
+    spec:
+      owner: "ollama"
+      repository: "ollama"
+      token: "{{ .github.token }}"
+      latest: true
+      versionfilter:
+        kind: regex
+        pattern: '^v?(\d+\.\d+\.\d+)$'
+    transformers:
+      - trimprefix: "v"
+
+targets:
+  appVersion:
+    name: "Update appVersion in Chart.yaml"
+    kind: yaml
+    sourceid: latestOllamaVersion
+    scmid: default
+    spec:
+      file: "Chart.yaml"
+      key: "$.appVersion"
+
+  chartVersion:
+    name: "Bump Chart version"
+    kind: helmchart
+    scmid: default
+    dependson:
+      - appVersion
+    spec:
+      name: "."
+      file: "Chart.yaml"
+      key: '$.version'
+      versionincrement: minor
+
+  artifactHubChanges:
+    name: "Update Artifact Hub Annotations"
+    kind: file
+    sourceid: latestOllamaVersion
+    scmid: default
+    dependson:
+      - appVersion
+    spec:
+      file: "Chart.yaml"
+      matchpattern: '(\s{4,}.*?)(v?\d+\.\d+\.\d+)'
+      replacepattern: '${1}v{{ source "latestOllamaVersion" }}'
+
+scms:
+  default:
+    kind: github
+    spec:
+      user: "GitHub Actions Bot"
+      email: "tech@otwld.com"
+      owner: "otwld"
+      repository: "ollama-helm"
+      token: "{{ .github.token }}"
+      username: "github-actions"
+      branch: "main"
+
+actions:
+  githubPR:
+    kind: github/pullrequest
+    scmid: default
+    title: 'feat: upgrade app version to {{ source "latestOllamaVersion" }}'
+    spec:
+      labels:
+        - "dependencies"
+        - "automated-upgrade"
