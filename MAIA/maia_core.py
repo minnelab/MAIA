@@ -642,20 +642,19 @@ def create_traefik_values(config_folder, project_id, cluster_config_dict):
     if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         traefik_values.update(
             {
-                "deployment": {
-                    "additionalVolumes": [
+                    "deployment":{"additionalVolumes": [
                         {"name": "host-certs", "hostPath": {"path": "/etc/ssl/certs/ca-certificates.crt", "type": "File"}},
-                        {"name": "local-plugins", "hostPath": {"path": "/var/lib/traefik/plugins", "type": "Directory"}},
+                        {"name": "local-plugins", "hostPath": {"path": "/var/lib/traefik/plugins", "type": "Directory"}}
                     ]
-                },
-                "additionalVolumeMounts": [
-                    {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
-                    {"name": "local-plugins", "mountPath": "/plugins-local", "readOnly": False},
-                ],
-                "env": [{"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"}],
+                    },
+                    "additionalVolumeMounts": [
+                        {"name": "host-certs", "mountPath": "/etc/ssl/certs/ca-certificates.crt", "readOnly": True},
+                        {"name": "local-plugins", "mountPath": "/plugins-local", "readOnly": False}
+                    ],
+                    "env": [{"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-certificates.crt"}],
                 "experimental": {},
-                "globalArguments": traefik_values["globalArguments"]
-                + ["--experimental.localplugins.traefik-oidc-auth.modulename=github.com/sevensolutions/traefik-oidc-auth"],
+                "globalArguments": traefik_values["globalArguments"] + ["--experimental.localplugins.traefik-oidc-auth.modulename=github.com/sevensolutions/traefik-oidc-auth"]
+                
             }
         )
 
@@ -971,6 +970,9 @@ def create_nfs_server_provisioner_values(config_folder, project_id, cluster_conf
         nfs_server_provisioner_values.update(
             {"nfs": {"server": cluster_config_dict["nfs_server"], "path": cluster_config_dict["nfs_path"]}}
         )
+        
+    if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
+        nfs_server_provisioner_values.update({"image": {"repository": "maiacloudai/nfs-subdir-external-provisioner"}})
 
     if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         nfs_server_provisioner_values.update({"image": {"repository": "maiacloudai/nfs-subdir-external-provisioner"}})
