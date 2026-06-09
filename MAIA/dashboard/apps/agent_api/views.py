@@ -20,6 +20,7 @@ import os
 
 from django.conf import settings
 from loguru import logger
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -370,6 +371,7 @@ class AgentAdminChatView(APIView):
     DELETE /maia/agent/admin-chat/  (clear conversation)
     """
 
+    authentication_classes = [SessionAuthentication]
     permission_classes = [AllowAny]
     SESSION_KEY = "agent_chat_history"
 

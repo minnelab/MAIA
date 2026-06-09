@@ -447,6 +447,7 @@ print(t.key)"</pre>
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-CSRFToken": csrfToken,
@@ -470,6 +471,7 @@ print(t.key)"</pre>
   async function clearChat() {
     await fetch(CHAT_URL, {
       method: "DELETE",
+      credentials: "same-origin",
       headers: { "X-CSRFToken": csrfToken },
     });
     // Remove all messages except the welcome bubble
