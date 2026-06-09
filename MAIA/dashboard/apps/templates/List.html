@@ -1,0 +1,141 @@
+{% extends 'layouts/base-fullscreen.html' %}
+
+{% block title %} Dashboard {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+
+
+
+<div style="width: 80vw; margin-left: calc(50% - 40vw);">
+    <img alt="MAIA_Poster" src="{{ ASSETS_ROOT }}/img/MAIA/MAIA_Poster.png" style="width:80vw; display:block; margin:auto;" />
+</div>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE -->
+{% block javascripts %}
+
+  <script src="{{ ASSETS_ROOT }}/js/plugins/chartjs.min.js"></script>
+    <script>
+
+
+
+
+        var coll = document.getElementsByClassName("collapsible");
+        var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.display === "block") {
+      content.style.display = "none";
+    } else {
+      content.style.display = "block";
+    }
+  });
+
+
+
+
+}
+
+</script>
+  <script>
+
+    function copyToClipboard(e, namespace) {
+
+  navigator.clipboard.writeText("kubectl exec -it "+e.target.id+" -n "+namespace+" -- bash");
+
+
+
+}
+    function copyToClipboardPF(e, namespace, port) {
+
+  navigator.clipboard.writeText("kubectl port-forward svc/"+e.target.id+" -n "+namespace+" :"+port);
+
+
+
+}
+
+function deleteElement(e) {
+    if(!confirm('Are you sure you want to delete?'))e.preventDefault();
+
+}
+
+ function copyToClipboardPod(e, namespace, port) {
+
+  navigator.clipboard.writeText("kubectl port-forward "+e.target.id+" -n "+namespace+" :"+port);
+
+
+
+}
+  </script>
+    <style>
+    h1 {text-align: center;}
+    h2 {text-align: center;}
+p {text-align: center;}
+div {text-align: center;}
+    .center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+    .myDiv {
+  border: 5px outset red;
+  background-color: lightblue;
+  text-align: center;
+}
+    #thumbs {
+    width: 1000px;
+    margin-top:180px;
+    margin-left: auto;
+    margin-right: auto;
+
+     text-align: justify;
+    -ms-text-justify: distribute-all-lines;
+    text-justify: distribute-all-lines;
+}
+#thumbs a {
+    vertical-align: top;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+.stretch {
+    width: 100%;
+    display: inline-block;
+    font-size: 0;
+    line-height: 0
+}
+
+    .collapsible {
+  background-color: #777;
+  color: white;
+  cursor: pointer;
+  padding: 12px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 10px;
+}
+
+.content {
+  padding: 0 12px;
+  display: none;
+  overflow: hidden;
+  background-color: #f1f1f1;
+}
+</style>
+{% endblock javascripts %}
+
+
+
+
+
