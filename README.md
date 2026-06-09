@@ -280,6 +280,49 @@ Additionally, the MAIA platform provides access to a range of cloud services and
 - **KubeFlow**: An open-source platform for deploying machine learning workflows on Kubernetes.
 - **MONAI Deploy [Experimental]**: An open-source platform for deploying deep learning models for medical imaging in clinical production settings.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/Workspace.png" width="70%" alt='MAIA'>
+</p>
+
+## Development and Testing
+
+### Running Tests
+
+The MAIA toolkit includes a comprehensive test suite with 110+ unit tests covering all modules in `MAIA/` and `MAIA_scripts/`.
+
+To run the tests:
+
+```bash
+# Install test dependencies (if not already installed)
+pip install pytest pytest-cov pytest-mock
+
+# Run all tests
+pytest tests/
+
+# Run tests with coverage
+pytest tests/ --cov=MAIA --cov=MAIA_scripts --cov-report=html
+
+# Run specific test file
+pytest tests/test_maia_fn.py
+```
+
+For more information about the test suite, see the [tests/README.md](tests/README.md) file.
+
+### Test Coverage
+
+The test suite covers:
+- Password generation and validation functions
+- Kubernetes operations and resource management
+- Keycloak authentication and user management
+- GPU booking and availability verification
+- Helm values generation for various services
+- Deployment functions for core and admin components
+- Email sending and notification systems
+- Configuration management utilities
+
+Tests use extensive mocking to avoid requiring external dependencies like Kubernetes clusters or Keycloak instances, enabling fast and reliable execution in CI/CD environments.
+
+
 
 
 
