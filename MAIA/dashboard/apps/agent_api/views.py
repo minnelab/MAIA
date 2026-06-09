@@ -401,7 +401,7 @@ class AgentAdminChatView(APIView):
         try:
             response_text, updated_history = _run_agent(message, history, cfg, True, username)
         except Exception as exc:
-            logger.error(f"Admin chat agent error [{username}]: {exc}")
+            logger.exception(f"Admin chat agent error [{username}]: {exc}")
             return Response({"error": str(exc)}, status=500)
 
         serialised = _serialise_history(updated_history) if cfg["provider"] == "anthropic" else updated_history
