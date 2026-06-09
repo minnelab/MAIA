@@ -23,7 +23,7 @@ OIDC_OP_USER_ENDPOINT: OpenID Connect user endpoint.
 OIDC_OP_JWKS_ENDPOINT: OpenID Connect JWKS endpoint.
 OIDC_RP_SIGN_ALGO: OpenID Connect signing algorithm.
 OIDC_RP_SCOPES: OpenID Connect scopes.
-OPENWEBAI_API_KEY: OpenAI API key for the chatbot.
+OPENWEBUI_API_KEY: OpenWebUI API key for the chatbot.
 DEBUG: Debug mode.
 # Server URL used for generating full URLs for the API
 SERVER: Server URL.

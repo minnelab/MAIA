@@ -58,15 +58,15 @@ SMTP_PASSWORD = env("SMTP_PASSWORD", default=None)
 
 DEFAULT_INGRESS_HOST = env("DEFAULT_INGRESS_HOST", default="localhost")
 
-OPENWEBAI_API_KEY = env("OPENWEBAI_API_KEY", default=None)
-OPENWEBAI_URL = env("OPENWEBAI_URL", default=None)
-OPENWEBAI_MODEL = env("OPENWEBAI_MODEL", default="llama3:latest")
+OPENWEBUI_API_KEY = env("OPENWEBUI_API_KEY", default=None)
+OPENWEBUI_URL = env("OPENWEBUI_URL", default=None)
+OPENWEBUI_MODEL = env("OPENWEBUI_MODEL", default="llama3:latest")
 ARGOCD_SERVER = env("ARGOCD_SERVER", default=None)
 ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
 ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)
 
 # Agent API / MCP Server settings
-# Select the AI provider: anthropic (default) | openai | ollama
+# Select the AI provider: anthropic (default) | openai | openwebui
 AGENT_PROVIDER = env("AGENT_PROVIDER", default="anthropic")
 # Shared secret protecting /maia/agent/* endpoints (required in production)
 AGENT_API_TOKEN = env("AGENT_API_TOKEN", default=None)

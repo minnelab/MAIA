@@ -339,18 +339,18 @@ print(t.key)"</pre>
                   <td class="text-xs text-secondary">Override for Azure / proxies</td>
                 </tr>
 
-                {# ── Ollama ── #}
-                <tr class="table-light"><td colspan="2" class="text-xxs text-uppercase text-secondary fw-bold pt-2 pb-1 px-3">Ollama</td></tr>
+                {# ── OpenWebUI ── #}
+                <tr class="table-light"><td colspan="2" class="text-xxs text-uppercase text-secondary fw-bold pt-2 pb-1 px-3">OpenWebUI</td></tr>
                 <tr>
-                  <td><code class="text-xs">OPENWEBAI_URL</code></td>
+                  <td><code class="text-xs">OPENWEBUI_URL</code></td>
                   <td class="text-xs text-secondary">e.g. <em>https://maia-chat.app.../api/v1</em></td>
                 </tr>
                 <tr>
-                  <td><code class="text-xs">OPENWEBAI_API_KEY</code></td>
-                  <td>{% if ollama_key_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-secondary">Not set (local only)</span>{% endif %}</td>
+                  <td><code class="text-xs">OPENWEBUI_API_KEY</code></td>
+                  <td>{% if openwebui_key_configured %}<span class="badge bg-gradient-success">Set</span>{% else %}<span class="badge bg-gradient-secondary">Not set (local only)</span>{% endif %}</td>
                 </tr>
                 <tr>
-                  <td><code class="text-xs">OPENWEBAI_MODEL</code></td>
+                  <td><code class="text-xs">OPENWEBUI_MODEL</code></td>
                   <td class="text-xs text-secondary">e.g. <em>llama3</em>, <em>mistral</em></td>
                 </tr>
               </tbody>

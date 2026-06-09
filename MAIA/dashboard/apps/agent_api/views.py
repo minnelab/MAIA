@@ -4,7 +4,7 @@ MAIA Agent API views — multi-provider.
 Supported AI providers (set via AGENT_PROVIDER env var):
   anthropic  (default) — Claude via Anthropic SDK
   openai               — GPT-4 / Azure / any OpenAI-compatible endpoint
-  ollama               — local models via Ollama's OpenAI-compatible API
+  openwebui            —  models via OpenWebUI's OpenAI-compatible API
 
 Endpoints
 ---------
@@ -81,10 +81,10 @@ def _get_config() -> dict:
         base_url = _s("OPENAI_BASE_URL", "https://api.openai.com/v1")
         is_ready = bool(api_key)
 
-    elif provider == "ollama":
-        api_key = _s("OPENWEBAI_API_KEY", "ollama")  # use key if set, else dummy value
-        model = _s("OPENWEBAI_MODEL", "llama3")
-        base_url = _s("OPENWEBAI_URL", "http://localhost:11434/v1")
+    elif provider == "openwebui":
+        api_key = _s("OPENWEBUI_API_KEY", "openwebui")  # use key if set, else dummy value
+        model = _s("OPENWEBUI_MODEL", "llama3")
+        base_url = _s("OPENWEBUI_URL", "http://localhost:11434/v1")
         is_ready = True  # key is optional for local; required only for secured endpoints
 
     else:  # anthropic (default)
@@ -168,7 +168,7 @@ def _run_agent_anthropic(message: str, history: list, cfg: dict, authorized: boo
 
 
 # ---------------------------------------------------------------------------
-# OpenAI-compatible agent runner  (OpenAI GPT-4, Ollama, …)
+# OpenAI-compatible agent runner  (OpenAI GPT-4, OpenWebUI, …)
 # ---------------------------------------------------------------------------
 
 
@@ -178,7 +178,7 @@ def _run_agent_openai(message: str, history: list, cfg: dict, authorized: bool, 
 
     Works with:
       - OpenAI (base_url = https://api.openai.com/v1)
-      - Ollama  (base_url = http://localhost:11434/v1, api_key = 'ollama')
+      - OpenWebUI  (base_url = http://localhost:11434/v1, api_key = 'openwebui')
       - Any other OpenAI-compatible endpoint
     """
     try:

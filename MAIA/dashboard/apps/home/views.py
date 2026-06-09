@@ -275,10 +275,10 @@ def agent_api_view(request):
         is_ready = bool(getattr(settings, "OPENAI_API_KEY", None))
         active_model = getattr(settings, "OPENAI_MODEL", "gpt-4o")
         active_base_url = getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1")
-    elif provider == "ollama":
+    elif provider == "openwebui":
         is_ready = True
-        active_model = getattr(settings, "OPENWEBAI_MODEL", "llama3")
-        active_base_url = getattr(settings, "OPENWEBAI_URL", "http://localhost:11434/v1")
+        active_model = getattr(settings, "OPENWEBUI_MODEL", "llama3")
+        active_base_url = getattr(settings, "OPENWEBUI_URL", "http://localhost:11434/v1")
     else:
         provider = "anthropic"
         is_ready = bool(getattr(settings, "ANTHROPIC_API_KEY", None))
@@ -296,7 +296,7 @@ def agent_api_view(request):
         # legacy keys kept for the env-var table
         "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
         "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", None)),
-        "ollama_key_configured": bool(getattr(settings, "OPENWEBAI_API_KEY", None)),
+        "openwebui_key_configured": bool(getattr(settings, "OPENWEBUI_API_KEY", None)),
         "user": ["admin"],
         "username": request.user.username + " [ADMIN]",
     }
@@ -309,21 +309,21 @@ def chat(request):
     if request.method == "POST":
         data = json.loads(request.body)
         user_message = data.get("message", "")
-        if not settings.OPENWEBAI_API_KEY or not settings.OPENWEBAI_URL or not settings.OPENWEBAI_MODEL:
-            return JsonResponse({"error": "OPENWEBAI_API_KEY or OPENWEBAI_URL or OPENWEBAI_MODEL is not set"}, status=500)
+        if not settings.OPENWEBUI_API_KEY or not settings.OPENWEBUI_URL or not settings.OPENWEBUI_MODEL:
+            return JsonResponse({"error": "OPENWEBUI_API_KEY or OPENWEBUI_URL or OPENWEBUI_MODEL is not set"}, status=500)
         headers = {
-            "Authorization": f"Bearer {settings.OPENWEBAI_API_KEY}",
+            "Authorization": f"Bearer {settings.OPENWEBUI_API_KEY}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": settings.OPENWEBAI_MODEL,
+            "model": settings.OPENWEBUI_MODEL,
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
             ],
         }
         response = requests.post(
-            settings.OPENWEBAI_URL,
+            settings.OPENWEBUI_URL,
             headers=headers,
             json=payload,
         )
