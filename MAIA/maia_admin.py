@@ -1118,12 +1118,12 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                 ]
             )
     # MAIA-Chatbot Configuration
-    if "OPENWEBAI_API_KEY" in os.environ and "OPENWEBAI_URL" in os.environ and "OPENWEBAI_MODEL" in os.environ:
+    if "OPENWEBUI_API_KEY" in os.environ and "OPENWEBUI_URL" in os.environ and "OPENWEBUI_MODEL" in os.environ:
         maia_dashboard_values["env"].extend(
             [
-                {"name": "OPENWEBAI_API_KEY", "value": os.environ["OPENWEBAI_API_KEY"]},
-                {"name": "OPENWEBAI_URL", "value": os.environ["OPENWEBAI_URL"]},
-                {"name": "OPENWEBAI_MODEL", "value": os.environ["OPENWEBAI_MODEL"]},
+                {"name": "OPENWEBUI_API_KEY", "value": os.environ["OPENWEBUI_API_KEY"]},
+                {"name": "OPENWEBUI_URL", "value": os.environ["OPENWEBUI_URL"]},
+                {"name": "OPENWEBUI_MODEL", "value": os.environ["OPENWEBUI_MODEL"]},
             ]
         )
 
@@ -1163,24 +1163,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         maia_dashboard_values["env"].extend(
             [
                 {"name": "AGENT_API_TOKEN", "value": os.environ["AGENT_API_TOKEN"]},
-            ]
-        )
-    if "OLLAMA_BASE_URL" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "OLLAMA_BASE_URL", "value": os.environ["OLLAMA_BASE_URL"]},
-            ]
-        )
-    if "OLLAMA_MODEL" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "OLLAMA_MODEL", "value": os.environ["OLLAMA_MODEL"]},
-            ]
-        )
-    if "OLLAMA_API_KEY" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "OLLAMA_API_KEY", "value": os.environ["OLLAMA_API_KEY"]},
             ]
         )
     if "CLUSTER_YAML_CONFIGS" in os.environ:
