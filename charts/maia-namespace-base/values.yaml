@@ -16,6 +16,8 @@ users:
 
 serviceType: "NodePort"
 
+sshHostname: ""
+
 metallbSharedIp: True
 metallbIpPool: False
 loadBalancerIp: "192.168.0.1"
