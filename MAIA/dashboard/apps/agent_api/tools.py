@@ -25,15 +25,18 @@ from django.conf import settings
 from django.http import HttpRequest
 from MAIA.dashboard_utils import get_pending_projects
 import subprocess
+import tempfile
+from pathlib import Path
+import yaml
 
 
-AVAILABLE_CHARTS = [
-    {
+AVAILABLE_CHARTS = {
+    "open-webui": {
         "repo": "https://github.com/open-webui/helm-charts",
         "chart_name": "open-webui",
         "version": "13.3.1",
     }
-]
+}
 
 USER_TOOL_DEFINITIONS = [
     {
@@ -333,7 +336,11 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
             version = chart_info["version"]
         else:
             return f"Chart {chart} not found in the available charts"
-        result = subprocess.run(["helm", "upgrade", "--install", "-n", namespace, release, chart, version, values], capture_output=True, text=True)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = Path(temp_dir)
+            temp_dir.joinpath("values.yaml").write_text(yaml.dump(values))
+            
+            result = subprocess.run(["helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml")], capture_output=True, text=True)
         return result.stdout
     else:
         return f"Unknown command: {command}"
