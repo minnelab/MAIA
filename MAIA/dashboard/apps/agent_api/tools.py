@@ -24,6 +24,7 @@ from apps.authentication.views import register_user, register_project
 from django.conf import settings
 from django.http import HttpRequest
 from MAIA.dashboard_utils import get_pending_projects
+import subprocess
 
 USER_TOOL_DEFINITIONS = [
     {
@@ -297,8 +298,12 @@ OPENAI_USER_TOOL_DEFINITIONS = [
 def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict) -> str:
     """Execute a Helm command on a Kubernetes cluster."""
     if command == "ls":
-        result = subprocess.run(["helm", "ls", "-n", namespace], capture_output=True, text=True)
-        return result.stdout
+        if namespace == "all":
+            result = subprocess.run(["helm", "ls", "-a"], capture_output=True, text=True)
+            return result.stdout
+        else:
+            result = subprocess.run(["helm", "ls", "-n", namespace], capture_output=True, text=True)
+            return result.stdout
     elif command == "install":
         result = subprocess.run(["helm", "upgrade", "--install", "-n", namespace, chart, version, values], capture_output=True, text=True)
         return result.stdout
