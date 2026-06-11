@@ -3,4 +3,7 @@ include MAIA/_version.py
 include configs/*.json
 include README.md
 include LICENSE
+recursive-include MAIA/dashboard/apps *.html *.css *.js *.scss *.png *.jpg *.jpeg *.svg *.ico *.woff *.woff2 *.ttf *.eot *.map *.json *.eps *.py
+recursive-include MAIA/dashboard/core *.py *.html *.css *.js *.gitkeep
+include MAIA/dashboard/manage.py
 include_package_data=True

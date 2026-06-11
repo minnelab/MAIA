@@ -229,7 +229,11 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "startTimeout": 7200,
             "allowPrivilegeEscalation": True,
             "uid": 1000,
-            "extraPodConfig": {"securityContext": {"fsGroupChangePolicy": "OnRootMismatch"}},
+            "extraPodConfig": {
+                "securityContext": {"fsGroupChangePolicy": "OnRootMismatch"},
+                "automountServiceAccountToken": True,
+                "restartPolicy": "OnFailure",
+            },
             "networkPolicy": {"enabled": False},
             "defaultUrl": "/lab/tree/Welcome.ipynb",
             "extraEnv": {
@@ -687,6 +691,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 },
             }
         )
+
+    jh_template["singleuser"]["serviceAccountName"] = "default"
+
     if "node_selector" in user_form:
         k = list(user_form["node_selector"].keys())[0]
         v = user_form["node_selector"][k]
