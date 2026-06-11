@@ -1,3 +1,25 @@
+## Usage: tag.sh package_name bump_type prerelease [--latest <version>] [--dry-run]
+##   --latest <version>  Use the specified version as the latest version
+##   --dry-run           Do not create any tags, just print the version
+##
+## Example:
+##   tag.sh ansible-maia.installation major alpha --latest v1.0.0
+##   tag.sh ansible-maia.build-images patch beta --dry-run
+##
+## If --latest is specified, the next argument is used as the version.
+## If --dry-run is specified, no tags are created, just the version is printed.
+## BUMP_TYPE can be major, minor, patch
+## PRERELEASE can be alpha, beta, rc, etc.
+
+if [ "$1" == "--help" ]; then
+  echo "Usage: tag.sh package_name bump_type prerelease [--latest <version>] [--dry-run]"
+  echo "  --latest <version>  Use the specified version as the latest version"
+  echo "  --dry-run           Do not create any tags, just print the version"
+  echo "  package_name can be ansible-maia.installation or ansible-maia.build-images."
+  echo "  bump_type can be major, minor, patch"
+  echo "  prelease can be alpha, beta, rc, etc."
+  exit 0
+fi
 # Get latest tag (descending, semver)
 if [ "$1" == "ansible-maia.installation" ]; then
 LATEST=v$(git tag -l 'ansible-maia.installation-v*' --sort=-v:refname | head -n 1 | sed 's/^ansible-maia.installation-v//')
@@ -8,6 +30,16 @@ LATEST=$(git tag --sort=-v:refname | head -n 1)
 fi
 # Uncomment below (for debugging, override found tag)
 #LATEST=v0.0.0
+
+# Check for --latest override and use next argument as version
+for i in "$@"; do
+  if [ "$i" = "--latest" ]; then
+    pos=$(( $(echo "$@" | tr ' ' '\n' | grep -n -- --latest | cut -d: -f1) + 1 ))
+    LATEST=$(echo "$@" | cut -d' ' -f$pos)
+    break
+  fi
+done
+
 
 echo "Latest tag: $LATEST"
 
@@ -34,6 +66,9 @@ fi
 
 BUMP_TYPE="$2"
 PRERELEASE="$3"
+if [[ "$PRERELEASE" == --* ]]; then
+  PRERELEASE=""
+fi
 
 # Default to current values
 NEXT_MAJOR=$MAJOR
@@ -91,6 +126,11 @@ elif [ "$1" == "ansible-maia.build-images" ]; then
   NEXT_VER="ansible-maia.build-images-$NEXT_VER"
 fi
 echo "Tagging $NEXT_VER"
+
+if [[ "$*" == *"--dry-run"* ]]; then
+  echo "Dry run: Not creating any tags."
+  exit 0
+fi
 
 echo "Do you want to push the tag? (y/n)"
 read push_tag

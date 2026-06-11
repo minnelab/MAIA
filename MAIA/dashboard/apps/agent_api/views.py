@@ -12,13 +12,16 @@ POST   /maia/agent/chat/          Generic REST (token auth)
 POST   /maia/agent/mattermost/    Mattermost outgoing webhook / slash command
 POST   /maia/agent/admin-chat/    Dashboard chat UI (session auth, superuser only)
 DELETE /maia/agent/admin-chat/    Clear session history
-POST   /maia/agent/mcp/           HTTP MCP server (JSON-RPC 2.0)
+POST   /maia/agent/mcp/           MCP server (Streamable HTTP / JSON-RPC 2.0)
 """
 
 import json
 import os
+import uuid
 
 from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.views import View
 from loguru import logger
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny
@@ -452,19 +455,28 @@ def _serialise_history(history: list) -> list:
 
 
 # ---------------------------------------------------------------------------
-# HTTP MCP server (JSON-RPC 2.0)
+# HTTP MCP server (Streamable HTTP + JSON-RPC 2.0)
 # ---------------------------------------------------------------------------
 
 
-class MCPServerView(APIView):
-    """
-    Stateless HTTP MCP endpoint.
+def _mcp_json_response(payload, status: int = 200, safe: bool = True, **headers) -> JsonResponse:
+    """Return JSON without DRF content negotiation (avoids 406 on MCP Accept headers)."""
+    response = JsonResponse(payload, status=status, safe=safe)
+    for key, value in headers.items():
+        response[key] = value
+    return response
 
-    Methods: initialize, tools/list, tools/call
+
+class MCPServerView(View):
+    """
+    Stateless MCP endpoint (Streamable HTTP transport).
+
+    Compatible with Cursor and other MCP clients that connect via URL.
+    Uses plain Django responses so Accept: text/event-stream does not trigger 406.
+
+    Methods: initialize, tools/list, tools/call, ping
     Auth:    X-Agent-Token header or ?token= query param
     """
-
-    permission_classes = [AllowAny]
 
     _MCP_TOOLS = [
         {
@@ -475,23 +487,43 @@ class MCPServerView(APIView):
         for t in TOOL_DEFINITIONS
     ]
 
-    def post(self, request, *args, **kwargs):
-        cfg = _get_config()
+    def _auth_error(self) -> JsonResponse:
+        return _mcp_json_response(
+            {"jsonrpc": "2.0", "error": {"code": -32001, "message": "Unauthorized"}, "id": None},
+            status=401,
+        )
 
-        provided = request.headers.get("X-Agent-Token") or request.query_params.get("token", "")
-        if cfg["agent_token"] and provided != cfg["agent_token"]:
-            return Response(
-                {"jsonrpc": "2.0", "error": {"code": -32001, "message": "Unauthorized"}, "id": None},
-                status=401,
-            )
-
+    def _parse_body(self, request) -> list[dict] | JsonResponse:
         try:
-            body = request.data
-            rpc_id = body.get("id")
-            method = body.get("method", "")
-            params = body.get("params", {})
-        except Exception:
-            return Response({"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None})
+            raw = request.body.decode("utf-8") if request.body else ""
+            if not raw.strip():
+                return _mcp_json_response(
+                    {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None},
+                    status=400,
+                )
+            parsed = json.loads(raw)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return _mcp_json_response(
+                {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None},
+                status=400,
+            )
+        if isinstance(parsed, list):
+            return parsed
+        if isinstance(parsed, dict):
+            return [parsed]
+        return _mcp_json_response(
+            {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None},
+            status=400,
+        )
+
+    def _dispatch_rpc(self, body: dict) -> dict | None:
+        """Handle one JSON-RPC message. Returns a response dict, or None for notifications."""
+        rpc_id = body.get("id")
+        method = body.get("method", "")
+        params = body.get("params") or {}
+
+        if method.startswith("notifications/"):
+            return None
 
         if method == "initialize":
             result = {
@@ -500,6 +532,9 @@ class MCPServerView(APIView):
                 "serverInfo": {"name": "maia-admin", "version": "1.0.0"},
             }
 
+        elif method == "ping":
+            result = {}
+
         elif method == "tools/list":
             result = {"tools": self._MCP_TOOLS}
 
@@ -507,13 +542,66 @@ class MCPServerView(APIView):
             tool_name = params.get("name", "")
             tool_args = params.get("arguments", {})
             if not tool_name:
-                return Response({"jsonrpc": "2.0", "error": {"code": -32602, "message": "Missing 'name'"}, "id": rpc_id})
+                return {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32602, "message": "Missing 'name'"},
+                    "id": rpc_id,
+                }
             result = {
                 "content": [{"type": "text", "text": execute_tool(tool_name, tool_args)}],
                 "isError": False,
             }
 
         else:
-            return Response({"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method not found: {method}"}, "id": rpc_id})
+            return {
+                "jsonrpc": "2.0",
+                "error": {"code": -32601, "message": f"Method not found: {method}"},
+                "id": rpc_id,
+            }
 
-        return Response({"jsonrpc": "2.0", "result": result, "id": rpc_id})
+        return {"jsonrpc": "2.0", "result": result, "id": rpc_id}
+
+    def _validate_token(self, request) -> bool:
+        cfg = _get_config()
+        provided = request.headers.get("X-Agent-Token") or request.GET.get("token", "")
+        if cfg["agent_token"] and provided != cfg["agent_token"]:
+            return False
+        return True
+
+    def post(self, request, *args, **kwargs):
+        if not self._validate_token(request):
+            return self._auth_error()
+
+        messages = self._parse_body(request)
+        if isinstance(messages, JsonResponse):
+            return messages
+
+        requests = [m for m in messages if "id" in m]
+        if not requests:
+            return HttpResponse(status=202)
+
+        responses = []
+        session_header = None
+        for msg in requests:
+            resp = self._dispatch_rpc(msg)
+            if resp is not None:
+                responses.append(resp)
+                if msg.get("method") == "initialize" and resp.get("result"):
+                    session_header = str(uuid.uuid4())
+
+        if len(responses) == 1:
+            extra = {"Mcp-Session-Id": session_header} if session_header else {}
+            return _mcp_json_response(responses[0], **extra)
+
+        return _mcp_json_response(responses, safe=False)  # JSON-RPC batch
+
+    def get(self, request, *args, **kwargs):
+        """Streamable HTTP: no standalone SSE stream (stateless server)."""
+        if not self._validate_token(request):
+            return self._auth_error()
+        return HttpResponse(status=405)
+
+    def delete(self, request, *args, **kwargs):
+        if not self._validate_token(request):
+            return self._auth_error()
+        return HttpResponse(status=405)

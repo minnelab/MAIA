@@ -62,3 +62,6 @@ anthropic>=0.40.0
 openai>=1.0.0
 mcp>=1.0.0
 httpx>=0.27.0
+antsibull-docs
+pytest
+pytest-cov

@@ -128,11 +128,22 @@ def fetch_token(auth_code, code_verifier, ca_cert, TOKEN_URL, CLIENT_ID, REDIREC
     return response.json()
 
 
+def get_projects_status(token, dashboard_url, ca_cert):
+    url = f"{dashboard_url}/maia/user-management/get-projects/"
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(url, headers=headers, verify=ca_cert)
+
+    response.raise_for_status()
+    return response.json()
+
+
 def deploy_project(token, dashboard_url, ca_cert, project_config_file):
     url = f"{dashboard_url}/maia/user-management/project-chart/"
     data = json.load(open(project_config_file))
     headers = {
         "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
     }
     response = requests.post(url, json=data, headers=headers, verify=ca_cert)
     logger.info(response.status_code)
@@ -160,6 +171,11 @@ def get_arg_parser():
         required=True,
         help="Dashboard URL to use for authentication and deployment.",
     )
+    pars.add_argument(
+        "--get-status",
+        action="store_true",
+        help="Get the status of the project.",
+    )
 
     return pars
 
@@ -169,6 +185,7 @@ def main():
     project_config_file = args.project_config_file
     dashboard_url = args.dashboard_url
     ca_cert = False
+    get_status = args.get_status
     well_known_url = f"{dashboard_url}/maia/api/well-known/"
     response = requests.get(well_known_url, verify=ca_cert)
     response.raise_for_status()
@@ -201,6 +218,11 @@ def main():
             else:
                 logger.error("No code received")
                 raise Exception("No code received")
+        if get_status:
+            resp = get_projects_status(token=token, dashboard_url=dashboard_url, ca_cert=ca_cert)
+            with open("MAIA-Projects.yaml", "w") as f:
+                yaml.dump(resp, f)
+            return
         resp = deploy_project(token=token, dashboard_url=dashboard_url, ca_cert=ca_cert, project_config_file=project_config_file)
         if "values" in resp and resp["values"] != "":
             project_id = json.load(open(project_config_file))["group_id"]
