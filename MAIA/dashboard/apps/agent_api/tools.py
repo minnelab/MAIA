@@ -71,6 +71,21 @@ USER_TOOL_DEFINITIONS = [
 
 TOOL_DEFINITIONS = [
     {
+        "name": "execute_helm_command",
+        "description": "Execute a Helm command on a Kubernetes cluster.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "description": "Helm command to execute, can be ls to list the deployments in a namespace, or install, to install a chart"},
+                "namespace": {"type": "string", "description": "Namespace to execute the command in"},
+                "chart": {"type": "string", "description": "Chart to install"},
+                "version": {"type": "string", "description": "Version of the chart to install"},
+                "values": {"type": "object", "description": "Values to pass to the chart"},
+            },
+            "required": ["command"],
+        },
+    },
+    {
         "name": "list_users",
         "description": "List all MAIA platform users with their group/namespace assignments.",
         "input_schema": {
@@ -279,6 +294,16 @@ OPENAI_USER_TOOL_DEFINITIONS = [
     for t in USER_TOOL_DEFINITIONS
 ]
 
+def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict) -> str:
+    """Execute a Helm command on a Kubernetes cluster."""
+    if command == "ls":
+        result = subprocess.run(["helm", "ls", "-n", namespace], capture_output=True, text=True)
+        return result.stdout
+    elif command == "install":
+        result = subprocess.run(["helm", "upgrade", "--install", "-n", namespace, chart, version, values], capture_output=True, text=True)
+        return result.stdout
+    else:
+        return f"Unknown command: {command}"
 
 def execute_tool(name: str, arguments: dict) -> str:
     """Execute a MAIA admin tool and return the result as a JSON string."""
@@ -286,7 +311,16 @@ def execute_tool(name: str, arguments: dict) -> str:
         if name == "list_users":
             users = list(MAIAUser.objects.all().values("id", "email", "username", "namespace"))
             return json.dumps({"users": users, "count": len(users)}, indent=2)
-
+        elif name == "execute_helm_command":
+            result = execute_helm_command(
+                command=arguments["command"],
+                namespace=arguments["namespace"],
+                chart=arguments.get("chart"),
+                version=arguments.get("version"),
+                values=arguments.get("values"),
+           
+            )
+            return json.dumps(result)
         elif name == "create_user":
             result = create_user(
                 email=arguments["email"],
