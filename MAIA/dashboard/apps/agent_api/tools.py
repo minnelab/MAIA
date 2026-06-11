@@ -26,6 +26,15 @@ from django.http import HttpRequest
 from MAIA.dashboard_utils import get_pending_projects
 import subprocess
 
+
+AVAILABLE_CHARTS = [
+    {
+        "repo": "https://github.com/open-webui/helm-charts",
+        "chart_name": "open-webui",
+        "version": "13.3.1",
+    }
+]
+
 USER_TOOL_DEFINITIONS = [
     {
         "name": "request_create_user",
@@ -72,12 +81,21 @@ USER_TOOL_DEFINITIONS = [
 
 TOOL_DEFINITIONS = [
     {
+        "name": "list_available_charts",
+        "description": "List all available charts in the Helm repository.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
         "name": "execute_helm_command",
         "description": "Execute a Helm command on a Kubernetes cluster.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "command": {"type": "string", "description": "Helm command to execute, can be ls to list the deployments in a namespace, get values to get the values of a release, or install, to install a chart"},
+                "command": {"type": "string", "description": "Helm command to execute, can be `ls` to list the deployments in a namespace, `get values` to get the values of a release, or `install` to install a chart"},
                 "namespace": {"type": "string", "description": "Namespace to execute the command in"},
                 "release": {"type": "string", "description": "Release to get the values of"},
                 "chart": {"type": "string", "description": "Chart to install"},
@@ -309,6 +327,12 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
         result = subprocess.run(["helm", "get", "values", "-n", namespace, release], capture_output=True, text=True)
         return result.stdout
     elif command == "install":
+        if chart in AVAILABLE_CHARTS:
+            chart_info = AVAILABLE_CHARTS[chart]
+            chart = chart_info["repo"] + "/" + chart_info["chart_name"]
+            version = chart_info["version"]
+        else:
+            return f"Chart {chart} not found in the available charts"
         result = subprocess.run(["helm", "upgrade", "--install", "-n", namespace, release, chart, version, values], capture_output=True, text=True)
         return result.stdout
     else:
@@ -320,6 +344,8 @@ def execute_tool(name: str, arguments: dict) -> str:
         if name == "list_users":
             users = list(MAIAUser.objects.all().values("id", "email", "username", "namespace"))
             return json.dumps({"users": users, "count": len(users)}, indent=2)
+        elif name == "list_available_charts":
+            return json.dumps({"charts": AVAILABLE_CHARTS}, indent=2)
         elif name == "execute_helm_command":
             result = execute_helm_command(
                 command=arguments["command"],
