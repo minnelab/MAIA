@@ -77,8 +77,9 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "command": {"type": "string", "description": "Helm command to execute, can be ls to list the deployments in a namespace, or install, to install a chart"},
+                "command": {"type": "string", "description": "Helm command to execute, can be ls to list the deployments in a namespace, get values to get the values of a release, or install, to install a chart"},
                 "namespace": {"type": "string", "description": "Namespace to execute the command in"},
+                "release": {"type": "string", "description": "Release to get the values of"},
                 "chart": {"type": "string", "description": "Chart to install"},
                 "version": {"type": "string", "description": "Version of the chart to install"},
                 "values": {"type": "object", "description": "Values to pass to the chart"},
@@ -295,17 +296,20 @@ OPENAI_USER_TOOL_DEFINITIONS = [
     for t in USER_TOOL_DEFINITIONS
 ]
 
-def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict) -> str:
+def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict, release: str) -> str:
     """Execute a Helm command on a Kubernetes cluster."""
     if command == "ls":
         if namespace == "all":
-            result = subprocess.run(["helm", "ls", "-a"], capture_output=True, text=True)
+            result = subprocess.run(["helm", "ls", "-A"], capture_output=True, text=True)
             return result.stdout
         else:
             result = subprocess.run(["helm", "ls", "-n", namespace], capture_output=True, text=True)
             return result.stdout
+    elif command == "get values":
+        result = subprocess.run(["helm", "get", "values", "-n", namespace, release], capture_output=True, text=True)
+        return result.stdout
     elif command == "install":
-        result = subprocess.run(["helm", "upgrade", "--install", "-n", namespace, chart, version, values], capture_output=True, text=True)
+        result = subprocess.run(["helm", "upgrade", "--install", "-n", namespace, release, chart, version, values], capture_output=True, text=True)
         return result.stdout
     else:
         return f"Unknown command: {command}"
@@ -323,7 +327,7 @@ def execute_tool(name: str, arguments: dict) -> str:
                 chart=arguments.get("chart"),
                 version=arguments.get("version"),
                 values=arguments.get("values"),
-           
+                release=arguments.get("release"),
             )
             return json.dumps(result)
         elif name == "create_user":
