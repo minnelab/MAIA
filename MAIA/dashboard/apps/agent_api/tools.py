@@ -24,6 +24,7 @@ from apps.authentication.views import register_user, register_project
 from django.conf import settings
 from django.http import HttpRequest
 from MAIA.dashboard_utils import get_pending_projects
+from MAIA.kubernetes_utils import generate_kubeconfig
 import subprocess
 import tempfile
 from pathlib import Path
@@ -104,6 +105,10 @@ TOOL_DEFINITIONS = [
                 "chart": {"type": "string", "description": "Chart to install"},
                 "version": {"type": "string", "description": "Version of the chart to install"},
                 "values": {"type": "object", "description": "Values to pass to the chart"},
+                "cluster_id": {"type": "string", "description": "Cluster ID to execute the command in"},
+                "use_in_local_cluster_token": {"type": "boolean", "description": "Whether to use the local cluster token instead of the ID token"},
+                "id_token": {"type": "string", "description": "ID token to use for the command"},
+                "username": {"type": "string", "description": "Username to use for the command"},
             },
             "required": ["command"],
         },
@@ -317,17 +322,24 @@ OPENAI_USER_TOOL_DEFINITIONS = [
     for t in USER_TOOL_DEFINITIONS
 ]
 
-def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict, release: str) -> str:
+def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict, release: str, cluster_id: str, use_in_local_cluster_token: bool = False, id_token: str = "", username: str = "") -> str:
     """Execute a Helm command on a Kubernetes cluster."""
+    
+    
+    local_kubeconfig_dict = generate_kubeconfig(
+        id_token, username, "default", cluster_id, settings=env_settings, in_local_cluster_token=use_in_local_cluster_token
+    )
+    with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
+        yaml.dump(local_kubeconfig_dict, f)
     if command == "ls":
         if namespace == "all":
-            result = subprocess.run(["helm", "ls", "-A"], capture_output=True, text=True)
+            result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "ls", "-A"], capture_output=True, text=True)
             return result.stdout
         else:
-            result = subprocess.run(["helm", "ls", "-n", namespace], capture_output=True, text=True)
+            result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "ls", "-n", namespace], capture_output=True, text=True)
             return result.stdout
     elif command == "get values":
-        result = subprocess.run(["helm", "get", "values", "-n", namespace, release], capture_output=True, text=True)
+        result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "get", "values", "-n", namespace, release], capture_output=True, text=True)
         return result.stdout
     elif command == "install":
         if chart in AVAILABLE_CHARTS:
@@ -340,7 +352,7 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
             temp_dir = Path(temp_dir)
             temp_dir.joinpath("values.yaml").write_text(yaml.dump(values))
             
-            result = subprocess.run(["helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml")], capture_output=True, text=True)
+            result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml")], capture_output=True, text=True)
         return result.stdout
     else:
         return f"Unknown command: {command}"
@@ -361,6 +373,10 @@ def execute_tool(name: str, arguments: dict) -> str:
                 version=arguments.get("version"),
                 values=arguments.get("values"),
                 release=arguments.get("release"),
+                cluster_id=arguments["cluster_id"],
+                use_in_local_cluster_token=arguments.get("use_in_local_cluster_token", False),
+                id_token=arguments.get("id_token", ""),
+                username=arguments.get("username", ""),
             )
             return json.dumps(result)
         elif name == "create_user":
