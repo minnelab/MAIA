@@ -33,7 +33,7 @@ import os
 
 AVAILABLE_CHARTS = {
     "open-webui": {
-        "repo": "https://github.com/open-webui/helm-charts",
+        "repo": "https://open-webui.github.io/helm-charts",
         "chart_name": "open-webui",
         "version": "13.3.1",
     }
