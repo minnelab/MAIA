@@ -29,7 +29,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import yaml
-
+import os
 
 AVAILABLE_CHARTS = {
     "open-webui": {
@@ -110,7 +110,7 @@ TOOL_DEFINITIONS = [
                 "id_token": {"type": "string", "description": "ID token to use for the command"},
                 "username": {"type": "string", "description": "Username to use for the command"},
             },
-            "required": ["command"],
+            "required": ["command", "cluster_id", "use_in_local_cluster_token", "username"],
         },
     },
     {
@@ -331,15 +331,24 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
     )
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
         yaml.dump(local_kubeconfig_dict, f)
+    
+    custom_env = os.environ.copy()
+    custom_env["KUBECONFIG"] = "/tmp/kubeconfig-project-local"
     if command == "ls":
         if namespace == "all":
-            result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "ls", "-A"], capture_output=True, text=True)
+            logger.info(f"Executing Helm command: helm ls -A")
+            result = subprocess.run(["helm", "ls", "-A"], capture_output=True, text=True, env=custom_env)
+            logger.info(f"Helm command result: {result.stdout}")
             return result.stdout
         else:
-            result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "ls", "-n", namespace], capture_output=True, text=True)
+            logger.info(f"Executing Helm command: helm ls -n {namespace}")
+            result = subprocess.run(["helm", "ls", "-n", namespace], capture_output=True, text=True, env=custom_env)
+            logger.info(f"Helm command result: {result.stdout}")
             return result.stdout
     elif command == "get values":
-        result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "get", "values", "-n", namespace, release], capture_output=True, text=True)
+        logger.info(f"Executing Helm command: helm get values -n {namespace} {release}")
+        result = subprocess.run(["helm", "get", "values", "-n", namespace, release], capture_output=True, text=True, env=custom_env)
+        logger.info(f"Helm command result: {result.stdout}")
         return result.stdout
     elif command == "install":
         if chart in AVAILABLE_CHARTS:
@@ -351,8 +360,9 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir = Path(temp_dir)
             temp_dir.joinpath("values.yaml").write_text(yaml.dump(values))
-            
-            result = subprocess.run(["KUBECONFIG=/tmp/kubeconfig-project-local", "helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml")], capture_output=True, text=True)
+            logger.info(f"Executing Helm command: helm upgrade --install --create-namespace -n {namespace} {release} {chart} --version {version} --values {temp_dir.joinpath('values.yaml')}")
+            result = subprocess.run(["helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml")], capture_output=True, text=True, env=custom_env)
+            logger.info(f"Helm command result: {result.stdout}")
         return result.stdout
     else:
         return f"Unknown command: {command}"
