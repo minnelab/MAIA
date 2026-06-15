@@ -362,6 +362,7 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
             temp_dir = Path(temp_dir)
             temp_dir.joinpath("values.yaml").write_text(yaml.dump(values))
             logger.info(f"Executing Helm command: helm upgrade --install --create-namespace -n {namespace} {release} {chart} --version {version} --values {temp_dir.joinpath('values.yaml')} --repo {repo}")
+            logger.info(f"Helm custom values: {yaml.dump(values)}")
             result = subprocess.run(["helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml"), "--repo", repo], capture_output=True, text=True, env=custom_env)
             logger.info(f"Helm command result: {result.stdout}")
         return result.stdout
