@@ -514,8 +514,10 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings, in_l
     if cluster_apis[cluster_id] in settings.PRIVATE_CLUSTERS or in_local_cluster_token:
         if not in_local_cluster_token:
             token = settings.PRIVATE_CLUSTERS[cluster_apis[cluster_id]]
+            cluster_api_url = cluster_apis[cluster_id]
         else:
             token = open(Path("/var/run/secrets/kubernetes.io/serviceaccount/token")).read()
+            cluster_api_url = "https://kubernetes.default.svc.cluster.local"
         kube_config = {
             "apiVersion": "v1",
             "kind": "Config",
@@ -529,7 +531,7 @@ def generate_kubeconfig(id_token, user_id, namespace, cluster_id, settings, in_l
                     "name": "MAIA",
                     "cluster": {
                         "certificate-authority-data": "",  # settings.CLUSTER_CA,
-                        "server": cluster_apis[cluster_id],
+                        "server": cluster_api_url,
                         "insecure-skip-tls-verify": True,
                     },
                 }
