@@ -379,11 +379,16 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
                 logger.info(f"Helm command result: {stdout_str}")
                 if stderr_str:
                     logger.error(f"Helm command error: {stderr_str}")
-                return stdout_str if process.returncode == 0 else f"Error: {stderr_str}"
+                # Always return a dict with keys 'stdout', 'stderr', 'returncode'
+                return {
+                    "stdout": stdout_str,
+                    "stderr": stderr_str,
+                "returncode": process.returncode
+                }
 
             result = asyncio.run(run_helm_command())
-       
-        return result.stdout
+         
+        return result
     else:
         return f"Unknown command: {command}"
 
