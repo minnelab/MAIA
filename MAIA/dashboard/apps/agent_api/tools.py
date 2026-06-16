@@ -30,6 +30,7 @@ import tempfile
 from pathlib import Path
 import yaml
 import os
+import asyncio
 
 AVAILABLE_CHARTS = {
     "open-webui": {
@@ -363,8 +364,25 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
             temp_dir.joinpath("values.yaml").write_text(yaml.dump(values))
             logger.info(f"Executing Helm command: helm upgrade --install --create-namespace -n {namespace} {release} {chart} --version {version} --values {temp_dir.joinpath('values.yaml')} --repo {repo}")
             logger.info(f"Helm custom values: {yaml.dump(values)}")
-            result = subprocess.run(["helm", "upgrade", "--install","--create-namespace", "-n", namespace, release, chart, "--version", version, "--values", temp_dir.joinpath("values.yaml"), "--repo", repo], capture_output=True, text=True, env=custom_env)
-            logger.info(f"Helm command result: {result.stdout}")
+
+            async def run_helm_command():
+                process = await asyncio.create_subprocess_exec(
+                    "helm", "upgrade", "--install", "--create-namespace", "-n", namespace, release, chart,
+                    "--version", version, "--values", str(temp_dir.joinpath("values.yaml")), "--repo", repo,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=custom_env
+                )
+                stdout, stderr = await process.communicate()
+                stdout_str = stdout.decode()
+                stderr_str = stderr.decode()
+                logger.info(f"Helm command result: {stdout_str}")
+                if stderr_str:
+                    logger.error(f"Helm command error: {stderr_str}")
+                return stdout_str if process.returncode == 0 else f"Error: {stderr_str}"
+
+            result = asyncio.run(run_helm_command())
+       
         return result.stdout
     else:
         return f"Unknown command: {command}"
