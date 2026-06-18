@@ -691,17 +691,11 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                             "url": "https://" + rule["host"] + path["path"] + "/dicom-web/",
                                         }
                                     )
-                            if (
-                                "labels" in ingress["metadata"]
-                                and "app.kubernetes.io/name" in ingress["metadata"]["labels"]
-                                and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard"
-                            ):
-                                nvflare_dashboards.append(
-                                    {
-                                        "name": ingress["metadata"]["name"][: -len("-nvflare-dashboard")],
-                                        "url": "https://" + rule["host"] + path["path"],
-                                    }
-                                )
+                            if "labels" in ingress["metadata"] and "app.kubernetes.io/name" in ingress["metadata"]["labels"] and ingress["metadata"]["labels"]["app.kubernetes.io/name"] == "maia-nvflare-dashboard":
+                                nvflare_dashboards.append({
+                                    "name": ingress["metadata"]["name"][:-len("-maia-nvflare-dashboard")],
+                                    "url": "https://" + rule["host"] + path["path"],
+                                })
                             if path["backend"]["service"]["name"] == namespace + "-mlflow-mkg" and path["path"].endswith(
                                 "mlflow"
                             ):
@@ -854,7 +848,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
     if "filebrowser" not in maia_workspace_apps:
         maia_workspace_apps["filebrowser"] = "N/A"
 
-    return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards
+    return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters #, nvflare_dashboards
 
 
 def create_kubeflow_profile_resources(namespace: str, owner: str, uid: str):

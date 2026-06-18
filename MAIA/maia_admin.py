@@ -93,11 +93,186 @@ def get_maia_toolkit_apps(group_id, password, argo_cd_host):
                         "repo": item["spec"]["source"]["repoURL"],
                     }
                 )
-                if "chart" in item["spec"]["source"]:
-                    apps[-1]["chart"] = item["spec"]["source"]["chart"]
-                elif "path" in item["spec"]["source"]:
-                    apps[-1]["path"] = item["spec"]["source"]["path"]
-        return apps
+            else:
+                users.append({"jupyterhub_username": convert_username_to_jupyterhub_username(user), "sshPort": ssh_port})
+
+    namespace = namespace_config["group_ID"].lower().replace("_", "-")
+
+    if cluster_config["ssh_port_type"] == "LoadBalancer":
+        if f"{namespace}-orthanc-svc-orthanc" in ssh_port_dict:
+            orthanc_ssh_port = ssh_port_dict[f"{namespace}-orthanc-svc-orthanc"]
+        else:
+            orthanc_ssh_port = ssh_ports.pop(0)
+    else:
+        if f"{namespace}-orthanc-svc-orthanc" in ssh_port_dict:
+            orthanc_ssh_port = ssh_port_dict[f"{namespace}-orthanc-svc-orthanc"]
+        else:
+            orthanc_ssh_port = ssh_ports[-1]
+
+    minimal_deployment = False
+    if minio_configs is None or mlflow_configs is None:
+        minimal_deployment = True
+
+    maia_namespace_values = {
+        "pvc": {"pvc_type": cluster_config["shared_storage_class"], "access_mode": "ReadWriteMany", "size": "10Gi"},
+        "chart_name": "maia-namespace",
+        "chart_version": "1.7.2",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", None),
+        "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
+        "serviceType": cluster_config["ssh_port_type"],
+        "users": users,
+        "orthanc": {"port": orthanc_ssh_port},
+        "metallbSharedIp": cluster_config.get("metallb_shared_ip", False),
+        "metallbIpPool": cluster_config.get("metallb_ip_pool", False),
+        "loadBalancerIp": cluster_config.get("maia_metallb_ip", False),
+        "sshHostname": cluster_config.get("ssh_hostname", ""),
+    }
+    if minimal_deployment:
+        maia_namespace_values["chart_name"] = "maia-namespace"
+        maia_namespace_values["chart_version"] = "1.7.2"
+        maia_namespace_values["repo_url"] = "https://minnelab.github.io/MAIA/"
+
+    if "imagePullSecrets" in cluster_config:
+        maia_namespace_values["dockerRegistrySecret"] = {
+            "enabled": True,
+            "dockerRegistrySecretName": cluster_config["imagePullSecrets"],
+            "dockerRegistrySecret": encode_docker_registry_secret(
+                cluster_config["docker_server"], cluster_config["docker_username"], cluster_config["docker_password"]
+            ),
+        }
+
+    if minio_configs:
+        maia_namespace_values["minio"] = {
+            "enabled": True,
+            "consoleDomain": "https://{}.{}/minio-console".format(namespace_config["group_subdomain"], cluster_config["domain"]),
+            "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
+            "storageClassName": cluster_config["storage_class"],
+            "storageSize": "10Gi",
+            "accessKey": minio_configs["access_key"],
+            "secretKey": minio_configs["secret_key"],
+            "clientId": cluster_config["keycloak"]["client_id"],
+            "clientSecret": cluster_config["keycloak"]["client_secret"],
+            "openIdConfigUrl": cluster_config["keycloak"]["issuer_url"] + "/.well-known/openid-configuration",
+            "consoleAccessKey": minio_configs["console_access_key"],
+            "consoleSecretKey": minio_configs["console_secret_key"],
+            "ingress": {
+                "annotations": {},
+                "host": "{}.{}".format(namespace_config["group_subdomain"], cluster_config["domain"]),
+                "path": "minio-console",
+                "port": 80,
+                "serviceName": f"{namespace}-mlflow-mkg",
+            },
+        }
+
+        if "nginx_cluster_issuer" in cluster_config:
+            maia_namespace_values["minio"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
+                "nginx_cluster_issuer"
+            ]
+            maia_namespace_values["minio"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "10g"
+            maia_namespace_values["minio"]["ingress"]["tlsSecretName"] = "{}.{}-tls".format(
+                namespace_config["group_subdomain"], cluster_config["domain"]
+            )
+        if "traefik_resolver" in cluster_config:
+            maia_namespace_values["minio"]["ingress"]["annotations"][
+                "traefik.ingress.kubernetes.io/router.entrypoints"
+            ] = "websecure"
+            maia_namespace_values["minio"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+            maia_namespace_values["minio"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config["traefik_resolver"]
+            )
+        if cluster_config["url_type"] == "subpath":
+            maia_namespace_values["minio"]["consoleDomain"] = "https://{}/{}-minio-console".format(
+                cluster_config["domain"], namespace_config["group_ID"].lower().replace("_", "-")
+            )
+            maia_namespace_values["minio"]["ingress"]["host"] = "{}".format(cluster_config["domain"])
+            maia_namespace_values["minio"]["ingress"]["path"] = "{}-minio-console".format(
+                namespace_config["group_ID"].lower().replace("_", "-")
+            )
+
+    if mlflow_configs:
+        maia_namespace_values["mlflow"] = {
+            "enabled": True,
+            #"user": base64.b64decode(mlflow_configs["mlflow_user"]).decode("ascii"),
+            "user": mlflow_configs["mlflow_user"],
+            "password": mlflow_configs["mlflow_password"]
+            #"password": base64.b64decode(mlflow_configs["mlflow_password"]).decode("ascii"),
+        }
+
+    enable_cifs = namespace_config.get("extra_configs", {}).get("enable_cifs", False)
+    if enable_cifs:
+        maia_namespace_values["cifs"] = {"enabled": True, "encryption": {"publicKey": ""}}  # base64 encoded}
+    namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
+    Path(config_folder).joinpath(namespace_config["group_ID"], "maia_namespace_values").mkdir(parents=True, exist_ok=True)
+    with open(
+        Path(config_folder).joinpath(namespace_config["group_ID"], "maia_namespace_values", "namespace_values.yaml"), "w"
+    ) as f:
+        f.write(OmegaConf.to_yaml(maia_namespace_values))
+
+    return {
+        "namespace": maia_namespace_values["namespace"],
+        "release": f"{namespace_id}-namespace",
+        "chart": maia_namespace_values["chart_name"],
+        "repo": maia_namespace_values["repo_url"],
+        "version": maia_namespace_values["chart_version"],
+        "values": str(
+            Path(config_folder).joinpath(namespace_config["group_ID"], "maia_namespace_values", "namespace_values.yaml")
+        ),
+    }
+
+
+def create_filebrowser_values(namespace_config, cluster_config, config_folder, mlflow_configs=None):
+    """
+    Create and write configuration values for deploying the MAIA Filebrowser Helm chart.
+    This function generates a dictionary of configuration values required to deploy the MAIA Filebrowser
+    application in a Kubernetes namespace. It handles image configuration, environment variables, volume
+    mounts, CIFS volume setup, and ingress settings for both NGINX and Traefik ingress controllers. The
+    resulting configuration is written to a YAML file in the specified config folder.
+
+    Parameters
+    ----------
+    namespace_config : dict
+        Dictionary containing namespace-specific configuration, including group ID, subdomain, and users.
+    cluster_config : dict
+        Dictionary containing cluster-specific configuration, such as docker server, image pull secrets,
+        domain, and optional ingress settings.
+    config_folder : str or Path
+        Path to the folder where the generated configuration YAML file will be saved.
+    mlflow_configs : dict, optional
+        Optional dictionary containing MLflow configuration, specifically the base64-encoded
+        'mlflow_password'. If not provided, a new human-memorable password is generated.
+
+    Returns
+    -------
+    dict
+        A dictionary containing:
+            - 'namespace': The Kubernetes namespace for deployment.
+            - 'release': The Helm release name.
+            - 'chart': The Helm chart name.
+            - 'repo': The Helm chart repository URL.
+            - 'version': The Helm chart version.
+            - 'values': Path to the generated YAML values file.
+
+    Notes
+    -----
+    - The function expects certain helper functions and environment variables to be available, such as
+      `generate_human_memorable_password`, `convert_username_to_jupyterhub_username`, and `OmegaConf`.
+    - The CIFS server address is read from the 'CIFS_SERVER' environment variable.
+    """
+
+    namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
+
+    maia_filebrowser_values = {
+        "chart_name": "maia-filebrowser",
+        "chart_version": "1.0.0",
+        "repo_url": "https://minnelab.github.io/MAIA/",
+        "namespace": namespace_config["group_ID"].lower().replace("_", "-"),
+    }
+
+    maia_filebrowser_values["image"] = {"repository": cluster_config["docker_server"] + "/maia/maia-filebrowser", "tag": "1.0"}
+
+    maia_filebrowser_values["imagePullSecrets"] = [{"name": cluster_config["imagePullSecrets"]}]
+    if mlflow_configs is None:
+        pw = generate_human_memorable_password(16)
     else:
         logger.error(f"❌ Failed to fetch apps: {resp.status_code}")
         logger.error(f"Response: {resp.text}")
