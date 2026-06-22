@@ -92,7 +92,19 @@ rules:
       - services
       - configmaps
       - namespaces
-      - serviceaccounts
+      - serviceaccounts      
+      - persistentvolumeclaims
+  - verbs:
+      - list
+      - create
+      - patch
+      - update
+      - get
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
   - verbs:
     - list
     - get
