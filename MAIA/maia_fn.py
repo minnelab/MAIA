@@ -53,6 +53,13 @@ def generate_random_password(length=12):
 
 
 def generate_human_memorable_password(length=12):
+    import ssl
+    try:
+        _create_unverified_https_context = ssl._create_unverified_context
+    except AttributeError:
+        pass
+    else:
+        ssl._create_default_https_context = _create_unverified_https_context
     nltk.download("words")
     word_list = words.words()
     password = "-".join(random.choice(word_list) for _ in range(length // 6))
@@ -691,10 +698,14 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
     dict
         A dictionary containing deployment details such as namespace, release, chart, repo, version, and values file path.
     """
-
-    with open(Path(config_folder).joinpath(user_config["group_ID"], "maia_namespace_values", "namespace_values.yaml"), "r") as f:
-        namespace_values = yaml.safe_load(f)
-        orthanc_port = namespace_values["orthanc"]["port"]
+    if "orthanc_port" in user_config:
+        orthanc_port = user_config["orthanc_port"]
+    else:
+        with open(
+            Path(config_folder).joinpath(user_config["group_ID"], "maia_namespace_values", "namespace_values.yaml"), "r"
+        ) as f:
+            namespace_values = yaml.safe_load(f)
+            orthanc_port = namespace_values["orthanc"]["port"]
     namespace = user_config["group_ID"].lower().replace("_", "-")
     orthanc_configs = generate_orthanc_configs(namespace, project_config_dict)
     ae_title = orthanc_configs["ae_title"]
@@ -886,6 +897,11 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
         orthanc_config["ingress_annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = cluster_config[
             "traefik_resolver"
         ]
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    # nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    # nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS, DELETE"
+    # nginx.ingress.kubernetes.io/cors-allow-headers: "Origin,X-Requested-With,Content-Type,Accept,accept,DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,dicom-transfer-role"
+
     orthanc_config["chart_version"] = maia_orthanc_chart_version
     if maia_orthanc_chart_type == "helm_repo":
         orthanc_config["chart_name"] = "maia-orthanc"
@@ -1346,7 +1362,10 @@ def get_orthanc_config_if_exists(project_id):
     Retrieves Orthanc configuration from Kubernetes environment variables if they exist.
     """
     if "KUBECONFIG_LOCAL" not in os.environ:
-        os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+        try:
+            os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+        except KeyError:
+            return {}
     kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
     config.load_kube_config_from_dict(kubeconfig)
 
