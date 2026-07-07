@@ -191,7 +191,7 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_PROJECT_CHART_VERSION") is not None:
         admin_project_chart_version = os.environ.get("ADMIN_PROJECT_CHART_VERSION")
     else:
-        admin_project_chart_version = "1.2.2"
+        admin_project_chart_version = "1.3.0"
 
     if os.environ.get("OPENWEBUI_CHART_VERSION") is not None:
         openwebui_chart_version = os.environ.get("OPENWEBUI_CHART_VERSION")
