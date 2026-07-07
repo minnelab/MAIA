@@ -243,8 +243,8 @@ def create_openwebui_values(config_folder, project_id, cluster_config_dict):
         "chart_version": openwebui_chart_version,
     }
 
-    if "OPENWEBUI" in cluster_config_dict:
-        openwebui_values.update(cluster_config_dict["OPENWEBUI"])
+    if "openwebui" in cluster_config_dict:
+        openwebui_values.update(cluster_config_dict["openwebui"])
 
     Path(config_folder).joinpath(project_id, "openwebui_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "openwebui_values", "openwebui_values.yaml"), "w") as f:
