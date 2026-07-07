@@ -17,6 +17,21 @@ import urllib3
 CLUSTER_OFFLINE_MARKER = "Cluster API Not Reachable"
 
 
+def _safe_json_loads(text):
+    """Parse a Kubernetes/Rancher API response body as JSON, tolerating errors.
+
+    A cluster whose Rancher agent is disconnected returns HTTP 500 with a
+    plain-text body (e.g. "cluster agent disconnected"); ``requests.get`` does
+    not raise on 500, so callers previously hit ``json.JSONDecodeError`` and the
+    entire page 500'd whenever a single cluster was unreachable. Returning
+    ``{}`` makes callers skip that one cluster instead of failing completely.
+    """
+    try:
+        return json.loads(text)
+    except Exception:
+        return {}
+
+
 def get_minio_shareable_link(object_name, bucket_name, settings):
     try:
         client = Minio(
@@ -132,7 +147,7 @@ def get_namespaces(id_token, api_urls, private_clusters=None):
                 )
             except Exception:
                 continue
-        namespaces = json.loads(response.text)
+        namespaces = _safe_json_loads(response.text)
         if "items" in namespaces:
             for namespace in namespaces["items"]:
                 namespace_list.append(namespace["metadata"]["name"])
@@ -196,7 +211,7 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
                     node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                     continue
         try:
-            nodes = json.loads(response.text)
+            nodes = _safe_json_loads(response.text)
         except json.JSONDecodeError:
             cluster = cluster_names[api_url]
             cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
@@ -266,12 +281,12 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
                 response = requests.get(
                     api_url + "/api/v1/pods", headers={"Authorization": "Bearer {}".format(token)}, verify=False
                 )
-                pods = json.loads(response.text)
+                pods = _safe_json_loads(response.text)
                 response = requests.get(
                     api_url + "/api/v1/nodes", headers={"Authorization": "Bearer {}".format(token)}, verify=False
                 )
 
-                nodes = json.loads(response.text)
+                nodes = _safe_json_loads(response.text)
 
             except Exception:
                 continue
@@ -281,12 +296,12 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
                 response = requests.get(
                     api_url + "/api/v1/pods", headers={"Authorization": "Bearer {}".format(id_token)}, verify=False
                 )
-                pods = json.loads(response.text)
+                pods = _safe_json_loads(response.text)
                 response = requests.get(
                     api_url + "/api/v1/nodes", headers={"Authorization": "Bearer {}".format(id_token)}, verify=False
                 )
 
-                nodes = json.loads(response.text)
+                nodes = _safe_json_loads(response.text)
             except Exception:
                 continue
 
@@ -632,7 +647,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                 headers={"Authorization": "Bearer {}".format(id_token)},
                 verify=False,
             )
-        ingresses = json.loads(response.text)
+        ingresses = _safe_json_loads(response.text)
 
         if api_url in settings.PRIVATE_CLUSTERS:
             token = settings.PRIVATE_CLUSTERS[api_url]
@@ -653,7 +668,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                 )
             except Exception:
                 continue
-        services = json.loads(response.text)
+        services = _safe_json_loads(response.text)
 
         if "code" in services:
             if services["code"] == 403:
@@ -794,7 +809,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                         headers={"Authorization": "Bearer {}".format(id_token)},
                         verify=False,
                     )
-                ingresses = json.loads(response.text)
+                ingresses = _safe_json_loads(response.text)
 
                 if api_url in settings.PRIVATE_CLUSTERS:
                     token = settings.PRIVATE_CLUSTERS[api_url]
@@ -815,7 +830,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                         )
                     except Exception:
                         continue
-                services = json.loads(response.text)
+                services = _safe_json_loads(response.text)
 
                 if "items" in ingresses:
                     if "items" in services:
