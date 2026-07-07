@@ -36,7 +36,7 @@ maia_dashboard_dev_tag_suffix = define_maia_admin_versions()["maia_dashboard_dev
 maia_dashboard_chart_type = define_maia_admin_versions()["maia_dashboard_chart_type"]
 mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
-
+openwebui_chart_version = define_maia_admin_versions()["openwebui_chart_version"]
 
 def get_maia_toolkit_apps(group_id, password, argo_cd_host):
     """
@@ -230,6 +230,34 @@ async def install_maia_project(
         logger.debug(revision.release.name, revision.release.namespace, revision.revision, str(revision.status))
 
     return ""
+
+
+def create_openwebui_values(config_folder, project_id, cluster_config_dict):
+    """
+    Creates and writes the OpenWebUI values to a YAML file.
+    """
+    openwebui_values = {
+        "namespace": "openwebui",
+        "repo_url": "https://open-webui.github.io/helm-charts",
+        "chart_name": "openwebui",
+        "chart_version": openwebui_chart_version,
+    }
+
+    if "OPENWEBUI" in cluster_config_dict:
+        openwebui_values.update(cluster_config_dict["OPENWEBUI"])
+
+    Path(config_folder).joinpath(project_id, "openwebui_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "openwebui_values", "openwebui_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(openwebui_values))
+
+    return {
+        "namespace": openwebui_values["namespace"],
+        "release": f"{project_id}-openwebui",
+        "chart": openwebui_values["chart_name"],
+        "repo": openwebui_values["repo_url"],
+        "version": openwebui_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "openwebui_values", "openwebui_values.yaml")),
+    }
 
 
 def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_dict):

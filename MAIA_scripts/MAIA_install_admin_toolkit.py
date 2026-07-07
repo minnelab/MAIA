@@ -26,6 +26,7 @@ from MAIA.maia_admin import (
     create_keycloak_values,
     create_maia_admin_toolkit_values,
     create_maia_dashboard_values,
+    create_openwebui_values,
     install_maia_project,
     create_rancher_values,
 )
@@ -142,6 +143,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     helm_commands.append(create_rancher_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard))
+    helm_commands.append(create_openwebui_values(config_folder, project_id, cluster_config_dict))
     if (
         os.environ.get("DEV_BRANCH") is not None
         or os.environ.get("GIT_EMAIL") is not None
@@ -260,6 +262,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             {"maia_admin_toolkit_values": "maia_admin_toolkit_values"},
             {"maia_dashboard_values": "maia_dashboard_values"},
             {"rancher_values": "rancher_values"},
+            {"openwebui_values": "openwebui_values"},
         ],
         "argo_namespace": os.environ["argocd_namespace"],
         "admin_group_ID": admin_group_id,
@@ -271,6 +274,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             "https://helm.goharbor.io",
             "https://charts.bitnami.com/bitnami",
             "https://releases.rancher.com/server-charts/latest",
+            "https://open-webui.github.io/helm-charts",
         ],
     }
     if (
