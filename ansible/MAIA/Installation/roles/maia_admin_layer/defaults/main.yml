@@ -9,7 +9,7 @@ maia_admin_namespaces:
   - maia-admin-toolkit
   - maia-dashboard
   - cattle-system
-
+  - openwebui
 # Enable automatic ArgoCD application synchronization and post-install steps
 auto_sync: true
 
@@ -24,3 +24,4 @@ maia_admin_argocd_applications:
   - maia-admin-rancher
   - maia-admin-keycloak
   - maia-admin-admin-toolkit
+  - maia-admin-openwebui
