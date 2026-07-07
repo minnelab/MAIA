@@ -193,6 +193,11 @@ def define_maia_admin_versions():
     else:
         admin_project_chart_version = "1.2.2"
 
+    if os.environ.get("OPENWEBUI_CHART_VERSION") is not None:
+        openwebui_chart_version = os.environ.get("OPENWEBUI_CHART_VERSION")
+    else:
+        openwebui_chart_version = "15.2.0"
+
     return {
         "rancher_chart_version": rancher_chart_version,
         "harbor_chart_version": harbor_chart_version,
@@ -204,6 +209,7 @@ def define_maia_admin_versions():
         "maia_dashboard_dev_tag_suffix": maia_dashboard_dev_tag_suffix,
         "maia_dashboard_chart_type": maia_dashboard_chart_type,
         "admin_project_chart_version": admin_project_chart_version,
+        "openwebui_chart_version": openwebui_chart_version,
     }
 
 
