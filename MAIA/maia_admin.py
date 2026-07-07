@@ -238,8 +238,8 @@ def create_openwebui_values(config_folder, project_id, cluster_config_dict):
     """
     openwebui_values = {
         "namespace": "openwebui",
-        "repo_url": "https://open-webui.github.io/helm-charts",
-        "chart_name": "openwebui",
+        "repo_url": "https://minnelab.github.io/MAIA/",
+        "chart_name": "open-webui",
         "chart_version": openwebui_chart_version,
     }
 
