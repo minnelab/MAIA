@@ -196,7 +196,7 @@ def define_maia_admin_versions():
     if os.environ.get("OPENWEBUI_CHART_VERSION") is not None:
         openwebui_chart_version = os.environ.get("OPENWEBUI_CHART_VERSION")
     else:
-        openwebui_chart_version = "15.2.0"
+        openwebui_chart_version = "14.1.0"
 
     return {
         "rancher_chart_version": rancher_chart_version,
