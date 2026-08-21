@@ -53,6 +53,7 @@ def generate_random_password(length=12):
 
 
 def generate_human_memorable_password(length=12):
+    nltk.pathsec.ALLOW_PROXIED_FETCH=True
     nltk.download("words")
     word_list = words.words()
     password = "-".join(random.choice(word_list) for _ in range(length // 6))
