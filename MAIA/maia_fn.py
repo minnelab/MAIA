@@ -60,6 +60,7 @@ def generate_human_memorable_password(length=12):
         pass
     else:
         ssl._create_default_https_context = _create_unverified_https_context
+    nltk.pathsec.ALLOW_PROXIED_FETCH=True
     nltk.download("words")
     word_list = words.words()
     password = "-".join(random.choice(word_list) for _ in range(length // 6))
@@ -943,7 +944,7 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
     dict
         A dictionary containing deployment details such as namespace, release, chart, repo, version, and values file path.
     """
-    helm_template = create_jupyterhub_config_api(project_config_dict, cluster_config, config_folder, minimal=minimal)
+    helm_template = create_jupyterhub_config_api(project_config_dict, cluster_config, config_folder, minimal=minimal, kubeflow_format=True)
 
     jh_template_file = helm_template["values"]
     with open(jh_template_file, "r") as f:

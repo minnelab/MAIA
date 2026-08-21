@@ -1022,10 +1022,9 @@ def create_kubeflow_profile(namespace: str, owner: str):
     }
     try:
         custom_api = client.CustomObjectsApi()
-        custom_api.create_namespaced_custom_object(
+        custom_api.create_cluster_custom_object(
             group="kubeflow.org",
             version="v1",
-            namespace=namespace,
             plural="profiles",
             body=profile,
         )
@@ -1116,7 +1115,27 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False, owner_
                 logger.debug(f"Namespace {namespace_id} created successfully")
             except ApiException as e:
                 logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
+    # wait until namespace is created
+    import time
 
+    # Wait until the namespace is observable in the cluster before proceeding
+    namespace_ready = False
+    for _ in range(15):  # Retry for up to ~15 seconds
+        with kubernetes.client.ApiClient() as api_client:
+            api_instance = kubernetes.client.CoreV1Api(api_client)
+            try:
+                ns = api_instance.read_namespace(name=namespace_id)
+                if ns and ns.metadata and ns.metadata.name == namespace_id:
+                    namespace_ready = True
+                    break
+            except kubernetes.client.exceptions.ApiException as e:
+                if e.status != 404:
+                    logger.error(f"Exception when verifying namespace creation: {e}")
+                    raise
+        time.sleep(1)  # Wait 1 second before checking again
+
+    if not namespace_ready:
+        logger.warning(f"Namespace {namespace_id} was not found after creation attempt.")
     if kubeflow_namespace:
         logger.info(f"Adding Kubeflow labels to namespace {namespace_id}")
         create_kubeflow_profile(namespace=namespace_id, owner=owner_email)

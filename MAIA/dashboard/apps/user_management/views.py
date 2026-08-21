@@ -623,6 +623,7 @@ class ProjectChartValuesAPIView(APIView):
                 "minio_env_name": env_file,
             }
             if auto_deploy:
+                username = email
                 kubeconfig_dict = generate_kubeconfig(
                     id_token,
                     username,
@@ -643,6 +644,7 @@ class ProjectChartValuesAPIView(APIView):
                         kubeflow_namespace = True
                     else:
                         kubeflow_namespace = False
+                    logger.info(f"Creating Kubeflow Namespace: {namespace.lower().replace('_', '-')}, Owner: {users[0]}")
                     create_namespace_from_context(
                         namespace_id=namespace.lower().replace("_", "-"),
                         kubeflow_namespace=kubeflow_namespace,
