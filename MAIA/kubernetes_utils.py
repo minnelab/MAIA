@@ -1020,10 +1020,9 @@ def create_kubeflow_profile(namespace: str, owner: str):
     }
     try:
         custom_api = client.CustomObjectsApi()
-        custom_api.create_namespaced_custom_object(
+        custom_api.create_cluster_custom_object(
             group="kubeflow.org",
             version="v1",
-            namespace=namespace,
             plural="profiles",
             body=profile,
         )
