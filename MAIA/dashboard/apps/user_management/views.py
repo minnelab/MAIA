@@ -623,6 +623,7 @@ class ProjectChartValuesAPIView(APIView):
                 "minio_env_name": env_file,
             }
             if auto_deploy:
+                username = email
                 kubeconfig_dict = generate_kubeconfig(
                     id_token,
                     username,
