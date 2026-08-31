@@ -213,7 +213,15 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
                     cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
                     node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                     continue
-        nodes = _safe_json_loads(response.text)
+        
+        try:
+            nodes = _safe_json_loads(response.text)
+        except json.JSONDecodeError:
+            cluster = cluster_names[api_url]
+            cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
+            node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
+            continue
+        
 
         if "items" not in nodes:
             cluster = cluster_names[api_url]
