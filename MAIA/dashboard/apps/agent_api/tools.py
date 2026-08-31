@@ -100,14 +100,20 @@ TOOL_DEFINITIONS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "command": {"type": "string", "description": "Helm command to execute, can be `ls` to list the deployments in a namespace, `get values` to get the values of a release, or `install` to install a chart"},
+                "command": {
+                    "type": "string",
+                    "description": "Helm command to execute, can be `ls` to list the deployments in a namespace, `get values` to get the values of a release, or `install` to install a chart",
+                },
                 "namespace": {"type": "string", "description": "Namespace to execute the command in"},
                 "release": {"type": "string", "description": "Release to get the values of"},
                 "chart": {"type": "string", "description": "Chart to install"},
                 "version": {"type": "string", "description": "Version of the chart to install"},
                 "values": {"type": "object", "description": "Values to pass to the chart"},
                 "cluster_id": {"type": "string", "description": "Cluster ID to execute the command in"},
-                "use_in_local_cluster_token": {"type": "boolean", "description": "Whether to use the local cluster token instead of the ID token"},
+                "use_in_local_cluster_token": {
+                    "type": "boolean",
+                    "description": "Whether to use the local cluster token instead of the ID token",
+                },
                 "id_token": {"type": "string", "description": "ID token to use for the command"},
                 "username": {"type": "string", "description": "Username to use for the command"},
             },
@@ -323,21 +329,32 @@ OPENAI_USER_TOOL_DEFINITIONS = [
     for t in USER_TOOL_DEFINITIONS
 ]
 
-def execute_helm_command(command: str, namespace: str, chart: str, version: str, values: dict, release: str, cluster_id: str, use_in_local_cluster_token: bool = False, id_token: str = "", username: str = "") -> str:
+
+def execute_helm_command(
+    command: str,
+    namespace: str,
+    chart: str,
+    version: str,
+    values: dict,
+    release: str,
+    cluster_id: str,
+    use_in_local_cluster_token: bool = False,
+    id_token: str = "",
+    username: str = "",
+) -> str:
     """Execute a Helm command on a Kubernetes cluster."""
-    
-    
+
     local_kubeconfig_dict = generate_kubeconfig(
         id_token, username, "default", cluster_id, settings=env_settings, in_local_cluster_token=use_in_local_cluster_token
     )
     with open(Path("/tmp").joinpath("kubeconfig-project-local"), "w") as f:
         yaml.dump(local_kubeconfig_dict, f)
-    
+
     custom_env = os.environ.copy()
     custom_env["KUBECONFIG"] = "/tmp/kubeconfig-project-local"
     if command == "ls":
         if namespace == "all":
-            logger.info(f"Executing Helm command: helm ls -A")
+            logger.info("Executing Helm command: helm ls -A")
             result = subprocess.run(["helm", "ls", "-A"], capture_output=True, text=True, env=custom_env)
             logger.info(f"Helm command result: {result.stdout}")
             return result.stdout
@@ -348,7 +365,9 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
             return result.stdout
     elif command == "get values":
         logger.info(f"Executing Helm command: helm get values -n {namespace} {release}")
-        result = subprocess.run(["helm", "get", "values", "-n", namespace, release], capture_output=True, text=True, env=custom_env)
+        result = subprocess.run(
+            ["helm", "get", "values", "-n", namespace, release], capture_output=True, text=True, env=custom_env
+        )
         logger.info(f"Helm command result: {result.stdout}")
         return result.stdout
     elif command == "install":
@@ -362,16 +381,30 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir = Path(temp_dir)
             temp_dir.joinpath("values.yaml").write_text(yaml.dump(values))
-            logger.info(f"Executing Helm command: helm upgrade --install --create-namespace -n {namespace} {release} {chart} --version {version} --values {temp_dir.joinpath('values.yaml')} --repo {repo}")
+            logger.info(
+                f"Executing Helm command: helm upgrade --install --create-namespace -n {namespace} {release} {chart} --version {version} --values {temp_dir.joinpath('values.yaml')} --repo {repo}"
+            )
             logger.info(f"Helm custom values: {yaml.dump(values)}")
 
             async def run_helm_command():
                 process = await asyncio.create_subprocess_exec(
-                    "helm", "upgrade", "--install", "--create-namespace", "-n", namespace, release, chart,
-                    "--version", version, "--values", str(temp_dir.joinpath("values.yaml")), "--repo", repo,
+                    "helm",
+                    "upgrade",
+                    "--install",
+                    "--create-namespace",
+                    "-n",
+                    namespace,
+                    release,
+                    chart,
+                    "--version",
+                    version,
+                    "--values",
+                    str(temp_dir.joinpath("values.yaml")),
+                    "--repo",
+                    repo,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
-                    env=custom_env
+                    env=custom_env,
                 )
                 stdout, stderr = await process.communicate()
                 stdout_str = stdout.decode()
@@ -380,17 +413,14 @@ def execute_helm_command(command: str, namespace: str, chart: str, version: str,
                 if stderr_str:
                     logger.error(f"Helm command error: {stderr_str}")
                 # Always return a dict with keys 'stdout', 'stderr', 'returncode'
-                return {
-                    "stdout": stdout_str,
-                    "stderr": stderr_str,
-                "returncode": process.returncode
-                }
+                return {"stdout": stdout_str, "stderr": stderr_str, "returncode": process.returncode}
 
             result = asyncio.run(run_helm_command())
-         
+
         return result
     else:
         return f"Unknown command: {command}"
+
 
 def execute_tool(name: str, arguments: dict) -> str:
     """Execute a MAIA admin tool and return the result as a JSON string."""

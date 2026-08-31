@@ -328,6 +328,21 @@ DYNAMIC_DATATB = {
     "books": "Book",
 }
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "mozilla_django_oidc": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+        },
+    },
+}
 CLUSTER_LINKS = {}
 CLUSTER_NAMES = {}
 PRIVATE_CLUSTERS = {}
