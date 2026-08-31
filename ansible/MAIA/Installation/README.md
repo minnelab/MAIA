@@ -7,15 +7,19 @@ Documentation for the MAIA.Installation Ansible collection, which provides roles
 The following packages and tools are required before using this collection:
 
 **Python packages:**
+
 ```bash
 pip install maia-toolkit ansible jmespath
 ```
 
 **System packages:**
+
 ```bash
 apt install jq yq apache2-utils
 ```
+
 **Kubernetes tools:**
+
 ```bash
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
@@ -30,6 +34,7 @@ chmod +x /usr/local/bin/argocd
 ```
 
 And verify the installations:
+
 ```bash
 kubectl version
 helm version
@@ -53,6 +58,7 @@ MAIA installation has been fully tested on Ubuntu 22.04 and 24.04 LTS.
 ## Installation
 
 To install the MAIA.Installation collection, run the following command:
+
 ```bash
 ansible-galaxy collection install MAIA.Installation
 ```
@@ -66,7 +72,8 @@ To run this installer, you must provide a **configuration folder** containing:
 - **Inventory**: An Ansible inventory file or folder defining your hosts and their roles.
 - **Configuration file**: A `config.yaml` file describing the installation steps and options.
 
-### Example `inventory` file:
+### Example `inventory` file :
+
 ```yaml
 [control-plane]
 maia-dev-node-0 ansible_host=127.0.0.1 ansible_connection=local ansible_user=ansible-user ansible_become_password=ansible ansible_become=true ansible_become_method=sudo
@@ -153,6 +160,7 @@ From your terminal, execute:
 ```bash
 MAIA_install --config-folder /path/to/config_folder
 ```
+
 Once the installation is complete, you can access the MAIA Dashboard at `https://maia.<cluster_domain>`.
 Wait for the dashboard to be ready by checking the `maia-dashboard` namespace:
 
@@ -160,7 +168,9 @@ Wait for the dashboard to be ready by checking the `maia-dashboard` namespace:
 export KUBECONFIG=<CONFIG_FOLDER>/<CLUSTER_NAME>-kubeconfig.yaml
 kubectl get pod -n maia-dashboard
 ```
+
 Output:
+
 ```bash
 NAME                                               READY   STATUS    RESTARTS   AGE
 admin-minio-tenant-pool-0-0                        2/2     Running   0          44m
@@ -169,6 +179,7 @@ maia-admin-maia-dashboard-mysql-5fffdd655c-5x92x   1/1     Running   0          
 ```
 
 For first-access, you can use the following credentials:
+
 ```bash
 username: admin@maia.io
 password [Temporary]: admin
@@ -177,6 +188,7 @@ password [Temporary]: admin
 ## Installation on Linux and Windows Subsystem for Linux (WSL)
 
 To install MAIA on Linux and Windows Subsystem for Linux (WSL), you can use the following one-command installer:
+
 ```bash
 # To fetch and use the latest release of the installer automatically, you can use the following command:
 LATEST=$(curl -s https://api.github.com/repos/minnelab/MAIA/releases/latest | grep tag_name | cut -d '"' -f4)
@@ -184,7 +196,6 @@ wget "https://github.com/minnelab/MAIA/releases/download/${LATEST}/install_MAIA.
 ```
 
 To access all the features of MAIA, verify that all the subdomains are mapped in your Windows or Linux hosts files:
-
 
 ```bash
 # Add the following lines to your Windows hosts file:
@@ -216,6 +227,7 @@ To access all the features of MAIA, verify that all the subdomains are mapped in
 ## MAIA Dashboard and MAIA Workspace Dev Environment
 
 To deploy the dev environment for the MAIA Dashboard and MAIA Workspace, you can set the following environment variables before running the installer:
+
 ```bash
 export DEV_BRANCH=<branch_name>
 export GIT_EMAIL=<email>
@@ -367,6 +379,125 @@ cluster_config_extra_env:
   - 32767
 ```
 
+#### Set MAIA Package Version
+
+Use to set the MAIA package version for the MAIA Dashboard.
+
+```bash
+pip install maia-toolkit==<MAIA_VERSION>
+```
+
+```yaml
+env:
+  MAIA_VERSION: 2.5.0
+```
+
+If MAIA_TAG is set, the MAIA package will be installed from the given tag instead of the MAIA_VERSION.
+
+```yaml
+env:
+  MAIA_TAG: <sha1_hash>
+```
+
+#### ArgoCD Cluster Configuration
+
+```yaml
+env:
+  ARGOCD_CLUSTER: <cluster_name>
+```
+
+Used to set the ArgoCD cluster configuration for the MAIA Dashboard, so the MAIA Dashboard can connect to the ArgoCD cluster and synchronize the applications.
+
+#### CIFS Support
+
+Used to set the CIFS server configuration for the MAIA Dashboard, so the MAIA Dashboard can mount the CIFS shares for the User Apps.
+
+```yaml
+env:
+  CIFS_SERVER: <//IP_ADDRESS/SHARE_NAME/PATH>
+  CIFS_PUBLIC_KEY: <cifs_public_key>
+```
+
+The CIFS_PUBLIC_KEY is the public key for the CIFS encryption of the CIFS credentials.
+
+#### MinIO Support
+
+Used to set the MinIO server configuration for the MAIA Dashboard, so the MAIA Dashboard can communicate with MinIO for storing the custom environments for JupyterHub. If MINIO_PUBLIC_URL is not set, it will be set to the same as MINIO_URL. If MINIO_PUBLIC_SECURE is not set, it will be set to the same as MINIO_SECURE.
+
+MINIO_SECURE and MINIO_PUBLIC_SECURE are the secure flags for accessing the MinIO server either from the internal cluster or from the public internet.
+
+```yaml
+env:
+  MINIO_URL: <minio.maia-admin:80>
+  MINIO_PUBLIC_URL: <minio-api.maia.se>
+  MINIO_CONSOLE_URL: <https://minio.maia.se/browser/maia-envs>
+  MINIO_SECURE: <true/false>
+  MINIO_PUBLIC_SECURE: <true/false>
+```
+
+#### Host Aliases
+
+Used to set the host aliases for the MAIA Dashboard pod, in case the CoreDNS cannot resolve the hostnames:
+
+```yaml
+env:
+  HOST_ALIASES: '[{"ip": "<IP_ADDRESS>", "hostnames": ["<hostname_1>", "<hostname_2>"]}]'
+```
+
+#### Custom Clusters Configuration
+
+Used to set the custom clusters configuration for the MAIA Dashboard, when adding new clusters to the MAIA Dashboard.
+
+```yaml
+env:
+  CLUSTER_YAML_CONFIGS: "<path/to/cluster_1>.yaml,<path/to/cluster_2>.yaml,<path/to/cluster_3>.yaml"
+```
+
+#### Dashboard Database Engine
+
+Used to set the dashboard database engine for the MAIA Dashboard.
+
+```yaml
+env:
+  dashboard_db_engine: <db_engine> # mysql, mongodb, sqlite
+```
+
+#### Webhook URL for Development
+
+Used to set the webhook URL for the MAIA Dashboard development. Useful for testing the MAIA Dashboard with a different webhook URL than the one for the production.
+
+```yaml
+env:
+  WEBHOOK_URL_DEV: <WEBHOOK_URL_DEV>
+```
+
+#### Agent Provider and API Token
+
+Used to set the agent provider and API token for the MAIA Dashboard. The AGENT_API_TOKEN is the API token that will be used to authenticate the agent requests to the Dashboard Agent API.
+
+```yaml
+env:
+  AGENT_PROVIDER: OPENWEBUI
+  AGENT_API_TOKEN: <OPENWEBUI_API_KEY>
+```
+
+#### SSH Hostname
+
+Used to set the SSH hostname to use for the SSH connections commands.
+
+```yaml
+ssh_hostname: <ssh_hostname>
+```
+
+#### MAIA Dashboard Image Version
+
+Used to set the MAIA Dashboard image version, overriding the default version defined in the MAIA/versions.py file as MAIA_VERSION.
+
+```yaml
+env:
+  MAIA_DASHBOARD_IMAGE_VERSION: <MAIA_DASHBOARD_IMAGE_VERSION>
+```
+
 ### Project Configuration:
 
 To add a project to the MAIA Dashboard, you can set the following variables in your <project_id>.yaml file (or JSON file):
@@ -436,7 +567,6 @@ Use to override the default GPU request for the project.
 ```yaml
 gpu_request: <gpu_request>
 ```
-
 
 #### JupyterHub Configuration
 
@@ -534,20 +664,27 @@ email_to_username_map:
   "email_3": "username_3"
 ```
 
-#### Host Aliases
+#### node_selector:
 
-Used to set the host aliases for the MAIA Dashboard pod, in case the CoreDNS cannot resolve the hostnames:
+Used to set the node selector for the JupyterHub on where to deploy the JupyterHub pods.
 
 ```yaml
-env:
-  HOST_ALIASES: '[{"ip": "<IP_ADDRESS>", "hostnames": ["<hostname_1>", "<hostname_2>"]}]'
+node_selector:
+  kubernetes.io/hostname: "node-1"
 ```
 
-#### Custom Clusters Configuration
+# Available Applications
 
-Used to set the custom clusters configuration for the MAIA Dashboard, when adding new clusters to the MAIA Dashboard.
+The following applications are available for every MAIA user and can be optionally installed or configured by setting environment variables:
+
+## OpenWebUI
+
+OpenWebUI provides LLM support within the MAIA environment.
+
+To enable or customize OpenWebUI, use the following configuration in your cluster config:
 
 ```yaml
-env:
-  CLUSTER_YAML_CONFIGS: "<path/to/cluster_1>.yaml,<path/to/cluster_2>.yaml,<path/to/cluster_3>.yaml"
+cluster_config_extra_env:
+  openwebui:
+    <VALUES>
 ```

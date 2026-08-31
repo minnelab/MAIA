@@ -65,6 +65,22 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
+- name: Ensure custom-ca-cert configmap exists in openwebui namespace, used by OpenWebUI
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: custom-ca-cert
+        namespace: openwebui
+      data:
+        ca.crt: "{{ lookup('file', (cluster_config_content.content | b64decode | from_yaml).externalCA.cert) | b64encode }}"
+  when: external_ca_set | bool
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
 - name: Run MAIA Admin Toolkit installer
   ansible.builtin.command: >
     MAIA_install_admin_toolkit
