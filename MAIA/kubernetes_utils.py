@@ -27,13 +27,12 @@ def _safe_json_loads(text):
     entire page 500'd whenever a single cluster was unreachable. Returning
     ``{}`` makes callers skip that one cluster instead of failing completely.
     """
-    return json.loads(text)
-    #try:
-        
-    #except Exception as e:
-    #    logger.error(f"Error parsing JSON: {e}")
-    #    logger.error(f"Text: {text}")
-    #    return {}
+    try:        
+        return json.loads(text)
+    except Exception as e:
+        logger.error(f"Error parsing JSON: {e}")
+        logger.error(f"Text: {text}")
+        return {}
 
 
 def get_minio_shareable_link(object_name, bucket_name, settings):
@@ -772,6 +771,7 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 except Exception:
                                     app_name = service["metadata"]["name"][len("jupyter-") :]
                                 url = f"{hub_url}/notebook/{namespace}/{app_name}/proxy/80/desktop/{user}/"
+                                url = "/remote-desktops/"
                                 if user_id == user or is_admin:
                                     remote_desktop_dict[user] = url
 
