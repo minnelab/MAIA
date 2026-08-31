@@ -29,7 +29,9 @@ def _safe_json_loads(text):
     """
     try:
         return json.loads(text)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error parsing JSON: {e}")
+        logger.error(f"Text: {text}")
         return {}
 
 
