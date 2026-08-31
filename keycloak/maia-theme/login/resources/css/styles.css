@@ -11,7 +11,7 @@ body {
     top: 25%;
     left: 0;
     width: 67vw;
-    color: #fff;
+    color: #000;
     font-size: clamp(18px, 4vw, 32px);
     font-weight: bold;
     text-align: center;
