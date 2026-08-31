@@ -1,6 +1,6 @@
 import os
 
-MAIA_VERSION = "2.5.0"
+MAIA_VERSION = "2.6.0"
 
 
 def define_maia_core_versions():
@@ -345,12 +345,12 @@ def define_docker_image_versions():
     if os.environ.get("MAIA_MLFLOW_IMAGE_VERSION") is not None:
         maia_mlflow_image_version = os.environ.get("MAIA_MLFLOW_IMAGE_VERSION")
     else:
-        maia_mlflow_image_version = "1.2"
+        maia_mlflow_image_version = "1.3"
 
     if os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION") is not None:
         maia_filebrowser_image_version = os.environ.get("MAIA_FILEBROWSER_IMAGE_VERSION")
     else:
-        maia_filebrowser_image_version = "1.1"
+        maia_filebrowser_image_version = "1.3"
 
     if os.environ.get("MAIA_GPU_BOOKING_ADMISSION_CONTROLLER_IMAGE_VERSION") is not None:
         maia_gpu_booking_admission_controller_image_version = os.environ.get(

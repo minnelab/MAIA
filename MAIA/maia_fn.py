@@ -54,13 +54,14 @@ def generate_random_password(length=12):
 
 def generate_human_memorable_password(length=12):
     import ssl
+
     try:
         _create_unverified_https_context = ssl._create_unverified_context
     except AttributeError:
         pass
     else:
         ssl._create_default_https_context = _create_unverified_https_context
-    nltk.pathsec.ALLOW_PROXIED_FETCH=True
+    nltk.pathsec.ALLOW_PROXIED_FETCH = True
     nltk.download("words")
     word_list = words.words()
     password = "-".join(random.choice(word_list) for _ in range(length // 6))
@@ -944,7 +945,9 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
     dict
         A dictionary containing deployment details such as namespace, release, chart, repo, version, and values file path.
     """
-    helm_template = create_jupyterhub_config_api(project_config_dict, cluster_config, config_folder, minimal=minimal, kubeflow_format=True)
+    helm_template = create_jupyterhub_config_api(
+        project_config_dict, cluster_config, config_folder, minimal=minimal, kubeflow_format=True
+    )
 
     jh_template_file = helm_template["values"]
     with open(jh_template_file, "r") as f:
@@ -988,7 +991,8 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
         "memory": jh_template["singleuser"]["memory"],
         "extraEnv": extra_env,
         "extraResourceLimits": extra_resource_limits,
-        "image": f"ghcr.io/minnelab/maia-lab-pro:{maia_lab_pro_image_version}",
+        "image": f"maiacloudai/ubuntu-xrdp:{maia_lab_pro_image_version}",
+        # "image": f"ghcr.io/minnelab/maia-lab-pro:{maia_lab_pro_image_version}",
         "homeMountPath": jh_template["singleuser"]["storage"]["homeMountPath"],
         "homePVC": "claim-" + convert_username_to_jupyterhub_username(user_config["users"][0]),
         "extraVolumes": jh_template["singleuser"]["storage"]["extraVolumes"],

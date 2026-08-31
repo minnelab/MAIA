@@ -38,6 +38,7 @@ mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
 openwebui_chart_version = define_maia_admin_versions()["openwebui_chart_version"]
 
+
 def get_maia_toolkit_apps(group_id, password, argo_cd_host):
     """
     Retrieve and print information about a specific project and its associated applications from Argo CD.
@@ -709,6 +710,10 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             "dashboard": {"local_config_path": "/mnt/dashboard-config"},
         }
     )
+    if "MAIA_DASHBOARD_IMAGE_VERSION" in os.environ:
+        maia_dashboard_values["env"].append(
+            {"name": "MAIA_DASHBOARD_IMAGE_VERSION", "value": os.environ["MAIA_DASHBOARD_IMAGE_VERSION"]}
+        )
     if cluster_config_dict["url_type"] == "subpath":
         maia_dashboard_values["ingress"]["hosts"][0]["host"] = dashboard_domain
         maia_dashboard_values["ingress"]["tls"][0]["hosts"][0] = dashboard_domain

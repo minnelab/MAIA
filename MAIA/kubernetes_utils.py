@@ -13,6 +13,7 @@ from kubernetes import config, client
 from kubernetes.client.rest import ApiException
 from loguru import logger
 import urllib3
+import time
 
 CLUSTER_OFFLINE_MARKER = "Cluster API Not Reachable"
 
@@ -1116,7 +1117,6 @@ def create_namespace_from_context(namespace_id, kubeflow_namespace=False, owner_
             except ApiException as e:
                 logger.error(f"Exception when calling CoreV1Api->create_namespace: {e}")
     # wait until namespace is created
-    import time
 
     # Wait until the namespace is observable in the cluster before proceeding
     namespace_ready = False
