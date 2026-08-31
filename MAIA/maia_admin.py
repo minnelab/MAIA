@@ -896,10 +896,10 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         ]
     )
 
-    # Access KubeFlow and XNAT
+    # Access KubeFlow, XNAT and Guacamole
     maia_dashboard_values["env"].extend(
         [
-            {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system"},
+            {"name": "GLOBAL_NAMESPACES", "value": "xnat,istio-system,guacamole"},
         ]
     )
 
