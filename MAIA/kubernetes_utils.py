@@ -854,6 +854,8 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                         maia_workspace_apps["xnat"] = "https://" + rule["host"] + path["path"]
                                     if path["backend"]["service"]["name"] == "istio-ingressgateway":
                                         maia_workspace_apps["kubeflow"] = "https://" + rule["host"] + path["path"]
+                                    if path["backend"]["service"]["name"].endswith("-guacamole"):
+                                        maia_workspace_apps["guacamole"] = "https://" + rule["host"] + path["path"]
 
     if "hub" not in maia_workspace_apps:
         maia_workspace_apps["hub"] = "N/A"
@@ -879,7 +881,8 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
         maia_workspace_apps["xnat"] = "N/A"
     if "filebrowser" not in maia_workspace_apps:
         maia_workspace_apps["filebrowser"] = "N/A"
-
+    if "guacamole" not in maia_workspace_apps:
+        maia_workspace_apps["guacamole"] = "N/A"
     return maia_workspace_apps, remote_desktop_dict, ssh_ports, monai_models, orthanc_list, deployed_clusters, nvflare_dashboards
 
 

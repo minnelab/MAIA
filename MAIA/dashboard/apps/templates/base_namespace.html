@@ -306,6 +306,25 @@
             {% if maia_workspace_ingress.xnat != "N/A" %}</a>{% else %}</div>{% endif %}
           </div>
 
+          <!-- Guacamole -->
+          <div class="col">
+            {% if maia_workspace_ingress.guacamole != "N/A" %}
+            <a href="{{ maia_workspace_ingress.guacamole }}" target="_blank" class="app-card app-active">
+            {% else %}
+            <div class="app-card app-inactive">
+            {% endif %}
+              <div class="app-icon-wrap">
+                <img src="{{ ASSETS_ROOT }}/img/MAIA/guacamole.png" alt="Guacamole">
+              </div>
+              <div class="app-name">Guacamole</div>
+              {% if maia_workspace_ingress.guacamole != "N/A" %}
+            <span class="app-badge app-badge-active">Active</span>
+              {% else %}
+              <span class="app-badge app-badge-inactive">Unavailable</span>
+              {% endif %}
+            {% if maia_workspace_ingress.guacamole != "N/A" %}</a>{% else %}</div>{% endif %}
+          </div>
+
         </div>
       </div>
     </div>
