@@ -27,12 +27,13 @@ def _safe_json_loads(text):
     entire page 500'd whenever a single cluster was unreachable. Returning
     ``{}`` makes callers skip that one cluster instead of failing completely.
     """
-    try:
-        return json.loads(text)
-    except Exception as e:
-        logger.error(f"Error parsing JSON: {e}")
-        logger.error(f"Text: {text}")
-        return {}
+    return json.loads(text)
+    #try:
+        
+    #except Exception as e:
+    #    logger.error(f"Error parsing JSON: {e}")
+    #    logger.error(f"Text: {text}")
+    #    return {}
 
 
 def get_minio_shareable_link(object_name, bucket_name, settings):
