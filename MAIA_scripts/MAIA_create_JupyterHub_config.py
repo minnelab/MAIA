@@ -480,14 +480,14 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 pass  # If the value can't be converted, leave it as is
     if not kubeflow_format:
         jh_template["singleuser"]["cpu"] = {
-        "limit": cpu_values[1],
-        "guarantee": cpu_values[0],
-    }
+            "limit": cpu_values[1],
+            "guarantee": cpu_values[0],
+        }
     else:
         jh_template["singleuser"]["cpu"] = {
-        "limit": resources_limits["cpu"][1],
-        "guarantee": resources_limits["cpu"][0],
-    }
+            "limit": resources_limits["cpu"][1],
+            "guarantee": resources_limits["cpu"][0],
+        }
 
     for extra_volume in extra_volumes:
         jh_template["singleuser"]["storage"]["extraVolumes"].append(

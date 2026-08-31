@@ -273,7 +273,7 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
             "https://github.com/minnelab/MAIA.git",
             "https://helm.goharbor.io",
             "https://charts.bitnami.com/bitnami",
-            "https://releases.rancher.com/server-charts/latest"
+            "https://releases.rancher.com/server-charts/latest",
         ],
     }
     if (
