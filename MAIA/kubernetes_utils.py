@@ -310,8 +310,8 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
             except Exception:
                 continue
 
-        if "items" not in nodes or "items" not in pods:
-            continue
+        #if "items" not in nodes or "items" not in pods:
+        #    continue
 
         node_status_dict = {}
 
