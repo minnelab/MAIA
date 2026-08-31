@@ -46,6 +46,10 @@ spec:
     protocol: TCP
     port: 8888
     targetPort: 8888
+  - name: rdp-port
+    protocol: TCP
+    port: 3389
+    targetPort: 3389
   selector:
     hub.jupyter.org/username: {{ .jupyterhub_username }}
 ---

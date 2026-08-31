@@ -29,7 +29,7 @@ spec:
   features:
     domains:
       console: {{ .Values.minio.consoleDomain }}
-  image: quay.io/minio/minio:RELEASE.2024-08-03T04-33-23Z
+  image: quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
   {{- if .Values.minio.externalCA }}
   externalCaCertSecret:
     - name: {{ .Values.minio.externalCA.name }}
