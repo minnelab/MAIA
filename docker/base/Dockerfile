@@ -38,5 +38,10 @@ ENV TZ="Europe/Stockholm"
 
 COPY default.template /etc/default.template
 COPY minio.conf.template /etc/minio.conf.template
+
+RUN pip install mlflow pymysql cryptography pysftp boto3
+RUN curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh > /etc/filebrowser.sh
+RUN chmod +x /etc/filebrowser.sh
+RUN /etc/filebrowser.sh
 ENTRYPOINT ["bash", "./start.sh"]
 CMD ["/usr/sbin/sshd", "-D"]

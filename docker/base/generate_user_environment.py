@@ -129,20 +129,20 @@ def main():
         if args["run_file_browser"] == "True":
             if id == first_uid:
                 subprocess.run(["mkdir", "/database"])
-                with open("/home/{}/filebrowser.sh".format(user), "w") as f:
-                    subprocess.run(
-                        ["curl", "-fsSL", "https://raw.githubusercontent.com/filebrowser/get/master/get.sh"],
-                        stdout=f)
-                subprocess.run(
-                    ["sudo", "chmod", "+x", "/home/{}/filebrowser.sh".format(user)])
-                subprocess.run(["/home/{}/filebrowser.sh".format(user)])
+                #with open("/home/{}/filebrowser.sh".format(user), "w") as f:
+                #    subprocess.run(
+                #        ["curl", "-fsSL", "https://raw.githubusercontent.com/filebrowser/get/master/get.sh"],
+                #        stdout=f)
+                #subprocess.run(
+                #    ["sudo", "chmod", "+x", "/etc/filebrowser.sh"])
+                #subprocess.run(["/etc/filebrowser.sh"])
                 subprocess.run(["filebrowser", "config", "init", "-d", "/database/filebrowser.db"])
 
             subprocess.run(["filebrowser", "users", "add", user, password,"--perm.admin", "-d", "/database/filebrowser.db"])
 
         if args["run_mlflow_server"] != "False":
             if id == first_uid:
-                subprocess.run(["pip", "install", "mlflow", "pymysql", "cryptography", "pysftp", "boto3"])
+                #subprocess.run(["pip", "install", "mlflow", "pymysql", "cryptography", "pysftp", "boto3"])
                 mysql_service = os.environ["MYSQL_URL"]
                 mysql_user = os.environ["MYSQL_USER"]
 
