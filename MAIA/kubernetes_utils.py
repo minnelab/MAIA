@@ -27,7 +27,7 @@ def _safe_json_loads(text):
     entire page 500'd whenever a single cluster was unreachable. Returning
     ``{}`` makes callers skip that one cluster instead of failing completely.
     """
-    try:        
+    try:
         return json.loads(text)
     except Exception as e:
         logger.error(f"Error parsing JSON: {e}")
@@ -213,7 +213,7 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
                     cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
                     node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
                     continue
-        
+
         try:
             nodes = _safe_json_loads(response.text)
         except json.JSONDecodeError:
@@ -221,7 +221,6 @@ def get_cluster_status(id_token, api_urls, cluster_names, private_clusters=None)
             cluster_dict[cluster] = [CLUSTER_OFFLINE_MARKER]
             node_status_dict[CLUSTER_OFFLINE_MARKER] = ["API"]
             continue
-        
 
         if "items" not in nodes:
             cluster = cluster_names[api_url]
@@ -310,7 +309,7 @@ def get_available_resources(id_token, api_urls, cluster_names, private_clusters=
             except Exception:
                 continue
 
-        #if "items" not in nodes or "items" not in pods:
+        # if "items" not in nodes or "items" not in pods:
         #    continue
 
         node_status_dict = {}
