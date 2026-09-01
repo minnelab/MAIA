@@ -928,7 +928,9 @@ def deploy_orthanc(cluster_config, user_config, config_folder, project_config_di
     }
 
 
-def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_config_dict=None, minimal=True, configure_guacamole=False):
+def deploy_kubeflow_project(
+    cluster_config, user_config, config_folder, project_config_dict=None, minimal=True, configure_guacamole=False
+):
     """
     Deploy a Kubeflow project using the provided configuration.
     Parameters
@@ -1011,19 +1013,23 @@ def deploy_kubeflow_project(cluster_config, user_config, config_folder, project_
 
     with open(Path(config_folder).joinpath(user_config["group_ID"], "kubeflow_values", "kubeflow_values.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(kubeflow_config))
-    
+
     if configure_guacamole:
         guacamole_url = os.environ.get("GUACAMOLE_URL")
         guacamole_data_source = os.environ.get("GUACAMOLE_DATA_SOURCE")
         guacamole_username = os.environ.get("GUACAMOLE_USERNAME")
         guacamole_password = os.environ.get("GUACAMOLE_PASSWORD")
-        
+
         email = project_config_dict["ssh_users"][0]["username"]
         ssh_port = project_config_dict["ssh_users"][0]["ssh_port"]
-        
+
         try:
-            resp = create_guacamole_connection(guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, email, ssh_port)
-            create_guacamole_group(guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, resp['identifier'])
+            resp = create_guacamole_connection(
+                guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, email, ssh_port
+            )
+            create_guacamole_group(
+                guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, resp["identifier"]
+            )
         except Exception as e:
             logger.error(f"Error configuring Guacamole: {e}")
 

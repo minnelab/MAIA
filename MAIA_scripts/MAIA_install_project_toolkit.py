@@ -272,7 +272,12 @@ def deploy_maia_toolkit_api(
     if deploy_kubeflow:
         helm_commands.append(
             deploy_kubeflow_project(
-                cluster_config_dict, project_form_dict, config_folder, project_config_dict=project_form_dict, minimal=minimal, configure_guacamole=True
+                cluster_config_dict,
+                project_form_dict,
+                config_folder,
+                project_config_dict=project_form_dict,
+                minimal=minimal,
+                configure_guacamole=True,
             )
         )
     else:
