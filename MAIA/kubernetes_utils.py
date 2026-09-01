@@ -9,6 +9,7 @@ from minio import Minio
 import kubernetes
 import requests
 import yaml
+from MAIA.maia_fn import get_guacamole_connection_link
 from kubernetes import config, client
 from kubernetes.client.rest import ApiException
 from loguru import logger
@@ -765,6 +766,10 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                     .replace("-40", "@")
                                     .replace("-2e", ".")
                                 )
+                                guacamole_url = os.environ.get("GUACAMOLE_URL")
+                                guacamole_data_source = os.environ.get("GUACAMOLE_DATA_SOURCE")
+                                guacamole_username = os.environ.get("GUACAMOLE_USERNAME")
+                                guacamole_password = os.environ.get("GUACAMOLE_PASSWORD")
                                 try:
                                     app_name = service["spec"]["selector"]["app"]
                                 except Exception:
@@ -772,7 +777,18 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 url = f"{hub_url}/notebook/{namespace}/{app_name}/proxy/80/desktop/{user}/"
                                 url = f"{hub_url}/remote-desktops/"
                                 if user_id == user or is_admin:
-                                    remote_desktop_dict[user] = url
+                                    try:
+                                        url = get_guacamole_connection_link(
+                                            guacamole_url,
+                                            guacamole_data_source,
+                                            guacamole_username,
+                                            guacamole_password,
+                                            namespace,
+                                            user,
+                                        )
+                                        remote_desktop_dict[user] = url
+                                    except Exception:
+                                        ...
 
                         if "name" in port and port["name"] == "ssh":
                             # Backward compatibility

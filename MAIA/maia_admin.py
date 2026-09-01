@@ -1226,6 +1226,16 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
     # CIFS
     # MAIA Segmentation Portal
     # GPU Booking
+
+    # Guacamole Configuration
+    maia_dashboard_values["env"].extend(
+        [
+            {"name": "GUACAMOLE_URL", "value": f"https://kubeflow.{cluster_config_dict['domain']}/remote-desktops"},
+            {"name": "GUACAMOLE_DATA_SOURCE", "value": "postgresql"},
+            {"name": "GUACAMOLE_USERNAME", "value": "guacadmin"},
+            {"name": "GUACAMOLE_PASSWORD", "value": "guacadmin"},
+        ]
+    )
     Path(config_folder).joinpath(project_id, chart_folder).mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, chart_folder, f"{chart_folder}.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))

@@ -23,6 +23,7 @@ from MAIA.helm_values import read_config_dict_and_generate_helm_values_dict
 
 from MAIA.versions import define_docker_image_versions, define_maia_docker_versions, define_maia_project_versions
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
+import requests
 
 mysql_image = define_docker_image_versions()["mysql_image"]
 mysql_image_version = define_docker_image_versions()["mysql"]
@@ -2002,3 +2003,105 @@ def create_nvflare_dashboard_values(namespace_config, cluster_config, config_fol
             )
         ),
     }
+
+
+def create_guacamole_connection(
+    guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, email, ssh_port
+):
+
+    connection_name = f"{email}.{namespace}"
+    converted_hostname = email.replace("@", "-40").replace(".", "-2e")
+
+    response = requests.post(
+        f"{guacamole_url}/api/tokens", data={"username": guacamole_username, "password": guacamole_password}, verify=False
+    )
+    auth_token = response.json()["authToken"]
+    response = requests.post(
+        f"{guacamole_url}/api/session/data/{guacamole_data_source}/connections?token={auth_token}",
+        json={
+            "parentIdentifier": "ROOT",
+            "name": connection_name,
+            "protocol": "rdp",
+            "attributes": {},
+            "parameters": {
+                "hostname": f"jupyter-{converted_hostname}.{namespace}",
+                "port": "3389",
+                "username": "ubuntu",
+                "password": "ubuntu",
+                "security": "any",
+                "ignore-cert": "true",
+                "disable-copy": "true",
+                "enable-sftp": "true",
+                "sftp-hostname": f"jupyter-{converted_hostname}-ssh.{namespace}",
+                "sftp-port": ssh_port,
+                "sftp-username": "ubuntu",
+                "sftp-password": "ubuntu",
+                "sftp-root-directory": "/home/ubuntu",
+                "sftp-directory": "/home/ubuntu",
+            },
+        },
+        verify=False,
+    )
+    if "message" in response.json() and response.json()["message"] == f'The connection "{connection_name}" already exists.':
+        response = requests.get(
+            f"{guacamole_url}/api/session/data/{guacamole_data_source}/connections?token={auth_token}", verify=False
+        )
+        connections = response.json()
+        for connection in connections:
+            if connections[connection]["name"] == connection_name:
+                return connections[connection]
+        raise ValueError(f"Connection {connection_name} not found")
+    return response.json()
+
+
+def create_guacamole_group(
+    guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, connection_identifier
+):
+    group_name = f"MAIA:{namespace}"
+    response = requests.post(
+        f"{guacamole_url}/api/tokens", data={"username": guacamole_username, "password": guacamole_password}, verify=False
+    )
+    auth_token = response.json()["authToken"]
+    response = requests.post(
+        f"{guacamole_url}/api/session/data/{guacamole_data_source}/userGroups?token={auth_token}",
+        json={"identifier": group_name, "attributes": {}},
+        verify=False,
+    )
+    print("connection_identifier", connection_identifier)
+    response = requests.patch(
+        f"{guacamole_url}/api/session/data/{guacamole_data_source}/userGroups/{group_name}/permissions?token={auth_token}",
+        json=[
+            {"op": "add", "path": f"/connectionPermissions/{connection_identifier}", "value": "READ"},
+            # {
+            #    "op": "add",
+            #    "path": "/systemPermissions",
+            #    "value": "ADMINISTER"
+            # }
+        ],
+        verify=False,
+    )
+    if response.status_code != 200 and response.status_code != 204:
+        raise ValueError(f"Failed to create group {group_name}: {response.text}")
+
+    return response.status_code
+
+
+def get_guacamole_connection_link(guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, email):
+    response = requests.post(
+        f"{guacamole_url}/api/tokens", data={"username": guacamole_username, "password": guacamole_password}, verify=False
+    )
+    auth_token = response.json()["authToken"]
+    response = requests.get(
+        f"{guacamole_url}/api/session/data/{guacamole_data_source}/connections?token={auth_token}", verify=False
+    )
+    connections = response.json()
+    for connection in connections:
+        if connections[connection]["name"] == f"{email}.{namespace}":
+            encoded_identifier = (
+                base64.b64encode(f"{connections[connection]['identifier']}\0c\0{guacamole_data_source}".encode())
+                .decode()
+                .rstrip("=")
+            )
+            link = f"{guacamole_url}/#/client/{encoded_identifier}"
+            return link
+    raise ValueError(f"Connection {email}.{namespace} not found")
