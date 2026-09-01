@@ -9,7 +9,6 @@ from minio import Minio
 import kubernetes
 import requests
 import yaml
-from MAIA.maia_fn import get_guacamole_connection_link
 from kubernetes import config, client
 from kubernetes.client.rest import ApiException
 from loguru import logger
@@ -777,6 +776,8 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                 url = f"{hub_url}/notebook/{namespace}/{app_name}/proxy/80/desktop/{user}/"
                                 url = f"{hub_url}/remote-desktops/"
                                 if user_id == user or is_admin:
+                                    from MAIA.maia_fn import get_guacamole_connection_link
+
                                     try:
                                         url = get_guacamole_connection_link(
                                             guacamole_url,
