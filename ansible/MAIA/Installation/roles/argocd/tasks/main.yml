@@ -229,6 +229,19 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
+- name: Patch argocd-redis deployment to use maiacloudai/redis:8.2.3-alpine
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} -n "{{ argocd_namespace }}"
+    set image deployment/argocd-redis
+    redis=maiacloudai/redis:8.2.3-alpine
+  register: patch_argocd_redis_image
+  changed_when: "'image updated' in (patch_argocd_redis_image.stdout | default('')) or patch_argocd_redis_image.rc == 0"
+  failed_when: patch_argocd_redis_image.rc != 0 and 'not found' not in (patch_argocd_redis_image.stderr | default(''))
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ argocd_kubeconfig }}"
+
+
 - name: Display ArgoCD UI URL
   ansible.builtin.debug:
     msg: "ArgoCD UI: {{ argocd_ui_url }}"

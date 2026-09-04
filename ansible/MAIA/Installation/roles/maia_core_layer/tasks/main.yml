@@ -166,3 +166,12 @@
   delay: "{{ argocd_sync_retry_delay }}"
   loop: "{{ maia_core_argocd_applications }}"
   when: auto_sync | bool
+
+
+- name: Deploy Rancher local-path-provisioner (local-path-storage)
+  ansible.builtin.shell: |
+    kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  changed_when: false

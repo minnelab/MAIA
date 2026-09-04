@@ -12,8 +12,8 @@ argocd_service_account: argocd-sa
 argocd_role_name: admin
 
 # ArgoCD manifest URL (official installation manifests)
-argocd_manifest_url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
+#argocd_manifest_url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+argocd_manifest_url: https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.3/manifests/install.yaml
 # URL to access ArgoCD UI (used for port forwarding)
 # Defaults to http://localhost:8080 (matches argocd_port_forward_port default)
 argocd_ui_url: http://localhost:8080
