@@ -1,0 +1,11 @@
+apiVersion: v2
+appVersion: v3.2.3
+dependencies:
+- condition: dex.enabled
+  name: dex
+  repository: https://charts.dexidp.io
+  version: 0.6.3
+description: OIDC authentication helper for Kubernetes
+name: loginapp
+type: application
+version: v1.3.0

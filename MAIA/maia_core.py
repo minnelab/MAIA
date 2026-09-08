@@ -1182,7 +1182,7 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
     """
     loginapp_values = {
         "namespace": "authentication",
-        "repo_url": "https://storage.googleapis.com/loginapp-releases/charts/",
+        "repo_url": os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/"), #"https://storage.googleapis.com/loginapp-releases/charts/",
         "chart_name": "loginapp",
         "chart_version": loginapp_chart_version,
     }
@@ -1202,6 +1202,7 @@ def create_loginapp_values(config_folder, project_id, cluster_config_dict):
     loginapp_values.update(
         {
             "env": {"LOGINAPP_NAME": "MAIA Login"},
+            "image": "maiacloudai/loginapp:v3.2.3",
             "configOverwrites": {"oidc": {"scopes": ["openid", "profile", "email"]}, "service": {"type": "ClusterIP"}},
             "ingress": {
                 "enabled": True,
