@@ -145,12 +145,13 @@
   ansible.builtin.set_fact:
     use_selfsigned: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).selfsigned | default(false) }}"
     coredns_mappings: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).coredns_mappings | default([]) }}"
+    custom_certificate: "{{ (lookup('file', config_folder + '/' + cluster_name + '.yaml') | from_yaml).custom_certificate | default(false) }}"
   delegate_to: localhost
 
-- name: Rollout restart maia-core-traefik deployment if selfsigned is enabled
+- name: Rollout restart maia-core-traefik deployment if selfsigned or custom certificate is enabled
   ansible.builtin.shell: |
     kubectl rollout restart deployment/maia-core-traefik -n traefik
-  when: auto_sync | bool and use_selfsigned | bool
+  when: auto_sync | bool and (use_selfsigned | bool or custom_certificate | bool)
   changed_when: true
   delegate_to: localhost
   environment:
