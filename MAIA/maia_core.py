@@ -398,7 +398,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
     core_toolkit_values.update({"k3s_coredns_mappings": {"enabled": False}})
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         core_toolkit_values.update(
-            {"selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]}, "custom_certificate": {"enabled": False}}
+            {
+                "selfsigned": {"enabled": True, "cluster_domain": cluster_config_dict["domain"], "coredns_ip": internal_ips[0]},
+                "custom_certificate": {"enabled": False},
+            }
         )
         if cluster_config_dict["k8s_distribution"] == "k3s":
             core_toolkit_values.update({"k3s_coredns": {"enabled": True}})
@@ -418,7 +421,8 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         key_value = read_if_file(custom_cert["key"])
 
         core_toolkit_values.update(
-            { "selfsigned": {"enabled": False},
+            {
+                "selfsigned": {"enabled": False},
                 "custom_certificate": {
                     "enabled": True,
                     "cluster_domain": cluster_config_dict["domain"],
@@ -426,12 +430,18 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
                     "secret_name": custom_cert["secret_name"],
                     "crt": crt_value,
                     "key": key_value,
-                }
+                },
             }
         )
 
     else:
-        core_toolkit_values.update({"selfsigned": {"enabled": False}, "custom_certificate": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
+        core_toolkit_values.update(
+            {
+                "selfsigned": {"enabled": False},
+                "custom_certificate": {"enabled": False},
+                "certResolver": cluster_config_dict["traefik_resolver"],
+            }
+        )
 
     if "coredns_mappings" in cluster_config_dict:
         core_toolkit_values.update(
