@@ -417,17 +417,19 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         crt_value = read_if_file(custom_cert["crt"])
         key_value = read_if_file(custom_cert["key"])
 
-        core_toolkit_values.update({
-            "custom_certificate": {
-                "enabled": True,
-                "cluster_domain": cluster_config_dict["domain"],
-                "coredns_ip": internal_ips[0],
-                "secret_name": custom_cert["secret_name"],
-                "crt": crt_value,
-                "key": key_value,
+        core_toolkit_values.update(
+            {
+                "custom_certificate": {
+                    "enabled": True,
+                    "cluster_domain": cluster_config_dict["domain"],
+                    "coredns_ip": internal_ips[0],
+                    "secret_name": custom_cert["secret_name"],
+                    "crt": crt_value,
+                    "key": key_value,
+                }
             }
-        })
- 
+        )
+
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 
