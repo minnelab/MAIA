@@ -582,9 +582,7 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
                 "hostname": "iam." + cluster_config_dict["domain"],
                 "annotations": {},
             },
-            "global": {
-                "defaultStorageClass": "nfs-client"  # get_storage_class(cluster_config_dict["k8s_distribution"])
-            },
+            "global": {"defaultStorageClass": "nfs-client"},  # get_storage_class(cluster_config_dict["k8s_distribution"])
             "auth": {
                 "adminPassword": os.environ.get("keycloak_admin_password", ""),
             },
