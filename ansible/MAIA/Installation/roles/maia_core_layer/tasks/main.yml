@@ -110,6 +110,26 @@
     var: argocd_cli_login.stdout
   when: auto_sync | bool
 
+- name: Rollout restart argocd-repo-server deployment
+  ansible.builtin.shell: |
+    kubectl rollout restart deployment/argocd-repo-server -n {{ argocd_namespace }}
+  when: auto_sync | bool
+  changed_when: true
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+
+- name: Wait for argocd-repo-server deployment to be ready
+  ansible.builtin.shell: |
+    kubectl wait deployment/argocd-repo-server -n {{ argocd_namespace }} --for condition=Available --timeout=300s
+  when: auto_sync | bool
+  changed_when: false
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  retries: "{{ argocd_sync_retries }}"
+  delay: "{{ argocd_sync_retry_delay }}"
+
 - name: Sync ArgoCD applications
   ansible.builtin.shell: |
     argocd app sync {{ item }}

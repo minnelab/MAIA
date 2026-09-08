@@ -264,7 +264,6 @@
   ansible.builtin.command: >
     {{ kubernetes_kubectl_cmd }} create rolebinding "{{ argocd_service_account }}-binding" -n "{{ argocd_namespace }}" --serviceaccount="{{ argocd_service_account }}:{{ argocd_namespace }}" --clusterrole="{{ argocd_role_name }}"
   register: create_argocd_role_binding
-  failed_when: create_argocd_role_binding.rc != 0 and 'AlreadyExists' not in (create_argocd_role_binding.stderr | default(''))
   changed_when: "'Created' in (create_argocd_role_binding.stdout | default(''))"
   failed_when: create_argocd_role_binding.rc != 0 and
     (

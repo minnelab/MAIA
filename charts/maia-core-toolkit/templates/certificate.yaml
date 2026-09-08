@@ -1,0 +1,59 @@
+{{ if .Values.custom_certificate.enabled }}
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          ttl 30
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+    {{ .Values.custom_certificate.cluster_domain }}:53 {
+    hosts {
+        {{ .Values.custom_certificate.coredns_ip }} iam.{{ .Values.custom_certificate.cluster_domain }}
+        {{ .Values.custom_certificate.coredns_ip }} registry.{{ .Values.custom_certificate.cluster_domain }}
+        {{ .Values.custom_certificate.coredns_ip }} mgmt.{{ .Values.custom_certificate.cluster_domain }}
+        {{ .Values.custom_certificate.coredns_ip }} argocd.{{ .Values.custom_certificate.cluster_domain }}
+        {{ .Values.custom_certificate.coredns_ip }} kubeflow.{{ .Values.custom_certificate.cluster_domain }}
+        {{ .Values.custom_certificate.coredns_ip }} {{ .Values.custom_certificate.cluster_domain }}
+        fallthrough
+      }
+    forward . /etc/resolv.conf
+    cache 30
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    k0s.k0sproject.io/stack: coredns
+  name: coredns
+  namespace: kube-system
+---
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: traefik
+spec:
+  defaultCertificate:
+    secretName: {{ .Values.custom_certificate.secret_name }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.custom_certificate.secret_name }}
+  namespace: traefik
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ .Values.custom_certificate.crt }}
+  tls.key: {{ .Values.custom_certificate.key }}
+{{ end }}

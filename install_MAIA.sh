@@ -17,6 +17,10 @@ while [[ $# -gt 0 ]]; do
       ADMIN_EMAIL="$2"
       shift 2
       ;;
+    --branch)
+      BRANCH="$2"
+      shift 2
+      ;;
     *)
       break
       ;;
@@ -27,12 +31,13 @@ done
 : "${CONFIG_FOLDER:=maia-config}"
 : "${K8S_DISTRIBUTION:=k3s}"
 : "${ADMIN_EMAIL:=admin@maia.io}"
-
+: "${BRANCH:=master}"
 sudo apt update
 sudo apt install -y python3-pip ufw curl git
+sudo apt-get install -y pkg-config default-libmysqlclient-dev build-essential
 sudo apt install -y jq yq apache2-utils
 if [ "$1" == "--dev" ]; then
-    pip install git+https://github.com/minnelab/MAIA.git@master --break-system-packages
+    pip install git+https://github.com/minnelab/MAIA.git@$BRANCH --break-system-packages
 else
     pip install maia-toolkit==${VERSION} --break-system-packages
 fi
@@ -41,21 +46,33 @@ pip install ansible jmespath --break-system-packages
 
 
 
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
-chmod 700 get_helm.sh
-./get_helm.sh
-
-if ! command -v helm &> /dev/null
+if ! command -v kubectl &> /dev/null
 then
-    echo "Helm not found. Attempting to install via snap..."
-    sudo snap install helm --classic
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    if ! command -v kubectl &> /dev/null
+    then
+        echo "Kubectl not found. Attempting to install via snap..."
+        sudo snap install kubectl --classic
+    fi
 fi
 
 
-ARGOCD_VS=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep tag_name | cut -d '"' -f 4)
+if ! command -v helm &> /dev/null
+then
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+    chmod 700 get_helm.sh
+    ./get_helm.sh
+    if ! command -v helm &> /dev/null
+    then
+    echo "Helm not found. Attempting to install via snap..."
+        sudo snap install helm --classic
+    fi
+fi
+
+
+
+ARGOCD_VS=v3.5.2
 sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$ARGOCD_VS/argocd-linux-amd64
 sudo chmod +x /usr/local/bin/argocd
 
@@ -285,8 +302,8 @@ cluster_config_extra_env:
   empty: empty
   $(if [ "$SELF_SIGNED_CERTIFICATES" = "yes" ]; then echo "selfsigned: true"; fi)
   $(if [ "$GENERATE_STAGING_CERTIFICATES" = "yes" ]; then echo "staging_certificates: true"; fi)
-  $(if [ "$GENERATE_STAGING_CERTIFICATES" = "yes" ]; then 
-    echo "externalCA:"; 
+  $(if [ "$GENERATE_STAGING_CERTIFICATES" = "yes" ]; then
+    echo "externalCA:";
     echo "  name: \"iam-ca-secret\"";
     echo "  cert: \"$CONFIG_FOLDER/staging-ca.pem\"";
   fi)
@@ -315,9 +332,8 @@ if [[ " $@ " =~ " --dry-run " ]]; then
     :
 elif [[ " $@ " =~ " --dev " ]]; then
     export PATH=$HOME/.local/bin:$PATH
-    MAIA_Install --config-folder $CONFIG_FOLDER --ansible-collection-path git+https://github.com/minnelab/MAIA.git#/ansible/MAIA/Installation
+    MAIA_Install --config-folder $CONFIG_FOLDER --ansible-collection-path git+https://github.com/minnelab/MAIA.git#/ansible/MAIA/Installation,$BRANCH
 else
     export PATH=$HOME/.local/bin:$PATH
     MAIA_Install --config-folder $CONFIG_FOLDER --ansible-collection-path maia.installation==${MAIA_INSTALLATION_VERSION}
 fi
-

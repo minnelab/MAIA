@@ -38,8 +38,8 @@ prometheus_release_name: maia-core-prometheus
 argocd_port: 8080
 
 # ArgoCD login retry settings
-argocd_login_retries: 3
-argocd_login_retry_delay: 10
+argocd_login_retries: 10
+argocd_login_retry_delay: 30
 
 # ArgoCD application sync retry settings
 argocd_sync_retries: 3
