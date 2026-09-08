@@ -402,7 +402,32 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         )
         if cluster_config_dict["k8s_distribution"] == "k3s":
             core_toolkit_values.update({"k3s_coredns": {"enabled": True}})
+    elif "custom_certificate" in cluster_config_dict:
+        import base64
 
+        custom_cert = cluster_config_dict["custom_certificate"]
+
+        # Read the certificate and key from file if values are file paths, otherwise use the provided values
+        def read_if_file(value):
+            if isinstance(value, str) and os.path.isfile(value):
+                with open(value, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
+            return value
+
+        crt_value = read_if_file(custom_cert["crt"])
+        key_value = read_if_file(custom_cert["key"])
+
+        core_toolkit_values.update({
+            "custom_certificate": {
+                "enabled": True,
+                "cluster_domain": cluster_config_dict["domain"],
+                "coredns_ip": internal_ips[0],
+                "secret_name": custom_cert["secret_name"],
+                "crt": crt_value,
+                "key": key_value,
+            }
+        })
+ 
     else:
         core_toolkit_values.update({"selfsigned": {"enabled": False}, "certResolver": cluster_config_dict["traefik_resolver"]})
 
