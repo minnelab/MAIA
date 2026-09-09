@@ -66,7 +66,7 @@ def create_jupyterhub_config(form, cluster_config_file, no_minimal):
     create_jupyterhub_config_api(form, cluster_config_file, minimal=not no_minimal)
 
 
-def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, minimal=True):
+def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, minimal=True, kubeflow_format=False):
     if isinstance(cluster_config_file, dict):
         cluster_config = cluster_config_file
     else:
@@ -229,7 +229,11 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
             "startTimeout": 7200,
             "allowPrivilegeEscalation": True,
             "uid": 1000,
-            "extraPodConfig": {"securityContext": {"fsGroupChangePolicy": "OnRootMismatch"}},
+            "extraPodConfig": {
+                "securityContext": {"fsGroupChangePolicy": "OnRootMismatch"},
+                "automountServiceAccountToken": True,
+                "restartPolicy": "OnFailure",
+            },
             "networkPolicy": {"enabled": False},
             "defaultUrl": "/lab/tree/Welcome.ipynb",
             "extraEnv": {
@@ -474,9 +478,15 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 cpu_values[i] = numeric_value
             except ValueError:
                 pass  # If the value can't be converted, leave it as is
-    jh_template["singleuser"]["cpu"] = {
+    if not kubeflow_format:
+        jh_template["singleuser"]["cpu"] = {
         "limit": cpu_values[1],
         "guarantee": cpu_values[0],
+    }
+    else:
+        jh_template["singleuser"]["cpu"] = {
+        "limit": resources_limits["cpu"][1],
+        "guarantee": resources_limits["cpu"][0],
     }
 
     for extra_volume in extra_volumes:
@@ -687,6 +697,9 @@ def create_jupyterhub_config_api(form, cluster_config_file, config_folder=None, 
                 },
             }
         )
+
+    jh_template["singleuser"]["serviceAccountName"] = "default"
+
     if "node_selector" in user_form:
         k = list(user_form["node_selector"].keys())[0]
         v = user_form["node_selector"][k]

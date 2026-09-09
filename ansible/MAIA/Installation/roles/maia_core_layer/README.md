@@ -59,7 +59,7 @@ The following variables are set by default in `defaults/main.yml`:
 | `argocd_sync_retries` | `3` | integer | Number of retries for ArgoCD sync |
 | `argocd_sync_retry_delay` | `10` | integer | Delay in seconds between sync retries |
 | `maia_core_argocd_applications` | `[maia-core-traefik, maia-core-cert-manager, maia-core-gpu-operator, maia-core-nvidia-dra-driver-gpu, maia-core-metallb, maia-core-loki, maia-core-tempo, maia-core-metrics-server, maia-core-toolkit, maia-core-gpu-booking, maia-core-minio-operator, maia-core-nfs-provisioner]` | list | ArgoCD applications to sync |
-
+| `extra_commands` | `[]` | list | Additional commands to execute, i.e. to set image of a deployment |
 ## Required Values
 
 ### `config_folder`
@@ -157,6 +157,16 @@ All other variables are optional and can be overridden when using the role:
   maia_core_argocd_applications:
     - maia-core-traefik
     - maia-core-cert-manager
+  ```
+
+### `extra_commands`
+- **Type**: `list` (of strings)
+- **Default**: `[]`
+- **Description**: Additional commands to execute, i.e. to set image of a deployment.
+- **Example**: 
+  ```yaml
+  extra_commands:
+    - kubectl set image deployment/traefik traefik=quay.io/traefik/traefik:v2.10.4
   ```
 
 ## Usage

@@ -48,6 +48,13 @@ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scrip
 chmod 700 get_helm.sh
 ./get_helm.sh
 
+if ! command -v helm &> /dev/null
+then
+    echo "Helm not found. Attempting to install via snap..."
+    sudo snap install helm --classic
+fi
+
+
 ARGOCD_VS=$(curl -s https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep tag_name | cut -d '"' -f 4)
 sudo curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/$ARGOCD_VS/argocd-linux-amd64
 sudo chmod +x /usr/local/bin/argocd
@@ -306,6 +313,9 @@ fi
 
 if [[ " $@ " =~ " --dry-run " ]]; then
     :
+elif [[ " $@ " =~ " --dev " ]]; then
+    export PATH=$HOME/.local/bin:$PATH
+    MAIA_Install --config-folder $CONFIG_FOLDER --ansible-collection-path git+https://github.com/minnelab/MAIA.git#/ansible/MAIA/Installation
 else
     export PATH=$HOME/.local/bin:$PATH
     MAIA_Install --config-folder $CONFIG_FOLDER --ansible-collection-path maia.installation==${MAIA_INSTALLATION_VERSION}

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rancher-config
+  labels: {{ include "rancher.labels" . | nindent 4 }}
+    app.kubernetes.io/part-of: "rancher"
+data:
+  priorityClassName:  {{ .Values.priorityClassName }}
+  {{- if and .Values.webhook (kindIs "string" .Values.webhook) }}
+  rancher-webhook: {{ .Values.webhook | quote }}
+  {{- else if .Values.webhook }}
+  rancher-webhook: {{ toYaml .Values.webhook | quote }}
+  {{- end }}
+  {{- if and .Values.fleet (kindIs "string" .Values.fleet) }}
+  fleet: {{ .Values.fleet | quote }}
+  {{- else if .Values.fleet }}
+  fleet: {{ toYaml .Values.fleet | quote }}
+  {{- end }}

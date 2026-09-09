@@ -1,0 +1,15 @@
+dependencies:
+- name: ollama
+  repository: https://otwld.github.io/ollama-helm/
+  version: 1.54.0
+- name: pipelines
+  repository: https://helm.openwebui.com
+  version: 0.11.0
+- name: tika
+  repository: https://apache.jfrog.io/artifactory/tika
+  version: 3.2.2
+- name: terminals
+  repository: https://helm.openwebui.com
+  version: 0.2.0
+digest: sha256:c83a2ff0a87cf2fb8e8943439be33834254cd229ee3a81dcc282608f2d3c7f54
+generated: "2026-04-02T17:32:33.918813-06:00"

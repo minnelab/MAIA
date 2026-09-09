@@ -307,20 +307,20 @@ env:
   SUPPORT_URL: <SUPPORT_URL>
 ```
 
-### Set OpenWebAI API Key and URL
+### Set OpenWebUI API Key and URL
 
-To enable the OpenWebAI API for the MAIA Chatbot, you can set the following environment variables in your config.yaml file:
+To enable the OpenWebUI API for the MAIA Chatbot, you can set the following environment variables in your config.yaml file:
 
 ```yaml
 env:
-  OPENWEBAI_API_KEY: <OPENWEBAI_API_KEY>
-  OPENWEBAI_URL: <OPENWEBAI_URL>
-  OPENWEBAI_MODEL: <OPENWEBAI_MODEL>
+  OPENWEBUI_API_KEY: <OPENWEBUI_API_KEY>
+  OPENWEBUI_URL: <OPENWEBUI_URL>
+  OPENWEBUI_MODEL: <OPENWEBUI_MODEL>
 ```
 
-The OPENWEBAI_API_KEY is the API key for the OpenWebAI API.
-The OPENWEBAI_URL is the URL for the OpenWebAI API.
-The OPENWEBAI_MODEL is the model to use for the OpenWebAI API.
+The OPENWEBUI_API_KEY is the API key for the OpenWebUI API.
+The OPENWEBUI_URL is the URL for the OpenWebUI API.
+The OPENWEBUI_MODEL is the model to use for the OpenWebUI API.
 
 ### Set Email Notification System
 

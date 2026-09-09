@@ -1,0 +1,52 @@
+annotations:
+  artifacthub.io/category: integration-delivery
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: support
+      url: https://issues.apache.org/jira/browse/TIKA
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/recommendations: |
+    - url: https://artifacthub.io/packages/helm/apache-solr/solr
+    - url: https://artifacthub.io/packages/helm/apache-airflow/airflow
+apiVersion: v2
+appVersion: 3.2.2.0-full
+description: The official Helm chart for Apache Tika
+home: https://tika.apache.org
+icon: https://tika.apache.org/tika.png
+keywords:
+- apache
+- tika
+- apache-tika
+- tika-helm
+maintainers:
+- email: lewismc@apache.org
+  name: lewismc
+  url: https://github.com/lewismc
+- name: stijnbrouwers
+  url: https://github.com/stijnbrouwers
+- name: philipsoutham
+  url: https://github.com/philipsoutham
+- name: frascu
+  url: https://github.com/frascu
+- name: euven
+  url: https://github.com/euven
+- name: ps0uth
+  url: https://github.com/ps0uth
+- name: ahilmathew
+  url: https://github.com/ahilmathew
+- name: aidanthewiz
+  url: https://github.com/aidanthewiz
+- name: bartek
+  url: https://github.com/bartek
+- name: CiraciNicolo
+  url: https://github.com/CiraciNicolo
+- name: amalucelli
+  url: https://github.com/amalucelli
+- name: thatmlopsguy
+  url: https://github.com/thatmlopsguy
+name: tika
+sources:
+- https://github.com/apache/tika-helm
+type: application
+version: 3.2.2

@@ -1,0 +1,512 @@
+{{- /* Validate workload.kind if set */ -}}
+{{- if and .Values.workload.kind (not (or (eq .Values.workload.kind "Deployment") (eq .Values.workload.kind "StatefulSet"))) -}}
+{{- fail "workload.kind must be \"Deployment\" or \"StatefulSet\" (or empty)" -}}
+{{- end -}}
+{{- /* Determine the actual workload kind */ -}}
+{{- $kind := .Values.workload.kind | default (ternary "StatefulSet" "Deployment" (and .Values.persistence.enabled (eq .Values.persistence.provider "local"))) -}}
+apiVersion: apps/v1
+kind: {{ $kind }}
+metadata:
+  name: {{ include "open-webui.fullname" . }}
+  namespace: {{ include "open-webui.namespace" . }}
+  labels:
+    {{- include "open-webui.labels" . | nindent 4 }}
+    {{- include "open-webui.extraLabels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- if eq $kind "Deployment" }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
+  {{- if eq $kind "StatefulSet" }}
+  serviceName: {{ include "open-webui.fullname" . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "open-webui.selectorLabels" . | nindent 6 }}
+  {{- if .Values.strategy }}
+  {{- if eq $kind "StatefulSet" }}
+  updateStrategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  {{- else }}
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "open-webui.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- tpl (toYaml .) $ | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      initContainers:
+      - name: copy-app-data
+        {{- with .Values.image }}
+        image: {{ .repository }}:{{ include "open-webui.tag" $ }}
+        imagePullPolicy: {{ .pullPolicy }}
+        {{- end }}
+        command:
+          {{- toYaml (.Values.copyAppData.command | default (list "sh" "-c" "cp -R -n /app/backend/data/* /tmp/app-data/")) | nindent 10 }}
+        {{- with .Values.copyAppData.args }}
+        args:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.containerSecurityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.copyAppData.resources }}
+        resources: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: data
+          mountPath: /tmp/app-data
+          {{- if .Values.persistence.subPath }}
+          subPath: {{ .Values.persistence.subPath }}
+          {{- end }}
+        {{- with .Values.volumeMounts.initContainer }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.extraInitContainers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      enableServiceLinks: false
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName | quote }}
+      {{- end }}
+      {{- if .Values.serviceAccount.enable }}
+      serviceAccountName: {{ .Values.serviceAccount.name | default (printf "%s-sa" (include "open-webui.fullname" .)) }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        {{- with .Values.image }}
+        image: {{ .repository }}:{{ include "open-webui.tag" $ }}
+        imagePullPolicy: {{ .pullPolicy }}
+        {{- end }}
+        {{- with .Values.command }}
+        command:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.args }}
+        args:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.containerPort }}
+        {{- with .Values.livenessProbe }}
+        livenessProbe: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.readinessProbe }}
+        readinessProbe: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.startupProbe }}
+        startupProbe: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.resources }}
+        resources: {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.containerSecurityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: data
+          mountPath: /app/backend/data
+          {{- if .Values.persistence.subPath }}
+          subPath: {{ .Values.persistence.subPath }}
+          {{- end }}
+        {{- with .Values.volumeMounts.container }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        env:
+        {{- if and .Values.ingress.enabled (not (include "open-webui.hasCustomWebUIUrl" .)) }}
+        - name: WEBUI_URL
+          value: {{ include "open-webui.url" . | quote }}
+        {{- end }}
+        {{- if .Values.ollamaUrlsFromExtraEnv}}
+        {{- else if or .Values.ollamaUrls .Values.ollama.enabled }}
+        - name: "OLLAMA_BASE_URLS"
+          value: {{ include "ollamaBaseUrls" . | quote }}
+        {{- else }}
+        - name: "ENABLE_OLLAMA_API"
+          value: "False"
+        {{- end }}
+        {{- if and .Values.enableOpenaiApi .Values.openaiBaseApiUrl (not .Values.openaiBaseApiUrls) (not .Values.pipelines.enabled) }}
+        # If only an OpenAI API value is set, set it to OPENAI_API_BASE_URL
+        - name: "OPENAI_API_BASE_URL"
+          value: {{ tpl .Values.openaiBaseApiUrl . | quote }}
+        {{- if or .Values.openaiApiKey .Values.openaiApiKeyExistingSecret }}
+        - name: "OPENAI_API_KEY"
+        {{- if .Values.openaiApiKeyExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.openaiApiKeyExistingSecret }}
+              key: {{ .Values.openaiApiKeyExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.openaiApiKey | quote }}
+        {{- end }}
+        {{- end }}
+        {{- else if and .Values.enableOpenaiApi .Values.openaiBaseApiUrl .Values.pipelines.enabled (not .Values.openaiBaseApiUrls) }}
+        # If Pipelines is enabled and OpenAI API value is set, use OPENAI_API_BASE_URLS with combined values
+        - name: "OPENAI_API_BASE_URLS"
+          value: "{{ include "pipelines.serviceEndpoint" . }};{{ tpl .Values.openaiBaseApiUrl . }}"
+        {{- if or .Values.openaiApiKeys .Values.openaiApiKeysExistingSecret }}
+        - name: "OPENAI_API_KEYS"
+        {{- if .Values.openaiApiKeysExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.openaiApiKeysExistingSecret }}
+              key: {{ .Values.openaiApiKeysExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.openaiApiKeys | join ";" | quote }}
+        {{- end }}
+        {{- end }}
+        {{- else if and .Values.enableOpenaiApi .Values.pipelines.enabled (not .Values.openaiBaseApiUrl) (not .Values.openaiBaseApiUrls) }}
+        # If Pipelines is enabled and no OpenAI API values are set, set OPENAI_API_BASE_URL to the Pipelines server endpoint
+        - name: "OPENAI_API_BASE_URL"
+          value: {{ include "pipelines.serviceEndpoint" . | quote }}
+        {{- if or .Values.openaiApiKey .Values.openaiApiKeyExistingSecret }}
+        - name: "OPENAI_API_KEY"
+        {{- if .Values.openaiApiKeyExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.openaiApiKeyExistingSecret }}
+              key: {{ .Values.openaiApiKeyExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.openaiApiKey | quote }}
+        {{- end }}
+        {{- end }}
+        {{- else if and .Values.enableOpenaiApi .Values.openaiBaseApiUrls .Values.pipelines.enabled }}
+        # If OpenAI API value(s) set and Pipelines is enabled, use OPENAI_API_BASE_URLS to support all the endpoints in the chart
+        - name: "OPENAI_API_BASE_URLS"
+          value: "{{ include "pipelines.serviceEndpoint" . }};{{ join ";" .Values.openaiBaseApiUrls }}"
+        {{- if or .Values.openaiApiKeys .Values.openaiApiKeysExistingSecret }}
+        - name: "OPENAI_API_KEYS"
+        {{- if .Values.openaiApiKeysExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.openaiApiKeysExistingSecret }}
+              key: {{ .Values.openaiApiKeysExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.openaiApiKeys | join ";" | quote }}
+        {{- end }}
+        {{- end }}
+        {{- else if and .Values.enableOpenaiApi .Values.openaiBaseApiUrls (not .Values.pipelines.enabled) }}
+        # If OpenAI API value(s) set and Pipelines is disabled, use OPENAI_API_BASE_URLS without Pipelines endpoint
+        - name: "OPENAI_API_BASE_URLS"
+          value: {{ join ";" .Values.openaiBaseApiUrls | quote }}
+        {{- if or .Values.openaiApiKeys .Values.openaiApiKeysExistingSecret }}
+        - name: "OPENAI_API_KEYS"
+        {{- if .Values.openaiApiKeysExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.openaiApiKeysExistingSecret }}
+              key: {{ .Values.openaiApiKeysExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.openaiApiKeys | join ";" | quote }}
+        {{- end }}
+        {{- end }}
+        {{- else if not .Values.enableOpenaiApi }}
+        - name: "ENABLE_OPENAI_API"
+          value: "False"
+        {{- end }}
+        {{- if .Values.tika.enabled }}
+        - name: "CONTENT_EXTRACTION_ENGINE"
+          value: "Tika"
+        - name: "TIKA_SERVER_URL"
+          value: {{ include "tikaLocalUrl" . }}
+        {{- end }}
+        {{- if eq .Values.persistence.provider "s3" }}
+        - name: "STORAGE_PROVIDER"
+          value: {{ .Values.persistence.provider }}
+        - name: "S3_ACCESS_KEY_ID"
+        {{- if .Values.persistence.s3.accessKeyExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.persistence.s3.accessKeyExistingSecret }}
+              key: {{ .Values.persistence.s3.accessKeyExistingAccessKey }}
+        {{- else }}
+          value: {{ .Values.persistence.s3.accessKey }}
+        {{- end }}
+        - name: "S3_SECRET_ACCESS_KEY"
+        {{- if .Values.persistence.s3.secretKeyExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.persistence.s3.secretKeyExistingSecret }}
+              key: {{ .Values.persistence.s3.secretKeyExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.persistence.s3.secretKey }}
+        {{- end }}
+        - name: "S3_ENDPOINT_URL"
+          value: {{ .Values.persistence.s3.endpointUrl }}
+        - name: "S3_BUCKET_NAME"
+          value: {{ .Values.persistence.s3.bucket }}
+        - name: "S3_REGION_NAME"
+          value: {{ .Values.persistence.s3.region }}
+        - name: "S3_KEY_PREFIX"
+          value: {{ .Values.persistence.s3.keyPrefix }}
+        {{- else if eq .Values.persistence.provider "gcs" }}
+        - name: "STORAGE_PROVIDER"
+          value: {{ .Values.persistence.provider }}
+        - name: "GOOGLE_APPLICATION_CREDENTIALS_JSON"
+        {{- if .Values.persistence.gcs.appCredentialsJsonExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.persistence.gcs.appCredentialsJsonExistingSecret }}
+              key: {{ .Values.persistence.gcs.appCredentialsJsonExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.persistence.gcs.appCredentialsJson }}
+        {{- end }}
+        - name: "GCS_BUCKET_NAME"
+          value: {{ .Values.persistence.gcs.bucket }}
+        {{- else if eq .Values.persistence.provider "azure" }}
+        - name: "STORAGE_PROVIDER"
+          value: {{ .Values.persistence.provider }}
+        - name: "AZURE_STORAGE_ENDPOINT"
+          value: {{ .Values.persistence.azure.endpointUrl }}
+        - name: "AZURE_STORAGE_CONTAINER_NAME"
+          value: {{ .Values.persistence.azure.container }}
+        - name: "AZURE_STORAGE_KEY"
+        {{- if .Values.persistence.azure.keyExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.persistence.azure.keyExistingSecret }}
+              key: {{ .Values.persistence.azure.keyExistingSecretKey }}
+        {{- else }}
+          value: {{ .Values.persistence.azure.key }}
+        {{- end }}
+        {{- end }}
+        - name: "ENABLE_WEBSOCKET_SUPPORT"
+          value: {{ ternary "True" "False" .Values.websocket.enabled | quote }}
+        {{- if .Values.websocket.enabled }}
+        - name: "WEBSOCKET_MANAGER"
+          value: {{ .Values.websocket.manager | default "redis" | quote }}
+        - name: "REDIS_URL"
+        {{- if .Values.websocket.existingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.websocket.existingSecret }}
+              key: {{ .Values.websocket.existingSecretKey | default "redis-url" }}
+        {{- else }}
+          value: {{ include "websocket.redis.url" . | quote }}
+        {{- end }}
+        - name: "WEBSOCKET_REDIS_URL"
+        {{- if .Values.websocket.existingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.websocket.existingSecret }}
+              key: {{ .Values.websocket.existingSecretKey | default "redis-url" }}
+        {{- else }}
+          value: {{ include "websocket.redis.url" . | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.databaseUrl }}
+        - name: "DATABASE_URL"
+          value: {{ .Values.databaseUrl | quote }}
+        {{- end }}
+        {{- if .Values.sso.enabled }}
+        {{- if .Values.sso.enableSignup }}
+        - name: "ENABLE_OAUTH_SIGNUP"
+          value: "True"
+        {{- end }}
+        {{- if .Values.sso.mergeAccountsByEmail }}
+        - name: "OAUTH_MERGE_ACCOUNTS_BY_EMAIL"
+          value: "True"
+        {{- end }}
+        {{- if .Values.sso.google.enabled }}
+        - name: "GOOGLE_CLIENT_ID"
+          value: {{ .Values.sso.google.clientId | quote }}
+        {{- include "sso.validateClientSecret" (dict "provider" "google" "values" .Values.sso) }}
+        - name: "GOOGLE_CLIENT_SECRET"
+        {{- if .Values.sso.google.clientExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.sso.google.clientExistingSecret | quote }}
+              key: {{ .Values.sso.google.clientExistingSecretKey | quote }}
+        {{- else }}
+          value: {{ .Values.sso.google.clientSecret | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.sso.microsoft.enabled }}
+        - name: "MICROSOFT_CLIENT_ID"
+          value: {{ .Values.sso.microsoft.clientId | quote }}
+        {{- include "sso.validateClientSecret" (dict "provider" "microsoft" "values" .Values.sso) }}
+        - name: "MICROSOFT_CLIENT_SECRET"
+        {{- if .Values.sso.microsoft.clientExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.sso.microsoft.clientExistingSecret | quote }}
+              key: {{ .Values.sso.microsoft.clientExistingSecretKey | quote }}
+        {{- else }}
+          value: {{ .Values.sso.microsoft.clientSecret | quote }}
+        {{- end }}
+        - name: "MICROSOFT_CLIENT_TENANT_ID"
+          value: {{ .Values.sso.microsoft.tenantId | quote }}
+        {{- end }}
+        {{- if .Values.sso.github.enabled }}
+        - name: "GITHUB_CLIENT_ID"
+          value: {{ .Values.sso.github.clientId | quote }}
+        {{- include "sso.validateClientSecret" (dict "provider" "github" "values" .Values.sso) }}
+        - name: "GITHUB_CLIENT_SECRET"
+        {{- if .Values.sso.github.clientExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.sso.github.clientExistingSecret | quote }}
+              key: {{ .Values.sso.github.clientExistingSecretKey | quote }}
+        {{- else }}
+          value: {{ .Values.sso.github.clientSecret | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.sso.oidc.enabled }}
+        - name: "OAUTH_CLIENT_ID"
+        {{- if and .Values.sso.oidc.clientExistingSecret .Values.sso.oidc.clientIdExistingSecretKey }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ tpl .Values.sso.oidc.clientExistingSecret . | quote }}
+              key: {{ tpl .Values.sso.oidc.clientIdExistingSecretKey . | quote }}
+        {{- else }}
+          value: {{ .Values.sso.oidc.clientId | quote }}
+        {{- end }}
+        {{- include "sso.validateClientSecret" (dict "provider" "oidc" "values" .Values.sso) }}
+        - name: "OAUTH_CLIENT_SECRET"
+        {{- if .Values.sso.oidc.clientExistingSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ tpl .Values.sso.oidc.clientExistingSecret . | quote }}
+              key: {{ tpl .Values.sso.oidc.clientExistingSecretKey . | quote }}
+        {{- else }}
+          value: {{ .Values.sso.oidc.clientSecret | quote }}
+        {{- end }}
+        - name: "OPENID_PROVIDER_URL"
+        {{- if .Values.sso.oidc.existingConfig }}
+          valueFrom:
+            configMapKeyRef:
+              name: {{ tpl .Values.sso.oidc.existingConfig . | quote }}
+              key: {{ tpl .Values.sso.oidc.existingConfigProviderUrlKey . | quote }}
+        {{- else }}
+          value: {{ .Values.sso.oidc.providerUrl | quote }}
+        {{- end }}
+        - name: "OAUTH_PROVIDER_NAME"
+          value: {{ .Values.sso.oidc.providerName | quote }}
+        - name: "OAUTH_SCOPES"
+          value: {{ .Values.sso.oidc.scopes | quote }}
+        {{- end }}
+        {{- if .Values.sso.enableRoleManagement }}
+        - name: "ENABLE_OAUTH_ROLE_MANAGEMENT"
+          value: "True"
+        - name: "OAUTH_ROLES_CLAIM"
+          value: {{ .Values.sso.roleManagement.rolesClaim | quote }}
+        {{- if .Values.sso.roleManagement.allowedRoles }}
+        - name: "OAUTH_ALLOWED_ROLES"
+          value: {{ tpl .Values.sso.roleManagement.allowedRoles . | quote }}
+        {{- end }}
+        {{- if .Values.sso.roleManagement.adminRoles }}
+        - name: "OAUTH_ADMIN_ROLES"
+          value: {{ tpl .Values.sso.roleManagement.adminRoles . | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.sso.enableGroupManagement }}
+        - name: "ENABLE_OAUTH_GROUP_MANAGEMENT"
+          value: "True"
+        - name: "OAUTH_GROUP_CLAIM"
+          value: {{ .Values.sso.groupManagement.groupsClaim | quote }}
+        {{- end }}
+        {{- if .Values.sso.trustedHeader.enabled }}
+        - name: "WEBUI_AUTH_TRUSTED_EMAIL_HEADER"
+          value: {{ .Values.sso.trustedHeader.emailHeader | quote }}
+        {{- if .Values.sso.trustedHeader.nameHeader }}
+        - name: "WEBUI_AUTH_TRUSTED_NAME_HEADER"
+          value: {{ .Values.sso.trustedHeader.nameHeader | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.logging.level }}
+        {{- include "logging.assertValidLevel" .Values.logging.level }}
+        - name: "GLOBAL_LOG_LEVEL"
+          value: {{ .Values.logging.level | quote }}
+        {{- end }}
+        {{- if .Values.logging.components }}
+        {{- range $name, $level := .Values.logging.components }}
+        {{- if $level }}
+        {{- include "logging.componentEnvVar" (dict "componentName" $name "logLevel" $level) | indent 8 }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.terminals.enabled }}
+        - name: "TERMINALS_API_KEY"
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "open-webui.terminals.secretName" . }}
+              key: api-key
+        - name: "TERMINAL_SERVER_CONNECTIONS"
+          value: '[{"id":"terminals","name":"Terminals","enabled":true,"url":"{{ include "terminals.serviceEndpoint" . }}","key":"$(TERMINALS_API_KEY)","auth_type":"bearer","config":{"access_grants":[{"principal_type":"user","principal_id":"*","permission":"read"}]}}]'
+        {{- end }}
+        {{- if .Values.extraEnvVars }}
+          {{- include "open-webui.env" (dict "envVars" .Values.extraEnvVars "root" .) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.commonEnvVars }}
+          {{- tpl (toYaml .Values.commonEnvVars) . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.extraEnvFrom }}
+        envFrom:
+          {{- tpl (toYaml .Values.extraEnvFrom) . | nindent 8 }}
+        {{- end }}
+        tty: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.existingClaim }}
+      {{- else if or (not .Values.persistence.enabled) (not (eq .Values.persistence.provider "local")) }}
+      - name: data
+        emptyDir: {}
+      {{- else if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "open-webui.fullname" . }}
+      {{- end }}
+      {{- with .Values.volumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}

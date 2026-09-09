@@ -126,3 +126,8 @@ dockerRegistryPassword: registry_private_password
 dockerRegistryEmail: admin@maia.com
 dockerRegistryServer: https://registry.maia.com
 
+mongodb:
+  enabled: false
+
+additionalVolumes: []
+additionalVolumeMounts: []

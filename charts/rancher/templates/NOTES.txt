@@ -1,0 +1,34 @@
+{{- $action := "installed" -}}
+{{ if .Release.IsUpgrade -}}
+{{ $action = "upgraded" -}}
+{{ end -}}
+{{- include "tpl.chart.deprecated" (list .Values.busyboxImage ".Values.busyboxImage" "Use `.Values.auditLog.image.repository` & `.Values.auditLog.image.tag` instead.") -}}
+{{- include "tpl.chart.replace" (list .Values.busyboxImagePullPolicy ".Values.busyboxImagePullPolicy" ".Values.auditLog.image.pullPolicy") -}}
+{{- include "tpl.chart.deprecated" (list .Values.rancherImage ".Values.rancherImage" "Use `.Values.image.repository` & `.Values.image.registry` instead; if you used image name with Registry included you must split them up.") -}}
+{{- include "tpl.chart.replace" (list .Values.rancherImageTag ".Values.rancherImageTag" ".Values.image.tag") -}}
+{{- include "tpl.chart.replace" (list .Values.rancherImagePullPolicy ".Values.rancherImagePullPolicy" ".Values.image.pullPolicy") -}}
+
+
+Rancher Server has been {{ $action }}. Rancher may take several minutes to fully initialize.
+
+Please standby while Certificates are being issued, Containers are started and the Ingress rule comes up.
+
+Check out our docs at https://rancher.com/docs/
+
+## First Time Login
+
+If you provided your own bootstrap password during installation, browse to https://{{ .Values.hostname }} to get started.
+If this is the first time you installed Rancher, get started by running this command and clicking the URL it generates:
+
+```
+echo https://{{ .Values.hostname }}/dashboard/?setup=$(kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{ "{{" }}.data.bootstrapPassword|base64decode{{ "}}" }}')
+```
+
+To get just the bootstrap password on its own, run:
+
+```
+kubectl get secret --namespace cattle-system bootstrap-secret -o go-template='{{ "{{" }}.data.bootstrapPassword|base64decode{{ "}}" }}{{ "{{" }} "\n" {{ "}}" }}'
+```
+
+
+Happy Containering!

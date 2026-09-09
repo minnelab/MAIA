@@ -1,0 +1,166 @@
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+
+# -- Value of cluster domain
+clusterDomain: cluster.local
+extraLabels: {}
+annotations: {}
+podAnnotations: {}
+podLabels: {}
+replicaCount: 1
+# -- Strategy for updating the deployment
+strategy: {}
+image:
+  repository: ghcr.io/open-webui/pipelines
+  tag: main
+  pullPolicy: Always
+
+# -- Configure imagePullSecrets to use private registry
+# ref: <https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry>
+imagePullSecrets: []
+# imagePullSecrets:
+# - name: myRegistryKeySecretName
+
+resources: {}
+ingress:
+  enabled: true
+  class: ""
+  # -- Use appropriate annotations for your Ingress controller, e.g., for NGINX:
+  # nginx.ingress.kubernetes.io/rewrite-target: /
+  annotations: {}
+  host: ""
+  tls: false
+  existingSecret: ""
+persistence:
+  enabled: true
+  size: 2Gi
+  existingClaim: ""
+  # -- If using multiple replicas, you must update accessModes to ReadWriteMany
+  accessModes:
+    - ReadWriteOnce
+  storageClass: ""
+  selector: {}
+  annotations: {}
+
+serviceAccount:
+  enable: true
+  create: true
+  name: ""
+  automountServiceAccountToken: false
+
+# -- Configure pod security context
+# ref: <https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container>
+podSecurityContext:
+  {}
+  # fsGroupChangePolicy: Always
+  # sysctls: []
+  # supplementalGroups: []
+  # fsGroup: 1001
+
+# -- Configure container security context
+# ref: <https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-containe>
+containerSecurityContext:
+  {}
+  # runAsUser: 1001
+  # runAsGroup: 1001
+  # runAsNonRoot: true
+  # privileged: false
+  # allowPrivilegeEscalation: false
+  # readOnlyRootFilesystem: false
+  # capabilities:
+  #   drop:
+  #     - ALL
+  # seccompProfile:
+  #   type: "RuntimeDefault"
+
+# -- Node labels for pod assignment.
+nodeSelector: {}
+
+# -- Tolerations for pod assignment
+tolerations: []
+
+# -- Affinity for pod assignment
+affinity: {}
+
+# -- Topology spread constraints for pod distribution
+topologySpreadConstraints: []
+
+# -- HostAliases to be added to hosts-file of each container
+hostAliases: []
+
+service:
+  type: ClusterIP
+  annotations: {}
+  port: 9099
+  containerPort: 9099
+  nodePort: ""
+  labels: {}
+  loadBalancerClass: ""
+
+# -- Additional environments variables on the output Deployment definition. These are used to pull initial Pipeline files, and help configure Pipelines with required values (e.g. Langfuse API keys)
+extraEnvVars:
+  # -- Example pipeline to pull and load on deployment startup, see current pipelines here: https://github.com/open-webui/pipelines/blob/main/examples
+  - name: PIPELINES_URLS
+    value: "https://github.com/open-webui/pipelines/blob/main/examples/filters/detoxify_filter_pipeline.py"
+  # - name: PIPELINES_API_KEY
+  #   valueFrom:
+  #     secretKeyRef: 
+  #       name: pipelines-keys
+  #       key: pipelines-api-key
+  # -- Langfuse example, including values used in Langfuse filter to connect
+  # - name: PIPELINES_URLS
+  #   value: "https://github.com/open-webui/pipelines/blob/main/examples/filters/langfuse_filter_pipeline.py"  
+  # - name: LANGFUSE_PUBLIC_KEY
+  #   valueFrom:
+  #     secretKeyRef: 
+  #       name: langfuse-keys
+  #       key: public-key
+  # - name: LANGFUSE_SECRET_KEY
+  #   valueFrom:
+  #     secretKeyRef: 
+  #       name: langfuse-keys
+  #       key: secret-key
+  # - name: LANGFUSE_HOST
+  #   value: https://us.cloud.langfuse.com
+
+# -- Additional environments variables on the output Deployment definition, common across environments.
+commonEnvVars: []
+
+# -- Configure container volume mounts
+# ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/>
+volumeMounts: []
+  # - name: ""
+  #   mountPath: ""
+
+# -- Additional init containers to add to the deployment
+# ref: <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>
+extraInitContainers: []
+# - name: custom-init
+#   image: busybox:latest
+#   command: ['sh', '-c', 'echo "Custom init container running"']
+#   volumeMounts:
+#   - name: data
+#     mountPath: /data
+
+# -- Configure pod volumes
+# ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/>
+volumes: []
+# - name: ""
+#   configMap:
+#     name: ""
+# - name: ""
+#   secret:
+#     name: ""
+# - name: ""
+#   emptyDir: {}
+
+# -- Extra resources to deploy with Open WebUI Pipelines
+extraResources:
+  []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: example-configmap
+  #   data:
+  #     example-key: example-value

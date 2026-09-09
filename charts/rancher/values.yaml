@@ -1,0 +1,289 @@
+# Additional Trusted CAs.
+# Enable this flag and add your CA certs as a secret named tls-ca-additional in the namespace.
+# See README.md for details.
+additionalTrustedCAs: false
+
+antiAffinity: preferred
+topologyKey: kubernetes.io/hostname
+
+# Source: https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/enable-api-audit-log
+auditLog:
+  enabled: false
+
+  # level can be one of 0, 1, 2, or 3 with 3 being the most verbose. This value is a system level default and may
+  # impact the verbosity on any AuditPolicies you define. See below for a description of each log level:
+  #   0: Only log metadata such as URI, method, user, etc
+  #   1: Log metadata, request headers, and response headers
+  #   2: Log metadata, request header, response headers, and request body
+  #   3: Log metadata, request header, response heaeders, request body, and response body
+  level: 0
+
+  # destination may be one of "sidecar" or "hostpath". When set to "sidecar" logs will be sent and output to a sidecar
+  # container called "rancher-audit-log". When "hostpath" logs are written to a hostpath volume called "audit-log" to
+  # a directory configured by auditLog.hostPath.
+  destination: sidecar
+  hostPath: /var/log/rancher/audit/
+
+  maxAge: 1
+  maxBackup: 1
+  maxSize: 100
+
+  # Set pod resource requests/limits for Audit log sidecar (ONLY used if destination=sidecar).
+  resources: {}
+
+  # Image for collecting rancher audit logs.
+  # Important: update pkg/image/export/resolve.go when this default image is changed, so that it's reflected accordingly in rancher-images.txt generated for air-gapped setups.
+  image:
+    # Optional: Image-specific registry override
+    # registry: ""
+    repository: "rancher/mirrored-bci-micro"
+    tag: 15.6.24.2
+    # Optional: Image-specific pullPolicy Override
+    # options: Always, Never, IfNotPresent
+    pullPolicy: "IfNotPresent"
+
+# Timeout for rancher controllers to complete a cache sync. Larger clusters may need to increase this value.
+# cacheSyncTimeout: 5m
+
+# As of Rancher v2.5.0 this flag is deprecated and must be set to 'true' in order for Rancher to start
+addLocal: "true"
+
+# Add debug flag to Rancher server
+debug: false
+
+# Control how the Rancher agents validate TLS connections
+# Valid options: strict, or system-store
+# Note, for new installations empty will default to strict on 2.9+, or system-store on 2.8 or older
+agentTLSMode: ""
+
+# Extra environment variables passed to the rancher pods.
+# extraEnv:
+# - name: CATTLE_TLS_MIN_VERSION
+#   value: "1.0"
+
+# Fully qualified name to reach your Rancher server
+# hostname: rancher.my.org
+
+## Optional array of imagePullSecrets containing private registry credentials
+## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# - name: secretName
+
+### ingress ###
+# Readme for details and instruction on adding tls secrets.
+ingress:
+  # If set to false, ingress will not be created
+  # Defaults to true
+  # options: true, false
+  enabled: true
+  includeDefaultExtraAnnotations: true
+  extraAnnotations: {}
+  ingressClassName: ""
+  # Certain ingress controllers will require the pathType or path to be set to a different value.
+  pathType: ImplementationSpecific
+  path: "/"
+  # Backend port number; should use either: 80, or 443.
+  # Must use 443 when `service.disableHTTP` is set to true.
+  servicePort: 80
+
+  # configurationSnippet - Add additional Nginx configuration. This example statically sets a header on the ingress.
+  # configurationSnippet: |
+  #   more_set_input_headers "X-Forwarded-Host: {{ .Values.hostname }}";
+
+  tls:
+    # options: rancher, letsEncrypt, secret
+    source: rancher
+    secretName: tls-rancher-ingress
+
+### service ###
+# Override to use NodePort or LoadBalancer service type - default is ClusterIP
+service:
+  type: ""
+  annotations: {}
+  # An optional security setting to disables the HTTP port of the rancher service
+  # When set true, you must also set `ingress.servicePort` to 443 and the appropriate ingress annotation to use HTTPS
+  disableHTTP: false
+
+### LetsEncrypt config ###
+# ProTip: The production environment only allows you to register a name 5 times a week.
+#         Use staging until you have your config right.
+letsEncrypt:
+  # email: none@example.com
+  environment: production
+  ingress:
+    # options: traefik, nginx
+    class: ""
+# If you are using certs signed by a private CA set to 'true' and set the 'tls-ca'
+# in the 'cattle-system' namespace. See the README.md for details
+privateCA: false
+
+# http[s] proxy server passed into rancher server.
+# proxy: http://<username>@<password>:<url>:<port>
+
+# comma separated list of domains or ip addresses that will not use the proxy
+noProxy: 127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local
+
+# Rancher image configuration
+image:
+  # Optional: Image-specific registry override
+  # registry: ""
+  repository: rancher/rancher
+  # Defaults to .Chart.appVersion
+  # rancher/rancher image tag. https://hub.docker.com/r/rancher/rancher/tags/
+  tag: ""
+  pullPolicy: IfNotPresent
+
+## Deprecation Notice: `rancherImage`, `rancherImageTag`,  and `rancherImagePullPolicy` are deprecated - use `image.*` fields instead.
+# Override the name of the Rancher image to pull.
+# To override the registry location use systemDefaultRegistry instead.
+# rancherImage: ""
+# rancher/rancher image tag. https://hub.docker.com/r/rancher/rancher/tags/
+# Defaults to .Chart.appVersion
+# rancherImageTag: v2.0.7
+# Override imagePullPolicy for rancher server images
+# options: Always, Never, IfNotPresent
+# Defaults to IfNotPresent
+# rancherImagePullPolicy: <pullPolicy>
+
+# aggregationRegistrationTimeout: 5m
+
+# Number of Rancher server replicas. Setting to negative number will dynamically between 0 and the abs(replicas) based on available nodes.
+# of available nodes in the cluster
+replicas: 3
+
+# Set priorityClassName to avoid eviction
+priorityClassName: rancher-critical
+
+# Set pod resource requests/limits for Rancher.
+resources: {}
+
+#
+# tls
+#   Where to offload the TLS/SSL encryption
+# - ingress (default)
+# - external
+tls: ingress
+
+# Set a custom image registry mirror to pull Rancher images from; useful in air-gapped environments.
+systemDefaultRegistry: ""
+
+# Set to use the packaged system charts
+useBundledSystemChart: false
+
+# Certmanager version compatibility
+certmanager:
+  version: ""
+
+# Rancher custom logos persistence
+customLogos:
+  enabled: false
+  volumeSubpaths:
+    emberUi: "ember"
+    vueUi: "vue"
+  ## Volume kind to use for persistence: persistentVolumeClaim, configMap
+  volumeKind: persistentVolumeClaim
+  ## Use an existing volume. Custom logos should be copied to the volume by the user
+  # volumeName: custom-logos
+  ## Just for volumeKind: persistentVolumeClaim
+  ## To disables dynamic provisioning, set storageClass: "" or storageClass: "-"
+  # storageClass: "-"
+  accessMode: ReadWriteOnce
+  size: 1Gi
+
+# Rancher post-delete hook
+postDelete:
+  enabled: true
+  image:
+    # Optional: Image-specific registry override
+    # registry: ""
+    repository: rancher/shell
+    tag: v0.6.0
+    # Optional: Image-specific pullPolicy Override
+    # options: Always, Never, IfNotPresent
+    # pullPolicy: "Always"
+  namespaceList:
+    - cattle-fleet-system
+    - cattle-system
+    - rancher-operator-system
+  # Number of seconds to wait for an app to be uninstalled
+  timeout: 120
+  # by default, the job will fail if it fail to uninstall any of the apps
+  ignoreTimeoutError: false
+
+preUpgrade:
+  image:
+    # Optional: Image-specific registry override
+    # registry: ""
+    repository: rancher/shell
+    tag: v0.6.0
+    # Optional: Image-specific pull policy override
+    # pullPolicy: "Always"
+
+# Set a bootstrap password. If leave empty, a random password will be generated.
+bootstrapPassword: ""
+
+startupProbe:
+  ## should be ready within 2 minutes
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 12
+
+# Additional taints to tolerate
+extraTolerations: {}
+
+# Additional node selector terms for the rancher deployment
+# Ex:
+#  - key: topology.kubernetes.io/zone
+#    operator: In
+#    values:
+#      - us-north-42
+extraNodeSelectorTerms: {}
+
+livenessProbe:
+  timeoutSeconds: 5
+  periodSeconds: 30
+  failureThreshold: 5
+readinessProbe:
+  timeoutSeconds: 5
+  periodSeconds: 30
+  failureThreshold: 5
+
+# helm values to use when installing the rancher-webhook chart.
+# helm values set here will override all other global values used when installing the webhook such as priorityClassName and systemRegistry settings.
+webhook: ""
+
+# helm values to use when installing the fleet chart.
+# helm values set here will override all other global values used when installing the fleet chart.
+fleet: ""
+
+# Create a dynamic manifests via values:
+# Beware: There will be no validation on these resource manifests in `extraObjects` - they must be valid k8s resources.
+# If you encounter issues installing/upgrading rancher while using these, please investigate these first.
+extraObjects: []
+# - apiVersion: "networking.k8s.io/v1"
+#   kind: NetworkPolicy
+#   metadata:
+#     name: allow-https-444-to-rancher
+#     namespace: your-namespace  # Change to the appropriate namespace
+#   spec:
+#     podSelector:
+#       matchLabels:
+#         app: rancher  # Selects pods labeled with "app: rancher"
+#     policyTypes:
+#       - Ingress  # Controls inbound traffic to the selected pods
+#     ingress:
+#       - ports:
+#           - protocol: TCP
+#             port: 444  # Allows only TCP traffic on port 444 (custom HTTPS port)
+#     # Since no other ingress rules are defined, all other traffic is denied by default.
+# - apiVersion: "networking.k8s.io/v1"
+#   kind: NetworkPolicy
+#   metadata:
+#     name: rancher-deny-ingress
+#     namespace: cattle-system
+#   spec:
+#     podSelector:
+#       matchLabels:
+#         app: rancher
+#     policyTypes:
+#       - Ingress
