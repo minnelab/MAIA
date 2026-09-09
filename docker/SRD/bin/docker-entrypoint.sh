@@ -33,12 +33,13 @@ uuidgen > /etc/machine-id
 # set keyboard for all sh users
 echo "export QT_XKB_CONFIG_ROOT=/usr/share/X11/locale" >> /etc/profile
 
-/etc/install_slicer.sh
-/etc/install_libreoffice.sh
+#/etc/install_slicer.sh
+#/etc/install_libreoffice.sh
+#/etc/install_freesurfer.sh
 
-cp /etc/Matlab.desktop /home/ubuntu/Desktop/
-chmod 777 /home/ubuntu/Desktop/Matlab.desktop
-chmod a+x /home/ubuntu/Desktop/Matlab.desktop
+#cp /etc/Matlab.desktop /home/ubuntu/Desktop/
+#chmod 777 /home/ubuntu/Desktop/Matlab.desktop
+#chmod a+x /home/ubuntu/Desktop/Matlab.desktop
 
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.notebook_dir=/home/ubuntu --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.base_url=${NB_PREFIX} --NotebookApp.allow_origin='*' &

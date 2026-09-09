@@ -34,7 +34,6 @@ RUN cp src/.libs/*.so /tmp/so
 
 FROM ubuntu:24.04
 ARG ADDITIONAL_PACKAGES=""
-ARG INSTALL_LIBREOFFICE=false
 ARG INSTALL_SSH_SERVER=false
 ENV ADDITIONAL_PACKAGES=${ADDITIONAL_PACKAGES}
 ENV TZ=Etc/UTC
@@ -114,38 +113,7 @@ RUN mkdir -p /var/run/dbus && \
   rm -rf /etc/xrdp/rsakeys.ini /etc/xrdp/*.pem && \
   ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-COPY Tutorials/Slicer_Extensions.py /etc/Tutorials/Slicer_Extensions.py
-COPY Tutorials/MinIO.ipynb /etc/Tutorials/MinIO.ipynb
-
-RUN sudo chmod 777 /etc/
-RUN sudo wget https://download.slicer.org/bitstream/6911b598ac7b1c95e7934427 -O /etc/slicer.tar.gz
-
-RUN mkdir -p /etc/tmp-home/
-RUN tar -xf /etc/slicer.tar.gz -C /etc/tmp-home/
-
-RUN chmod 777 /etc/Tutorials/Slicer_Extensions.py && chmod a+x /etc/Tutorials/Slicer_Extensions.py && chmod 777 /etc/Tutorials/MinIO.ipynb
-
-RUN apt-get update && apt-get install -y xvfb && \
-    xvfb-run -a /etc/tmp-home/Slicer-5.10.0-linux-amd64/Slicer --no-main-window --python-script /etc/Tutorials/Slicer_Extensions.py
-
-
-COPY Tools/Slicer/Slicer.desktop /etc/Slicer.desktop
-COPY Tools/Slicer/300px-3DSlicerLogo-app-icon512.svg.png /etc/300px-3DSlicerLogo-app-icon512.svg.png
-RUN chmod 777 /etc/Slicer.desktop && chmod a+x /etc/Slicer.desktop
-COPY Tools/Slicer/install_slicer.sh /etc/install_slicer.sh
-RUN chmod 777 /etc/install_slicer.sh && chmod a+x /etc/install_slicer.sh
-
-COPY Tools/LibreOffice/LibreOffice.desktop /etc/LibreOffice.desktop
-COPY Tools/LibreOffice/install_libreoffice.sh /etc/install_libreoffice.sh
-RUN chmod 777 /etc/LibreOffice.desktop && chmod a+x /etc/LibreOffice.desktop && \
-    chmod 777 /etc/install_libreoffice.sh && chmod a+x /etc/install_libreoffice.sh
-RUN if [ "$INSTALL_LIBREOFFICE" = "true" ]; then \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      libreoffice-writer libreoffice-calc libreoffice-impress && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* ; \
-    fi
-
+COPY Tutorials /etc/Tutorials
 
 COPY Tools/SSH/install_ssh_server.sh /etc/install_ssh_server.sh
 COPY Tools/SSH/sshd.supervisor.conf /etc/ssh-server/sshd.supervisor.conf
@@ -165,39 +133,7 @@ RUN apt-get update && \
 
 RUN pip3 install --break-system-packages jupyterlab minio
 
-ENV MATLAB_RELEASE=R2025b
-COPY dependencies.txt /tmp/dependencies.txt
 
-RUN apt-get update && \
-    apt-get install --no-install-recommends -y $(cat /tmp/dependencies.txt) \
-    && apt-get clean && apt-get -y autoremove && rm -rf /var/lib/apt/lists/* && \
-    wget https://www.mathworks.com/mpm/glnxa64/mpm && chmod +x mpm
-
-RUN sudo mkdir /opt/matlab && \
-    sudo chmod -R 777 /opt/matlab && \
-    sudo ./mpm install --release ${MATLAB_RELEASE} --products MATLAB --destination=/opt/matlab && \
-    sudo ln -s /opt/matlab/bin/matlab /usr/bin/matlab
-
-RUN apt update && apt install xvfb -y && \
-    pip install jupyter-matlab-proxy --break-system-packages
-
-RUN apt-get install r-base -y && apt-get install gdebi-core -y && wget https://download2.rstudio.org/server/jammy/amd64/rstudio-server-2025.09.1-401-amd64.deb && \
-    gdebi rstudio-server-2025.09.1-401-amd64.deb -n && \
-    pip install jupyter-rsession-proxy --break-system-packages
-
-RUN pip install jupyter-vscode-proxy --break-system-packages 
-#&& pip install panel --break-system-packages
-#jupyter-ai 
-RUN curl -fsSL https://code-server.dev/install.sh | sh && \
-    #wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.25/quarto-1.8.25-linux-amd64.deb && dpkg -i quarto-1.8.25-linux-amd64.deb && \
-    #pip install glue-jupyterlab "glueviz[all,qt]" --break-system-packages && \
-    apt-get install python3-pyqt5.qtquick python3-pyqt5.qtsvg -y
-
-COPY Tools/Matlab/Matlab.desktop /etc/Matlab.desktop
-COPY Tools/Matlab/Matlab_Logo.png /etc/Matlab_Logo.png
-RUN chmod 777 /etc/Matlab.desktop && \
-    chmod a+x /etc/Matlab.desktop
-# Docker config
 VOLUME ["/etc/ssh","/home"]
 EXPOSE 3389 2022 9001 8888
 RUN chmod 777 /var/log
