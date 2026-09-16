@@ -221,10 +221,10 @@ def main():
     logger.info("\n=== Step 3: Running prepare_hosts.yaml ===")
     prepare_hosts_cmd = [
         "ansible-playbook",
-        "-K",
         "-i",
         str(inventory_path),
         str(playbooks_dir + ".prepare_hosts"),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         "-e",
         f"config_folder={config_folder_env}",
     ]
