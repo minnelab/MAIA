@@ -64,6 +64,10 @@
   delegate_to: localhost
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+    http_proxy: ""
+    https_proxy: ""
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
 
 - name: Ensure custom-ca-cert configmap exists in openwebui namespace, used by OpenWebUI
   kubernetes.core.k8s:
