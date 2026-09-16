@@ -328,8 +328,8 @@ def main():
     install_k8s_distribution_cmd = [
         "ansible-playbook",
         "-i",
-        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(playbooks_dir + f".install_{os.environ['K8S_DISTRIBUTION']}"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -361,8 +361,8 @@ def main():
     install_maia_core_cmd = [
         "ansible-playbook",
         "-i",
-        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(playbooks_dir + ".install_maia_core"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -387,8 +387,8 @@ def main():
     install_maia_admin_cmd = [
         "ansible-playbook",
         "-i",
-        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(playbooks_dir + ".install_maia_admin"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -413,8 +413,8 @@ def main():
     configure_oidc_authentication_cmd = [
         "ansible-playbook",
         "-i",
-        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(playbooks_dir + ".configure_oidc_authentication"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -442,8 +442,8 @@ def main():
     get_kubeconfig_from_rancher_local_cmd = [
         "ansible-playbook",
         "-i",
-        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(playbooks_dir + ".get_kubeconfig_from_rancher_local"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -472,8 +472,8 @@ def main():
     configure_maia_dashboard_cmd = [
         "ansible-playbook",
         "-i",
-        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(playbooks_dir + ".configure_maia_dashboard"),
         "-e",
         f"config_folder={config_folder_env}",
