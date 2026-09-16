@@ -217,6 +217,10 @@ def main():
                 existing_data[key] = value
         with open(Path(config_folder_env).joinpath(f"{cluster_name}.yaml"), "w") as f:
             yaml.dump(existing_data, f)
+            
+    if "PW" not in os.environ:
+        logger.error("Error: PW environment variable is not set. Please set the PW environment variable to the password for the ansible user.")
+        sys.exit(1)
     # Step 3: Run prepare_hosts.yaml
     logger.info("\n=== Step 3: Running prepare_hosts.yaml ===")
     prepare_hosts_cmd = [
@@ -253,7 +257,7 @@ def main():
             host_ip = "127.0.0.1"
             configure_host_linux_cmd = [
                 "ansible-playbook",
-                "-K",
+                "-e", f"ansible_become_password={os.environ['PW']}",
                 "-i",
                 str(inventory_path),
                 str(playbooks_dir + ".configure_host"),
@@ -292,6 +296,7 @@ def main():
             "-i",
             str(inventory_path),
             str(playbooks_dir + ".configure_host"),
+            "-e", f"ansible_become_password={os.environ['PW']}",
             "-e",
             f"target_hosts={target_hosts}",
             "-e",
@@ -323,6 +328,7 @@ def main():
     install_k8s_distribution_cmd = [
         "ansible-playbook",
         "-i",
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
         str(playbooks_dir + f".install_{os.environ['K8S_DISTRIBUTION']}"),
         "-e",
@@ -355,6 +361,7 @@ def main():
     install_maia_core_cmd = [
         "ansible-playbook",
         "-i",
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
         str(playbooks_dir + ".install_maia_core"),
         "-e",
@@ -380,6 +387,7 @@ def main():
     install_maia_admin_cmd = [
         "ansible-playbook",
         "-i",
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
         str(playbooks_dir + ".install_maia_admin"),
         "-e",
@@ -405,6 +413,7 @@ def main():
     configure_oidc_authentication_cmd = [
         "ansible-playbook",
         "-i",
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
         str(playbooks_dir + ".configure_oidc_authentication"),
         "-e",
@@ -433,6 +442,7 @@ def main():
     get_kubeconfig_from_rancher_local_cmd = [
         "ansible-playbook",
         "-i",
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
         str(playbooks_dir + ".get_kubeconfig_from_rancher_local"),
         "-e",
@@ -462,6 +472,7 @@ def main():
     configure_maia_dashboard_cmd = [
         "ansible-playbook",
         "-i",
+        "-e", f"ansible_become_password={os.environ['PW']}",
         str(inventory_path),
         str(playbooks_dir + ".configure_maia_dashboard"),
         "-e",
