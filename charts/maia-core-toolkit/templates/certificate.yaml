@@ -13,6 +13,7 @@ data:
         {{ .Values.custom_certificate.coredns_ip }} {{ .Values.custom_certificate.cluster_domain }}
         fallthrough
       }
+    }
 kind: ConfigMap
 metadata:
   labels:
