@@ -230,7 +230,7 @@
   ansible.builtin.shell: |
     kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -f -sSkL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && cd /opt/bitnami/keycloak/themes && tar -xvf maia-theme.tar.gz'
   delegate_to: localhost
-  when: auto_sync | bool
+  when: auto_sync | bool and keycloak_synced == false
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
@@ -243,12 +243,12 @@
     NO_PROXY: "{{ domain }}"
   register: configure_keycloak_result
   ignore_errors: true
-  when: auto_sync | bool
+  when: auto_sync | bool and keycloak_synced == false
   delegate_to: localhost
 - name: Show output from MAIA_configure_keycloak
   ansible.builtin.debug:
     var: configure_keycloak_result.stdout
-  when: auto_sync | bool
+  when: auto_sync | bool and keycloak_synced == false
 - name: Sync maia-admin-admin-toolkit ArgoCD application
   ansible.builtin.shell: |
     argocd app sync maia-admin-admin-toolkit
