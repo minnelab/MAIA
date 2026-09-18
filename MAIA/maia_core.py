@@ -1359,6 +1359,8 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
     if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         kubeflow_values["kubeflow_values"]["sslInsecureSkipVerify"] = True
 
+    kubeflow_values["kubeflow_values"]["dex"] = {"jwksUri": "http://dex.auth.svc.cluster.local:5556/dex/keys"}
+    
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         kubeflow_values["kubeflow_values"]["ingress"]["annotations"][
             "traefik.ingress.kubernetes.io/router.entrypoints"
