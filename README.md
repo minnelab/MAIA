@@ -2,7 +2,7 @@
 
 [![Article-NPJ Artificial Intelligence](https://img.shields.io/badge/NPJ_Artificial_Intelligence-black)](https://www.nature.com/articles/s44387-025-00042-6)
 [![arXiv](https://img.shields.io/badge/arXiv-2507.19489-b31b1b.svg)](https://arxiv.org/abs/2507.19489)
-[![DOI](https://zenodo.org/badge/761159047.svg)](https://doi.org/10.5281/zenodo.22876765)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22876765.svg)](https://doi.org/10.5281/zenodo.22876765)
 
 [![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
