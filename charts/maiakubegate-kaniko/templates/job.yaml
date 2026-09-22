@@ -89,7 +89,7 @@ metadata:
 spec:
   storageClassName: {{ .Values.pvc.pvc_type }}
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.size }}
