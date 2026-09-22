@@ -1,10 +1,40 @@
-from mozilla_django_oidc.auth import OIDCAuthenticationBackend
-from django.contrib.auth.models import Group
-
+import jwt
 from django.conf import settings
+from django.contrib.auth.models import Group
+from django.core.exceptions import SuspiciousOperation
+from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 
 class HoneyCombOIDCAB(OIDCAuthenticationBackend):
+    # Allow small clock skew between Keycloak and the local host (esp. WSL).
+    JWT_LEEWAY_SECONDS = 60
+
+    def _verify_jws(self, payload, key):
+        """Same as mozilla_django_oidc, but with leeway for iat/nbf/exp checks."""
+        jws = jwt.get_unverified_header(payload)
+
+        try:
+            alg = jws["alg"]
+        except KeyError:
+            raise SuspiciousOperation("No alg value found in header")
+
+        if alg != self.OIDC_RP_SIGN_ALGO:
+            raise SuspiciousOperation(
+                "The provider algorithm {!r} does not match the client's "
+                "OIDC_RP_SIGN_ALGO.".format(alg)
+            )
+
+        try:
+            return jwt.decode(
+                payload,
+                key,
+                algorithms=alg,
+                options={"verify_aud": False},
+                leeway=self.JWT_LEEWAY_SECONDS,
+            )
+        except jwt.DecodeError:
+            raise SuspiciousOperation("JWS token verification failed.")
+
     def verify_claims(self, claims):
         verified = super(HoneyCombOIDCAB, self).verify_claims(claims)
         groups = claims.get("groups", [])

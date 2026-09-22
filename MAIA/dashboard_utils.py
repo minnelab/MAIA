@@ -512,6 +512,8 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 for email in project.supervisor.split(","):
                     if email not in admin_users:
                         admin_users.append(email)
+        else:
+            project = None
 
         for env_file in minio_env_files:
             if env_file.startswith(maia_groups[maia_group] + "_env"):
@@ -526,26 +528,35 @@ def get_user_table(settings, maia_user_model, maia_project_model):
                 group_users.append(user["email"] + " [Project Admin]")
             else:
                 group_users.append(user["email"])
-        maia_group_dict[maia_groups[maia_group]] = {
-            "users": group_users,
-            "namespace": project.namespace,
-            "supervisor": project.supervisor,
-            "admin_users": admin_users,
-            "env_file": env_files,
-            "cpu_limit": project.cpu_limit,
-            "email": project.email,
-            "memory_limit": project.memory_limit,
-            "date": project.date,
-            "cluster": project.cluster,
-            "gpu": project.gpu,
-            "project_tier": project.project_tier,
-            "email_to_username_map": project.email_to_username_map,
-            "memory_request": project.memory_request,
-            "cpu_request": project.cpu_request,
-            "auto_deploy": project.auto_deploy,
-            "auto_deploy_apps": project.auto_deploy_apps,
-            "project_configuration": project.project_configuration,
-        }
+        if project:
+            maia_group_dict[maia_groups[maia_group]] = {
+                "users": group_users,
+                "namespace": project.namespace,
+                "supervisor": project.supervisor,
+                "admin_users": admin_users,
+                "env_file": env_files,
+                "cpu_limit": project.cpu_limit,
+                "email": project.email,
+                "memory_limit": project.memory_limit,
+                "date": project.date,
+                "cluster": project.cluster,
+                "gpu": project.gpu,
+                "project_tier": project.project_tier,
+                "email_to_username_map": project.email_to_username_map,
+                "memory_request": project.memory_request,
+                "cpu_request": project.cpu_request,
+                "auto_deploy": project.auto_deploy,
+                "auto_deploy_apps": project.auto_deploy_apps,
+                "project_configuration": project.project_configuration,
+            }
+        else:
+            maia_group_dict[maia_groups[maia_group]] = {
+                "users": group_users,
+                "namespace": maia_groups[maia_group],
+                "supervisor": None,
+                "admin_users": admin_users,
+                "env_file": env_files,
+            }
 
     for pending_project in pending_projects:
         env_files = []
@@ -966,6 +977,8 @@ async def get_list_of_deployed_projects():
     """
     if "BACKEND" in os.environ and os.environ["BACKEND"] == "compose":
         return [os.environ["PROJECT_NAME"]]
+    if "KUBECONFIG" not in os.environ:
+        return []
     client = Client(kubeconfig=os.environ["KUBECONFIG"])
 
     releases = await client.list_releases(namespace="argocd")

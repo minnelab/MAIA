@@ -82,6 +82,8 @@ OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
 
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
+BACKGROUND_IMAGE_1 = os.getenv("BACKGROUND_IMAGE_1", "MAIA_room_simple.png")
+BACKGROUND_IMAGE_2 = os.getenv("BACKGROUND_IMAGE_2", "MAIA_room.png")
 
 HOSTNAME = env("SERVER", default="localhost")
 # load production server from .env
