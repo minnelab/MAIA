@@ -788,8 +788,8 @@ def get_namespace_details(settings, id_token, namespace, user_id, is_admin=False
                                             user,
                                         )
                                         remote_desktop_dict[user] = url
-                                    except Exception:
-                                        ...
+                                    except Exception as e:
+                                        logger.error(f"Error getting guacamole connection link: {e}")
 
                         if "name" in port and port["name"] == "ssh":
                             # Backward compatibility
