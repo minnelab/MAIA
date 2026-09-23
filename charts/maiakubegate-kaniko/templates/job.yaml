@@ -48,9 +48,14 @@ spec:
             #  value: {{.Values.MINIO_URL}}
             #- name: S3_FORCE_PATH_STYLE
             #  value: "true"
+            - name: SSL_CERT_DIR
+              value: /kaniko/ssl/certs
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
+            - name: ca-bundle
+              mountPath: /kaniko/ssl/certs/ca-certificates.crt
+              subPath: verdi-proxy-ca.crt
             - name: docker-config
               mountPath: /kaniko/.docker
             - name: cache
@@ -68,6 +73,10 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        - name: ca-bundle
+          hostPath:
+            path: /usr/local/share/ca-certificates/verdi-proxy-ca.crt
+            type: File
         - name: cache
           persistentVolumeClaim:
             claimName: kaniko-cache-pvc-{{ include "maiakubegate-kaniko.fullname" . }}
