@@ -29,7 +29,7 @@
 ![PyPI](https://img.shields.io/pypi/v/maia-toolkit?logo=pypi)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/minnelab/maia/master/MAIA.png" width="80%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/MAIA/dashboard/apps/maia/static/assets/img/MAIA/MAIA_Logo.png" width="30%" alt='MAIA'>
 </p>
 
 MAIA Toolkit is the main tool for deploying and managing MAIA, a platform for collaborative research in medical AI. 
