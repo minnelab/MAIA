@@ -54,8 +54,8 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: ca-bundle
-              mountPath: /kaniko/ssl/certs/ca-certificates.crt
-              subPath: verdi-proxy-ca.crt
+              mountPath: /kaniko/ssl/certs/verdi-proxy-ca.crt
+              readOnly: true
             - name: docker-config
               mountPath: /kaniko/.docker
             - name: cache
