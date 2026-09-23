@@ -51,9 +51,11 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - name: ca-bundle
-              mountPath: /kaniko/ssl/certs/ca-certificates.crt
-              readOnly: true
+            {{ if .Values.ca_bundle }}
+              - name: ca-bundle
+                mountPath: /kaniko/ssl/certs/ca-certificates.crt
+                readOnly: true
+            {{ end }}
             - name: docker-config
               mountPath: /kaniko/.docker
             - name: cache
@@ -71,10 +73,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+        {{ if .Values.ca_bundle }}
         - name: ca-bundle
           hostPath:
-            path: /usr/local/share/ca-certificates/dsp-common-root.crt
+            path: {{ .Values.ca_bundle.path }}
             type: File
+        {{ end }}
         - name: cache
           persistentVolumeClaim:
             claimName: kaniko-cache-pvc-{{ include "maiakubegate-kaniko.fullname" . }}
