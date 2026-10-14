@@ -1,0 +1,12 @@
+#!/bin/sh
+# OpenShift arbitrary-UID helper: group 0 + group bits matching owner.
+# The platform runs as a random UID in GID 0, so g=u makes paths writable.
+set -e
+for path in "$@"; do
+  if [ ! -e "$path" ]; then
+    continue
+  fi
+  chgrp -R 0 "$path"
+  chmod -R g=u "$path"
+  find "$path" -type d -exec chmod g+s {} \;
+done
