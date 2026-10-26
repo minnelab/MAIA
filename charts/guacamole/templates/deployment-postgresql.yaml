@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "guacamole.fullname" . }}-postgresql
+  labels:
+    {{- include "guacamole.postgresqlLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "guacamole.postgresqlSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "guacamole.postgresqlLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-postgresql
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresql.auth.password | quote }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          {{- with .Values.postgresql.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      initContainers:
+        - name: init-schema
+          image: "{{ .Values.guacamole.image.repository }}:{{ .Values.guacamole.image.tag | default .Chart.AppVersion }}"
+          command:
+            - /bin/sh
+            - -c
+            - cp /opt/guacamole/extensions/guacamole-auth-jdbc/postgresql/schema/*.sql /initdb/
+          volumeMounts:
+            - name: initdb
+              mountPath: /initdb
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "guacamole.fullname" . }}-postgresql
+        - name: initdb
+          emptyDir: {}

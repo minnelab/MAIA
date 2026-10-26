@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "guacamole.fullname" . }}-postgresql
+  labels:
+    {{- include "guacamole.postgresqlLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "guacamole.postgresqlSelectorLabels" . | nindent 4 }}

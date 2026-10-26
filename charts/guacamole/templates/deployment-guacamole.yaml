@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "guacamole.fullname" . }}-guacamole
+  labels:
+    {{- include "guacamole.guacamoleLabels" . | nindent 4 }}
+spec:
+  {{- if not .Values.guacamole.autoscaling.enabled }}
+  replicas: {{ .Values.guacamole.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "guacamole.guacamoleSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.guacamole.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "guacamole.guacamoleLabels" . | nindent 8 }}
+        {{- with .Values.guacamole.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.guacamole.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "guacamole.serviceAccountName" . }}
+      {{- with .Values.guacamole.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.keycloak.certificate }}
+      initContainers:
+        - name: inject-truststore
+          # Match this to your specific Guacamole image version
+          image: guacamole/guacamole:latest 
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # 1. Copy the default truststore to our shared emptyDir
+              cp /opt/java/openjdk/lib/security/cacerts /custom-keystore/cacerts
+              
+              # 2. Inject the Keycloak certificate into the copied truststore
+              keytool -import -trustcacerts \
+                -keystore /custom-keystore/cacerts -storepass changeit \
+                -noprompt -alias maia-iam -file /certs/iam.crt
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /certs/iam.crt
+              subPath: iam.crt
+            - name: custom-keystore
+              mountPath: /custom-keystore
+          # May be required depending on your cluster's Pod Security Standards 
+          # to ensure permission to read/copy the default cacerts file
+          securityContext:
+            runAsUser: 0
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-guacamole
+          {{- with .Values.guacamole.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.guacamole.image.repository }}:{{ .Values.guacamole.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.guacamole.image.pullPolicy }}
+          env:
+            - name: GUACD_HOSTNAME
+              value: {{ include "guacamole.fullname" . }}-guacd
+            - name: GUACD_PORT
+              value: "{{ .Values.guacd.service.port }}"
+            - name: POSTGRESQL_ENABLED
+              value: "true"
+            - name: POSTGRESQL_HOSTNAME
+              value: {{ include "guacamole.fullname" . }}-postgresql
+            - name: POSTGRESQL_PORT
+              value: "5432"
+            - name: POSTGRESQL_DATABASE
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: POSTGRESQL_USERNAME
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRESQL_PASSWORD
+              value: {{ .Values.postgresql.auth.password | quote }}
+            - name: OPENID_ENABLED
+              value: {{ .Values.openid.enabled | quote }}
+            - name: OPENID_AUTHORIZATION_ENDPOINT
+              value: {{ .Values.openid.authorizationEndpoint }}
+            - name: OPENID_JWKS_ENDPOINT
+              value: {{ .Values.openid.jwksEndpoint }}
+            - name: OPENID_ISSUER
+              value: {{ .Values.openid.issuer }}
+            - name: OPENID_CLIENT_ID
+              value: {{ .Values.openid.clientId }}
+            - name: OPENID_REDIRECT_URI
+              value: {{ .Values.openid.redirectUri }}
+            - name: EXTENSION_PRIORITY
+              value: "openid,*"
+            - name: OPENID_GROUPS_CLAIM_TYPE
+              value: "groups"
+            - name: WEBAPP_CONTEXT
+              value: {{ ((index .Values.ingress.hosts 0).paths | first).path | default "/remote-desktops" }}        
+          ports:
+            - name: http
+              containerPort: {{ .Values.guacamole.service.port }}
+              protocol: TCP
+          {{- with .Values.guacamole.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.guacamole.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.guacamole.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.keycloak.certificate }}
+            - name: custom-keystore
+              # This path overwrites the default truststore with your patched version
+              mountPath: /opt/java/openjdk/lib/security/cacerts
+              subPath: cacerts
+            {{- end }}
+          {{- with .Values.guacamole.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        {{- if .Values.keycloak.certificate }}
+        - name: cert-volume
+          configMap:
+            name: keycloak-cert
+        - name: custom-keystore
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.guacamole.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guacamole.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guacamole.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.guacamole.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

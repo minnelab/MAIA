@@ -1,0 +1,82 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "guacamole.fullname" . }}-init-admin
+  labels:
+    {{- include "guacamole.guacamoleLabels" . | nindent 4 }}
+  annotations:
+    # Runs after Helm installs or upgrades the chart
+    "helm.sh/hook": post-install,post-upgrade
+    # Cleans up the pod when it finishes successfully
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+    "helm.sh/hook-weight": "5"
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 60
+  template:
+    metadata:
+      name: {{ include "guacamole.fullname" . }}-init-admin
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: update-admin
+        image: postgres:15-alpine
+        env:
+        # DB connection credentials
+        - name: PGHOST
+          value: {{ include "guacamole.fullname" . }}-postgresql
+        - name: PGPORT
+          value: "5432"
+        - name: PGDATABASE
+          value: {{ .Values.postgresql.auth.database | default "guacamole_db" | quote }}
+        - name: PGUSER
+          value: {{ .Values.postgresql.auth.username | default "guacamole_user" | quote }}
+        - name: PGPASSWORD
+          value: {{ .Values.postgresql.auth.password | default "guacamole_password" | quote }}
+        # Desired new Guacamole admin credentials
+        - name: TARGET_ADMIN_USER
+          value: {{ .Values.guacamole.adminUser.username | default "admin" | quote }}
+        - name: TARGET_ADMIN_PASS
+          value: {{ .Values.guacamole.adminUser.password | default "ChangeMe123!" | quote }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for PostgreSQL to be reachable..."
+          until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE"; do
+            sleep 2
+          done
+
+          echo "Applying admin user updates..."
+          psql -v ON_ERROR_STOP=1 \
+               -v TARGET_ADMIN_USER="$TARGET_ADMIN_USER" \
+               -v TARGET_ADMIN_PASS="$TARGET_ADMIN_PASS" << 'EOF'
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+          -- 1. Rename 'guacadmin' to target user if still named 'guacadmin'
+          UPDATE guacamole_entity
+          SET name = :'TARGET_ADMIN_USER'
+          WHERE name = 'guacadmin' AND type = 'USER';
+
+          -- 2. Update salt and SHA-256 hash matching Guacamole's Java implementation
+          WITH new_creds AS (
+              SELECT 
+                  gen_random_bytes(32) AS salt,
+                  :'TARGET_ADMIN_PASS' AS raw_pw
+          )
+          UPDATE guacamole_user
+          SET 
+              password_salt = new_creds.salt,
+              password_hash = digest(
+                  convert_to(new_creds.raw_pw || upper(encode(new_creds.salt, 'hex')), 'UTF8'),
+                  'sha256'
+              ),
+              password_date = CURRENT_TIMESTAMP
+          FROM new_creds
+          WHERE entity_id = (
+              SELECT entity_id FROM guacamole_entity WHERE name = :'TARGET_ADMIN_USER' AND type = 'USER'
+          );
+          EOF
+
+          echo "Admin credentials successfully initialized."

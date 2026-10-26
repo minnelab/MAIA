@@ -1,0 +1,8 @@
+{{- if .Values.keycloak.certificate }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-cert
+data:
+  iam.crt: {{ .Values.keycloak.certificate | quote }}
+{{- end }}
