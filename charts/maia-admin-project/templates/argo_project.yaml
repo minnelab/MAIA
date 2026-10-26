@@ -47,4 +47,6 @@ spec:
       server: {{ .Values.dashboard_destination_server }}
     - namespace: {{ .Values.openwebui_values.namespace }}
       server: {{ .Values.destination_server }}
+    - namespace: {{ .Values.guacamole_values.namespace }}
+      server: {{ .Values.destination_server }}
   sourceRepos: {{ .Values.sourceRepos | toYaml | nindent 4 }}

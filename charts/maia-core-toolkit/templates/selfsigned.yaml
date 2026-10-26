@@ -9,7 +9,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  hosts.override: |
+  hosts.server: |
     {{ .Values.selfsigned.cluster_domain }}:53 {
     hosts {
         {{ .Values.selfsigned.coredns_ip }} iam.{{ .Values.selfsigned.cluster_domain }}

@@ -1,7 +1,7 @@
 {{ if .Values.custom_certificate.enabled }}
 apiVersion: v1
 data:
-  hosts.override: |
+  hosts.server: |
 
     {{ .Values.custom_certificate.cluster_domain }}:53 {
     hosts {

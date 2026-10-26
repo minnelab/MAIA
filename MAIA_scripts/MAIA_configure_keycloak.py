@@ -96,6 +96,25 @@ def create_admin_user_and_group(
                 roles=client_roles,
             )
 
+    clients = keycloak_admin.get_clients()
+    for group in groups:
+        if group["name"] == f"MAIA:{admin_group_id}":
+            admin_group_gid = group["id"]
+            for client in clients:
+                client_id = client.get("id")
+                if not client_id:
+                    continue
+                client_roles = keycloak_admin.get_client_roles(client_id)
+                if client_roles:
+                    try:
+                        keycloak_admin.assign_group_client_roles(
+                            group_id=admin_group_gid,
+                            client_id=client_id,
+                            roles=client_roles,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error assigning client roles for client {client.get('clientId')}: {e}")
+
 
 def create_public_client(server_url: str, client_secret: str):
     keycloak_connection = KeycloakOpenIDConnection(

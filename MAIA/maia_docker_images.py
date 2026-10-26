@@ -124,6 +124,7 @@ def deploy_maia_kaniko(
                 "--cache-dir=/cache",
                 "--insecure",
                 "--skip-tls-verify",
+                "--git=insecure-skip-tls=true"
             ],
         }
     )

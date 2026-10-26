@@ -28,6 +28,7 @@ maia_orthanc_image_version = define_docker_image_versions()["maia-orthanc"]
 admin_toolkit_chart_version = define_maia_admin_versions()["admin_toolkit_chart_version"]
 admin_toolkit_chart_type = define_maia_admin_versions()["admin_toolkit_chart_type"]
 rancher_chart_version = define_maia_admin_versions()["rancher_chart_version"]
+guacamole_chart_version = define_maia_admin_versions()["guacamole_chart_version"]
 harbor_chart_version = define_maia_admin_versions()["harbor_chart_version"]
 keycloak_chart_version = define_maia_admin_versions()["keycloak_chart_version"]
 maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_chart_version"]
@@ -1159,6 +1160,9 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
             ]
         )
 
+    maia_dashboard_values["create_kubeflow_cluster_role"] = False
+    if "CREATE_KUBEFLOW_CLUSTER_ROLE" in os.environ:
+        maia_dashboard_values["create_kubeflow_cluster_role"] = os.environ["CREATE_KUBEFLOW_CLUSTER_ROLE"]
     # GPU Configuration
     maia_dashboard_values["gpuList"] = os.environ.get("gpu_list", [])
 
@@ -1229,14 +1233,27 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
     # GPU Booking
 
     # Guacamole Configuration
-    maia_dashboard_values["env"].extend(
-        [
-            {"name": "GUACAMOLE_URL", "value": f"https://kubeflow.{cluster_config_dict['domain']}/remote-desktops"},
-            {"name": "GUACAMOLE_DATA_SOURCE", "value": "postgresql"},
-            {"name": "GUACAMOLE_USERNAME", "value": "guacadmin"},
-            {"name": "GUACAMOLE_PASSWORD", "value": "guacadmin"},
-        ]
-    )
+    if "GUACAMOLE_DATA_SOURCE" in os.environ and "GUACAMOLE_USERNAME" in os.environ and "GUACAMOLE_PASSWORD" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "GUACAMOLE_URL", "value": f"https://kubeflow.{cluster_config_dict['domain']}/remote-desktops"},
+                {"name": "GUACAMOLE_DATA_SOURCE", "value": os.environ["GUACAMOLE_DATA_SOURCE"]},
+                {"name": "GUACAMOLE_USERNAME", "value": os.environ["GUACAMOLE_USERNAME"]},
+                {"name": "GUACAMOLE_PASSWORD", "value": os.environ["GUACAMOLE_PASSWORD"]},
+            ]
+        )
+    if "BACKGROUND_IMAGE_1" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "BACKGROUND_IMAGE_1", "value": os.environ["BACKGROUND_IMAGE_1"]},
+            ]
+        )
+    if "BACKGROUND_IMAGE_2" in os.environ:
+        maia_dashboard_values["env"].extend(
+            [
+                {"name": "BACKGROUND_IMAGE_2", "value": os.environ["BACKGROUND_IMAGE_2"]},
+            ]
+        )
     Path(config_folder).joinpath(project_id, chart_folder).mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, chart_folder, f"{chart_folder}.yaml"), "w") as f:
         f.write(OmegaConf.to_yaml(maia_dashboard_values))
@@ -1321,4 +1338,110 @@ def create_rancher_values(config_folder, project_id, cluster_config_dict):
         "values": str(Path(config_folder).joinpath(project_id, "rancher_values", "rancher_values.yaml")),
         "release": f"{project_id}-rancher",
         "chart": rancher_values["chart_name"],
+    }
+
+
+def create_guacamole_values(config_folder, project_id, cluster_config_dict):
+    """
+    Generates Guacamole values configuration and writes it to a YAML file.
+
+    Parameters
+    ----------
+    config_folder : str
+        The path to the configuration folder.
+    project_id : str
+        The project identifier.
+    cluster_config_dict : dict
+        A dictionary containing cluster configuration details.
+
+    Returns
+    -------
+    dict
+        A dictionary containing Guacamole deployment details including namespace, repo URL,
+        chart version, values file path, release name, and chart name.
+    """
+
+    guacamole_values = {
+        "namespace": "guacamole",
+        "repo_url": "https://minnelab.github.io/MAIA/",
+        "chart_name": "guacamole",
+        "chart_version": guacamole_chart_version,
+    }
+
+    guacamole_values.update(
+        {
+            "postgresql": {
+                "auth": {
+                    "database": "guacamole_db",
+                    "username": "guacamole_user",
+                    "password": "guacamole_password",
+                },
+            },
+            "guacamole": {
+                "adminUser": {
+                    "username": os.environ.get("GUACAMOLE_USERNAME", "admin"),
+                    "password": os.environ.get("GUACAMOLE_PASSWORD", "ChangeMe123!"),
+                },
+            },
+        }
+    )
+    guacamole_values["ingress"] = {
+        "enabled": True,
+        "className": cluster_config_dict["ingress_class"],
+        "annotations": {},
+        "hosts": [
+            {"host": f"kubeflow.{cluster_config_dict['domain']}", "paths": [{"path": "/remote-desktops", "pathType": "ImplementationSpecific"}]},
+        ],
+        "tls": [],
+    }
+    
+    if cluster_config_dict["ingress_class"] == "maia-core-traefik":
+        guacamole_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        guacamole_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        guacamole_values["ingress"]["annotations_redirect"] = {"traefik.ingress.kubernetes.io/router.entrypoints": "web"}
+
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            ...
+        else:
+            guacamole_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls.certresolver"] = (
+                cluster_config_dict["traefik_resolver"]
+            )
+    elif cluster_config_dict["ingress_class"] == "nginx":
+        cluster_issuer_name = cluster_config_dict.get("nginx_cluster_issuer", "cluster-issuer")
+        guacamole_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "8g"
+        guacamole_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "300"
+        guacamole_values["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "300"
+        if "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+            guacamole_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = "kubernetes-ca-issuer"
+        else:
+            guacamole_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_issuer_name
+        guacamole_values["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
+            
+    guacamole_values["openid"] = {
+        "enabled": True,
+        "clientId": "maia",
+        "authorizationEndpoint": os.environ.get("OIDC_OP_AUTHORIZATION_ENDPOINT", ""),
+        "jwksEndpoint": os.environ.get("OIDC_OP_JWKS_ENDPOINT", ""),
+        "issuer": os.environ.get("OIDC_ISSUER_URL", ""),
+        "redirectUri": "https://kubeflow." + cluster_config_dict["domain"] + "/remote-desktops",
+    }
+    
+    if "externalCA" in cluster_config_dict and cluster_config_dict["externalCA"]:
+        guacamole_values["keycloak"] = {}
+        guacamole_values["keycloak"]["certificate"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
+    elif "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
+        guacamole_values["keycloak"] = {}
+        guacamole_values["keycloak"]["certificate"] = open(Path(cluster_config_dict["rootCA"]["cert"])).read()
+    
+    Path(config_folder).joinpath(project_id, "guacamole_values").mkdir(parents=True, exist_ok=True)
+    with open(Path(config_folder).joinpath(project_id, "guacamole_values", "guacamole_values.yaml"), "w") as f:
+        f.write(OmegaConf.to_yaml(guacamole_values))
+
+    return {
+        "namespace": guacamole_values["namespace"],
+        "repo": guacamole_values["repo_url"],
+        "version": guacamole_values["chart_version"],
+        "values": str(Path(config_folder).joinpath(project_id, "guacamole_values", "guacamole_values.yaml")),
+        "release": f"{project_id}-guacamole",
+        "chart": guacamole_values["chart_name"],
     }

@@ -1,0 +1,25 @@
+{{- if .Values.guacamole_values }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-guacamole
+  namespace: {{ .Values.argo_namespace }}
+spec:
+  project: {{ .Release.Name }}
+  source:
+    {{- if .Values.guacamole_values.chart_name }}
+    chart: {{ .Values.guacamole_values.chart_name }}
+    {{- end }}
+    {{- if .Values.guacamole_values.path }}
+    path: {{ .Values.guacamole_values.path }}
+    {{- end }}
+    repoURL: {{ .Values.guacamole_values.repo_url }}
+    targetRevision: {{ .Values.guacamole_values.chart_version }}
+    helm:
+      releaseName: {{ .Release.Name }}-guacamole
+      valuesObject:
+      {{ .Values.guacamole_values | toYaml | nindent 8 }}
+  destination:
+    server: {{ .Values.destination_server }}
+    namespace: {{ .Values.guacamole_values.namespace }}
+{{- end }}

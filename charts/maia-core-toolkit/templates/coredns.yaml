@@ -1,7 +1,7 @@
 {{ if .Values.coredns_mappings }}
 apiVersion: v1
 data:
-  hosts.override: |
+  hosts.server: |
     {{ .Values.cluster_domain }}:53 {
     hosts {
         {{ range .Values.coredns_mappings }}

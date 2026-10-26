@@ -198,6 +198,11 @@ def define_maia_admin_versions():
     else:
         openwebui_chart_version = "14.1.0"
 
+    if os.environ.get("GUACAMOLE_CHART_VERSION") is not None:
+        guacamole_chart_version = os.environ.get("GUACAMOLE_CHART_VERSION")
+    else:
+        guacamole_chart_version = "master"  # "1.0.0"
+
     return {
         "rancher_chart_version": rancher_chart_version,
         "harbor_chart_version": harbor_chart_version,
@@ -210,6 +215,7 @@ def define_maia_admin_versions():
         "maia_dashboard_chart_type": maia_dashboard_chart_type,
         "admin_project_chart_version": admin_project_chart_version,
         "openwebui_chart_version": openwebui_chart_version,
+        "guacamole_chart_version": guacamole_chart_version,
     }
 
 

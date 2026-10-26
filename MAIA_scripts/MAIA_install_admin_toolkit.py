@@ -29,6 +29,7 @@ from MAIA.maia_admin import (
     create_openwebui_values,
     install_maia_project,
     create_rancher_values,
+    create_guacamole_values,
 )
 
 version = MAIA.__version__
@@ -144,6 +145,10 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
     helm_commands.append(create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_dict))
     helm_commands.append(create_maia_dashboard_values(config_folder, project_id, cluster_config_dict_dashboard))
     helm_commands.append(create_openwebui_values(config_folder, project_id, cluster_config_dict))
+    if "GUACAMOLE_DATA_SOURCE" in os.environ and "GUACAMOLE_USERNAME" in os.environ and "GUACAMOLE_PASSWORD" in os.environ:
+        helm_commands.append(create_guacamole_values(config_folder, project_id, cluster_config_dict))
+    else:
+        logger.warning("GUACAMOLE_DATA_SOURCE, GUACAMOLE_USERNAME, or GUACAMOLE_PASSWORD is not set, skipping Guacamole installation")
     if (
         os.environ.get("DEV_BRANCH") is not None
         or os.environ.get("GIT_EMAIL") is not None
@@ -283,6 +288,8 @@ def install_maia_admin_toolkit(cluster_config, config_folder):
         or os.environ.get("GPG_KEY") is not None
     ):
         values["defaults"].append({"maia_dashboard_values_dev": "maia_dashboard_values_dev"})
+    if "GUACAMOLE_DATA_SOURCE" in os.environ and "GUACAMOLE_USERNAME" in os.environ and "GUACAMOLE_PASSWORD" in os.environ:
+        values["defaults"].append({"guacamole_values": "guacamole_values"})
     Path(config_folder).joinpath(project_id).mkdir(parents=True, exist_ok=True)
 
     with open(Path(config_folder).joinpath(project_id, "values.yaml"), "w") as f:
