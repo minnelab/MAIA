@@ -167,6 +167,9 @@
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   register: argocd_cli_login
   changed_when: false
+  retries: 5
+  delay: 10
+  until: argocd_cli_login.rc == 0
   delegate_to: localhost
   
 
@@ -377,3 +380,73 @@
   delay: 3
   until: minio_policy_create_result.rc == 0
   when: auto_sync | bool
+
+- name: Sync maia-admin-guacamole ArgoCD application
+  ansible.builtin.shell: |
+    argocd app sync maia-admin-guacamole
+  register: argocd_sync_guacamole_result
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync | bool and 'maia-admin-guacamole' in maia_admin_argocd_applications
+
+- name: Wait until guacamole pods are ready
+  ansible.builtin.shell: |
+    kubectl -n guacamole wait --for=condition=Ready pod --all --timeout=300s
+  register: guacamole_pods_ready
+  changed_when: false
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  retries: 10
+  delay: 10
+  until: guacamole_pods_ready.rc == 0
+  when: auto_sync | bool and 'maia-admin-guacamole' in maia_admin_argocd_applications
+
+- name: Create Guacamole admin group
+  ansible.builtin.shell: |
+    set -euo pipefail
+    GUACAMOLE_URL="{{ GUACAMOLE_URL | default('https://kubeflow.' ~ domain ~ '/remote-desktops') }}"
+    GUACAMOLE_URL="${GUACAMOLE_URL%/}"
+    GUACAMOLE_DATA_SOURCE="{{ GUACAMOLE_DATA_SOURCE | default('postgresql') }}"
+    GUACAMOLE_USERNAME="{{ GUACAMOLE_USERNAME | default('admin') }}"
+    GUACAMOLE_PASSWORD="{{ GUACAMOLE_PASSWORD }}"
+    GROUP_NAME="{{ admin_group_ID }}"
+    GROUP_NAME_ENC=$(printf '%s' "$GROUP_NAME" | jq -sRr @uri)
+
+    AUTH_TOKEN=$(curl -sk -X POST "${GUACAMOLE_URL}/api/tokens" \
+      -d "username=${GUACAMOLE_USERNAME}" \
+      -d "password=${GUACAMOLE_PASSWORD}" \
+      | jq -r '.authToken')
+
+    GROUP_HTTP=$(curl -sk -o /tmp/guacamole_group_resp.txt -w "%{http_code}" -X POST \
+      "${GUACAMOLE_URL}/api/session/data/${GUACAMOLE_DATA_SOURCE}/userGroups?token=${AUTH_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"identifier\":\"${GROUP_NAME}\",\"attributes\":{}}")
+    if [ "$GROUP_HTTP" != "200" ] && [ "$GROUP_HTTP" != "204" ]; then
+      echo "Failed to create group '${GROUP_NAME}': $(cat /tmp/guacamole_group_resp.txt)" >&2
+      exit 1
+    fi
+
+    PERM_HTTP=$(curl -sk -o /tmp/guacamole_perm_resp.txt -w "%{http_code}" -X PATCH \
+      "${GUACAMOLE_URL}/api/session/data/${GUACAMOLE_DATA_SOURCE}/userGroups/${GROUP_NAME_ENC}/permissions?token=${AUTH_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '[{"op":"add","path":"/systemPermissions","value":"ADMINISTER"}]')
+    if [ "$PERM_HTTP" != "200" ] && [ "$PERM_HTTP" != "204" ]; then
+      echo "Failed to assign admin permissions to '${GROUP_NAME}': $(cat /tmp/guacamole_perm_resp.txt)" >&2
+      exit 1
+    fi
+    echo "$PERM_HTTP"
+  register: guacamole_admin_group_result
+  changed_when: false
+  retries: 5
+  delay: 10
+  until: guacamole_admin_group_result.rc == 0
+  delegate_to: localhost
+  when: auto_sync | bool and 'maia-admin-guacamole' in maia_admin_argocd_applications and GUACAMOLE_PASSWORD is defined
+
+- name: Show Guacamole admin group creation output
+  ansible.builtin.debug:
+    var: guacamole_admin_group_result.stdout
+  when: auto_sync | bool and 'maia-admin-guacamole' in maia_admin_argocd_applications and guacamole_admin_group_result is defined
+
