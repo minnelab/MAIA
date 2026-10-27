@@ -326,7 +326,7 @@ def create_maia_admin_toolkit_values(config_folder, project_id, cluster_config_d
                 "namespace": "maia-dashboard",
                 "adminAccessKey": "maia-admin",
                 "adminSecretKey": os.environ["minio_admin_password"],
-                "image": "quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z",
+                "image": "maiacloudai/minio:RELEASE.2025-04-08T15-41-24Z",
                 "storageSize": "10Gi",
                 "storageClassName": cluster_config_dict["storage_class"],
                 "consoleDomain": "minio." + cluster_config_dict["domain"],
