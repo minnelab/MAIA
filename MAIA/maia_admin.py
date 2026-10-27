@@ -29,6 +29,7 @@ admin_toolkit_chart_version = define_maia_admin_versions()["admin_toolkit_chart_
 admin_toolkit_chart_type = define_maia_admin_versions()["admin_toolkit_chart_type"]
 rancher_chart_version = define_maia_admin_versions()["rancher_chart_version"]
 guacamole_chart_version = define_maia_admin_versions()["guacamole_chart_version"]
+guacamole_chart_type = define_maia_admin_versions()["guacamole_chart_type"]
 harbor_chart_version = define_maia_admin_versions()["harbor_chart_version"]
 keycloak_chart_version = define_maia_admin_versions()["keycloak_chart_version"]
 maia_dashboard_chart_version = define_maia_admin_versions()["maia_dashboard_chart_version"]
@@ -1363,11 +1364,14 @@ def create_guacamole_values(config_folder, project_id, cluster_config_dict):
 
     guacamole_values = {
         "namespace": "guacamole",
-        "repo_url": "https://github.com/minnelab/MAIA.git",
-        "chart_name": "guacamole",
         "chart_version": guacamole_chart_version,
     }
-
+    if guacamole_chart_type == "helm_repo":
+        guacamole_values["repo_url"] = "https://minnelab.github.io/MAIA/"
+        guacamole_values["chart_name"] = "guacamole"
+    else:
+        guacamole_values["repo_url"] = "https://github.com/minnelab/MAIA.git"
+        guacamole_values["path"] = "charts/guacamole"
     guacamole_values.update(
         {
             "postgresql": {
@@ -1443,5 +1447,7 @@ def create_guacamole_values(config_folder, project_id, cluster_config_dict):
         "version": guacamole_values["chart_version"],
         "values": str(Path(config_folder).joinpath(project_id, "guacamole_values", "guacamole_values.yaml")),
         "release": f"{project_id}-guacamole",
-        "chart": guacamole_values["chart_name"],
+        "chart": (
+            guacamole_values["chart_name"] if guacamole_chart_type == "helm_repo" else guacamole_values["path"]
+        ),
     }
