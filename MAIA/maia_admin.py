@@ -1363,7 +1363,7 @@ def create_guacamole_values(config_folder, project_id, cluster_config_dict):
 
     guacamole_values = {
         "namespace": "guacamole",
-        "repo_url": "https://minnelab.github.io/MAIA/",
+        "repo_url": "https://github.com/minnelab/MAIA.git",
         "chart_name": "guacamole",
         "chart_version": guacamole_chart_version,
     }
