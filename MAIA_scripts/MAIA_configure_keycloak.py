@@ -138,6 +138,23 @@ def create_public_client(server_url: str, client_secret: str):
         }
     )
 
+def enable_implicit_flow(server_url: str, client_secret: str, client_id: str):
+    keycloak_connection = KeycloakOpenIDConnection(
+        server_url=server_url,
+        username="user",
+        password="",
+        realm_name="maia",
+        client_id="maia",
+        client_secret_key=client_secret,
+        verify=False,
+    )
+    keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    keycloak_admin.update_client(
+        {
+            "id": client_id,
+            "implicitFlowEnabled": True,
+        }
+    )
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
@@ -165,6 +182,12 @@ def main():
         admin_email=args.admin_email,
         admin_password=args.admin_password,
         admin_group_id=args.admin_group_id,
+    )
+
+    enable_implicit_flow(
+        server_url=args.server_url,
+        client_secret=args.client_secret,
+        client_id="maia",
     )
 
 
