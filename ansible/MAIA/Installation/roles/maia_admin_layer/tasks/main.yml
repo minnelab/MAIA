@@ -414,18 +414,29 @@
     GROUP_NAME="{{ admin_group_ID }}"
     GROUP_NAME_ENC=$(printf '%s' "$GROUP_NAME" | jq -sRr @uri)
 
-    AUTH_TOKEN=$(curl -sk -X POST "${GUACAMOLE_URL}/api/tokens" \
+    AUTH_RESP=$(curl -sk -X POST "${GUACAMOLE_URL}/api/tokens" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
       -d "username=${GUACAMOLE_USERNAME}" \
-      -d "password=${GUACAMOLE_PASSWORD}" \
-      | jq -r '.authToken')
+      -d "password=${GUACAMOLE_PASSWORD}")
+    if ! echo "$AUTH_RESP" | jq -e '.authToken != null and .authToken != ""' >/dev/null 2>&1; then
+      echo "Failed to authenticate to Guacamole at ${GUACAMOLE_URL}/api/tokens" >&2
+      echo "Response: ${AUTH_RESP}" >&2
+      exit 1
+    fi
+    AUTH_TOKEN=$(echo "$AUTH_RESP" | jq -r '.authToken')
 
     GROUP_HTTP=$(curl -sk -o /tmp/guacamole_group_resp.txt -w "%{http_code}" -X POST \
       "${GUACAMOLE_URL}/api/session/data/${GUACAMOLE_DATA_SOURCE}/userGroups?token=${AUTH_TOKEN}" \
       -H "Content-Type: application/json" \
       -d "{\"identifier\":\"${GROUP_NAME}\",\"attributes\":{}}")
+    GROUP_BODY=$(cat /tmp/guacamole_group_resp.txt)
     if [ "$GROUP_HTTP" != "200" ] && [ "$GROUP_HTTP" != "204" ]; then
-      echo "Failed to create group '${GROUP_NAME}': $(cat /tmp/guacamole_group_resp.txt)" >&2
-      exit 1
+      if echo "$GROUP_BODY" | grep -qi 'already exists'; then
+        echo "Group '${GROUP_NAME}' already exists, continuing"
+      else
+        echo "Failed to create group '${GROUP_NAME}' (HTTP ${GROUP_HTTP}): ${GROUP_BODY}" >&2
+        exit 1
+      fi
     fi
 
     PERM_HTTP=$(curl -sk -o /tmp/guacamole_perm_resp.txt -w "%{http_code}" -X PATCH \
@@ -433,7 +444,7 @@
       -H "Content-Type: application/json" \
       -d '[{"op":"add","path":"/systemPermissions","value":"ADMINISTER"}]')
     if [ "$PERM_HTTP" != "200" ] && [ "$PERM_HTTP" != "204" ]; then
-      echo "Failed to assign admin permissions to '${GROUP_NAME}': $(cat /tmp/guacamole_perm_resp.txt)" >&2
+      echo "Failed to assign admin permissions to '${GROUP_NAME}' (HTTP ${PERM_HTTP}): $(cat /tmp/guacamole_perm_resp.txt)" >&2
       exit 1
     fi
     echo "$PERM_HTTP"
@@ -441,7 +452,7 @@
     executable: /bin/bash
   register: guacamole_admin_group_result
   changed_when: false
-  retries: 5
+  retries: 30
   delay: 10
   until: guacamole_admin_group_result.rc == 0
   delegate_to: localhost
