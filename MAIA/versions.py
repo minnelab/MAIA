@@ -203,6 +203,11 @@ def define_maia_admin_versions():
     else:
         guacamole_chart_version = "master"  # "1.0.0"
 
+    if os.environ.get("GUACAMOLE_CHART_TYPE") is not None:
+        guacamole_chart_type = os.environ.get("GUACAMOLE_CHART_TYPE")
+    else:
+        guacamole_chart_type = "git_repo"  # or "helm_repo"
+
     return {
         "rancher_chart_version": rancher_chart_version,
         "harbor_chart_version": harbor_chart_version,
@@ -216,6 +221,7 @@ def define_maia_admin_versions():
         "admin_project_chart_version": admin_project_chart_version,
         "openwebui_chart_version": openwebui_chart_version,
         "guacamole_chart_version": guacamole_chart_version,
+        "guacamole_chart_type": guacamole_chart_type,
     }
 
 
