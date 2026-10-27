@@ -12,7 +12,7 @@ from omegaconf import OmegaConf
 from pyhelm3 import Client
 
 from MAIA.maia_fn import generate_human_memorable_password
-from MAIA.maia_k8s_distros import get_api_port
+from MAIA.maia_k8s_distros import get_api_port, get_storage_class
 from MAIA.versions import (
     define_maia_admin_versions,
     define_maia_project_versions,
@@ -1379,6 +1379,10 @@ def create_guacamole_values(config_folder, project_id, cluster_config_dict):
                     "database": "guacamole_db",
                     "username": "guacamole_user",
                     "password": "guacamole_password",
+                },
+                "persistence": {
+                    "size": "5Gi",
+                    "storageClass": get_storage_class(cluster_config_dict["k8s_distribution"])
                 },
             },
             "guacamole": {
