@@ -399,6 +399,26 @@ else
   fi
 fi
 
+if [ -f "$CONFIG_FOLDER/env.json" ]; then
+  existing_guacamole_username=$(jq -r '.GUACAMOLE_USERNAME // empty' "$CONFIG_FOLDER/env.json")
+  existing_guacamole_password=$(jq -r '.GUACAMOLE_PASSWORD // empty' "$CONFIG_FOLDER/env.json")
+  existing_guacamole_data_source=$(jq -r '.GUACAMOLE_DATA_SOURCE // empty' "$CONFIG_FOLDER/env.json")
+else
+  existing_guacamole_username=""
+  existing_guacamole_password=""
+  existing_guacamole_data_source=""
+fi
+
+if [ -n "$existing_guacamole_username" ] && [ "$existing_guacamole_username" != "null" ]; then
+  GUACAMOLE_USERNAME="$existing_guacamole_username"
+fi
+if [ -n "$existing_guacamole_password" ] && [ "$existing_guacamole_password" != "null" ]; then
+  GUACAMOLE_PASSWORD="$existing_guacamole_password"
+fi
+if [ -n "$existing_guacamole_data_source" ] && [ "$existing_guacamole_data_source" != "null" ]; then
+  GUACAMOLE_DATA_SOURCE="$existing_guacamole_data_source"
+fi
+
 cat <<EOF > $CONFIG_FOLDER/env.json
 {
   "MAIA_PRIVATE_REGISTRY": "$MAIA_PRIVATE_REGISTRY",
@@ -428,6 +448,16 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "admin_email": "$admin_email"
 }
 EOF
+
+if [ -n "$GUACAMOLE_USERNAME" ] && [ -n "$GUACAMOLE_PASSWORD" ] && [ -n "$GUACAMOLE_DATA_SOURCE" ]; then
+  jq --arg username "$GUACAMOLE_USERNAME" \
+     --arg password "$GUACAMOLE_PASSWORD" \
+     --arg data_source "$GUACAMOLE_DATA_SOURCE" \
+     '. + {GUACAMOLE_USERNAME: $username, GUACAMOLE_PASSWORD: $password, GUACAMOLE_DATA_SOURCE: $data_source}' \
+     "$CONFIG_FOLDER/env.json" > "$CONFIG_FOLDER/env.json.tmp" \
+    && mv "$CONFIG_FOLDER/env.json.tmp" "$CONFIG_FOLDER/env.json"
+  echo "Added GUACAMOLE_USERNAME, GUACAMOLE_PASSWORD, and GUACAMOLE_DATA_SOURCE to $CONFIG_FOLDER/env.json"
+fi
 
 wget https://raw.githubusercontent.com/minnelab/MAIA/refs/heads/master/MAIA/configs/MAIA_realm_template.json -O $CONFIG_FOLDER/MAIA_realm.json
 
