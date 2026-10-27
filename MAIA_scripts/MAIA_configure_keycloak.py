@@ -149,12 +149,12 @@ def enable_implicit_flow(server_url: str, client_secret: str, client_id: str):
         verify=False,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
-    keycloak_admin.update_client(
-        {
-            "id": client_id,
-            "implicitFlowEnabled": True,
-        }
-    )
+    client_uuid = keycloak_admin.get_client_id(client_id)
+    if client_uuid is None:
+        raise ValueError(f"Client '{client_id}' not found in Keycloak")
+    client = keycloak_admin.get_client(client_uuid)
+    client["implicitFlowEnabled"] = True
+    keycloak_admin.update_client(client_id=client_uuid, payload=client)
 
 def get_arg_parser():
     parser = argparse.ArgumentParser(
