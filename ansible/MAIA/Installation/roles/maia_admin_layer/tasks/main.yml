@@ -437,6 +437,8 @@
       exit 1
     fi
     echo "$PERM_HTTP"
+  args:
+    executable: /bin/bash
   register: guacamole_admin_group_result
   changed_when: false
   retries: 5
