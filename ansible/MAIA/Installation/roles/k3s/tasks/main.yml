@@ -28,7 +28,12 @@
       - sudo
     state: present
 
-- name: Install k3s server (if not already installed)
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install k3s server
   ansible.builtin.shell: |
     export INSTALL_K3S_EXEC="server --tls-san={{ cluster_domain }}"
     export INSTALL_K3S_SCRIPT="{{ install_k3s_script | default(null) }}"
@@ -40,8 +45,7 @@
     else
       curl -sfL https://get.k3s.io | sh -s -
     fi
-  args:
-    creates: /usr/local/bin/k3s
+  when: not k3s_binary.stat.exists
 
 - name: Ensure k3s service is enabled and started
   ansible.builtin.service:
