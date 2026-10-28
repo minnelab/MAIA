@@ -1424,14 +1424,20 @@ def create_guacamole_values(config_folder, project_id, cluster_config_dict):
         else:
             guacamole_values["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_issuer_name
         guacamole_values["ingress"]["tls"][0]["secretName"] = "kubeflow." + cluster_config_dict["domain"]
-            
+    
+    keycloak_domain = "iam." + cluster_config_dict["domain"]
+    if "KEYCLOAK_DOMAIN" in os.environ:
+        keycloak_domain = os.environ["KEYCLOAK_DOMAIN"]
+        
+    realm_name = os.environ.get("KEYCLOAK_REALM_NAME", "maia")
+    
     guacamole_values["openid"] = {
         "enabled": True,
         "clientId": "maia",
-        "authorizationEndpoint": os.environ.get("OIDC_OP_AUTHORIZATION_ENDPOINT", ""),
-        "jwksEndpoint": os.environ.get("OIDC_OP_JWKS_ENDPOINT", ""),
-        "issuer": os.environ.get("OIDC_ISSUER_URL", ""),
-        "redirectUri": "https://kubeflow." + cluster_config_dict["domain"] + "/remote-desktops",
+        "authorizationEndpoint": f"https://{keycloak_domain}/realms/{realm_name}/protocol/openid-connect/auth",
+        "jwksEndpoint": f"https://{keycloak_domain}/realms/{realm_name}/protocol/openid-connect/certs",
+        "issuer": f"https://{keycloak_domain}/realms/{realm_name}",
+        "redirectUri": f"https://kubeflow.{cluster_config_dict['domain']}/remote-desktops",
     }
     
     if "externalCA" in cluster_config_dict and cluster_config_dict["externalCA"]:
