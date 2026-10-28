@@ -960,6 +960,7 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                 "rancher": "https://mgmt." + cluster_config_dict["domain"],
                 "registry": "https://registry." + cluster_config_dict["domain"],
                 "minio": "https://minio." + cluster_config_dict["domain"],
+                "openwebui": "https://chat." + cluster_config_dict["domain"],
             },
         }
     )

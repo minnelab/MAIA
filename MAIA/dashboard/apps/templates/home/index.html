@@ -281,6 +281,11 @@
                 <i class="fa fa-sign-in-alt"></i>Login
               </a>
               {% endif %}
+              {% if external_links|get_item:val|get_item:"openwebui" %}
+              <a href="{{ external_links|get_item:val|get_item:'openwebui' }}" target="_blank" class="svc-btn">
+                <i class="fa fa-comments"></i>OpenWebUI
+              </a>
+              {% endif %}
             </div>
             {% endwith %}
           </div>
