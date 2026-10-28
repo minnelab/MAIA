@@ -381,6 +381,15 @@
   until: minio_policy_create_result.rc == 0
   when: auto_sync | bool
 
+- name: Sync maia-admin-openwebui ArgoCD application
+  ansible.builtin.shell: |
+    argocd app sync maia-admin-openwebui
+  register: argocd_sync_openwebui_result
+  changed_when: false
+  ignore_errors: true
+  delegate_to: localhost
+  when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications
+
 - name: Sync maia-admin-guacamole ArgoCD application
   ansible.builtin.shell: |
     argocd app sync maia-admin-guacamole
