@@ -994,7 +994,7 @@ def deploy_kubeflow_project(
         "memory": jh_template["singleuser"]["memory"],
         "extraEnv": extra_env,
         "extraResourceLimits": extra_resource_limits,
-        "image": f"maiacloudai/ubuntu-xrdp:{maia_lab_pro_image_version}",
+        "image": f"maiacloudai/ubuntu-rdp:{maia_lab_pro_image_version}",
         # "image": f"ghcr.io/minnelab/maia-lab-pro:{maia_lab_pro_image_version}",
         "homeMountPath": jh_template["singleuser"]["storage"]["homeMountPath"],
         "homePVC": "claim-" + convert_username_to_jupyterhub_username(user_config["users"][0]),
@@ -1654,7 +1654,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             },
         }
 
-        if cluster_config.get("selfsigned", False):
+        if cluster_config.get("selfsigned", False) or os.environ.get("MINIO_EXTERNAL_CA", "False") == "True":
             maia_namespace_values["minio"]["externalCA"] = {
                 "name": "kubernetes-ca-minio",
             }
@@ -2045,7 +2045,7 @@ def create_guacamole_connection(
             "protocol": "rdp",
             "attributes": {},
             "parameters": {
-                "hostname": f"jupyter-{converted_hostname}.{namespace}",
+                "hostname": f"jupyter-{converted_hostname}.{namespace}.svc.cluster.local",
                 "port": "3389",
                 "username": "ubuntu",
                 "password": "ubuntu",
@@ -2053,7 +2053,7 @@ def create_guacamole_connection(
                 "ignore-cert": "true",
                 "disable-copy": "true",
                 "enable-sftp": "true",
-                "sftp-hostname": f"jupyter-{converted_hostname}-ssh.{namespace}",
+                "sftp-hostname": f"jupyter-{converted_hostname}-ssh.{namespace}.svc.cluster.local",
                 "sftp-port": ssh_port,
                 "sftp-username": "ubuntu",
                 "sftp-password": "ubuntu",
@@ -2074,6 +2074,54 @@ def create_guacamole_connection(
         raise ValueError(f"Connection {connection_name} not found")
     return response.json()
 
+def create_guacamole_admin_group(
+    guacamole_url,
+    guacamole_data_source,
+    guacamole_username,
+    guacamole_password,
+    group_name,
+    verify_ssl=False
+):
+    guacamole_url = guacamole_url.rstrip("/")
+
+    # 1. Authenticate and retrieve token
+    auth_resp = requests.post(
+        f"{guacamole_url}/api/tokens",
+        data={"username": guacamole_username, "password": guacamole_password},
+        verify=verify_ssl,
+    )
+    auth_resp.raise_for_status()
+    auth_token = auth_resp.json()["authToken"]
+
+    # 2. Create the user group
+    group_resp = requests.post(
+        f"{guacamole_url}/api/session/data/{guacamole_data_source}/userGroups",
+        params={"token": auth_token},
+        json={"identifier": group_name, "attributes": {}},
+        verify=verify_ssl,
+    )
+    if group_resp.status_code not in (200, 204):
+        raise ValueError(f"Failed to create group '{group_name}': {group_resp.text}")
+
+    # 3. Grant system-level ADMINISTER permission
+    perm_patch = [
+        {
+            "op": "add",
+            "path": "/systemPermissions",
+            "value": "ADMINISTER",
+        }
+    ]
+
+    perm_resp = requests.patch(
+        f"{guacamole_url}/api/session/data/{guacamole_data_source}/userGroups/{group_name}/permissions",
+        params={"token": auth_token},
+        json=perm_patch,
+        verify=verify_ssl,
+    )
+    if perm_resp.status_code not in (200, 204):
+        raise ValueError(f"Failed to assign admin permissions to '{group_name}': {perm_resp.text}")
+
+    return perm_resp.status_code
 
 def create_guacamole_group(
     guacamole_url, guacamole_data_source, guacamole_username, guacamole_password, namespace, connection_identifier
