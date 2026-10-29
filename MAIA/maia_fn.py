@@ -1654,7 +1654,7 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             },
         }
 
-        if cluster_config.get("selfsigned", False) or os.environ.get("MINIO_EXTERNAL_CA", "False") == "True":
+        if cluster_config.get("selfsigned", False) or os.environ.get("MINIO_EXTERNAL_CA_"+namespace, "False") == "True":
             maia_namespace_values["minio"]["externalCA"] = {
                 "name": "kubernetes-ca-minio",
             }

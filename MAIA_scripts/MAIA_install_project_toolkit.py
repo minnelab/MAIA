@@ -249,7 +249,7 @@ def deploy_maia_toolkit_api(
                 }
             )
 
-    if cluster_config_dict.get("selfsigned", False) or os.environ.get("MINIO_EXTERNAL_CA", "False") == "True":
+    if cluster_config_dict.get("selfsigned", False) or os.environ.get("MINIO_EXTERNAL_CA_"+namespace_id, "False") == "True":
         copy_certificate_authority_secret(namespace)
         copy_certificate_authority_secret(
             namespace,
