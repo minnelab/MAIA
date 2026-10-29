@@ -994,7 +994,7 @@ def deploy_kubeflow_project(
         "memory": jh_template["singleuser"]["memory"],
         "extraEnv": extra_env,
         "extraResourceLimits": extra_resource_limits,
-        "image": f"maiacloudai/ubuntu-rdp:{maia_lab_pro_image_version}",
+        "image": jh_template["singleuser"]["profileList"][0]["kubespawner_override"]["image"],
         # "image": f"ghcr.io/minnelab/maia-lab-pro:{maia_lab_pro_image_version}",
         "homeMountPath": jh_template["singleuser"]["storage"]["homeMountPath"],
         "homePVC": "claim-" + convert_username_to_jupyterhub_username(user_config["users"][0]),
