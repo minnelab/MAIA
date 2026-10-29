@@ -250,15 +250,25 @@ def deploy_maia_toolkit_api(
             )
 
     if cluster_config_dict.get("selfsigned", False) or os.environ.get("MINIO_EXTERNAL_CA_"+namespace_id, "False") == "True":
-        copy_certificate_authority_secret(namespace)
-        copy_certificate_authority_secret(
-            namespace,
-            source_secret_name="kubernetes-ca",
-            target_secret_name="kubernetes-ca-minio",
-            opaque=True,
-            cert_name="public.crt",
-            key_name="private.key",
-        )
+        if os.environ.get("MINIO_EXTERNAL_CA_"+namespace_id, "False") == "True":
+            copy_certificate_authority_secret(namespace,
+                source_secret_name=os.environ.get("MINIO_EXTERNAL_CA_SECRET_NAME_"+namespace_id, "kubernetes-ca"),
+                target_secret_name="kubernetes-ca-minio",
+                source_namespace=os.environ.get("MINIO_EXTERNAL_CA_NAMESPACE_"+namespace_id, "cert-manager"),
+                opaque=True,
+                cert_name="public.crt",
+                key_name="private.key",
+            )
+        else:
+            copy_certificate_authority_secret(namespace)
+            copy_certificate_authority_secret(
+                namespace,
+                source_secret_name="kubernetes-ca",
+                target_secret_name="kubernetes-ca-minio",
+                opaque=True,
+                cert_name="public.crt",
+                key_name="private.key",
+            )
     deploy_kubeflow = os.environ.get("DEPLOY_KUBEFLOW_" + namespace_id, "False") == "True"
     deploy_nvflare_dashboard = os.environ.get("DEPLOY_NVFLARE_DASHBOARD_" + namespace_id, "False") == "True"
     if deploy_nvflare_dashboard:
