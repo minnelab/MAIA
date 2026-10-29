@@ -5,96 +5,91 @@
 {% block stylesheets %}
 <style>
   .auth-logo {
-    width: 60px; height: 60px; border-radius: 16px;
+    width: 60px; height: 60px; border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    /* background: linear-gradient(310deg, #2152ff, #21d4fd); */
-    /* box-shadow: 0 6px 24px rgba(33,82,255,.35); */
     margin: 0 auto 16px;
   }
   .auth-logo i { color: #fff; font-size: 1.6rem; }
 
   .auth-title {
-    font-size: 1.7rem; font-weight: 800; line-height: 1.15;
-    background: linear-gradient(310deg, #2152ff, #21d4fd);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-size: 1.7rem; font-weight: 700; line-height: 1.15;
   }
-  .auth-subtitle { font-size: 0.82rem; color: #8392ab; margin-top: 2px; }
+  .auth-subtitle { font-size: 0.82rem; color: var(--maia-muted); margin-top: 2px; }
 
   .auth-card {
     border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.12);
-    border: none;
+    box-shadow: var(--maia-shadow);
+    border: 1px solid var(--maia-border);
+    background:
+      linear-gradient(180deg, rgba(240,253,250,.65) 0%, #fff 42%);
   }
 
   .auth-btn-primary {
     display: flex; align-items: center; justify-content: center; gap: 9px;
     width: 100%; padding: 13px 20px; border-radius: 10px;
-    background: linear-gradient(310deg, #2152ff, #21d4fd);
     color: #fff; font-weight: 700; font-size: 0.9rem;
     text-decoration: none; border: none; cursor: pointer;
-    box-shadow: 0 4px 18px rgba(33,82,255,.4);
     transition: box-shadow .2s, transform .15s;
   }
   .auth-btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(33,82,255,.5);
     color: #fff; text-decoration: none;
   }
 
   .auth-btn-secondary {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; padding: 11px 20px; border-radius: 10px;
-    background: #f8f9fa; color: #344767;
+    background: var(--maia-surface-mint); color: var(--maia-ink-soft);
     font-weight: 600; font-size: 0.85rem;
     text-decoration: none;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--maia-border);
     transition: background .15s, box-shadow .15s, transform .12s;
   }
   .auth-btn-secondary:hover {
     background: #fff; transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(0,0,0,.09);
-    text-decoration: none; color: #344767;
+    box-shadow: 0 4px 14px rgba(15,118,110,.08);
+    text-decoration: none; color: var(--maia-ink-soft);
   }
-  .auth-btn-secondary i { color: #5e72e4; }
 
   .auth-divider {
     position: relative; text-align: center; margin: 18px 0;
   }
   .auth-divider::before {
     content: ''; position: absolute; top: 50%;
-    left: 0; right: 0; height: 1px; background: #e9ecef;
+    left: 0; right: 0; height: 1px; background: var(--maia-border);
   }
   .auth-divider span {
     position: relative; background: #fff;
-    padding: 0 14px; color: #8392ab;
+    padding: 0 14px; color: var(--maia-muted);
     font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   }
 
   .auth-links {
-    background: #f8f9fa; border-radius: 10px;
+    background: var(--maia-surface-mint); border-radius: 10px;
     padding: 14px 16px; margin-top: 8px;
-    font-size: 0.78rem; color: #67748e;
+    font-size: 0.78rem; color: var(--maia-muted);
     display: flex; flex-direction: column; gap: 7px;
+    border: 1px solid var(--maia-border);
   }
-  .auth-links a { color: #2152ff; text-decoration: none; font-weight: 600; }
+  .auth-links a { text-decoration: none; font-weight: 600; }
   .auth-links a:hover { text-decoration: underline; }
   .auth-links .link-row { display: flex; align-items: center; gap: 7px; }
-  .auth-links .link-row i { color: #8392ab; width: 14px; text-align: center; }
+  .auth-links .link-row i { color: var(--maia-muted); width: 14px; text-align: center; }
 
   .github-btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 9px 22px; border-radius: 8px;
-    background: #24292e; color: #fff;
+    background: #1e293b; color: #fff;
     font-size: 0.82rem; font-weight: 600;
     border: none; cursor: pointer;
     transition: background .15s, transform .12s;
   }
-  .github-btn:hover { background: #1a1e22; transform: translateY(-1px); color: #fff; }
+  .github-btn:hover { background: #0f172a; transform: translateY(-1px); color: #fff; }
 
   .error-box {
-    background: #fff5f5; border: 1px solid #fed7d7;
+    background: #fef2f2; border: 1px solid #fecaca;
     border-radius: 10px; padding: 10px 14px;
-    color: #c53030; font-size: 0.82rem;
+    color: #b91c1c; font-size: 0.82rem;
     display: flex; align-items: flex-start; gap: 8px;
     margin-bottom: 16px;
   }

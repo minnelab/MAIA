@@ -11,18 +11,18 @@
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .dot-green  { background: #2dce89; }
-  .dot-yellow { background: #fb6340; }
-  .dot-red    { background: #f5365c; }
+  .dot-green  { background: var(--maia-success); }
+  .dot-yellow { background: var(--maia-warning); }
+  .dot-red    { background: var(--maia-danger); }
   @keyframes pulse-green {
-    0%   { box-shadow: 0 0 0 0 rgba(45,206,137,.55); }
-    70%  { box-shadow: 0 0 0 7px rgba(45,206,137,0); }
-    100% { box-shadow: 0 0 0 0 rgba(45,206,137,0); }
+    0%   { box-shadow: 0 0 0 0 rgba(5,150,105,.45); }
+    70%  { box-shadow: 0 0 0 7px rgba(5,150,105,0); }
+    100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); }
   }
   @keyframes pulse-red {
-    0%   { box-shadow: 0 0 0 0 rgba(245,54,92,.55); }
-    70%  { box-shadow: 0 0 0 7px rgba(245,54,92,0); }
-    100% { box-shadow: 0 0 0 0 rgba(245,54,92,0); }
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.45); }
+    70%  { box-shadow: 0 0 0 7px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
   }
   .pulse-green { animation: pulse-green 2.2s infinite; }
   .pulse-red   { animation: pulse-red   1.8s infinite; }
@@ -31,72 +31,68 @@
   .hero-stat { text-align: center; }
   .hero-stat-value {
     font-size: 2rem; font-weight: 700; line-height: 1.1;
-    color: #fff;
+    color: #fff; font-family: var(--maia-font-display);
   }
-  .hero-stat-value.c-green { color: #2dce89; }
-  .hero-stat-value.c-orange { color: #fb6340; }
-  .hero-stat-value.c-red { color: #f5365c; }
+  .hero-stat-value.c-green { color: #6ee7b7; }
+  .hero-stat-value.c-orange { color: #fcd34d; }
+  .hero-stat-value.c-red { color: #fca5a5; }
   .hero-stat-label {
     font-size: 0.68rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: rgba(255,255,255,.65);
+    text-transform: uppercase; color: rgba(255,255,255,.7);
   }
   .hero-divider {
-    width: 1px; background: rgba(255,255,255,.25);
+    width: 1px; background: rgba(255,255,255,.28);
     align-self: stretch; margin: 0 4px;
   }
 
   /* ── Cluster card header ─────────────────────── */
-  .cluster-title { font-size: 1.1rem; font-weight: 700; color: #344767; margin-bottom: 2px; }
+  .cluster-title {
+    font-size: 1.1rem; font-weight: 700;
+    color: var(--maia-ink); margin-bottom: 2px;
+  }
 
   /* ── Service quick-link buttons ──────────────── */
   .svc-btn {
     display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px; border-radius: 8px;
+    padding: 5px 11px; border-radius: 8px;
     font-size: 0.68rem; font-weight: 600;
-    background: #f0f2f5; color: #344767;
+    background: var(--maia-surface-mint); color: var(--maia-ink-soft);
     text-decoration: none; white-space: nowrap;
-    transition: background .15s, color .15s, transform .12s, box-shadow .12s;
-    border: 1px solid transparent;
+    transition: background .15s, color .15s, transform .12s, box-shadow .12s, border-color .15s;
+    border: 1px solid var(--maia-border);
   }
   .svc-btn:hover {
-    background: #5e72e4; color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(94,114,228,.35);
+    background: var(--maia-primary); color: #fff;
+    border-color: var(--maia-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13,148,136,.25);
     text-decoration: none;
   }
   .svc-btn i { font-size: 0.7rem; }
 
   /* ── Node table rows ─────────────────────────── */
   #cluster-section .node-row td { transition: background .12s; }
-  #cluster-section .node-row:hover td { background: rgba(94,114,228,.04); }
+  #cluster-section .node-row:hover td { background: rgba(13,148,136,.04); }
 
-  /* ── Namespace pills ─────────────────────────── */
+  /* ── Namespace chips ─────────────────────────── */
   .ns-pill {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 16px; border-radius: 20px;
-    background: #f0f2f5; color: #344767;
+    padding: 7px 14px; border-radius: 8px;
+    background: #fff; color: var(--maia-ink-soft);
     font-size: 0.8rem; font-weight: 600;
     text-decoration: none;
-    border: 1px solid transparent;
-    transition: background .15s, color .15s, transform .12s, box-shadow .12s;
+    border: 1px solid var(--maia-border);
+    transition: background .15s, color .15s, transform .12s, box-shadow .12s, border-color .15s;
   }
   .ns-pill:hover {
-    background: #5e72e4; color: #fff;
-    border-color: #5e72e4;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(94,114,228,.35);
+    background: var(--maia-primary); color: #fff;
+    border-color: var(--maia-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13,148,136,.25);
     text-decoration: none;
   }
   .ns-pill i { font-size: 0.72rem; }
 
-  /* ── Card enter animation ────────────────────── */
-  @keyframes fadeSlideUp {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .card-animate {
-    animation: fadeSlideUp .4s ease both;
-  }
   .card-animate:nth-child(1) { animation-delay: .05s; }
   .card-animate:nth-child(2) { animation-delay: .12s; }
   .card-animate:nth-child(3) { animation-delay: .19s; }
@@ -119,8 +115,11 @@
     <div class="container py-4">
       <div class="row justify-content-center">
         <div class="col-lg-9 text-center">
+          <p class="text-white text-uppercase mb-2" style="opacity:.8; font-size:.7rem; letter-spacing:.14em; font-weight:700;">
+            Medical AI Platform
+          </p>
           <h1 class="text-white mb-1">MAIA Clusters</h1>
-          <p class="text-white mb-4" style="opacity:.75; font-size:.95rem;">
+          <p class="text-white mb-4" style="opacity:.78; font-size:.95rem;">
             Welcome back, <strong>{{ username }}</strong>
           </p>
 
@@ -177,10 +176,10 @@
       {% with cluster_name=k|dict_key %}
       {% with cstats=cluster_stats|get_item:cluster_name %}
       <div class="col-xl-6 col-lg-6 mb-4 card-animate">
-        <div class="card h-100" style="border-radius: 12px; overflow: hidden;">
+        <div class="card h-100" style="overflow: hidden;">
 
           <!-- ── Card header ───────────────────────── -->
-          <div class="card-header pb-0" style="border-bottom: 1px solid #f0f2f5;">
+          <div class="card-header pb-0" style="border-bottom: 1px solid var(--maia-border);">
 
             <!-- Title row -->
             <div class="d-flex align-items-start justify-content-between mb-2">
@@ -352,9 +351,9 @@
     {% if namespaces %}
     <div class="row mt-1 mb-5">
       <div class="col-12 card-animate">
-        <div class="card" style="border-radius:12px;">
+        <div class="card">
           <div class="card-header pb-1 d-flex align-items-center justify-content-between">
-            <h6 class="mb-0">
+            <h6 class="mb-0" style="color:var(--maia-ink);">
               <i class="fa fa-cubes me-2 text-primary" style="font-size:.85rem;"></i>My Projects
             </h6>
             <span class="badge bg-gradient-secondary badge-sm">{{ namespaces|length }}</span>

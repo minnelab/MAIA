@@ -5,13 +5,12 @@
       <!-- Left: brand + copyright -->
       <div class="col-lg-5 mb-lg-0 mb-3">
         <div class="d-flex align-items-center" style="gap: 10px;">
-          <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(310deg,#2152ff,#21d4fd);
-                      display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <div class="maia-footer-mark">
             <img src="{{ ASSETS_ROOT }}/img/MAIA/MAIA_Logo.png" alt="MAIA Logo" style="height:30px;max-width:120px;">
           </div>
           <div>
-            <div style="font-size:.8rem; font-weight:700; color:#344767; line-height:1.2;">MAIA Dashboard</div>
-            <div style="font-size:.72rem; color:#8392ab;">
+            <div style="font-size:.8rem; font-weight:700; color:var(--maia-ink); line-height:1.2;">MAIA Dashboard</div>
+            <div style="font-size:.72rem; color:var(--maia-muted);">
               &copy; {% now "Y" %} MAIA &mdash; KTH Royal Institute of Technology, MinneLab
             </div>
           </div>
@@ -67,24 +66,20 @@
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background-color: #2563eb;
     color: white;
-    border-radius: 50%;
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 22px;
     cursor: pointer;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     transition: transform 0.2s ease, background 0.2s ease;
   }
 
   #chatbot-button:hover {
-    background-color: #1d4ed8;
-    transform: scale(1.05);
+    transform: translateY(-2px);
   }
 
   /* Popup container */
@@ -116,7 +111,6 @@
 
   /* Header */
   #chatbot-header {
-    background: #2563eb;
     color: white;
     padding: 10px 14px;
     font-weight: bold;
@@ -163,17 +157,12 @@
   }
 
   #chatbot-send {
-    background: #2563eb;
     color: white;
     border: none;
     padding: 10px 14px;
     cursor: pointer;
     font-weight: bold;
     transition: background 0.2s ease;
-  }
-
-  #chatbot-send:hover {
-    background: #1d4ed8;
   }
     /* Typing animation dots */
     .typing {

@@ -17,7 +17,6 @@
   .auth-card-header {
     border-radius: 16px 16px 0 0 !important;
     padding: 24px 28px 16px;
-    background: linear-gradient(310deg, #2152ff, #21d4fd) !important;
   }
 
   .auth-card-title {
@@ -40,22 +39,19 @@
     transition: border-color .15s, box-shadow .15s !important;
   }
   .form-control:focus, .form-select:focus {
-    border-color: #5e72e4 !important;
-    box-shadow: 0 0 0 3px rgba(94,114,228,.15) !important;
+    border-color: var(--maia-primary-light) !important;
+    box-shadow: 0 0 0 3px rgba(13,148,136,.15) !important;
   }
 
   .auth-btn-primary {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; padding: 12px 20px; border-radius: 10px;
-    background: linear-gradient(310deg, #2152ff, #21d4fd);
     color: #fff; font-weight: 700; font-size: 0.88rem;
     border: none; cursor: pointer;
-    box-shadow: 0 4px 18px rgba(33,82,255,.4);
     transition: box-shadow .2s, transform .15s;
   }
   .auth-btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(33,82,255,.5);
     color: #fff;
   }
 
@@ -194,9 +190,9 @@
 
               <div class="text-center mt-3">
                 <span class="text-xs text-secondary">Already have access?</span>
-                <a href="{% url 'login' %}" class="text-xs font-weight-bold ms-1" style="color:#2152ff;">Sign In</a>
+                <a href="{% url 'login' %}" class="text-xs font-weight-bold ms-1" style="color:var(--maia-primary-dark);">Sign In</a>
                 <span class="text-xs text-secondary ms-2">&middot;</span>
-                <a href="{% url 'register_project' %}" class="text-xs font-weight-bold ms-1" style="color:#5e72e4;">Register a New Project</a>
+                <a href="{% url 'register_project' %}" class="text-xs font-weight-bold ms-1" style="color:var(--maia-primary);">Register a New Project</a>
               </div>
 
               {% endif %}

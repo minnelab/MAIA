@@ -19,7 +19,7 @@
     font-size: .95rem; font-weight: 700; color: #344767;
     display: flex; align-items: center; gap: 8px; margin: 0;
   }
-  .res-card-title i { color: #5e72e4; font-size: .82rem; }
+  .res-card-title i { color: var(--maia-primary); font-size: .82rem; }
 
   /* ── Tables ──────────────────────────────────── */
   .res-table th {
@@ -32,7 +32,7 @@
     vertical-align: middle; color: #344767;
     border-color: #f0f2f5;
   }
-  .res-table tr:hover td { background: rgba(94,114,228,.03); }
+  .res-table tr:hover td { background: rgba(13,148,136,.04); }
 
   /* ── Expiration badges ───────────────────────── */
   .exp-badge {
@@ -70,23 +70,20 @@
     transition: border-color .15s, box-shadow .15s !important;
   }
   .form-control:focus, select:focus {
-    border-color: #5e72e4 !important;
-    box-shadow: 0 0 0 3px rgba(94,114,228,.15) !important;
+    border-color: var(--maia-primary-light) !important;
+    box-shadow: 0 0 0 3px rgba(13,148,136,.15) !important;
     outline: none !important;
   }
 
   .search-btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 10px 24px; border-radius: 10px;
-    background: linear-gradient(310deg, #2152ff, #21d4fd);
     color: #fff; font-weight: 700; font-size: .85rem;
     border: none; cursor: pointer;
-    box-shadow: 0 4px 15px rgba(33,82,255,.35);
     transition: box-shadow .2s, transform .15s;
   }
   .search-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(33,82,255,.5);
   }
 
   .export-btn {
@@ -102,7 +99,7 @@
 
   /* ── Namespace link ──────────────────────────── */
   .ns-link {
-    color: #5e72e4; font-weight: 600; text-decoration: none;
+    color: var(--maia-primary-dark); font-weight: 600; text-decoration: none;
   }
   .ns-link:hover { text-decoration: underline; }
 

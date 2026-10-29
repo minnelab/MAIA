@@ -1,0 +1,322 @@
+/**
+ * MAIA Medical AI Theme
+ * Professional AI–Tech–Medical overlay for Soft UI Dashboard
+ */
+
+:root {
+  --maia-primary: #0d9488;
+  --maia-primary-dark: #0f766e;
+  --maia-primary-light: #14b8a6;
+  --maia-accent: #0284c7;
+  --maia-accent-soft: #e0f2fe;
+  --maia-mint: #ccfbf1;
+  --maia-gradient: linear-gradient(135deg, #0f766e 0%, #0e7490 48%, #0284c7 100%);
+  --maia-gradient-soft: linear-gradient(160deg, #f0fdfa 0%, #e0f2fe 55%, #f8fafc 100%);
+  --maia-ink: #0f172a;
+  --maia-ink-soft: #1e293b;
+  --maia-muted: #64748b;
+  --maia-surface: #f1f5f9;
+  --maia-surface-mint: #f0fdfa;
+  --maia-card: #ffffff;
+  --maia-border: #e2e8f0;
+  --maia-success: #059669;
+  --maia-warning: #d97706;
+  --maia-danger: #dc2626;
+  --maia-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 118, 110, 0.06);
+  --maia-radius: 12px;
+  --maia-font: "Manrope", "Segoe UI", sans-serif;
+  --maia-font-display: "Sora", "Manrope", sans-serif;
+
+  --bs-primary: var(--maia-primary);
+  --bs-link-color: var(--maia-primary-dark);
+  --bs-body-font-family: var(--maia-font);
+  --bs-body-color: var(--maia-ink-soft);
+}
+
+html {
+  font-family: var(--maia-font);
+}
+
+body {
+  font-family: var(--maia-font) !important;
+  color: var(--maia-ink-soft);
+  background-color: var(--maia-surface) !important;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 0% -10%, rgba(13, 148, 136, 0.09), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(2, 132, 199, 0.08), transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background-attachment: fixed;
+}
+
+body.g-sidenav-show.bg-gray-100 {
+  background-color: transparent !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+.navbar-brand,
+.auth-title,
+.cluster-title,
+.ns-section-title,
+.res-card-title {
+  font-family: var(--maia-font-display) !important;
+  letter-spacing: -0.02em;
+}
+
+/* ── Soft UI primary overrides ─────────────────────────────── */
+.text-primary,
+a.text-primary {
+  color: var(--maia-primary) !important;
+}
+
+.bg-primary {
+  background-color: var(--maia-primary) !important;
+}
+
+.border-primary {
+  border-color: var(--maia-primary) !important;
+}
+
+.bg-gradient-primary,
+.badge.bg-gradient-primary,
+.icon.bg-gradient-primary,
+.btn.bg-gradient-primary {
+  background-image: var(--maia-gradient) !important;
+  background-color: var(--maia-primary) !important;
+}
+
+.btn.bg-gradient-primary:hover,
+.btn.bg-gradient-primary:focus,
+.btn.bg-gradient-primary:active {
+  background-image: linear-gradient(135deg, #0f766e 0%, #0369a1 100%) !important;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.28) !important;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--maia-primary);
+  --bs-btn-border-color: var(--maia-primary);
+  --bs-btn-hover-bg: var(--maia-primary-dark);
+  --bs-btn-hover-border-color: var(--maia-primary-dark);
+  --bs-btn-active-bg: var(--maia-primary-dark);
+  --bs-btn-active-border-color: var(--maia-primary-dark);
+  --bs-btn-disabled-bg: var(--maia-primary);
+  --bs-btn-disabled-border-color: var(--maia-primary);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--maia-primary);
+  --bs-btn-border-color: var(--maia-primary);
+  --bs-btn-hover-bg: var(--maia-primary);
+  --bs-btn-hover-border-color: var(--maia-primary);
+  --bs-btn-active-bg: var(--maia-primary-dark);
+  --bs-btn-active-border-color: var(--maia-primary-dark);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--maia-primary-light) !important;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+}
+
+/* ── Cards ─────────────────────────────────────────────────── */
+.card {
+  border: 1px solid var(--maia-border) !important;
+  border-radius: var(--maia-radius) !important;
+  box-shadow: var(--maia-shadow) !important;
+  background: var(--maia-card);
+}
+
+.card .card-header {
+  background: transparent;
+}
+
+/* ── Sidenav ───────────────────────────────────────────────── */
+aside#sidenav-main {
+  background:
+    linear-gradient(180deg, rgba(240, 253, 250, 0.95) 0%, rgba(255, 255, 255, 0.98) 28%, #ffffff 100%) !important;
+  border-right: 1px solid var(--maia-border) !important;
+  box-shadow: 2px 0 18px rgba(15, 118, 110, 0.06) !important;
+}
+
+#sidenav-main .navbar-brand span.font-weight-bold {
+  color: var(--maia-ink) !important;
+  font-family: var(--maia-font-display);
+}
+
+#sidenav-main .nav-link:not(.active):hover {
+  background: rgba(13, 148, 136, 0.08) !important;
+}
+
+#sidenav-main .nav-link.active {
+  background: rgba(13, 148, 136, 0.1) !important;
+  box-shadow: none !important;
+}
+
+#sidenav-main .nav-link.active .nav-link-text {
+  color: var(--maia-primary-dark) !important;
+  font-weight: 700;
+}
+
+#sidenav-main .nav-link.active .icon {
+  background: var(--maia-gradient) !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.28) !important;
+}
+
+#sidenav-main .nav-link.active .icon svg path {
+  fill: #fff !important;
+}
+
+.sidenav-section-label {
+  color: var(--maia-muted) !important;
+}
+
+.sidenav-section-count {
+  background: var(--maia-mint) !important;
+  color: var(--maia-primary-dark) !important;
+}
+
+.sidenav-footer {
+  background: linear-gradient(180deg, transparent, var(--maia-surface-mint)) !important;
+  border-top: 1px solid var(--maia-border) !important;
+}
+
+/* ── Page heroes ───────────────────────────────────────────── */
+.page-header.border-radius-lg {
+  border-radius: 16px !important;
+  overflow: hidden;
+  position: relative;
+}
+
+.page-header .mask.bg-gradient-dark {
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.82) 0%, rgba(15, 23, 42, 0.72) 55%, rgba(2, 132, 199, 0.55) 100%) !important;
+  opacity: 1 !important;
+}
+
+.page-header h1,
+.page-header .text-white {
+  font-family: var(--maia-font-display);
+  text-shadow: 0 1px 12px rgba(15, 23, 42, 0.25);
+}
+
+/* ── Tables ────────────────────────────────────────────────── */
+.table thead th {
+  color: var(--maia-muted) !important;
+  letter-spacing: 0.06em;
+}
+
+.table tbody tr:hover td {
+  background: rgba(13, 148, 136, 0.04);
+}
+
+/* ── Badges / progress ─────────────────────────────────────── */
+.badge.bg-gradient-success {
+  background-image: linear-gradient(135deg, #059669, #10b981) !important;
+}
+
+.badge.bg-gradient-danger {
+  background-image: linear-gradient(135deg, #dc2626, #f87171) !important;
+}
+
+.badge.bg-gradient-warning {
+  background-image: linear-gradient(135deg, #d97706, #f59e0b) !important;
+}
+
+.badge.bg-gradient-secondary {
+  background-image: linear-gradient(135deg, #475569, #64748b) !important;
+}
+
+.progress {
+  background: var(--maia-border) !important;
+}
+
+.progress-bar.bg-success {
+  background-color: var(--maia-success) !important;
+}
+
+/* ── Auth shared helpers ───────────────────────────────────── */
+.auth-title {
+  background: var(--maia-gradient) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-btn-primary,
+.search-btn {
+  background: var(--maia-gradient) !important;
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.28) !important;
+}
+
+.auth-btn-primary:hover,
+.search-btn:hover {
+  box-shadow: 0 8px 24px rgba(13, 148, 136, 0.35) !important;
+}
+
+.auth-card-header {
+  background: var(--maia-gradient) !important;
+}
+
+.auth-links a,
+.ns-link,
+a[style*="#2152ff"],
+a[style*="#5e72e4"] {
+  color: var(--maia-primary-dark) !important;
+}
+
+.auth-btn-secondary i {
+  color: var(--maia-primary) !important;
+}
+
+/* ── Chatbot widget (fullscreen footer) ────────────────────── */
+#chatbot-button {
+  background: var(--maia-gradient) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(13, 148, 136, 0.35) !important;
+}
+
+#chatbot-button:hover {
+  background: linear-gradient(135deg, #0f766e, #0369a1) !important;
+}
+
+#chatbot-header,
+#chatbot-send {
+  background: var(--maia-primary-dark) !important;
+}
+
+#chatbot-send:hover {
+  background: var(--maia-primary) !important;
+}
+
+#chatbot-popup {
+  border: 1px solid var(--maia-border);
+  border-radius: 14px !important;
+  box-shadow: var(--maia-shadow) !important;
+}
+
+/* ── Subtle motion ─────────────────────────────────────────── */
+@keyframes maia-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-animate,
+.ns-animate,
+.res-animate {
+  animation: maia-fade-up 0.4s ease both;
+}
+
+.main-content {
+  transition: background 0.3s ease;
+}
+
+/* ── Footer brand mark ─────────────────────────────────────── */
+.maia-footer-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--maia-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

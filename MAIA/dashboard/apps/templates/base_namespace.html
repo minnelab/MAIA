@@ -15,9 +15,9 @@
     position: relative; overflow: hidden;
   }
   .app-card.app-active:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(94,114,228,.18);
-    border-color: #c9d2ff;
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(13,148,136,.16);
+    border-color: #99f6e4;
     text-decoration: none;
   }
   .app-card.app-inactive {
@@ -61,7 +61,7 @@
     font-size: 0.95rem; font-weight: 700; color: #344767;
     display: flex; align-items: center; gap: 8px; margin: 0;
   }
-  .ns-section-title i { color: #5e72e4; font-size: 0.85rem; }
+  .ns-section-title i { color: var(--maia-primary); font-size: 0.85rem; }
 
   /* ── Tables ──────────────────────────────────────── */
   .ns-table th {
@@ -73,7 +73,7 @@
     font-size: 0.83rem; padding: 11px 16px; vertical-align: middle;
     color: #344767; border-color: #f0f2f5;
   }
-  .ns-table tr:hover td { background: rgba(94,114,228,.03); }
+  .ns-table tr:hover td { background: rgba(13,148,136,.04); }
 
   .copy-btn {
     display: inline-flex; align-items: center; gap: 5px;
@@ -83,7 +83,7 @@
     transition: background .12s, color .12s;
     white-space: nowrap;
   }
-  .copy-btn:hover { background: #5e72e4; color: #fff; }
+  .copy-btn:hover { background: var(--maia-primary); color: #fff; }
 
   code.mono {
     background: #f0f2f5; padding: 3px 7px; border-radius: 5px;

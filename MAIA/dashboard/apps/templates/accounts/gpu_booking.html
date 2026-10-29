@@ -18,53 +18,54 @@
   .booking-card-header {
     border-radius: 16px 16px 0 0 !important;
     padding: 22px 28px 16px;
-    background: linear-gradient(310deg, #3a0ca3, #7209b7) !important;
+    background: var(--maia-gradient) !important;
   }
   .booking-card-title { font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0; }
   .booking-card-subtitle { font-size: .82rem; color: rgba(255,255,255,.75); margin-top: 3px; }
 
   .form-section {
-    border-radius: 10px; background: #f8f9fa;
+    border-radius: 10px; background: var(--maia-surface-mint);
     padding: 14px 16px; margin-bottom: 18px;
+    border: 1px solid var(--maia-border);
   }
   .form-section-title {
     font-size: .7rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: .08em; color: #8392ab;
+    letter-spacing: .08em; color: var(--maia-muted);
     margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
   }
-  .form-section-title i { color: #7209b7; }
+  .form-section-title i { color: var(--maia-primary); }
 
   .form-group-label {
     font-size: .73rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .06em; color: #8392ab; margin-bottom: 5px; display: block;
+    letter-spacing: .06em; color: var(--maia-muted); margin-bottom: 5px; display: block;
   }
   .auth-field { margin-bottom: 14px; }
   .auth-field:last-child { margin-bottom: 0; }
 
   .form-control, .form-select, select {
-    border-radius: 8px !important; border: 1px solid #e9ecef !important;
+    border-radius: 8px !important; border: 1px solid var(--maia-border) !important;
     padding: 9px 13px !important; font-size: .84rem !important;
     background: #fff !important; width: 100%;
     transition: border-color .15s, box-shadow .15s !important;
   }
   .form-control:focus, select:focus {
-    border-color: #7209b7 !important;
-    box-shadow: 0 0 0 3px rgba(114,9,183,.15) !important;
+    border-color: var(--maia-primary-light) !important;
+    box-shadow: 0 0 0 3px rgba(13,148,136,.15) !important;
     outline: none !important;
   }
 
   .submit-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; padding: 12px 20px; border-radius: 10px;
-    background: linear-gradient(310deg, #3a0ca3, #7209b7);
+    background: var(--maia-gradient);
     color: #fff; font-weight: 700; font-size: .88rem;
     border: none; cursor: pointer;
-    box-shadow: 0 4px 18px rgba(58,12,163,.4);
+    box-shadow: 0 4px 16px rgba(13,148,136,.28);
     transition: box-shadow .2s, transform .15s;
   }
   .submit-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(58,12,163,.5);
+    box-shadow: 0 8px 24px rgba(13,148,136,.35);
   }
 
   .error-text { font-size: .76rem; color: #f5365c; margin-top: 3px; display: block; }
@@ -123,7 +124,7 @@
               <a href="/maia/gpu-booking/my-bookings/"
                  style="display:flex; align-items:center; justify-content:center; gap:8px;
                         padding:11px 20px; border-radius:10px; text-decoration:none;
-                        background:linear-gradient(310deg,#3a0ca3,#7209b7);
+                        background:var(--maia-gradient);
                         color:#fff; font-weight:700; font-size:.88rem;">
                 <i class="fas fa-list"></i> View My Bookings
               </a>
@@ -190,7 +191,7 @@
 
             <div class="text-center mt-3">
               <a href="/maia/gpu-booking/my-bookings/"
-                 class="text-xs font-weight-bold" style="color:#5e72e4;">
+                 class="text-xs font-weight-bold" style="color:var(--maia-primary);">
                 <i class="fas fa-list me-1"></i>View My Bookings
               </a>
             </div>
