@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Array of funny machine learning and academic quotes
+quotes=(
+    "In machine learning, the only thing worse than overfitting is underfitting."
+    "Why did the neural network break up with the decision tree? It found someone with better features."
+    "I told my computer I needed a break, and it said 'Why don't you go overfit a model?'"
+    "Why don't data scientists trust the ocean? Too many outliers."
+    "May your code compile without errors!"
+    "In code we trust."
+    "Keep calm and debug on."
+    "To infinity and beyond the stack trace!"
+    "May your algorithms be efficient and your data clean."
+    "Live long and optimize."
+    "There is no place like 127.0.0.1."
+    "Talk is cheap. Show me the code."
+    "May your neural nets converge swiftly."
+    "With great GPUs comes great power."
+    "May your coffee be strong and your bugs be few."
+    "To err is human; to debug, divine."
+    "Keep your friends close and your source code closer."
+    "May your loops be infinite and your recursion finite."
+    "In a world full of variables, be a constant."
+    "May your data be structured and your models robust."
+    "The cake is a lie, but the data is real."
+    "May your functions be pure and your side effects minimal."
+    "Stay curious and keep iterating."
+    "May your thesis be shorter than your bibliography."
+    "Keep calm and pretend it's on the syllabus."
+    "A PhD: solving problems you didn't know existed in ways you don't understand."
+    "Research is what I'm doing when I don't know what I'm doing. — Wernher von Braun"
+    "May your experiments be reproducible and your coffee endless."
+    "I have not failed. I've just found 10,000 ways that won't work. — Thomas Edison"
+    "May your committee be kind and your revisions minor."
+    "May your data be significant and your p-values low."
+    "If we knew what it was we were doing, it would not be called research, would it? — Albert Einstein"
+    "The road to a PhD is paved with coffee and late nights."
+    "May your hypotheses be bold and your results surprising."
+    "A conclusion is the place where you got tired of thinking. — Arthur Bloch"
+    "May your citations be plentiful and your plagiarism checker silent."
+    "May your presentations be clear and your audience awake."
+    "The more I study, the more I know; the more I know, the more I forget; the more I forget, the less I know. So why study?"
+)
+
+# Get a random index
+random_index=$((RANDOM % ${#quotes[@]}))
+
+# Print the selected quote
+echo "${quotes[$random_index]}"

@@ -1,0 +1,20 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Comment[en_US]=LibreOffice
+Comment=LibreOffice
+Exec=libreoffice %U
+GenericName[en_US]=LibreOffice
+GenericName=LibreOffice
+Icon=libreoffice-startcenter
+MimeType=
+Name[en_US]=LibreOffice
+Name=LibreOffice
+Path=
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

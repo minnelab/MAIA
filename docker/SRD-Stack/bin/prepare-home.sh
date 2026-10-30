@@ -87,3 +87,14 @@ chmod 0755 "${HOME}/.xsession" 2>/dev/null || true
 chown -R ubuntu:0 \
   "${HOME}/.Xsession" "${HOME}/.xsession" "${HOME}/.Xclients" "${HOME}/.config" \
   2>/dev/null || true
+
+# Seed zsh/tmux/nvim from the image template (PVC-safe; no package installs)
+if [ -x /etc/install_zsh.sh ]; then
+  /etc/install_zsh.sh configure || true
+fi
+# Use build-time gitstatusd cache (powerlevel10k); works even with an old ~/.zshrc on PVC.
+# Clear GITSTATUS_DAEMON — it forces build.info's version and mismatches install.info.
+if [ -d /opt/gitstatus ]; then
+  unset GITSTATUS_DAEMON
+  export GITSTATUS_CACHE_DIR=/opt/gitstatus
+fi
