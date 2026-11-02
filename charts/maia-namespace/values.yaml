@@ -27,10 +27,14 @@ dockerRegistrySecret:
 
 minio:
   enabled: False
+  # When true, PostSync Job creates MinIO policies for admin and user groups
+  inject_policies: False
   namespace: "minio"
   consoleDomain: "https://maia.se/minio-console"
   storageSize: "1Gi"
   storageClassName: "standard"
+  # OIDC group claim used as MinIO policy name for cluster admins
+  admin_group_ID: "MAIA:admin"
   accessKey: ""
   secretKey: ""
   clientId: ""
