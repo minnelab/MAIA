@@ -29,6 +29,8 @@ minio:
   enabled: False
   # When true, PostSync Job creates MinIO policies for admin and user groups
   inject_policies: False
+  # Docker Hub no longer hosts minio/mc; use quay.io
+  mcImage: "quay.io/minio/mc:RELEASE.2025-04-08T15-39-49Z"
   namespace: "minio"
   consoleDomain: "https://maia.se/minio-console"
   storageSize: "1Gi"
