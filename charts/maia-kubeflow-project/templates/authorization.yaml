@@ -98,4 +98,24 @@ spec:
           ports: ["80"]
   selector:
     matchLabels:
-      app.kubernetes.io/name : maia-nvflare-dashboard     
+      app.kubernetes.io/name : maia-nvflare-dashboard
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-external-ehrbase
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - from:
+        - source:
+            remoteIpBlocks:
+          {{- range .Values.ipList }}
+            - {{ . }}
+          {{- end }}
+    - to:
+      - operation:
+          ports: ["8080"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name : maia-ehrbase 
