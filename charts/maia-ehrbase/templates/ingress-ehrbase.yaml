@@ -1,0 +1,36 @@
+{{- if and .Values.ehrbase.enabled .Values.ehrbase.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ehrbase.ehrbase.ingress.name" . }}
+  labels:
+    {{- include "ehrbase.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrbase
+  {{- with .Values.ehrbase.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ehrbase.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    {{- range .Values.ehrbase.ingress.hosts }}
+    -{{- if .host }} host: {{ .host | quote }}{{ end }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path | default "/" | quote }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "ehrbase.ehrbase.name" $ }}
+                port:
+                  number: {{ $.Values.ehrbase.service.port }}
+          {{- end }}
+    {{- end }}
+  {{- with .Values.ehrbase.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

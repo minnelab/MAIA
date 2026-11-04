@@ -1,0 +1,23 @@
+{{- if .Values.ehrdb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ehrbase.ehrdb.name" . }}
+  labels:
+    {{- include "ehrbase.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrdb
+  {{- with .Values.ehrdb.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: {{ .Values.ehrdb.service.port }}
+      targetPort: postgres
+      protocol: TCP
+  selector:
+    {{- include "ehrbase.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrdb
+{{- end }}

@@ -1,0 +1,94 @@
+{{- if .Values.ehrbase.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ehrbase.ehrbase.name" . }}
+  labels:
+    {{- include "ehrbase.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrbase
+spec:
+  replicas: {{ .Values.ehrbase.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ehrbase.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ehrbase
+  template:
+    metadata:
+      {{- with .Values.ehrbase.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ehrbase.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ehrbase
+        {{- with .Values.ehrbase.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.ehrbase.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ehrbase.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      containers:
+        - name: ehrbase
+          image: "{{ .Values.ehrbase.image.repository }}:{{ .Values.ehrbase.image.tag }}"
+          imagePullPolicy: {{ .Values.ehrbase.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.ehrbase.service.port }}
+              protocol: TCP
+          env:
+            - name: DB_URL
+              value: {{ include "ehrbase.jdbcUrl" . | quote }}
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: user
+            - name: DB_USER_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: userAdmin
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: password
+            - name: DB_PASS_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: passwordAdmin
+            {{- with .Values.ehrbase.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "ehrbase.envConfigMap.name" . }}
+          {{- with .Values.ehrbase.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.ehrbase.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.ehrbase.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ehrbase.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ehrbase.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,23 @@
+{{- if .Values.ehrbase.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ehrbase.ehrbase.name" . }}
+  labels:
+    {{- include "ehrbase.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrbase
+  {{- with .Values.ehrbase.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.ehrbase.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.ehrbase.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "ehrbase.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrbase
+{{- end }}

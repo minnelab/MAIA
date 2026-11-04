@@ -1,0 +1,21 @@
+{{- if .Values.ehrbase.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ehrbase.envConfigMap.name" . }}
+  labels:
+    {{- include "ehrbase.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrbase-config
+data:
+{{- range $k, $v := .Values.ehrbase.configMap.data }}
+  {{ $k }}: {{ $v | toString | quote }}
+{{- end }}
+{{- $swaggerUi := .Values.ehrbase.swaggerUi | default dict }}
+{{- if (default true $swaggerUi.enabled) }}
+  SPRINGDOC_SWAGGER_UI_ENABLED: "true"
+  SPRINGDOC_API_DOCS_ENABLED: "true"
+{{- else }}
+  SPRINGDOC_SWAGGER_UI_ENABLED: "false"
+  SPRINGDOC_API_DOCS_ENABLED: "false"
+{{- end }}
+{{- end }}

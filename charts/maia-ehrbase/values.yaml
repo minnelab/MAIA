@@ -1,0 +1,103 @@
+# Default release-wide overrides
+nameOverride: ""
+fullnameOverride: ""
+
+# Production: set strong passwords. Database roles are stored in the Secret
+# <namespace>-ehrbase-db (see templates/secret-ehrbase-db.yaml).
+
+ehrbase:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ehrbase/ehrbase
+    tag: next
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  ingress:
+    enabled: false
+    # networking.k8s.io/v1; set for IngressClass (e.g. nginx, traefik)
+    className: ""
+    annotations: {}
+    # Optional per-rule host; omit or leave empty for a single catch-all rule
+    hosts: []
+
+    tls: []
+  # JDBC URL. If empty, uses the in-cluster ehrdb Service (requires ehrdb.enabled).
+  # PostgreSQL roles written to the Secret <namespace>-ehrbase-db.
+  # ehrdb.ehrbase below must stay in sync; both pods read this Secret.
+  db:
+    url: ""
+    user: ehrbase_restricted
+    userAdmin: ehrbase
+    password: ehrbase_restricted
+    passwordAdmin: ehrbase
+  extraEnv: []
+  # Exposes SpringDoc OpenAPI + Swagger UI (paths under server.servlet.contextPath, default /ehrbase/swagger-ui/index.html).
+  swaggerUi:
+    enabled: true
+  # Keys become ConfigMap entries consumed by envFrom (EHRbase application settings)
+  configMap:
+    data: {}
+      #JAVA_TOOL_OPTIONS: "-Djavax.net.ssl.trustStore=/app/truststore/ehrbase-truststore.jks -Djavax.net.ssl.trustStorePassword=changeit"
+
+  # 2. Define the Secret as a volume
+  #extraVolumes:
+  #  - name: truststore-volume
+  #    secret:
+  #      secretName: ehrbase-truststore-secret
+
+  # 3. Mount the volume into the container
+  #extraVolumeMounts:
+  #  - name: truststore-volume
+  #    mountPath: /app/truststore
+  #    readOnly: true
+
+ehrdb:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ehrbase/ehrbase-v2-postgres
+    tag: "16.2"
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  podAnnotations: {}
+  podLabels: {}
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  database:
+    name: ehrbase
+  service:
+    port: 5432
+    annotations: {}
+  postgres:
+    user: postgres
+    password: postgres
+  # Init roles for the EHRbase app DB user. Keep these identical to ehrbase.db.
+  # The ehrdb pod reads <namespace>-ehrbase-db, which is rendered from ehrbase.db.
+  ehrbase:
+    user: ehrbase_restricted
+    userAdmin: ehrbase
+    password: ehrbase_restricted
+    passwordAdmin: ehrbase
+  livenessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - postgres
+    failureThreshold: 12
+    periodSeconds: 5
+    timeoutSeconds: 5
+  storageClassName: ""

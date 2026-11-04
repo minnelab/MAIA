@@ -1,0 +1,6 @@
+apiVersion: v2
+name: maia-ehrbase
+description: EHRbase application with PostgreSQL (ehrdb) and optional Keycloak for OAuth development.
+type: application
+version: 0.1.0
+appVersion: "next"

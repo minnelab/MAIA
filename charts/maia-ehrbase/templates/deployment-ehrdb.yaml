@@ -1,0 +1,105 @@
+{{- if .Values.ehrdb.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ehrbase.ehrdb.name" . }}
+  labels:
+    {{- include "ehrbase.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ehrdb
+spec:
+  replicas: {{ .Values.ehrdb.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ehrbase.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ehrdb
+  template:
+    metadata:
+      {{- with .Values.ehrdb.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ehrbase.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ehrdb
+        {{- with .Values.ehrdb.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.ehrdb.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      containers:
+        - name: ehrdb
+          image: "{{ .Values.ehrdb.image.repository }}:{{ .Values.ehrdb.image.tag }}"
+          imagePullPolicy: {{ .Values.ehrdb.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.ehrdb.service.port }}
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.ehrdb.postgres.user | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.ehrdb.postgres.password | quote }}
+            - name: EHRBASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: user
+            - name: EHRBASE_USER_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: userAdmin
+            - name: EHRBASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: password
+            - name: EHRBASE_PASSWORD_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ehrbase.db.secretName" . }}
+                  key: passwordAdmin
+          {{- with .Values.ehrdb.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.ehrdb.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: ehrdb-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: ehrdb-data
+          persistentVolumeClaim:
+            claimName: ehrdb-data
+      {{- with .Values.ehrdb.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ehrdb.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ehrdb.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ehrdb-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: {{ .Values.ehrdb.storageClassName }}
+{{- end }}
