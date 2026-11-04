@@ -36,6 +36,7 @@ from MAIA.maia_fn import (
     generate_mysql_configs,
     copy_certificate_authority_secret,
     deploy_kubeflow_project,
+    create_ehrbase_values,
     create_nvflare_dashboard_values,
 )
 from MAIA_scripts.MAIA_create_JupyterHub_config import create_jupyterhub_config_api
@@ -270,6 +271,7 @@ def deploy_maia_toolkit_api(
                 key_name="private.key",
             )
     deploy_kubeflow = os.environ.get("DEPLOY_KUBEFLOW_" + namespace_id, "False") == "True"
+    deploy_ehrbase = os.environ.get("DEPLOY_EHRBASE_" + namespace_id, "False") == "True"
     deploy_nvflare_dashboard = os.environ.get("DEPLOY_NVFLARE_DASHBOARD_" + namespace_id, "False") == "True"
     if deploy_nvflare_dashboard:
         helm_commands.append(
@@ -297,6 +299,14 @@ def deploy_maia_toolkit_api(
                 cluster_config_dict,
                 config_folder,
                 minimal=minimal,
+            )
+        )
+    if deploy_ehrbase:
+        helm_commands.append(
+            create_ehrbase_values(
+                project_form_dict,
+                cluster_config_dict,
+                config_folder,
             )
         )
     helm_commands.append(
@@ -443,6 +453,8 @@ def deploy_maia_toolkit_api(
         values["sourceRepos"].append("https://hub.jupyter.org/helm-chart/")
     if deploy_nvflare_dashboard:
         values["defaults"].append({"maia_nvflare_dashboard_values": "maia_nvflare_dashboard_values"})
+    if deploy_ehrbase:
+        values["defaults"].append({"maia_ehrbase_values": "maia_ehrbase_values"})
     if private_maia_registry:
         values["sourceRepos"].append(private_maia_registry)
     if not minimal:

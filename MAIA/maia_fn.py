@@ -36,6 +36,8 @@ maia_orthanc_chart_version = define_maia_project_versions()["maia-orthanc-chart_
 maia_orthanc_chart_type = define_maia_project_versions()["maia-orthanc-chart_type"]
 maia_namespace_chart_version = define_maia_project_versions()["maia_namespace_chart_version"]
 maia_namespace_chart_type = define_maia_project_versions()["maia_namespace_chart_type"]
+maia_ehrbase_chart_version = define_maia_project_versions()["maia_ehrbase_chart_version"]
+maia_ehrbase_chart_type = define_maia_project_versions()["maia_ehrbase_chart_type"]
 maia_filebrowser_image_version = define_docker_image_versions()["maia-filebrowser"]
 maia_filebrowser_chart_version = define_maia_project_versions()["maia_filebrowser_chart_version"]
 maia_filebrowser_chart_type = define_maia_project_versions()["maia_filebrowser_chart_type"]
@@ -1382,6 +1384,352 @@ def get_mysql_config_if_exists(project_id):
                     mlflow_configs["mysql_password"] = env.value
 
     return mlflow_configs
+
+
+_EHRBASE_DB_SECRET_KEYS = {
+    "user": "user",
+    "userAdmin": "userAdmin",
+    "password": "password",
+    "passwordAdmin": "passwordAdmin",
+    "DB_USER": "user",
+    "DB_USER_ADMIN": "userAdmin",
+    "DB_PASS": "password",
+    "DB_PASS_ADMIN": "passwordAdmin",
+    "EHRBASE_USER": "user",
+    "EHRBASE_USER_ADMIN": "userAdmin",
+    "EHRBASE_PASSWORD": "password",
+    "EHRBASE_PASSWORD_ADMIN": "passwordAdmin",
+}
+
+_EHRBASE_DB_OVERRIDE_KEYS = {
+    "ehrbase_db_user": "user",
+    "ehrbase.db.user": "user",
+    "ehrbase_db_user_admin": "userAdmin",
+    "ehrbase.db.userAdmin": "userAdmin",
+    "ehrbase_db_password": "password",
+    "ehrbase.db.password": "password",
+    "ehrbase_db_password_admin": "passwordAdmin",
+    "ehrbase.db.passwordAdmin": "passwordAdmin",
+}
+
+
+def ehrbase_db_secret_name(namespace):
+    """
+    Name of the EHRbase database Secret created by charts/maia-ehrbase.
+
+    Matches the ``ehrbase.db.secretName`` helper: ``<namespace>-ehrbase-db``,
+    truncated to 63 characters with one trailing hyphen removed.
+    """
+    return f"{namespace}-ehrbase-db"[:63].removesuffix("-")
+
+
+def get_ehrbase_config_if_exists(project_id):
+    """
+    Retrieve EHRbase database credentials from the cluster if they already exist.
+
+    The chart Secret ``<namespace>-ehrbase-db`` is read first. Deployments that
+    still carry the credentials as plain environment variables fill any keys
+    that Secret does not have.
+
+    Parameters
+    ----------
+    project_id : str
+        Project or namespace id used to locate the Kubernetes namespace.
+
+    Returns
+    -------
+    dict
+        Credentials with keys ``user``, ``userAdmin``, ``password``, and
+        ``passwordAdmin`` when they are present. Missing credentials are omitted.
+    """
+    if "KUBECONFIG_LOCAL" not in os.environ:
+        try:
+            os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+        except KeyError:
+            return {}
+    kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
+    config.load_kube_config_from_dict(kubeconfig)
+
+    namespace = project_id.lower().replace("_", "-")
+    v1 = client.CoreV1Api()
+    ehrbase_configs = {}
+    try:
+        secret = v1.read_namespaced_secret(name=ehrbase_db_secret_name(namespace), namespace=namespace)
+    except client.exceptions.ApiException as e:
+        if e.status == 404:
+            secret = None
+        elif e.status == 401 or e.status == 403:
+            logger.error(f"Error reading EHRbase database secret: {e}")
+            return ehrbase_configs
+        else:
+            raise e
+
+    if secret is not None and secret.data:
+        for item, raw_value in secret.data.items():
+            if item not in _EHRBASE_DB_SECRET_KEYS:
+                continue
+            try:
+                decoded_value = base64.b64decode(raw_value).decode("ascii")
+            except (ValueError, UnicodeDecodeError):
+                continue
+            if decoded_value:
+                ehrbase_configs[_EHRBASE_DB_SECRET_KEYS[item]] = decoded_value
+
+    try:
+        deployments = client.AppsV1Api().list_namespaced_deployment(namespace=namespace)
+    except client.exceptions.ApiException as e:
+        if e.status == 404 or e.status == 401 or e.status == 403:
+            logger.error(f"Error listing namespaced deployments: {e}")
+            return ehrbase_configs
+        else:
+            raise e
+
+    containers = []
+    for deployment in deployments.items:
+        deployment_name = deployment.metadata.name or ""
+        if "ehrbase" not in deployment_name and "ehrdb" not in deployment_name:
+            continue
+        for container in deployment.spec.template.spec.containers or []:
+            containers.append(container)
+    containers.sort(key=lambda container: 0 if container.name == "ehrbase" else 1)
+
+    for container in containers:
+        for env in container.env or []:
+            if env.name not in _EHRBASE_DB_SECRET_KEYS or not env.value:
+                continue
+            ehrbase_configs.setdefault(_EHRBASE_DB_SECRET_KEYS[env.name], env.value)
+
+    return ehrbase_configs
+
+
+def ehrbase_env_configmap_name(namespace):
+    """
+    Name of the EHRbase env ConfigMap created by charts/maia-ehrbase.
+
+    The release name contains the chart name, so the fullname is the release
+    name and the ConfigMap is ``<namespace>-ehrbase-env-ehrbase``.
+    """
+    return f"{namespace}-ehrbase-env-ehrbase"[:63].removesuffix("-")
+
+
+def get_ehrbase_env_config_if_exists(project_id):
+    """
+    Retrieve EHRbase application settings from the env ConfigMap if it exists.
+
+    Parameters
+    ----------
+    project_id : str
+        Project or namespace id used to locate the Kubernetes namespace.
+
+    Returns
+    -------
+    dict
+        ConfigMap data. Empty when the ConfigMap is missing or cannot be read.
+    """
+    if "KUBECONFIG_LOCAL" not in os.environ:
+        try:
+            os.environ["KUBECONFIG_LOCAL"] = os.environ["KUBECONFIG"]
+        except KeyError:
+            return {}
+    kubeconfig = yaml.safe_load(Path(os.environ["KUBECONFIG_LOCAL"]).read_text())
+    config.load_kube_config_from_dict(kubeconfig)
+
+    namespace = project_id.lower().replace("_", "-")
+    v1 = client.CoreV1Api()
+    try:
+        configmap = v1.read_namespaced_config_map(name=ehrbase_env_configmap_name(namespace), namespace=namespace)
+    except client.exceptions.ApiException as e:
+        if e.status == 404:
+            return {}
+        if e.status == 401 or e.status == 403:
+            logger.error(f"Error reading EHRbase env ConfigMap: {e}")
+            return {}
+        else:
+            raise e
+    return dict(configmap.data or {})
+
+
+def _resolve_ehrbase_db_setting(existing_configs, key, env_names, default):
+    """
+    Resolve one EHRbase database setting.
+
+    Existing cluster credentials win, then the first set environment variable,
+    then ``default``. A callable default is invoked only when it is needed.
+    """
+    if existing_configs.get(key):
+        return existing_configs[key]
+    for env_name in env_names:
+        value = os.environ.get(env_name)
+        if value:
+            return value
+    return default() if callable(default) else default
+
+
+def create_ehrbase_values(namespace_config, cluster_config, config_folder, project_config_dict=None):
+    """
+    Create EHRBase configuration dictionary.
+
+    Database users and passwords are shared by ``ehrbase.db`` and ``ehrdb.ehrbase``.
+    Existing values are read from the Secret ``<namespace>-ehrbase-db``. Otherwise each value is read from
+    ``EHRBASE_DB_USER``, ``EHRBASE_DB_USER_ADMIN``, ``EHRBASE_DB_PASSWORD``, and
+    ``EHRBASE_DB_PASSWORD_ADMIN`` (optionally suffixed with ``_<namespace>``).
+    Passwords that are still unset are generated. Usernames fall back to the chart
+    defaults ``ehrbase_restricted`` and ``ehrbase``.
+
+    ``ehrbase.configMap.data`` follows charts/maia-ehrbase/values.yaml. Basic-auth
+    passwords are reused from the env ConfigMap, then from ``EHRBASE_SECURITY_AUTHPASSWORD``
+    and ``EHRBASE_SECURITY_AUTHADMINPASSWORD``, and otherwise generated.
+    """
+
+    maia_ehrbase_values = {
+        "chart_version": maia_ehrbase_chart_version,
+        "chart_type": maia_ehrbase_chart_type,
+    }
+    namespace_id = namespace_config["group_ID"].lower().replace("_", "-")
+    existing_ehrbase_configs = get_ehrbase_config_if_exists(namespace_id)
+    db_credentials = {
+        "user": _resolve_ehrbase_db_setting(
+            existing_ehrbase_configs,
+            "user",
+            [f"EHRBASE_DB_USER_{namespace_id}", "EHRBASE_DB_USER"],
+            "ehrbase_restricted",
+        ),
+        "userAdmin": _resolve_ehrbase_db_setting(
+            existing_ehrbase_configs,
+            "userAdmin",
+            [f"EHRBASE_DB_USER_ADMIN_{namespace_id}", "EHRBASE_DB_USER_ADMIN"],
+            "ehrbase",
+        ),
+        "password": _resolve_ehrbase_db_setting(
+            existing_ehrbase_configs,
+            "password",
+            [f"EHRBASE_DB_PASSWORD_{namespace_id}", "EHRBASE_DB_PASSWORD"],
+            lambda: generate_random_password(16),
+        ),
+        "passwordAdmin": _resolve_ehrbase_db_setting(
+            existing_ehrbase_configs,
+            "passwordAdmin",
+            [f"EHRBASE_DB_PASSWORD_ADMIN_{namespace_id}", "EHRBASE_DB_PASSWORD_ADMIN"],
+            lambda: generate_random_password(16),
+        ),
+    }
+    if project_config_dict:
+        for key, value in project_config_dict.items():
+            if key in _EHRBASE_DB_OVERRIDE_KEYS and value:
+                db_credentials[_EHRBASE_DB_OVERRIDE_KEYS[key]] = value
+
+    existing_env_config = get_ehrbase_env_config_if_exists(namespace_id)
+    keycloak_domain = os.environ.get("KEYCLOAK_DOMAIN", cluster_config["domain"])
+    realm_name = os.environ.get("KEYCLOAK_REALM_NAME", "maia")
+    config_map_data = {
+        "MANAGEMENT_ENDPOINT_ENV_ACCESS": "read_only",
+        "MANAGEMENT_ENDPOINT_HEALTH_ACCESS": "read_only",
+        "MANAGEMENT_ENDPOINT_HEALTH_DATASOURCE_ACCESS": "read_only",
+        "MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED": "false",
+        "MANAGEMENT_ENDPOINT_INFO_ACCESS": "read_only",
+        "MANAGEMENT_ENDPOINT_METRICS_ACCESS": "read_only",
+        "MANAGEMENT_ENDPOINT_PROMETHEUS_ACCESS": "read_only",
+        "MANAGEMENT_ENDPOINTS_WEB_BASEPATH": "/management",
+        "MANAGEMENT_ENDPOINTS_WEB_EXPOSURE": "env,health,info,metrics,prometheus",
+        "SECURITY_AUTHADMINUSER": _resolve_ehrbase_db_setting(
+            existing_env_config,
+            "SECURITY_AUTHADMINUSER",
+            [f"EHRBASE_SECURITY_AUTHADMINUSER_{namespace_id}", "EHRBASE_SECURITY_AUTHADMINUSER"],
+            "ehrbase-admin",
+        ),
+        "SECURITY_AUTHADMINPASSWORD": _resolve_ehrbase_db_setting(
+            existing_env_config,
+            "SECURITY_AUTHADMINPASSWORD",
+            [f"EHRBASE_SECURITY_AUTHADMINPASSWORD_{namespace_id}", "EHRBASE_SECURITY_AUTHADMINPASSWORD"],
+            lambda: generate_random_password(16),
+        ),
+        "SECURITY_AUTHUSER": _resolve_ehrbase_db_setting(
+            existing_env_config,
+            "SECURITY_AUTHUSER",
+            [f"EHRBASE_SECURITY_AUTHUSER_{namespace_id}", "EHRBASE_SECURITY_AUTHUSER"],
+            "ehrbase-user",
+        ),
+        "SECURITY_AUTHPASSWORD": _resolve_ehrbase_db_setting(
+            existing_env_config,
+            "SECURITY_AUTHPASSWORD",
+            [f"EHRBASE_SECURITY_AUTHPASSWORD_{namespace_id}", "EHRBASE_SECURITY_AUTHPASSWORD"],
+            lambda: generate_random_password(16),
+        ),
+        "SECURITY_OAUTH2ADMINROLE": "ADMIN",
+        "SECURITY_OAUTH2USERROLE": "USER",
+        "SERVER_NODENAME": cluster_config["domain"],
+        "SECURITY_AUTHTYPE": "OAUTH",
+        "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI": f"https://iam.{keycloak_domain}/realms/{realm_name}",
+        "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI": (
+            "http://maia-admin-keycloak.keycloak.svc.cluster.local:80"
+            f"/realms/{realm_name}/protocol/openid-connect/certs"
+        ),
+    }
+
+    maia_ehrbase_values["ehrbase"] = {
+        "db": dict(db_credentials),
+        "configMap": {"data": config_map_data},
+        "ingress": {
+            "enabled": True,
+            "annotations": {},
+            "hosts": [
+                {
+                    "host": f"{namespace_id}.ehrbase.{cluster_config['domain']}",
+                    "paths": [{"path": "/", "pathType": "Prefix"}],
+                }
+            ],
+            "tls": [{"hosts": [f"{namespace_id}.ehrbase.{cluster_config['domain']}"]}],
+        },
+    }
+    maia_ehrbase_values["ehrdb"] = {"ehrbase": dict(db_credentials)}
+
+    if "nginx_cluster_issuer" in cluster_config:
+        maia_ehrbase_values["ehrbase"]["ingress"]["annotations"]["cert-manager.io/cluster-issuer"] = cluster_config[
+            "nginx_cluster_issuer"
+        ]
+        maia_ehrbase_values["ehrbase"]["ingress"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"] = "10g"
+        maia_ehrbase_values["ehrbase"]["ingress"]["tls"][0]["secretName"] = f"{namespace_id}-ehrbase-tls"
+    if "traefik_resolver" in cluster_config:
+        maia_ehrbase_values["ehrbase"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
+        maia_ehrbase_values["ehrbase"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
+        if "selfsigned" in cluster_config and cluster_config["selfsigned"]:
+            ...
+        else:
+            maia_ehrbase_values["ehrbase"]["ingress"]["annotations"][
+                "traefik.ingress.kubernetes.io/router.tls.certresolver"
+            ] = cluster_config["traefik_resolver"]
+
+    if maia_ehrbase_chart_type == "helm_repo":
+        maia_ehrbase_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://minnelab.github.io/MAIA/")
+        maia_ehrbase_values["chart_name"] = "maia-ehrbase"
+    else:
+        maia_ehrbase_values["repo_url"] = os.environ.get("MAIA_PRIVATE_REGISTRY", "https://github.com/minnelab/MAIA.git")
+        maia_ehrbase_values["path"] = "charts/maia-ehrbase"
+    
+    Path(config_folder).joinpath(namespace_config["group_ID"], "maia_ehrbase_values").mkdir(parents=True, exist_ok=True)
+    with open(
+        Path(config_folder).joinpath(
+            namespace_config["group_ID"], "maia_ehrbase_values", "maia_ehrbase_values.yaml"
+        ),
+        "w",
+    ) as f:
+        f.write(OmegaConf.to_yaml(maia_ehrbase_values))
+    
+    ehrbase_configs = {
+        "namespace": namespace_id,
+        "release": f"{namespace_id}-ehrbase",
+        "chart": (
+            maia_ehrbase_values["chart_name"]
+            if maia_ehrbase_chart_type == "helm_repo"
+            else maia_ehrbase_values["path"]
+        ),
+        "repo": maia_ehrbase_values["repo_url"],
+        "version": maia_ehrbase_values["chart_version"],
+        "values": str(
+            Path(config_folder).joinpath(namespace_config["group_ID"], "maia_ehrbase_values", "maia_ehrbase_values.yaml")
+        ),
+    }
+    return ehrbase_configs
 
 
 def get_orthanc_config_if_exists(project_id):
