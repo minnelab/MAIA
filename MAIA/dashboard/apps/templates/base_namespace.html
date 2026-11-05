@@ -306,6 +306,19 @@
             {% if maia_workspace_ingress.xnat != "N/A" %}</a>{% else %}</div>{% endif %}
           </div>
 
+          <!-- EHRbase -->
+          {% if maia_workspace_ingress.ehrbase != "N/A" %}
+          <div class="col">
+            <a href="{{ maia_workspace_ingress.ehrbase }}" target="_blank" class="app-card app-active">
+              <div class="app-icon-wrap">
+                <img src="{{ ASSETS_ROOT }}/img/MAIA/ehrbase_logo.png" alt="EHRbase">
+              </div>
+              <div class="app-name">EHRBase</div>
+              <span class="app-badge app-badge-active">Active</span>
+            </a>
+          </div>
+          {% endif %}
+
           <!-- Guacamole -->
           <div class="col">
             {% if maia_workspace_ingress.guacamole != "N/A" %}

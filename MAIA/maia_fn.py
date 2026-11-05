@@ -1674,11 +1674,11 @@ def create_ehrbase_values(namespace_config, cluster_config, config_folder, proje
             "annotations": {},
             "hosts": [
                 {
-                    "host": f"{namespace_id}.ehrbase.{cluster_config['domain']}",
+                    "host": f"ehrbase.{namespace_id}.{cluster_config['domain']}",
                     "paths": [{"path": "/", "pathType": "Prefix"}],
                 }
             ],
-            "tls": [{"hosts": [f"{namespace_id}.ehrbase.{cluster_config['domain']}"]}],
+            "tls": [{"hosts": [f"ehrbase.{namespace_id}.{cluster_config['domain']}"]}],
         },
     }
     maia_ehrbase_values["ehrdb"] = {"ehrbase": dict(db_credentials)}
