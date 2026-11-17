@@ -107,7 +107,7 @@
 
 - name: Install Kyverno via Helm
   ansible.builtin.command: >
-    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace --values "{{ config_folder }}/kyverno-values.yaml"
+    helm upgrade --install kyverno kyverno/kyverno -n kyverno --create-namespace --values "{{ config_folder }}/kyverno-values.yaml --version {{ kyverno_version }}"
   register: kyverno_helm_install
   # Do not fail if already installed
   failed_when: kyverno_helm_install.rc != 0 and 'cannot re-use a name that is still in use' not in (kyverno_helm_install.stderr | default(''))
