@@ -1290,7 +1290,14 @@ def create_minio_operator_values(config_folder, project_id, cluster_config_dict)
     if "proxy_ip" in cluster_config_dict and cluster_config_dict["proxy_ip"] != "":
         minio_operator_values.update(
             {
-                "operator": {"image": {"repository": "maiacloudai/minio-operator"}},
+                "operator": {
+                    "image": {"repository": "maiacloudai/minio-operator"},
+                    "sidecarImage": {
+                        "repository": "maiacloudai/operator-sidecar",
+                        "tag": "v6.0.2",
+                        "pullPolicy": "IfNotPresent",
+                    },
+                },
             }
         )
 
