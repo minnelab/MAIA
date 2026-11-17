@@ -119,6 +119,19 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
+- name: Wait until all Kyverno pods are ready
+  ansible.builtin.command: >
+    {{ kubernetes_kubectl_cmd }} -n kyverno wait --for=condition=Ready pod --all --timeout=300s
+  register: kyverno_pods_ready
+  changed_when: false
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  retries: 10
+  delay: 10
+  until: kyverno_pods_ready.rc == 0
+  when: (install_kyverno | default(false) | bool)
+
 - name: Apply ClusterPolicy to inject proxy environment variables (Kyverno)
   ansible.builtin.blockinfile:
     path: "{{ config_folder }}/kyverno-proxy-policy.yaml"
