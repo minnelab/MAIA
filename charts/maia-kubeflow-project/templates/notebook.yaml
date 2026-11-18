@@ -18,6 +18,7 @@ spec:
   volumes:
     - name: volume-kf-pipeline-token
       projected:
+        defaultMode: 0440
         sources:
           - serviceAccountToken:
               path: token
