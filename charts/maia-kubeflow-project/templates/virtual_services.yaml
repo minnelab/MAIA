@@ -9,9 +9,72 @@ spec:
   hosts:
     - '*'
   http:
+    # Decode Kubeflow /_/ double-encoded metric hashes (%2522) then redirect.
+    - match:
+        - uri:
+            exact: /_/{{ .Values.namespace }}-mlflow/
+        - uri:
+            exact: /_/{{ .Values.namespace }}-mlflow
+      headers:
+        response:
+          set:
+            content-type: text/html; charset=utf-8
+          remove:
+            - x-frame-options
+            - content-security-policy
+      directResponse:
+        status: 200
+        body:
+          string: |
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="utf-8"><title>MLflow</title></head>
+            <body>
+            <script>
+            (function () {
+              var base = "/{{ .Values.namespace }}-mlflow/";
+              var hash = window.location.hash || "";
+              try {
+                var i = 0, prev;
+                while (i < 3) {
+                  prev = hash;
+                  hash = decodeURIComponent(hash);
+                  if (hash === prev) break;
+                  i++;
+                }
+              } catch (e) {}
+              if (hash && hash.charAt(0) !== "#") hash = "#" + hash;
+              window.location.replace(base + window.location.search + hash);
+            })();
+            </script>
+            <p>Redirecting to MLflow&hellip;</p>
+            </body>
+            </html>
+    - match:
+        - uri:
+            prefix: /_/{{ .Values.namespace }}-mlflow/
+      rewrite:
+        uri: /{{ .Values.namespace }}-mlflow/
+      headers:
+        response:
+          remove:
+            - x-frame-options
+            - content-security-policy
+      route:
+        - destination:
+            host: {{ .Values.namespace }}-mlflow-mkg.{{ .Values.namespace }}.svc.cluster.local
+            port:
+              number: 80
     - match:
         - uri:
             prefix: /{{ .Values.namespace }}-mlflow/
+        - uri:
+            exact: /{{ .Values.namespace }}-mlflow
+      headers:
+        response:
+          remove:
+            - x-frame-options
+            - content-security-policy
       route:
         - destination:
             host: {{ .Values.namespace }}-mlflow-mkg.{{ .Values.namespace }}.svc.cluster.local
