@@ -18,9 +18,6 @@ spec:
   volumes:
     - name: volume-kf-pipeline-token
       projected:
-        # 0444: notebook entrypoint (sudo/supervisord) drops fsGroup supplementary
-        # groups, so 0440 root:fsGroup is unreadable by jupyter/SSH as ubuntu.
-        defaultMode: 0444
         sources:
           - serviceAccountToken:
               path: token
