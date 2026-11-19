@@ -36,7 +36,7 @@ metadata:
     app: {{ .Values.user_id }}
     hub.jupyter.org/username: {{ .Values.user_id }}
     {{- if .Values.resourceClaim }}
-      maia.scilifelab.se/resource-claim: {{ .Values.resourceClaim }}
+    maia.scilifelab.se/resource-claim: {{ .Values.resourceClaim }}
     {{- end }}
   name: {{ .Values.user_id }}
   namespace: {{ .Values.namespace }}
