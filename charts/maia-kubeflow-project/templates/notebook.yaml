@@ -7,11 +7,8 @@ metadata:
 spec:
   desc: Allow access to Kubeflow Pipelines
   selector:
-    matchExpressions:
-        - key: app
-          operator: In
-          values:
-            - {{ .Values.user_id }}
+    matchLabels:
+      app: {{ .Values.user_id }}
   env:
   - name: KF_PIPELINES_SA_TOKEN_PATH
     value: /var/run/secrets/kubeflow/pipelines/token
@@ -38,6 +35,9 @@ metadata:
   labels:
     app: {{ .Values.user_id }}
     hub.jupyter.org/username: {{ .Values.user_id }}
+    {{- if .Values.resourceClaim }}
+      maia.scilifelab.se/resource-claim: {{ .Values.resourceClaim }}
+    {{- end }}
   name: {{ .Values.user_id }}
   namespace: {{ .Values.namespace }}
 spec:
