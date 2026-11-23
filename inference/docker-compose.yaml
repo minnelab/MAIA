@@ -1,0 +1,84 @@
+name: maia-inference
+
+services:
+  orthanc:
+    image: orthancteam/orthanc:${ORTHANC_TAG:-latest}
+    container_name: orthanc
+    restart: unless-stopped
+    ports:
+      - "${ORTHANC_HTTP_PORT:-8042}:8042"   # REST API / Orthanc Explorer 2 / DICOMweb
+      - "${ORTHANC_DICOM_PORT:-4242}:4242"  # DICOM (C-STORE, C-FIND, ...)
+    environment:
+      ORTHANC__NAME: "MAIA-Inference-Orthanc"
+      ORTHANC__DICOM_AET: "${ORTHANC_AET:-ORTHANC}"
+      ORTHANC__AUTHENTICATION_ENABLED: "true"
+      ORTHANC__REGISTERED_USERS: |
+        {"${ORTHANC_USER:-orthanc}": "${ORTHANC_PASSWORD:-orthanc}"}
+      ORTHANC__DICOM_WEB__ENABLE: "true"
+      ORTHANC__DICOM_WEB__ROOT: "/dicom-web/"
+      ORTHANC__ORTHANC_EXPLORER_2__ENABLE: "true"
+      ORTHANC__STONE_WEB_VIEWER__ENABLE: "true"
+      ORTHANC__STORAGE_DIRECTORY: "/var/lib/orthanc/db"
+      VERBOSE_ENABLED: "true"
+    volumes:
+      - orthanc-db:/var/lib/orthanc/db
+    networks:
+      - inference
+
+  # One-shot job: downloads the 3D Slicer "MRHead" sample, converts it to DICOM
+  # and uploads it to Orthanc. Skips itself if the sample is already stored.
+  orthanc-init:
+    build: ./init
+    container_name: orthanc-init
+    restart: "no"
+    depends_on:
+      - orthanc
+    environment:
+      ORTHANC_URL: "http://orthanc:8042"
+      ORTHANC_USER: "${ORTHANC_USER:-orthanc}"
+      ORTHANC_PASSWORD: "${ORTHANC_PASSWORD:-orthanc}"
+    networks:
+      - inference
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:${TRITON_TAG:-25.01-py3}
+    container_name: triton
+    restart: unless-stopped
+    command:
+      - tritonserver
+      - --model-repository=/models
+      - --model-control-mode=poll
+      - --repository-poll-secs=30
+      - --log-verbose=0
+    ports:
+      - "${TRITON_HTTP_PORT:-8000}:8000"       # HTTP/REST (KServe v2)
+      - "${TRITON_GRPC_PORT:-8001}:8001"       # gRPC
+      - "${TRITON_METRICS_PORT:-8002}:8002"    # Prometheus metrics
+    shm_size: "1g"
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    volumes:
+      - ./model_repository:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/v2/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - inference
+
+volumes:
+  orthanc-db:
+
+networks:
+  inference:
+    driver: bridge
