@@ -40,10 +40,30 @@ services:
     networks:
       - inference
 
+  # One-shot job: downloads TorchScript model weights into ./model_repository
+  # (mirrors the init containers of the kar-app-maia Helm chart).
+  triton-init:
+    image: curlimages/curl:8.11.1
+    container_name: triton-init
+    restart: "no"
+    user: "${UID:-1000}:${GID:-1000}"
+    entrypoint: ["/bin/sh", "/download_models.sh"]
+    environment:
+      MODELS: >-
+        brats-met-t1c=https://github.com/minnelab/MAIA/releases/download/MAIA-Segmentation-Portal-Models/BraTS-MET_T1C.ts
+    volumes:
+      - ./init/download_models.sh:/download_models.sh:ro
+      - ./model_repository:/models
+    networks:
+      - inference
+
   triton:
     image: nvcr.io/nvidia/tritonserver:${TRITON_TAG:-25.01-py3}
     container_name: triton
     restart: unless-stopped
+    depends_on:
+      triton-init:
+        condition: service_completed_successfully
     command:
       - tritonserver
       - --model-repository=/models

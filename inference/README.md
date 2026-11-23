@@ -5,7 +5,10 @@ A minimal Docker Compose stack that runs:
 - **Orthanc**: a DICOM server (PACS) with a REST API, DICOMweb, Orthanc Explorer 2 and the Stone Web Viewer.
 - **NVIDIA Triton Inference Server**: serves models from `./model_repository` over HTTP and gRPC.
 
-A one-shot **`orthanc-init`** job also fills Orthanc with the 3D Slicer **MRHead** sample, so there is data to test with straight away.
+Two one-shot jobs also run on startup:
+
+- **`orthanc-init`** fills Orthanc with the 3D Slicer **MRHead** sample, so there is data to test with straight away.
+- **`triton-init`** downloads the **BraTS-MET T1C** TorchScript segmentation model into the model repository. Triton starts only after this download finishes.
 
 Both services join the same `inference` network, so they can reach each other by service name (`http://orthanc:8042`, `http://triton:8000`).
 
@@ -13,13 +16,17 @@ Both services join the same `inference` network, so they can reach each other by
 inference/
 ├── docker-compose.yaml
 ├── .env.example
-├── init/                    # orthanc-init job (loads the MRHead sample)
-│   ├── Dockerfile
-│   └── populate_orthanc.py
+├── init/
+│   ├── Dockerfile           # orthanc-init image
+│   ├── populate_orthanc.py  # orthanc-init: loads the MRHead sample
+│   └── download_models.sh   # triton-init: downloads TorchScript weights
 └── model_repository/
-    └── identity/            # sample Python-backend model (echoes its input)
+    ├── identity/            # sample Python-backend model (echoes its input)
+    │   ├── config.pbtxt
+    │   └── 1/model.py
+    └── brats-met-t1c/       # BraTS-MET T1C segmentation (TorchScript, GPU)
         ├── config.pbtxt
-        └── 1/model.py
+        └── 1/model.ts       # downloaded by triton-init (git-ignored)
 ```
 
 ## Prerequisites
@@ -27,7 +34,7 @@ inference/
 - Docker Engine with Docker Compose v2 (`docker compose`)
 - For GPU inference: an NVIDIA driver and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
-> **No GPU?** Remove the `deploy:` block from the `triton` service in `docker-compose.yaml`. Triton then runs on CPU only.
+> **No GPU?** Remove the `deploy:` block from the `triton` service in `docker-compose.yaml`. Triton then runs on CPU only. Also change `kind: KIND_GPU` to `KIND_CPU` in `model_repository/brats-met-t1c/config.pbtxt`, or that model fails to load.
 
 ## Quick start
 
@@ -127,6 +134,46 @@ result = client.infer("identity", inputs=[inp])
 print(result.as_numpy("OUTPUT0"))
 ```
 
+### BraTS-MET T1C segmentation model
+
+`brats-met-t1c` is a TorchScript model that segments brain metastases on post-contrast T1 (T1C) MRI. It uses the same configuration as the `kar-app-maia` Helm chart (`charts/kar-app-maia/templates/triton.yaml`).
+
+| | Name | Type | Shape (with batch) |
+|---|---|---|---|
+| Input | `INPUT_0` | FP32 | `[B, 1, 112, 160, 128]` |
+| Output | `OUTPUT_0` | FP32 | `[B, 2, 112, 160, 128]` (2 class channels) |
+
+The model uses dynamic batching with `max_batch_size: 16` and runs on 1 GPU instance.
+
+```python
+import numpy as np
+import tritonclient.http as httpclient
+
+client = httpclient.InferenceServerClient(url="localhost:8000")
+volume = np.random.rand(1, 1, 112, 160, 128).astype(np.float32)  # replace with a preprocessed T1C volume
+
+inp = httpclient.InferInput("INPUT_0", volume.shape, "FP32")
+inp.set_data_from_numpy(volume)
+
+logits = client.infer("brats-met-t1c", inputs=[inp]).as_numpy("OUTPUT_0")
+mask = logits.argmax(axis=1)   # (1, 112, 160, 128) label map
+```
+
+The model expects a T1C volume that has already been preprocessed (resampled and cropped to `112×160×128`, then intensity-normalised) in the same way as during training.
+
+#### Adding more TorchScript models
+
+`triton-init` reads the `MODELS` variable in `docker-compose.yaml`, a space-separated list of `name=url` entries:
+
+```yaml
+    environment:
+      MODELS: >-
+        brats-met-t1c=https://.../BraTS-MET_T1C.ts
+        my-model=https://.../my_model.ts
+```
+
+For each entry it saves the file as `model_repository/<name>/1/model.ts` and skips files that already exist. To force a download again, delete `model.ts`. For each new model, also add a `model_repository/<name>/config.pbtxt`; you can copy the BraTS one and adjust `dims`. Then run `docker compose up -d triton-init triton`.
+
 ### Adding your own models
 
 Put each model in `model_repository/` using Triton's layout:
@@ -175,5 +222,7 @@ You can set any other Orthanc option with an `ORTHANC__<SECTION>__<KEY>` environ
 
 - **Triton exits with `could not select device driver "nvidia"`**: the NVIDIA Container Toolkit is missing. Install it, or remove the `deploy:` block to run on CPU.
 - **A model shows as `UNAVAILABLE`**: run `docker compose logs triton`. The usual causes are a mismatch between `config.pbtxt` and the model file, or a missing version folder.
+- **`brats-met-t1c` fails with a CUDA or out-of-memory error**: the model needs a GPU with enough free memory. Lower `max_batch_size` or `preferred_batch_size` in its `config.pbtxt`.
+- **`triton-init` cannot write to `model_repository/`**: the job runs as `${UID:-1000}:${GID:-1000}`. Set `UID` and `GID` in `.env` to match the user who owns the folder.
 - **`orthanc-init` fails to download**: the job needs internet access to reach `github.com`. You can retry it with `docker compose up orthanc-init`.
 - **Logs**: `docker compose logs -f orthanc` or `docker compose logs -f triton`.

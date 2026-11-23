@@ -1,0 +1,2 @@
+# Model weights are downloaded at startup by the triton-init service
+*.ts

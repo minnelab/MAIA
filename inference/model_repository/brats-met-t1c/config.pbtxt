@@ -1,0 +1,35 @@
+# BraTS-MET T1C segmentation model (TorchScript), same config as the
+# kar-app-maia Helm chart (charts/kar-app-maia/templates/triton.yaml).
+# The weights (1/model.ts) are downloaded by the triton-init service.
+platform: "pytorch_libtorch"
+max_batch_size: 16
+default_model_filename: "model.ts"
+input [
+  {
+    name: "INPUT_0"
+    data_type: TYPE_FP32
+    dims: [ 1, 112, 160, 128 ]
+  }
+]
+output [
+  {
+    name: "OUTPUT_0"
+    data_type: TYPE_FP32
+    dims: [ 2, 112, 160, 128 ]
+  }
+]
+version_policy: { latest: { num_versions: 1 } }
+instance_group [
+  {
+    kind: KIND_GPU
+    count: 1
+  }
+]
+dynamic_batching {
+  preferred_batch_size: [ 4, 8, 16 ]
+  max_queue_delay_microseconds: 1000
+}
+parameters: {
+  key: "DISABLE_OPTIMIZED_EXECUTION"
+  value: { string_value: "true" }
+}
