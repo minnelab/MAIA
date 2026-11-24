@@ -80,6 +80,21 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
 OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
 OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
 
+# Cluster API: run kubectl / helm through the dashboard (/maia/cluster-api/)
+# Disabled by default. When enabled, callers authenticate with CLUSTER_API_TOKEN
+# (Authorization: Bearer <token> or X-Cluster-Api-Token) or as a dashboard superuser.
+CLUSTER_API_ENABLED = env.bool("CLUSTER_API_ENABLED", default=False)
+CLUSTER_API_TOKEN = env("CLUSTER_API_TOKEN", default=None)
+CLUSTER_API_ALLOW_SUPERUSERS = env.bool("CLUSTER_API_ALLOW_SUPERUSERS", default=True)
+CLUSTER_API_ALLOWED_TOOLS = env("CLUSTER_API_ALLOWED_TOOLS", default="kubectl,helm")
+CLUSTER_API_DEFAULT_TIMEOUT = env.float("CLUSTER_API_DEFAULT_TIMEOUT", default=60)
+CLUSTER_API_MAX_TIMEOUT = env.float("CLUSTER_API_MAX_TIMEOUT", default=300)
+CLUSTER_API_MAX_OUTPUT_CHARS = env.int("CLUSTER_API_MAX_OUTPUT_CHARS", default=1_000_000)
+CLUSTER_API_RATE = env("CLUSTER_API_RATE", default="600/hour")
+# Kubeconfig used for the commands. Captured at startup because other views
+# temporarily overwrite os.environ["KUBECONFIG"]; empty = in-cluster service account.
+CLUSTER_API_KUBECONFIG = env("CLUSTER_API_KUBECONFIG", default=os.environ.get("KUBECONFIG", ""))
+
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")
 BACKGROUND_IMAGE_1 = os.getenv("BACKGROUND_IMAGE_1", "MAIA_room_simple.png")
@@ -125,6 +140,7 @@ INSTALLED_APPS = [
     "bootstrap5",
     "apps.gpu_scheduler",
     "apps.agent_api",
+    "apps.cluster_api",
 ]
 
 MIDDLEWARE = [

@@ -2,6 +2,7 @@
 
 [![Article-NPJ Artificial Intelligence](https://img.shields.io/badge/NPJ_Artificial_Intelligence-black)](https://www.nature.com/articles/s44387-025-00042-6)
 [![arXiv](https://img.shields.io/badge/arXiv-2507.19489-b31b1b.svg)](https://arxiv.org/abs/2507.19489)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22876765.svg)](https://doi.org/10.5281/zenodo.22876765)
 
 [![Build](https://github.com/minnelab/MAIA/actions/workflows/build.yaml/badge.svg)](https://github.com/minnelab/MAIA/actions/workflows/build.yaml)
 [![Documentation Status](https://readthedocs.org/projects/maia-toolkit/badge/?version=latest)](https://maia-toolkit.readthedocs.io/en/latest/?badge=latest)
@@ -28,7 +29,7 @@
 ![PyPI](https://img.shields.io/pypi/v/maia-toolkit?logo=pypi)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/minnelab/maia/master/MAIA.png" width="80%" alt='MAIA'>
+  <img src="https://raw.githubusercontent.com/minnelab/maia/master/MAIA/dashboard/apps/maia/static/assets/img/MAIA/MAIA_Logo.png" width="30%" alt='MAIA'>
 </p>
 
 MAIA Toolkit is the main tool for deploying and managing MAIA, a platform for collaborative research in medical AI. 
