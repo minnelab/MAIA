@@ -100,9 +100,12 @@
     k3s_config: {}
   when: not k3s_config_file.stat.exists
 
-- name: Disable traefik
+# MAIA ships its own traefik and local-path (maia-core-local-path). k3s's bundled local-storage uses the same
+# provisioner/ClusterRoleBinding/StorageClass names and is re-applied on every k3s start, which takes RBAC away
+# from MAIA's provisioner after a reboot. Merge with any existing `disable:` entries instead of replacing them.
+- name: Disable bundled traefik and local-storage
   ansible.builtin.set_fact:
-    k3s_config: "{{ k3s_config | combine({'disable': ['traefik']}, recursive=true) }}"
+    k3s_config: "{{ k3s_config | combine({'disable': ((k3s_config.disable | default([])) + ['traefik', 'local-storage']) | unique}) }}"
 
 - name: Write back k3s config.yaml
   ansible.builtin.copy:

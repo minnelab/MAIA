@@ -13,6 +13,8 @@
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
 - name: Get Rancher token
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.shell:
     cmd: |
       curl -s -k -X POST \
@@ -36,9 +38,11 @@
   when: configure_rancher | default(true) | bool
 
 - name: Configure Harbor with OIDC authentication
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.shell:
     cmd: |
-      curl -s -k -X PUT "https://registry.{{ domain }}/api/v2.0/configurations" \
+      curl -sS -f -k -X PUT "https://registry.{{ domain }}/api/v2.0/configurations" \
         -H "Content-Type: application/json" \
         -u "{{ harbor_admin_user }}:{{ harbor_admin_pass }}" \
         -d '{

@@ -1136,11 +1136,10 @@ def generate_minio_configs(namespace, project_config_dict=None):
                 minio_configs["access_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
             if key == "minio_password":
                 minio_configs["secret_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
-
-        if key == "minio_console_access_key":
-            minio_configs["console_access_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
-        if key == "minio_console_secret_key":
-            minio_configs["console_secret_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
+            if key == "minio_console_access_key":
+                minio_configs["console_access_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
+            if key == "minio_console_secret_key":
+                minio_configs["console_secret_key"] = base64.b64encode(value.encode("ascii")).decode("ascii")
 
     return minio_configs
 
@@ -1833,15 +1832,13 @@ def generate_nvflare_dashboard_configs(project_id, project_config_dict=None):
     if "admin_username" in nvflare_dashboard_configs and "admin_password" in nvflare_dashboard_configs:
         return nvflare_dashboard_configs["admin_username"], nvflare_dashboard_configs["admin_password"]
     else:
-        if project_config_dict:
-            for key, value in project_config_dict.items():
-                if key == "nvflare_dashboard_admin_username":
-                    nvflare_dashboard_configs["admin_username"] = value
-                if key == "nvflare_dashboard_admin_password":
-                    nvflare_dashboard_configs["admin_password"] = value
-        else:
-            nvflare_dashboard_configs["admin_username"] = generate_random_password(16)
-            nvflare_dashboard_configs["admin_password"] = generate_random_password(16)
+        project_config_dict = project_config_dict or {}
+        nvflare_dashboard_configs["admin_username"] = project_config_dict.get(
+            "nvflare_dashboard_admin_username", generate_random_password(16)
+        )
+        nvflare_dashboard_configs["admin_password"] = project_config_dict.get(
+            "nvflare_dashboard_admin_password", generate_random_password(16)
+        )
     return nvflare_dashboard_configs["admin_username"], nvflare_dashboard_configs["admin_password"]
 
 
@@ -1969,9 +1966,9 @@ def create_maia_namespace_values(namespace_config, cluster_config, config_folder
             "enabled": True,
             "dockerRegistrySecretName": os.environ["imagePullSecrets_" + namespace],
             "dockerRegistrySecret": encode_docker_registry_secret(
-                os.environ["registry_server" + namespace],
-                os.environ["registry_username" + namespace],
-                os.environ["registry_password" + namespace],
+                os.environ.get("registry_server_" + namespace, os.environ.get("registry_server")),
+                os.environ.get("registry_username_" + namespace, os.environ.get("registry_username")),
+                os.environ.get("registry_password_" + namespace, os.environ.get("registry_password")),
             ),
         }
 

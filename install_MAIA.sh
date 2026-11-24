@@ -322,9 +322,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# No ansible_become_password here: MAIA_Install passes PW to ansible through a private 0600 vars file
 cat <<EOF > $CONFIG_FOLDER/inventory
 [control-plane]
-$hostname ansible_host=127.0.0.1 ansible_connection=local ansible_user=$USER ansible_become_password=$PW ansible_become=true ansible_become_method=sudo
+$hostname ansible_host=127.0.0.1 ansible_connection=local ansible_user=$USER ansible_become=true ansible_become_method=sudo
 EOF
 fi
 

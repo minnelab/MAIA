@@ -107,11 +107,12 @@ async def verify_installed_maia_core_toolkit(project_id, namespace):
 @click.command()
 @click.option("--cluster-config", type=str)
 @click.option("--config-folder", type=str)
-def main(cluster_config, config_folder):
-    install_maia_core_toolkit(cluster_config, config_folder)
+@click.option("--dry-run", is_flag=True)
+def main(cluster_config, config_folder, dry_run):
+    install_maia_core_toolkit(cluster_config, config_folder, dry_run)
 
 
-def install_maia_core_toolkit(cluster_config, config_folder):
+def install_maia_core_toolkit(cluster_config, config_folder, dry_run=False):
     # If MAIA_PRIVATE_REGISTRY is set to an empty string, unset it
     if "MAIA_PRIVATE_REGISTRY" in os.environ and os.environ["MAIA_PRIVATE_REGISTRY"] == "":
         del os.environ["MAIA_PRIVATE_REGISTRY"]
@@ -367,34 +368,60 @@ def install_maia_core_toolkit(cluster_config, config_folder):
             str(Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml")),
         ]
         logger.debug(" ".join(cmd))
-        asyncio.run(
-            install_maia_project(
-                project_id,
-                Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml"),
-                os.environ["argocd_namespace"],
-                project_chart,
-                project_repo=project_repo,
-                project_version=project_version,
-                json_key_path=json_key_path,
+        if not dry_run:
+            asyncio.run(
+                install_maia_project(
+                    project_id,
+                    Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml"),
+                    os.environ["argocd_namespace"],
+                    project_chart,
+                    project_repo=project_repo,
+                    project_version=project_version,
+                    json_key_path=json_key_path,
+                )
             )
-        )
+        else:
+            logger.info("Dry run: Would have installed MAIA Core Toolkit")
+            logger.info(" ".join(cmd))
     else:
         logger.info("Upgrading MAIA Core Toolkit")
 
         project_chart = os.environ["core_project_chart"]
         project_repo = os.environ["core_project_repo"]
         project_version = os.environ["core_project_version"]
-        asyncio.run(
-            install_maia_project(
-                project_id,
-                Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml"),
-                os.environ["argocd_namespace"],
-                project_chart,
-                project_repo=project_repo,
-                project_version=project_version,
-                json_key_path=json_key_path,
+
+        cmd = [
+            "helm",
+            "upgrade",
+            "--install",
+            "--wait",
+            "-n",
+            os.environ["argocd_namespace"],
+            project_id,
+            project_chart,
+            "--repo",
+            project_repo,
+            "--version",
+            project_version,
+            "--values",
+            str(Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml")),
+        ]
+        logger.debug(" ".join(cmd))
+        if not dry_run:
+            asyncio.run(
+                install_maia_project(
+                    project_id,
+                    Path(config_folder).joinpath(project_id, f"{project_id}_values.yaml"),
+                    os.environ["argocd_namespace"],
+                    project_chart,
+                    project_repo=project_repo,
+                    project_version=project_version,
+                    json_key_path=json_key_path,
+                )
             )
-        )
+        else:
+            logger.info("Dry run: Would have upgraded MAIA Core Toolkit")
+            logger.info(" ".join(cmd))
 
     # for app in get_maia_toolkit_apps(project_id, os.environ["ARGOCD_PASSWORD"], os.environ["argocd_host"]):
     #    sync_argocd_app(project_id, app["name"], app["version"], os.environ["argocd_host"], os.environ["ARGOCD_PASSWORD"])

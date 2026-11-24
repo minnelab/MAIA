@@ -74,7 +74,8 @@
   when: auto_sync | bool
 - name: Sync maia-admin-maia-dashboard ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-admin-maia-dashboard
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-admin-maia-dashboard --timeout 600
   register: argocd_sync_maia_dashboard
   changed_when: false
   ignore_errors: true

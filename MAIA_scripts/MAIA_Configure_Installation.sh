@@ -241,6 +241,15 @@ if [ -n "$existing_keycloak_admin_password" ] && [ "$existing_keycloak_admin_pas
 else
   keycloak_admin_password=$(openssl rand -hex 10)
 fi
+
+# Keycloak's Postgres passwords: pinned here because the Bitnami chart otherwise generates new random
+# ones on every render (ArgoCD has no Helm lookup), and a re-sync would lock Keycloak out of its DB.
+for v in keycloak_db_password keycloak_db_postgres_password; do
+  existing=""
+  [ -f "$CONFIG_FOLDER/env.json" ] && existing=$(jq -r --arg k "$v" '.[$k] // empty' "$CONFIG_FOLDER/env.json")
+  if [ -n "$existing" ] && [ "$existing" != "null" ]; then printf -v "$v" '%s' "$existing"
+  else printf -v "$v" '%s' "$(openssl rand -hex 12)"; fi
+done
 export SSH_PORT_TYPE=${SSH_PORT_TYPE:-NodePort}
 export PORT_RANGE_LOWER_BOUND=${PORT_RANGE_LOWER_BOUND:-30000}
 export PORT_RANGE_UPPER_BOUND=${PORT_RANGE_UPPER_BOUND:-31000}
@@ -307,10 +316,12 @@ else
 fi
 
 
-if [ -f "$CONFIG_FOLDER/env.json" ]; then
-  existing_keycloak_client_secret=$(jq -r '.keycloak_client_secret' "$CONFIG_FOLDER/env.json")
-else
-  existing_keycloak_client_secret=""
+if [ -z "${existing_keycloak_client_secret:-}" ]; then
+  if [ -f "$CONFIG_FOLDER/env.json" ]; then
+    existing_keycloak_client_secret=$(jq -r '.keycloak_client_secret' "$CONFIG_FOLDER/env.json")
+  else
+    existing_keycloak_client_secret=""
+  fi
 fi
 
 if [ -n "$existing_keycloak_client_secret" ] && [ "$existing_keycloak_client_secret" != "null" ]; then
@@ -399,6 +410,20 @@ else
   fi
 fi
 
+if [ -z "${openwebui_admin_password:-}" ]; then
+  if [ -f "$CONFIG_FOLDER/env.json" ]; then
+    existing_openwebui_admin_password=$(jq -r '.openwebui_admin_password // empty' "$CONFIG_FOLDER/env.json")
+  else
+    existing_openwebui_admin_password=""
+  fi
+
+  if [ -n "$existing_openwebui_admin_password" ] && [ "$existing_openwebui_admin_password" != "null" ]; then
+    openwebui_admin_password="$existing_openwebui_admin_password"
+  else
+    openwebui_admin_password=$(openssl rand -hex 12)
+  fi
+fi
+
 if [ -f "$CONFIG_FOLDER/env.json" ]; then
   existing_guacamole_username=$(jq -r '.GUACAMOLE_USERNAME // empty' "$CONFIG_FOLDER/env.json")
   existing_guacamole_password=$(jq -r '.GUACAMOLE_PASSWORD // empty' "$CONFIG_FOLDER/env.json")
@@ -437,6 +462,8 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "argocd_bcrypt_password": "$ARGOCD_BCRYPT_PASSWORD",
   "rancher_password": "$rancher_password",
   "keycloak_admin_password": "$keycloak_admin_password",
+  "keycloak_db_password": "$keycloak_db_password",
+  "keycloak_db_postgres_password": "$keycloak_db_postgres_password",
   "rancher_token": "$RANCHER_TOKEN",
   "admin_project_chart": "$ADMIN_PROJECT_CHART",
   "admin_project_repo": "$ADMIN_PROJECT_REPO",
@@ -445,7 +472,8 @@ cat <<EOF > $CONFIG_FOLDER/env.json
   "minio_root_password": "$minio_root_password",
   "mysql_dashboard_password": "$mysql_dashboard_password",
   "mongodb_dashboard_password": "$mongodb_dashboard_password",
-  "admin_email": "$admin_email"
+  "admin_email": "$admin_email",
+  "openwebui_admin_password": "$openwebui_admin_password"
 }
 EOF
 

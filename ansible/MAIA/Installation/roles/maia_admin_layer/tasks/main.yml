@@ -108,6 +108,8 @@
     dashboard_api_secret: "{{ dashboard_api_secret }}"
     mysql_dashboard_password: "{{ mysql_dashboard_password }}"
     keycloak_admin_password: "{{ keycloak_admin_password }}"
+    keycloak_db_password: "{{ keycloak_db_password | default('') }}"
+    keycloak_db_postgres_password: "{{ keycloak_db_postgres_password | default('') }}"
     rancher_token: "{{ rancher_token }}"
     rancher_password: "{{ rancher_password }}"
   register: maia_install_admin_output
@@ -118,6 +120,8 @@
     var: maia_install_admin_output.stdout
 
 - name: Change Keycloak Client Secret
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.command: >
     MAIA_change_keycloak_client_secret --client_secret {{ keycloak_client_secret }} --realm_file {{ config_folder }}/MAIA_realm.json
   delegate_to: localhost
@@ -179,7 +183,8 @@
   when: auto_sync | bool
 - name: Sync maia-admin-rancher ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-admin-rancher
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-admin-rancher --timeout 600
   register: argocd_sync_rancher
   changed_when: false
   ignore_errors: true
@@ -199,7 +204,8 @@
 
 - name: Sync maia-admin-keycloak ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-admin-keycloak
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-admin-keycloak --timeout 600
   register: argocd_sync_keycloak
   changed_when: false
   ignore_errors: true
@@ -229,15 +235,19 @@
   until: keycloak_pod_ready.rc == 0
   when: auto_sync | bool 
 
+# Idempotent, so run on every install_maia_admin (not only on the run that first syncs Keycloak);
+# otherwise a resumed install never gets the MAIA theme or the first-access admin user.
 - name: Download MAIA Keycloak Theme inside Keycloak container
   ansible.builtin.shell: |
     kubectl -n keycloak exec -it maia-admin-keycloak-0 -- sh -c 'curl -f -sSkL -o /opt/bitnami/keycloak/themes/maia-theme.tar.gz https://github.com/minnelab/MAIA/raw/refs/heads/master/keycloak/maia-theme.tar.gz && cd /opt/bitnami/keycloak/themes && tar -xvf maia-theme.tar.gz'
   delegate_to: localhost
-  when: auto_sync | bool and keycloak_synced == false
+  when: auto_sync | bool
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
 
 - name: Run MAIA_configure_keycloak to configure Keycloak
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.command: >
     MAIA_configure_keycloak --server_url "https://iam.{{ domain }}" --client_secret "{{ keycloak_client_secret }}" --admin_email "{{ admin_email }}"
   environment:
@@ -246,12 +256,12 @@
     NO_PROXY: "{{ domain }}"
   register: configure_keycloak_result
   ignore_errors: true
-  when: auto_sync | bool and keycloak_synced == false
+  when: auto_sync | bool
   delegate_to: localhost
 - name: Show output from MAIA_configure_keycloak
   ansible.builtin.debug:
     var: configure_keycloak_result.stdout
-  when: auto_sync | bool and keycloak_synced == false
+  when: auto_sync | bool
 - name: Sync maia-admin-admin-toolkit ArgoCD application
   ansible.builtin.shell: |
     argocd app sync maia-admin-admin-toolkit
@@ -288,7 +298,8 @@
   when: auto_sync | bool
 - name: Sync maia-admin-harbor ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-admin-harbor
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-admin-harbor --timeout 600
   register: argocd_sync_admin_harbor_result
   changed_when: false
   ignore_errors: true
@@ -298,7 +309,8 @@
   when: auto_sync | bool and 'maia-admin-harbor' in maia_admin_argocd_applications
 - name: Sync maia-core-loginapp ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-core-loginapp
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-core-loginapp --timeout 600
   register: argocd_sync_core_loginapp_result
   changed_when: false
   ignore_errors: true
@@ -318,6 +330,8 @@
   until: minio_pod_ready.rc == 0
   when: auto_sync | bool 
 - name: Create bucket 'maia-envs' in MinIO Tenant
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.shell: |
     kubectl -n maia-dashboard exec admin-minio-tenant-pool-0-0 -c minio -- \
       /bin/sh -c 'export MINIO_ROOT_USER="maia-admin"; export MINIO_ROOT_PASSWORD="{{ minio_admin_password }}"; mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc mb --ignore-existing local/maia-envs'
@@ -383,16 +397,41 @@
 
 - name: Sync maia-admin-openwebui ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-admin-openwebui
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-admin-openwebui --timeout 600
   register: argocd_sync_openwebui_result
   changed_when: false
   ignore_errors: true
   delegate_to: localhost
   when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications
 
+- name: Generate OpenWebUI API Key
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
+  ansible.builtin.shell: |
+    MAIA_fetch_openwebui_api_key --url https://chat.{{ domain }} --email {{ admin_email }} --password {{ openwebui_admin_password }}
+  register: openwebui_api_key_result
+  changed_when: false
+  delegate_to: localhost
+  when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications
+
+- name: Save OpenWebUI API Key as variable
+  ansible.builtin.set_fact:
+    openwebui_api_key: "{{ openwebui_api_key_result.stdout | trim }}"
+  when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications and openwebui_api_key_result.rc == 0
+
+- name: Set env.OPENWEBUI_API_KEY in config.yaml
+  ansible.builtin.shell: |
+    yq -i '.env.OPENWEBUI_API_KEY = strenv(OPENWEBUI_API_KEY)' "{{ config_folder }}/config.yaml"
+  environment:
+    OPENWEBUI_API_KEY: "{{ openwebui_api_key }}"
+  delegate_to: localhost
+  when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications and openwebui_api_key is defined and openwebui_api_key | length > 0
+
 - name: Sync maia-admin-guacamole ArgoCD application
   ansible.builtin.shell: |
-    argocd app sync maia-admin-guacamole
+    # --timeout: the CLI watch can hang after the server-side sync has finished
+    argocd app sync maia-admin-guacamole --timeout 600
   register: argocd_sync_guacamole_result
   changed_when: false
   ignore_errors: true

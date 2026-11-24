@@ -406,7 +406,8 @@ class UserManagementAPICreateGroupView(APIView):
         users = validated_data.get("users", None)
         description = validated_data.get("description", None)
         supervisor = validated_data.get("supervisor", None)
-        email_to_username_map = validated_data.get("email_to_username_map", None)
+        email_to_username_map = validated_data.get("email_to_username_map") or {}
+        users = list(users or [])
         auto_deploy = validated_data.get("auto_deploy", False)
         auto_deploy_apps = validated_data.get("auto_deploy_apps", [])
         project_configuration = validated_data.get("project_configuration", {})
@@ -450,7 +451,7 @@ class UserManagementAPICreateGroupView(APIView):
             if not MAIAUser.objects.filter(email=user).exists():
                 username = email_to_username_map.get(user, user)
                 create_user_service(user, username, "", "", f"{namespace},{user_group}")
-        if not MAIAUser.objects.filter(email=supervisor).exists():
+        if supervisor and not MAIAUser.objects.filter(email=supervisor).exists():
             username = email_to_username_map.get(supervisor, supervisor)
             create_user_service(supervisor, username, "", "", f"{namespace},{user_group}")
         if not MAIAUser.objects.filter(email=email).exists():
@@ -519,7 +520,7 @@ class ProjectChartValuesAPIView(APIView):
 
             namespace = validated_data["namespace"]
             email = validated_data["email"]
-            users = validated_data["users"]
+            users = list(validated_data.get("users") or [])
             memory_limit = validated_data["memory_limit"]
             cpu_limit = validated_data["cpu_limit"]
             cpu_request = validated_data["cpu_request"]
@@ -531,9 +532,9 @@ class ProjectChartValuesAPIView(APIView):
             )
             cluster = validated_data["cluster"]
             date = validated_data["date"]
-            supervisor = validated_data["supervisor"]
-            description = validated_data["description"]
-            auto_deploy = validated_data["auto_deploy"]
+            supervisor = validated_data.get("supervisor") or email
+            description = validated_data.get("description") or ""
+            auto_deploy = validated_data.get("auto_deploy", False)
             auto_deploy_apps = (
                 validated_data["auto_deploy_apps"]
                 if "auto_deploy_apps" in validated_data and validated_data["auto_deploy_apps"] is not None
@@ -544,7 +545,8 @@ class ProjectChartValuesAPIView(APIView):
                 if "project_configuration" in validated_data and validated_data["project_configuration"] is not None
                 else None
             )
-            email_to_username_map = validated_data.get("email_to_username_map", {})
+            email_to_username_map = validated_data.get("email_to_username_map") or {}
+            project_configuration = project_configuration or {}
             if request.FILES:
                 env_file = request.FILES["env_file"]
                 if "MINIO_SECURE" in os.environ:
@@ -590,6 +592,12 @@ class ProjectChartValuesAPIView(APIView):
                 create_user_service(supervisor, username, "", "", f"{namespace},{user_group}")
             if supervisor not in users:
                 users = [supervisor] + users
+            if email not in users:
+                if not MAIAUser.objects.filter(email=email).exists():
+                    create_user_service(
+                        email, email_to_username_map.get(email, email), "", "", f"{namespace},{user_group}"
+                    )
+                users.append(email)
             create_group_service(
                 namespace=namespace,
                 gpu=gpu,

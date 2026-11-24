@@ -3,6 +3,15 @@ import os
 MAIA_VERSION = "2.6.0"
 
 
+def _default_git_ref():
+    """Git ref for charts sourced from the MAIA git repo (CHART_TYPE git_repo).
+
+    MAIA_CHART_GIT_REF lets a dev-branch install use that branch's charts in one setting;
+    a per-chart *_CHART_VERSION still wins. Defaults to master (unchanged behaviour).
+    """
+    return os.environ.get("MAIA_CHART_GIT_REF") or "master"
+
+
 def define_maia_core_versions():
 
     if os.environ.get("PROMETHEUS_CHART_VERSION") is not None:
@@ -58,7 +67,7 @@ def define_maia_core_versions():
     if os.environ.get("GPU_BOOKING_CHART_VERSION") is not None:
         gpu_booking_chart_version = os.environ.get("GPU_BOOKING_CHART_VERSION")
     else:
-        gpu_booking_chart_version = "master"  # "1.0.0"
+        gpu_booking_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("GPU_BOOKING_CHART_TYPE") is not None:
         gpu_booking_chart_type = os.environ.get("GPU_BOOKING_CHART_TYPE")
@@ -68,7 +77,7 @@ def define_maia_core_versions():
     if os.environ.get("CORE_TOOLKIT_CHART_VERSION") is not None:
         core_toolkit_chart_version = os.environ.get("CORE_TOOLKIT_CHART_VERSION")
     else:
-        core_toolkit_chart_version = "master"  # "0.2.3"
+        core_toolkit_chart_version = _default_git_ref()  # "0.2.3"
 
     if os.environ.get("CORE_TOOLKIT_CHART_TYPE") is not None:
         core_toolkit_chart_type = os.environ.get("CORE_TOOLKIT_CHART_TYPE")
@@ -78,7 +87,7 @@ def define_maia_core_versions():
     if os.environ.get("LOCAL_PATH_CHART_VERSION") is not None:
         local_path_chart_version = os.environ.get("LOCAL_PATH_CHART_VERSION")
     else:
-        local_path_chart_version = "master"  # "0.1.0"
+        local_path_chart_version = _default_git_ref()  # "0.1.0"
 
     if os.environ.get("LOCAL_PATH_CHART_TYPE") is not None:
         local_path_chart_type = os.environ.get("LOCAL_PATH_CHART_TYPE")
@@ -108,7 +117,7 @@ def define_maia_core_versions():
     if os.environ.get("KUBEFLOW_CHART_VERSION") is not None:
         kubeflow_chart_version = os.environ.get("KUBEFLOW_CHART_VERSION")
     else:
-        kubeflow_chart_version = "master"  # "1.0.0"
+        kubeflow_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("KUBEFLOW_CHART_TYPE") is not None:
         kubeflow_chart_type = os.environ.get("KUBEFLOW_CHART_TYPE")
@@ -161,7 +170,7 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_TOOLKIT_CHART_VERSION") is not None:
         admin_toolkit_chart_version = os.environ.get("ADMIN_TOOLKIT_CHART_VERSION")
     else:
-        admin_toolkit_chart_version = "master"  # "1.3.5"
+        admin_toolkit_chart_version = _default_git_ref()  # "1.3.5"
 
     if os.environ.get("ADMIN_TOOLKIT_CHART_TYPE") is not None:
         admin_toolkit_chart_type = os.environ.get("ADMIN_TOOLKIT_CHART_TYPE")
@@ -171,7 +180,7 @@ def define_maia_admin_versions():
     if os.environ.get("MAIA_DASHBOARD_CHART_VERSION") is not None:
         maia_dashboard_chart_version = os.environ.get("MAIA_DASHBOARD_CHART_VERSION")
     else:
-        maia_dashboard_chart_version = "master"  # "0.2.2"
+        maia_dashboard_chart_version = _default_git_ref()  # "0.2.2"
 
     if os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION") is not None:
         maia_dashboard_image_version = os.environ.get("MAIA_DASHBOARD_IMAGE_VERSION")
@@ -191,7 +200,8 @@ def define_maia_admin_versions():
     if os.environ.get("ADMIN_PROJECT_CHART_VERSION") is not None:
         admin_project_chart_version = os.environ.get("ADMIN_PROJECT_CHART_VERSION")
     else:
-        admin_project_chart_version = "1.3.0"
+        # 1.3.1 adds templates/guacamole_app.yaml; 1.3.0 silently skips Guacamole
+        admin_project_chart_version = "1.3.1"
 
     if os.environ.get("OPENWEBUI_CHART_VERSION") is not None:
         openwebui_chart_version = os.environ.get("OPENWEBUI_CHART_VERSION")
@@ -201,7 +211,7 @@ def define_maia_admin_versions():
     if os.environ.get("GUACAMOLE_CHART_VERSION") is not None:
         guacamole_chart_version = os.environ.get("GUACAMOLE_CHART_VERSION")
     else:
-        guacamole_chart_version = "master"  # "1.0.0"
+        guacamole_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("GUACAMOLE_CHART_TYPE") is not None:
         guacamole_chart_type = os.environ.get("GUACAMOLE_CHART_TYPE")
@@ -230,12 +240,12 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_NAMESPACE_CHART_VERSION") is not None:
         maia_namespace_chart_version = os.environ.get("MAIA_NAMESPACE_CHART_VERSION")
     else:
-        maia_namespace_chart_version = "master"  # "1.7.3"
+        maia_namespace_chart_version = _default_git_ref()  # "1.7.3"
 
     if os.environ.get("MAIA_FILEBROWSER_CHART_VERSION") is not None:
         maia_filebrowser_chart_version = os.environ.get("MAIA_FILEBROWSER_CHART_VERSION")
     else:
-        maia_filebrowser_chart_version = "master"  # "1.0.0"
+        maia_filebrowser_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("MAIA_FILEBROWSER_CHART_TYPE") is not None:
         maia_filebrowser_chart_type = os.environ.get("MAIA_FILEBROWSER_CHART_TYPE")
@@ -255,7 +265,7 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_ORTHANC_CHART_VERSION") is not None:
         maia_orthanc_chart_version = os.environ.get("MAIA_ORTHANC_CHART_VERSION")
     else:
-        maia_orthanc_chart_version = "master"  # "1.1.0"
+        maia_orthanc_chart_version = _default_git_ref()  # "1.1.0"
 
     if os.environ.get("MAIA_ORTHANC_CHART_TYPE") is not None:
         maia_orthanc_chart_type = os.environ.get("MAIA_ORTHANC_CHART_TYPE")
@@ -265,7 +275,7 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_KUBEFLOW_CHART_VERSION") is not None:
         maia_kubeflow_chart_version = os.environ.get("MAIA_KUBEFLOW_CHART_VERSION")
     else:
-        maia_kubeflow_chart_version = "master"  # "1.0.0"
+        maia_kubeflow_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("MAIA_KUBEFLOW_CHART_TYPE") is not None:
         maia_kubeflow_chart_type = os.environ.get("MAIA_KUBEFLOW_CHART_TYPE")
@@ -275,7 +285,7 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_VERSION") is not None:
         maia_nvflare_dashboard_chart_version = os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_VERSION")
     else:
-        maia_nvflare_dashboard_chart_version = "master"  # "1.0.0"
+        maia_nvflare_dashboard_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_TYPE") is not None:
         maia_nvflare_dashboard_chart_type = os.environ.get("MAIA_NVFLARE_DASHBOARD_CHART_TYPE")
@@ -285,7 +295,7 @@ def define_maia_project_versions():
     if os.environ.get("MAIA_EHRBASE_CHART_VERSION") is not None:
         maia_ehrbase_chart_version = os.environ.get("MAIA_EHRBASE_CHART_VERSION")
     else:
-        maia_ehrbase_chart_version = "master"  # "1.0.0"
+        maia_ehrbase_chart_version = _default_git_ref()  # "1.0.0"
 
     if os.environ.get("MAIA_EHRBASE_CHART_TYPE") is not None:
         maia_ehrbase_chart_type = os.environ.get("MAIA_EHRBASE_CHART_TYPE")
@@ -314,7 +324,7 @@ def define_maia_docker_versions():
     if os.environ.get("KANIKO_CHART_VERSION") is not None:
         kaniko_chart_version = os.environ.get("KANIKO_CHART_VERSION")
     else:
-        kaniko_chart_version = "master"  # "1.0.4"
+        kaniko_chart_version = _default_git_ref()  # "1.0.4"
 
     if os.environ.get("KANIKO_CHART_TYPE") is not None:
         kaniko_chart_type = os.environ.get("KANIKO_CHART_TYPE")
@@ -324,7 +334,7 @@ def define_maia_docker_versions():
     if os.environ.get("MKG_CHART_VERSION") is not None:
         mkg_chart_version = os.environ.get("MKG_CHART_VERSION")
     else:
-        mkg_chart_version = "master"
+        mkg_chart_version = _default_git_ref()
 
     if os.environ.get("MKG_CHART_TYPE") is not None:
         mkg_chart_type = os.environ.get("MKG_CHART_TYPE")

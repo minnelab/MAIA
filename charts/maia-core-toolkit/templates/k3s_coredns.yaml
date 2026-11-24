@@ -17,6 +17,16 @@ data:
         {{ .Values.selfsigned.coredns_ip }} {{ .Values.selfsigned.cluster_domain }}
         fallthrough
       }
+      # Any other <name>.<domain> (maia, chat, login, minio, per-project hosts, ...) is served by the
+      # same ingress IP; without this, names missing from the list above return SERVFAIL in-cluster.
+      template IN A {{ .Values.selfsigned.cluster_domain }} {
+        answer "{{ "{{" }} .Name {{ "}}" }} 60 IN A {{ .Values.selfsigned.coredns_ip }}"
+        fallthrough
+      }
+      # No IPv6 for these names: answer AAAA with NOERROR/no data instead of SERVFAIL
+      template IN AAAA {{ .Values.selfsigned.cluster_domain }} {
+        rcode NOERROR
+      }
       forward . /etc/resolv.conf
       cache 30
     }

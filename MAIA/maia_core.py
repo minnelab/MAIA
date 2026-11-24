@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import ipaddress
 from pathlib import Path
 
 import requests
@@ -339,6 +340,10 @@ def create_core_toolkit_values(config_folder, project_id, cluster_config_dict):
         for address in node.status.addresses:
             if address.type == "InternalIP":
                 internal_ips.append(address.address)
+
+    # Dual-stack nodes report an IPv4 and an IPv6 InternalIP; a MetalLB range must not mix families
+    # ("10.0.2.15-fec0::1" has no usable IPs). Prefer IPv4, fall back to whatever exists.
+    internal_ips = [ip for ip in internal_ips if ipaddress.ip_address(ip).version == 4] or internal_ips
 
     if len(internal_ips) == 1:
         internal_ips.append(internal_ips[0])
@@ -1356,6 +1361,7 @@ def create_kubeflow_values(config_folder, project_id, cluster_config_dict):
         "keycloakClientSecret": os.environ["keycloak_client_secret"],
         "cookieSecret": token_urlsafe(16).replace("-", "_"),
         "sslInsecureSkipVerify": False,
+        "clusterAdminUser": os.environ["admin_email"],
         "ingress": {
             "enabled": True,
             "className": cluster_config_dict["ingress_class"],

@@ -12,6 +12,8 @@ import MAIA
 import json
 import yaml
 import tempfile
+import atexit
+import shutil
 from loguru import logger
 
 version = MAIA.__version__
@@ -27,6 +29,14 @@ EPILOG = dedent("""
     ::
         {filename} --config-folder /path/to/config
     """.format(filename=Path(__file__).stem))
+
+
+_SENSITIVE = ("PASSWORD", "SECRET", "TOKEN", "KEY", "PW")
+
+
+def _loggable(key, value):
+    """Mask values of keys that look like credentials before they reach the log."""
+    return "***" if any(s in key.upper() for s in _SENSITIVE) else value
 
 
 def get_arg_parser():
@@ -131,7 +141,7 @@ def main():
         if "env" in config_dict:
             for key, value in config_dict["env"].items():
                 if key != "MAIA_PRIVATE_REGISTRY":
-                    logger.info(f"Setting environment variable {key} to {value}")
+                    logger.info(f"Setting environment variable {key} to {_loggable(key, value)}")
                     if key == "INGRESS_RESOLVER_EMAIL" and value != "" and value is not None:
                         os.environ[key] = value
                     elif value is not None and value != "":
@@ -218,9 +228,19 @@ def main():
         with open(Path(config_folder_env).joinpath(f"{cluster_name}.yaml"), "w") as f:
             yaml.dump(existing_data, f)
             
-    if "PW" not in os.environ:
-        logger.error("Error: PW environment variable is not set. Please set the PW environment variable to the password for the ansible user.")
-        sys.exit(1)
+    # Become password: never on the command line (visible in ps). Pass it through a private 0600 vars
+    # file when PW is set; without PW, rely on passwordless sudo (agents, CI).
+    become_args = []
+    if os.environ.get("PW"):
+        become_dir = tempfile.mkdtemp(prefix="maia-become-")
+        become_file = Path(become_dir) / "become.json"
+        fd = os.open(become_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump({"ansible_become_password": os.environ["PW"]}, f)
+        atexit.register(shutil.rmtree, become_dir, ignore_errors=True)
+        become_args = ["-e", f"@{become_file}"]
+    else:
+        logger.info("PW not set: assuming passwordless sudo for the ansible user")
     # Step 3: Run prepare_hosts.yaml
     logger.info("\n=== Step 3: Running prepare_hosts.yaml ===")
     prepare_hosts_cmd = [
@@ -228,7 +248,7 @@ def main():
         "-i",
         str(inventory_path),
         str(playbooks_dir + ".prepare_hosts"),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         "-e",
         f"config_folder={config_folder_env}",
     ]
@@ -257,7 +277,7 @@ def main():
             host_ip = "127.0.0.1"
             configure_host_linux_cmd = [
                 "ansible-playbook",
-                "-e", f"ansible_become_password={os.environ['PW']}",
+                *become_args,
                 "-i",
                 str(inventory_path),
                 str(playbooks_dir + ".configure_host"),
@@ -296,7 +316,7 @@ def main():
             "-i",
             str(inventory_path),
             str(playbooks_dir + ".configure_host"),
-            "-e", f"ansible_become_password={os.environ['PW']}",
+            *become_args,
             "-e",
             f"target_hosts={target_hosts}",
             "-e",
@@ -329,7 +349,7 @@ def main():
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         str(playbooks_dir + f".install_{os.environ['K8S_DISTRIBUTION']}"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -362,7 +382,7 @@ def main():
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         str(playbooks_dir + ".install_maia_core"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -388,7 +408,7 @@ def main():
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         str(playbooks_dir + ".install_maia_admin"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -414,7 +434,7 @@ def main():
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         str(playbooks_dir + ".configure_oidc_authentication"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -443,7 +463,7 @@ def main():
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         str(playbooks_dir + ".get_kubeconfig_from_rancher_local"),
         "-e",
         f"config_folder={config_folder_env}",
@@ -473,7 +493,7 @@ def main():
         "ansible-playbook",
         "-i",
         str(inventory_path),
-        "-e", f"ansible_become_password={os.environ['PW']}",
+        *become_args,
         str(playbooks_dir + ".configure_maia_dashboard"),
         "-e",
         f"config_folder={config_folder_env}",

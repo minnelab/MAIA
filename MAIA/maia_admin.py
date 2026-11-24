@@ -567,6 +567,12 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
         {
             "postgresql": {
                 "image": {"repository": "bitnamilegacy/postgresql"},
+                # NFS PVC ownership often lands as nobody (65534); Bitnami Postgres
+                # requires UID/GID 1001 on the data dir or it crash-loops.
+                "volumePermissions": {
+                    "enabled": True,
+                    "image": {"repository": "bitnamilegacy/os-shell"},
+                },
             },
             "image": {
                 "repository": "bitnamilegacy/keycloak",
@@ -590,7 +596,8 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
             },
             "resources": {
                 "requests": {
-                    "cpu": "2",
+                    # Request what Keycloak needs to schedule; the limit still allows bursts to 2 CPUs
+                    "cpu": "500m",
                     "memory": "512Mi",
                 },
                 "limits": {
@@ -611,6 +618,21 @@ def create_keycloak_values(config_folder, project_id, cluster_config_dict):
             ],
         }
     )
+
+    # Optional override from the cluster config, e.g. cluster_config_extra_env:
+    #   keycloak_resources: {requests: {cpu: 250m}}
+    if cluster_config_dict.get("keycloak_resources"):
+        keycloak_values["resources"] = OmegaConf.to_container(
+            OmegaConf.merge(keycloak_values["resources"], cluster_config_dict["keycloak_resources"])
+        )
+
+    # Pin the DB passwords: Bitnami generates random ones per render, and under ArgoCD (no Helm
+    # lookup) every sync would rotate the Secret while the DB keeps the first password.
+    if os.environ.get("keycloak_db_password") and os.environ.get("keycloak_db_postgres_password"):
+        keycloak_values["postgresql"]["auth"] = {
+            "password": os.environ["keycloak_db_password"],
+            "postgresPassword": os.environ["keycloak_db_postgres_password"],
+        }
 
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         keycloak_values["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
@@ -1446,7 +1468,7 @@ def create_guacamole_values(config_folder, project_id, cluster_config_dict):
         guacamole_values["keycloak"]["certificate"] = open(Path(cluster_config_dict["externalCA"]["cert"])).read()
     elif "selfsigned" in cluster_config_dict and cluster_config_dict["selfsigned"]:
         guacamole_values["keycloak"] = {}
-        guacamole_values["keycloak"]["certificate"] = open(Path(cluster_config_dict["rootCA"]["cert"])).read()
+        guacamole_values["keycloak"]["certificate"] = open(Path(cluster_config_dict["rootCA"])).read()
     
     Path(config_folder).joinpath(project_id, "guacamole_values").mkdir(parents=True, exist_ok=True)
     with open(Path(config_folder).joinpath(project_id, "guacamole_values", "guacamole_values.yaml"), "w") as f:

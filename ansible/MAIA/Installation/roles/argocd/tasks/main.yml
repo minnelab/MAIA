@@ -18,7 +18,8 @@
   become: true
 
 - name: Set proxy environment variables for k3s if proxy_ip and no_proxy_ips are set
-  when: proxy_ip is defined and proxy_ip != "" and no_proxy_ips is defined and no_proxy_ips != ""
+  # proxy_ip/no_proxy_ips default to null; `null is defined and null != ""` is true, so test the value itself
+  when: (proxy_ip | default('', true) | length > 0) and (no_proxy_ips | default('', true) | length > 0)
   block:
     - name: Ensure /etc/systemd/system/k3s.service.env is present with proxy configuration
       become: true
@@ -187,6 +188,8 @@
     - (install_kyverno | default(false) | bool)
     - kyverno_check_result is defined
     - kyverno_check_result.rc != 0
+    # only with a proxy: otherwise the policy injects HTTP(S)_PROXY=":3130" into every pod
+    - (proxy_ip | default('', true) | length > 0) and (no_proxy_ips | default('', true) | length > 0)
 
 - name: Apply Kyverno ClusterPolicy for proxy env injection
   ansible.builtin.command: >
@@ -201,6 +204,8 @@
     - (install_kyverno | default(false) | bool)
     - kyverno_check_result is defined
     - kyverno_check_result.rc != 0
+    # only with a proxy: otherwise the policy injects HTTP(S)_PROXY=":3130" into every pod
+    - (proxy_ip | default('', true) | length > 0) and (no_proxy_ips | default('', true) | length > 0)
 
 
 - name: Ensure ArgoCD namespace exists

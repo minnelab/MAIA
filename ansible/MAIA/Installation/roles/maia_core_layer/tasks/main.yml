@@ -132,7 +132,8 @@
 
 - name: Sync ArgoCD applications
   ansible.builtin.shell: |
-    argocd app sync {{ item }}
+    # Kubeflow can take >10 min; fail after 30 instead of hanging forever (task is not ignore_errors)
+    argocd app sync {{ item }} --timeout 1800
   register: argocd_sync_result
   changed_when: false
   failed_when: false
@@ -178,7 +179,8 @@
 
 - name: Re-Sync ArgoCD applications
   ansible.builtin.shell: |
-    argocd app sync {{ item }}
+    # Kubeflow can take >10 min; fail after 30 instead of hanging forever (task is not ignore_errors)
+    argocd app sync {{ item }} --timeout 1800
   register: argocd_sync_result
   changed_when: false
   failed_when: false

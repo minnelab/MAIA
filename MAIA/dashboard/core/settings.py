@@ -86,7 +86,7 @@ OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
 CLUSTER_API_ENABLED = env.bool("CLUSTER_API_ENABLED", default=False)
 CLUSTER_API_TOKEN = env("CLUSTER_API_TOKEN", default=None)
 CLUSTER_API_ALLOW_SUPERUSERS = env.bool("CLUSTER_API_ALLOW_SUPERUSERS", default=True)
-CLUSTER_API_ALLOWED_TOOLS = env("CLUSTER_API_ALLOWED_TOOLS", default="kubectl,helm")
+CLUSTER_API_ALLOWED_TOOLS = env("CLUSTER_API_ALLOWED_TOOLS", default="kubectl,helm,argocd")
 CLUSTER_API_DEFAULT_TIMEOUT = env.float("CLUSTER_API_DEFAULT_TIMEOUT", default=60)
 CLUSTER_API_MAX_TIMEOUT = env.float("CLUSTER_API_MAX_TIMEOUT", default=300)
 CLUSTER_API_MAX_OUTPUT_CHARS = env.int("CLUSTER_API_MAX_OUTPUT_CHARS", default=1_000_000)
@@ -94,6 +94,12 @@ CLUSTER_API_RATE = env("CLUSTER_API_RATE", default="600/hour")
 # Kubeconfig used for the commands. Captured at startup because other views
 # temporarily overwrite os.environ["KUBECONFIG"]; empty = in-cluster service account.
 CLUSTER_API_KUBECONFIG = env("CLUSTER_API_KUBECONFIG", default=os.environ.get("KUBECONFIG", ""))
+# Absolute paths to the binaries; empty = look them up on the server process PATH.
+CLUSTER_API_KUBECTL_PATH = env("CLUSTER_API_KUBECTL_PATH", default="")
+CLUSTER_API_HELM_PATH = env("CLUSTER_API_HELM_PATH", default="")
+CLUSTER_API_ARGOCD_PATH = env("CLUSTER_API_ARGOCD_PATH", default="")
+# argocd runs in --core mode (talks to Kubernetes directly); this is the namespace Argo CD is installed in.
+CLUSTER_API_ARGOCD_NAMESPACE = env("CLUSTER_API_ARGOCD_NAMESPACE", default="argocd")
 
 # Assets Management
 ASSETS_ROOT = os.getenv("ASSETS_ROOT", "/maia/static/assets")

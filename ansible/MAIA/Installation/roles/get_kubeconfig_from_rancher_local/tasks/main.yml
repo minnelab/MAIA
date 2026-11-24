@@ -14,6 +14,8 @@
     domain: "{{ (cluster_config_content.content | b64decode | from_yaml).domain }}"
 
 - name: Get ArgoCD admin token via curl
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.command: >
     curl -k -X POST -H 'Content-Type: application/json'
     -d '{ "username": "admin", "password": "{{ rancher_password }}" }'
@@ -21,6 +23,8 @@
   register: argocd_token_response
 
 - name: Show ArgoCD token response
+  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
   ansible.builtin.debug:
     var: argocd_token_response.stdout
 

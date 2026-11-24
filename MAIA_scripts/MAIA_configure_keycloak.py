@@ -127,6 +127,7 @@ def create_public_client(server_url: str, client_secret: str):
         verify=False,
     )
     keycloak_admin = KeycloakAdmin(connection=keycloak_connection)
+    # skip_exists: keep the script idempotent (a re-run would otherwise fail with 409 "Client maia-public already exists")
     keycloak_admin.create_client(
         {
             "name": "maia-public",
@@ -135,7 +136,8 @@ def create_public_client(server_url: str, client_secret: str):
             "publicClient": True,
             "standardFlowEnabled": True,
             "directAccessGrantsEnabled": True,
-        }
+        },
+        skip_exists=True,
     )
 
 def enable_implicit_flow(server_url: str, client_secret: str, client_id: str):

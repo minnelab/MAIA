@@ -152,6 +152,13 @@ def deploy_maia_toolkit(
     deploy_maia_toolkit_api(project_form_dict, cluster_config_dict, config_folder, not no_minimal, no_argocd)
 
 
+def _env_str(value):
+    """Environment values must be strings: YAML/JSON booleans become "True"/"False", None becomes ""."""
+    if isinstance(value, bool):
+        return "True" if value else "False"
+    return "" if value is None else str(value)
+
+
 def deploy_maia_toolkit_api(
     project_form_dict,
     cluster_config_dict,
@@ -179,18 +186,17 @@ def deploy_maia_toolkit_api(
                 project_form_dict[key] = value
                 if key == "env":
                     for env_key, env_value in value.items():
-                        os.environ[env_key + "_" + namespace_id] = env_value
+                        os.environ[env_key + "_" + namespace_id] = _env_str(env_value)
     if custom_project_dict:
         for key, value in custom_project_dict.items():
             project_form_dict[key] = value
             if key == "env":
                 for env_key, env_value in value.items():
-                    os.environ[env_key + "_" + namespace_id] = env_value
+                    os.environ[env_key + "_" + namespace_id] = _env_str(env_value)
     project_form_dict["extra_configs"] = {}
-    if "enable_cifs_" + namespace_id in os.environ:
-        project_form_dict["extra_configs"]["enable_cifs"] = os.environ["enable_cifs_" + namespace_id]
-    else:
-        project_form_dict["extra_configs"]["enable_cifs"] = False
+    project_form_dict["extra_configs"]["enable_cifs"] = (
+        os.environ.get("enable_cifs_" + namespace_id, "False").strip().lower() in ("true", "1", "yes", "on")
+    )
 
     if "MAIA_PRIVATE_REGISTRY_" + namespace_id in os.environ:
         private_maia_registry = os.environ["MAIA_PRIVATE_REGISTRY_" + namespace_id]

@@ -220,6 +220,7 @@ async def list_tools():
                 },
                 "required": [
                     "group_id",
+                    "user_email",
                     "gpu",
                     "date",
                     "memory_limit",
@@ -310,21 +311,23 @@ async def _dispatch(client: httpx.AsyncClient, name: str, args: dict) -> str:
         return json.dumps(r.json(), indent=2)
 
     elif name == "create_project":
+        # Field names of the dashboard's CreateGroupSerializer.
         payload = {
-            "group_id": args["group_id"],
+            "namespace": args["group_id"],
+            "email": args["user_email"],
+            "users": args.get("email_list", []),
             "gpu": args["gpu"],
             "date": args["date"],
             "memory_limit": args.get("memory_limit", "2Gi"),
+            "memory_request": args.get("memory_request", args.get("memory_limit", "2Gi")),
             "cpu_limit": args.get("cpu_limit", "2"),
+            "cpu_request": args.get("cpu_request", args.get("cpu_limit", "2")),
             "cluster": args["cluster"],
             "project_tier": args.get("project_tier", "Base"),
         }
-        for opt in ("user_id", "email_list", "supervisor", "description"):
+        for opt in ("supervisor", "description"):
             if opt in args:
                 payload[opt] = args[opt]
-        # Map user_email → user_id for the dashboard API
-        if "user_email" in args:
-            payload["user_id"] = args["user_email"]
         r = await client.post(
             f"{base}/maia/user-management/create-group/", headers=h, json=payload
         )
