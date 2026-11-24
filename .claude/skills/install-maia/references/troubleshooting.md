@@ -6,7 +6,8 @@
 > (chart 0.2.4), `keycloak_resources` + 500m request, masked env logging / become vars file / `no_log` toggles (`maia_show_secrets`).
 > Items 12–14 found by the fresh-agent rebuild are applied too (uncommitted): Kyverno proxy policy gated on `proxy_ip`,
 > `argocd app sync --timeout` (600 s admin/dashboard, 1800 s core), and `create_client(..., skip_exists=True)`.
-> Item 15 (uncommitted): Harbor admin password from `HARBOR_ADMIN_PASSWORD` instead of the chart default `Harbor12345`.
+> Item 15 (pushed in cf3b159): Harbor admin password from `HARBOR_ADMIN_PASSWORD` instead of the chart default `Harbor12345`.
+> Item 16 (uncommitted): `admin_email` passed to `MAIA_install_core_toolkit` in `roles/maia_core_layer`.
 > The guest installs from the GitHub branch, so the skill's workarounds stay until those fixes are pushed there. After that,
 > they're harmless no-ops (except `--disk-cache` and the 8 vCPU default, which are about the hardware).
 
@@ -231,6 +232,13 @@ logged in with the same hardcoded `harbor_admin_pass`. Anyone who reaches `regis
 - Harbor reads the password only on its first start. If Harbor's database already exists, change it in the portal instead.
 - Until the fix is on the branch the guest installs from, Harbor still starts with `Harbor12345`, and the OIDC task fails
   with 401 (it's `ignore_errors`) because the skill now sends the generated password.
+
+### UPSTREAM (16): install_maia_core fails in 40 s: `KeyError: 'admin_email'` in `create_kubeflow_values`
+Commit ad95809 added `"clusterAdminUser": os.environ["admin_email"]` to `MAIA/maia_core.py`, but the `Run MAIA Core Toolkit
+installer` task in `roles/maia_core_layer` doesn't pass `admin_email` in its `environment:`, even though env.json has it.
+- Fix in this skill: config.yaml.j2 adds `admin_email: admin@<domain>` under `env:`. MAIA_Install exports it, and the local
+  ansible-playbook inherits it. Then `--only-step render` and `--from-step install_maia_core`.
+- Upstream proposal: add `admin_email: "{{ admin_email | default('admin@maia.io') }}"` to that task's `environment:`.
 
 ### Dashboard 502 for several minutes after configure_maia_dashboard
 The dashboard pod pip-installs MAIA@branch at start: ~80 s in the first run, **~7 min** in the rebuild. 60_verify now waits up to

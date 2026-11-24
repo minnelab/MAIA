@@ -66,6 +66,9 @@ env:
   INGRESS_RESOLVER_EMAIL:
   K8S_DISTRIBUTION: k3s
   ADMIN_EMAIL: admin@{{ maia_cluster_domain }}
+  # Upstream (16): maia_core.create_kubeflow_values reads os.environ["admin_email"], but the maia_core_layer task doesn't pass it.
+  # MAIA_Install exports env: keys, and the local ansible-playbook inherits them. Must equal env.json's admin_email.
+  admin_email: admin@{{ maia_cluster_domain }}
   GUACAMOLE_DATA_SOURCE: postgresql
   GUACAMOLE_USERNAME: guacadmin
   GUACAMOLE_PASSWORD: "{{ maia_guacamole_password }}"

@@ -47,6 +47,7 @@
     --config-folder {{ config_folder }}
   environment:
     keycloak_client_secret: "{{ keycloak_client_secret }}"
+    admin_email: "{{ admin_email | default('admin@maia.io') }}"
     DEPLOY_KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
     ARGOCD_PASSWORD: "{{ ARGOCD_PASSWORD }}"
