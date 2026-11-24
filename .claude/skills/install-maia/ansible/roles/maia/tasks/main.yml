@@ -9,6 +9,7 @@
       - maia_webui_secret_key | default('') | length >= 16
       - maia_agent_api_token | default('') | length >= 16
       - maia_guacamole_password | default('') | length >= 16
+      - maia_harbor_admin_password | default('') | length >= 16
     quiet: true
   no_log: true
 

@@ -55,7 +55,7 @@ configure_oidc_authentication:
   configure_rancher: false
   configure_harbor: true
   harbor_admin_user: admin
-  harbor_admin_pass: Harbor12345
+  harbor_admin_pass: "{{ maia_harbor_admin_password }}"
 get_kubeconfig_from_rancher_local:
   kubeconfig_file: "local.yaml"
 configure_maia_dashboard:
@@ -69,6 +69,8 @@ env:
   GUACAMOLE_DATA_SOURCE: postgresql
   GUACAMOLE_USERNAME: guacadmin
   GUACAMOLE_PASSWORD: "{{ maia_guacamole_password }}"
+  # Read by maia_admin.create_harbor_values (fix 15); must equal harbor_admin_pass above.
+  HARBOR_ADMIN_PASSWORD: "{{ maia_harbor_admin_password }}"
   CREATE_KUBEFLOW_CLUSTER_ROLE: "true"
   MAIA_VERSION: {{ maia_version }}
   MAIA_TAG: {{ maia_tag }}

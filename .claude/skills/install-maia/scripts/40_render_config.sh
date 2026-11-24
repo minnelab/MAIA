@@ -6,11 +6,12 @@ source "$(dirname "$0")/lib.sh"
 parse_common_args "$@"
 umask 077
 SEC="$STATE_DIR/secrets.env"
-if [[ ! -s "$SEC" ]]; then
-  { for k in MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_AGENT_API_TOKEN MAIA_GUACAMOLE_PASSWORD; do
-      echo "$k=$(openssl rand -hex 24)"; done; } > "$SEC"
-  echo "generated $SEC"
-else echo "keeping existing $SEC"; fi
+# Add any missing key, so a secrets.env from an older run picks up newly introduced secrets; existing values are kept.
+touch "$SEC"
+for k in MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_AGENT_API_TOKEN MAIA_GUACAMOLE_PASSWORD \
+         MAIA_HARBOR_ADMIN_PASSWORD; do
+  if grep -q "^$k=" "$SEC"; then echo "keeping $k"; else echo "$k=$(openssl rand -hex 24)" >> "$SEC"; echo "generated $k"; fi
+done
 chmod 600 "$SEC"
 awk -F= 'NF==2{printf "%s: \"%s\"\n", tolower($1), $2}' "$SEC" > "$STATE_DIR/secrets.yml"; chmod 600 "$STATE_DIR/secrets.yml"
 GUEST_USER="$(ssh -G "$GUEST" | awk '/^user /{print $2}')"

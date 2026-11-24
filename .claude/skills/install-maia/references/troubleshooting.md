@@ -6,6 +6,7 @@
 > (chart 0.2.4), `keycloak_resources` + 500m request, masked env logging / become vars file / `no_log` toggles (`maia_show_secrets`).
 > Items 12–14 found by the fresh-agent rebuild are applied too (uncommitted): Kyverno proxy policy gated on `proxy_ip`,
 > `argocd app sync --timeout` (600 s admin/dashboard, 1800 s core), and `create_client(..., skip_exists=True)`.
+> Item 15 (uncommitted): Harbor admin password from `HARBOR_ADMIN_PASSWORD` instead of the chart default `Harbor12345`.
 > The guest installs from the GitHub branch, so the skill's workarounds stay until those fixes are pushed there. After that,
 > they're harmless no-ops (except `--disk-cache` and the 8 vCPU default, which are about the hardware).
 
@@ -220,6 +221,16 @@ at the same task for a different reason: the MetalLB pool, so the Ingress was ne
 `MAIA_scripts/MAIA_configure_keycloak.py` wraps `create_user` and `create_group` in try/except but not `create_client`, so it is not
 idempotent. The upstream task is `ignore_errors`, which hides that; the skill's `keycloak-admin` step accepts the 409 explicitly.
 Upstream proposal: catch `KeycloakPostError` with 409 around `create_client` (or look the client up first).
+
+### UPSTREAM (15, security): Harbor runs with the public default admin password `Harbor12345`
+`maia_admin.create_harbor_values` never set `harborAdminPassword`, so the chart default was used, and `configure_oidc_authentication`
+logged in with the same hardcoded `harbor_admin_pass`. Anyone who reaches `registry.<domain>` could log in as admin.
+- Fix upstream: `create_harbor_values` sets `harborAdminPassword` from env `HARBOR_ADMIN_PASSWORD` when present.
+- Fix in this skill: `MAIA_HARBOR_ADMIN_PASSWORD` is generated in secrets.env and rendered into both `env.HARBOR_ADMIN_PASSWORD`
+  and `configure_oidc_authentication.harbor_admin_pass`. 40_render_config adds missing keys to an existing secrets.env.
+- Harbor reads the password only on its first start. If Harbor's database already exists, change it in the portal instead.
+- Until the fix is on the branch the guest installs from, Harbor still starts with `Harbor12345`, and the OIDC task fails
+  with 401 (it's `ignore_errors`) because the skill now sends the generated password.
 
 ### Dashboard 502 for several minutes after configure_maia_dashboard
 The dashboard pod pip-installs MAIA@branch at start: ~80 s in the first run, **~7 min** in the rebuild. 60_verify now waits up to

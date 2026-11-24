@@ -505,6 +505,12 @@ def create_harbor_values(config_folder, project_id, cluster_config_dict):
         }
     )
 
+    # Without this the chart's public default admin password (Harbor12345) is used. Harbor only reads it on first start
+    # (empty database), so setting it on an existing install changes nothing; change it from the Harbor portal there.
+    # configure_oidc_authentication logs in with harbor_admin_pass, which must match.
+    if os.environ.get("HARBOR_ADMIN_PASSWORD"):
+        harbor_values["harborAdminPassword"] = os.environ["HARBOR_ADMIN_PASSWORD"]
+
     if cluster_config_dict["ingress_class"] == "maia-core-traefik":
         harbor_values["expose"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.entrypoints"] = "websecure"
         harbor_values["expose"]["ingress"]["annotations"]["traefik.ingress.kubernetes.io/router.tls"] = "true"
