@@ -19,7 +19,7 @@ The reference run (target `remote-hypervisor`, hypervisor `flem`) is in [RUNBOOK
 | **domain** | `maia.local` (`--domain`) |
 | guest alias / name | `maia-vm` / `maia-vm`. Size **8 vCPU** / 16 GB / 150 GB (`VM_CPUS VM_MEM_GB VM_DISK_GB`). 4 vCPU does not fit MAIA's CPU requests |
 | disk cache | `--disk-cache writeback` (default) or `unsafe`. **Ask the user** when preflight reports a rotational hypervisor disk: on flem's HDD, DB first-init outlasted liveness probes until `unsafe` |
-More flags: [references/config-reference.md](references/config-reference.md).
+More flags: [references/config-reference.md](references/config-reference.md). Prompt template for a fresh install on a new server: [references/new-server-prompt.md](references/new-server-prompt.md).
 
 ## Rules
 - **Approval gates.** Anything that changes the *hypervisor* (packages, smolvm install, user units, firewall, teardown)
@@ -123,4 +123,4 @@ hypervisor, plus control-node state. Nothing else on the host. Re-run with `--ap
 
 ## Layout
 `scripts/` (lib.sh = run/log helpers), `ansible/` (install-maia.yml, roles/maia adapted from verdi-ansible without Vault, proxy,
-LLM endpoints or site users), `references/` (smolvm.md, qemu-fallback.md, troubleshooting.md, config-reference.md), `logs/` (gitignored).
+LLM endpoints or site users), `references/` (smolvm.md, qemu-fallback.md, troubleshooting.md, config-reference.md, new-server-prompt.md), `logs/` (gitignored).
