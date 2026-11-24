@@ -1,0 +1,4 @@
+[control-plane]
+{{ maia_control_plane_hostname }} ansible_host=127.0.0.1 ansible_connection=local ansible_user={{ maia_user }} ansible_become=true ansible_become_method=sudo
+[nfs_server:children]
+control-plane

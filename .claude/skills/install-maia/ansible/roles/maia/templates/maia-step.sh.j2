@@ -1,0 +1,40 @@
+#!/bin/bash
+# Re-run (or run) individual MAIA_Install steps: maia-step.sh install_maia_core [more steps...]
+# Logs go to {{ maia_config_dir }}/logs/<step>.log. Prints free -m and kubectl top nodes afterwards.
+set -euo pipefail
+cd {{ maia_config_dir }}; mkdir -p logs
+export PATH="$HOME/.local/bin:$PATH" INGRESS_RESOLVER_EMAIL="" MAIA_PRIVATE_REGISTRY="" PW=nopasswd-sudo
+
+# Watchdog for upstream "Sync <app> ArgoCD application" tasks: they run `argocd app sync <app>` with ignore_errors but no
+# timeout, and the CLI can hang forever after ArgoCD has finished the sync (seen: maia-admin-guacamole, 19 min).
+# Kill such a CLI only if it has been running for more than SYNC_HANG_SECS and ArgoCD reports the operation Succeeded and
+# the app Synced/Healthy; the task's error is then ignored and the playbook continues.
+SYNC_HANG_SECS=${SYNC_HANG_SECS:-600}
+sync_watchdog() {
+  while sleep 30; do
+    for pid in $(pgrep -f '^argocd app sync [a-z0-9-]+' || true); do
+      age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ') || continue
+      [ -n "$age" ] && [ "$age" -gt "$SYNC_HANG_SECS" ] || continue
+      app=$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null | awk '{print $4}')
+      st=$(sudo -n k3s kubectl -n argocd get application "$app" -o jsonpath='{.status.operationState.phase}/{.status.sync.status}/{.status.health.status}' 2>/dev/null || true)
+      if [ "$st" = "Succeeded/Synced/Healthy" ]; then
+        echo "=== $(date -Is) watchdog: 'argocd app sync $app' hung ${age}s although ArgoCD reports $st; killing pid $pid"
+        kill "$pid" 2>/dev/null || true
+      fi
+    done
+  done
+}
+
+for step in "$@"; do
+  echo "=== $(date -Is) step $step"
+  sync_watchdog & wd=$!
+  set +e
+  MAIA_Install --config-folder {{ maia_config_dir }} --configure-no-prompt \
+    --ansible-collection-path '{{ maia_collection_path }}' --steps "$step" 2>&1 | tee "logs/$step.log"
+  rc=${PIPESTATUS[0]}
+  set -e
+  kill "$wd" 2>/dev/null || true; wait "$wd" 2>/dev/null || true
+  echo "=== $(date -Is) step $step rc=$rc"; free -m | sed -n 1,2p
+  sudo -n k3s kubectl top nodes 2>/dev/null || true
+  [ "$rc" -eq 0 ] || exit "$rc"
+done

@@ -1,0 +1,6 @@
+---
+# Overridable per run with -e. 40_render_config.sh passes maia_branch, maia_cluster_domain and maia_cluster_name.
+maia_timezone: Europe/Stockholm
+maia_prepare_ufw: true
+# maia_openai_api_base_urls: "http://llm-host:8000/v1"
+# maia_env_overrides: {CORE_TOOLKIT_CHART_VERSION: "1.2.3"}

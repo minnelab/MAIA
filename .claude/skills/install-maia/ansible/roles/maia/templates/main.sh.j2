@@ -1,0 +1,9 @@
+#!/bin/bash
+# Bootstrap: install MAIA tooling (pip MAIA@branch, ansible, kubectl, helm, argocd), then run config.yaml steps.
+set -euo pipefail
+cd {{ maia_config_dir }}
+export INGRESS_RESOLVER_EMAIL="" MAIA_PRIVATE_REGISTRY=""
+# MAIA_Install refuses to start without PW and passes it to ansible-playbook as ansible_become_password.
+# {{ maia_user }} has NOPASSWD sudo, so sudo never checks it: this is a placeholder, not a secret.
+export PW=nopasswd-sudo
+./install_MAIA.sh --config-folder {{ maia_config_dir }} --branch {{ maia_branch }} --dev --skip-configuration

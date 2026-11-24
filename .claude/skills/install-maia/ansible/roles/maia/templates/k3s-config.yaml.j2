@@ -1,0 +1,8 @@
+# Moves k3s state, certificates, and containerd (images/layers)
+data-dir: "{{ maia_k3s_data_dir }}"
+flannel-backend: "{{ maia_k3s_flannel_backend }}"
+# Moves pod working directories and ephemeral volume storage
+kubelet-arg:
+{% for kubelet_arg in maia_k3s_kubelet_args %}
+  - "{{ kubelet_arg }}"
+{% endfor %}

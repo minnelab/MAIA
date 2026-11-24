@@ -1,0 +1,197 @@
+# Rendered by install-maia (adapted from verdi-ansible roles/maia/templates/config.yaml.j2).
+# Changes from verdi: selfsigned TLS instead of the Vault-issued externalCA/custom_certificate; no proxy_ip/no_proxy_ips;
+# generated secrets; OpenWebUI has no LLM endpoints unless maia_openai_api_base_urls is set; the CA mount is optional;
+# externalCA = the k3s server CA once it exists (after install_k3s).
+# Contains secrets: mode 0600.
+prepare_hosts:
+  nvidia_drivers: false
+  nfs: true
+  cifs: false
+  ufw: {{ maia_prepare_ufw | lower }}
+install_k3s:
+  install_k3s: true
+  enable_oidc_k3s: true
+  k3s_version: {{ maia_k3s_version }}
+  enable_ca: true
+  install_k3s_script: {{ maia_config_dir }}/install_k3s.sh
+  install_argocd: {{ maia_install_argocd | lower }}
+  connect_to_k3s: false
+  connect_to_argocd: false
+  install_kyverno: {{ maia_install_kyverno | lower }}
+  kyverno_version: 3.9.2
+  # Upstream bug: roles/argocd defaults proxy_ip: null, and `proxy_ip is defined and proxy_ip != ""` is true for null,
+  # so k3s.service.env gets `https_proxy='https://:3130/'` and every image pull fails. Empty strings skip that block.
+  proxy_ip: ""
+  no_proxy_ips: ""
+  extra_commands:
+  - "kubectl set image -n argocd deployment/argocd-applicationset-controller argocd-applicationset-controller=maiacloudai/argocd:v3.4.3"
+  - "kubectl set image -n argocd deployment/argocd-redis redis=maiacloudai/redis:8.2.2-alpine"
+  - "sudo systemctl restart k3s"
+  - "kubectl patch deployment argocd-repo-server -n argocd --patch '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"argocd-repo-server\",\"volumeMounts\":[{\"name\":\"host-certs\",\"mountPath\":\"/etc/ssl/certs\"}]}],\"volumes\":[{\"name\":\"host-certs\",\"hostPath\":{\"path\":\"/etc/ssl/certs\"}}]}}}}'"
+  - "sudo ctr image pull docker.io/maiacloudai/cert-manager-webhook:v1.19.4"
+  - "sudo ctr image pull docker.io/maiacloudai/cert-manager-cainjector:v1.19.4"
+  - "sudo ctr image pull docker.io/maiacloudai/cert-manager-controller:v1.19.4"
+  - "sudo ctr image pull docker.io/maiacloudai/oauth2-proxy:v7.14.3"
+  - "sudo ctr image pull docker.io/maiacloudai/workflow-controller:v3.7.3"
+  - "sudo ctr image pull docker.io/maiacloudai/kube-rbac-proxy:v0.13.1"
+  - "sudo ctr image pull docker.io/maiacloudai/kube-rbac-proxy:v0.8.0"
+  - "sudo ctr image pull docker.io/maiacloudai/nfs-subdir-external-provisioner:v4.0.2"
+  - "sudo ctr image pull docker.io/maiacloudai/minio:RELEASE.2025-04-08T15-41-24Z"
+  - "sudo ctr image pull docker.io/maiacloudai/operator-sidecar:v6.0.2"
+install_maia_core:
+  auto_sync: true
+  maia_core_argocd_applications:
+{% for a in maia_core_apps %}
+  - {{ a }}
+{% endfor %}
+  extra_commands: []
+install_maia_admin:
+  auto_sync: true
+  maia_admin_argocd_applications:
+{% for a in maia_admin_apps %}
+  - {{ a }}
+{% endfor %}
+configure_oidc_authentication:
+  configure_rancher: false
+  configure_harbor: true
+  harbor_admin_user: admin
+  harbor_admin_pass: Harbor12345
+get_kubeconfig_from_rancher_local:
+  kubeconfig_file: "local.yaml"
+configure_maia_dashboard:
+  auto_sync: true
+env:
+  CLUSTER_DOMAIN: {{ maia_cluster_domain }}
+  CLUSTER_NAME: {{ maia_cluster_name }}
+  INGRESS_RESOLVER_EMAIL:
+  K8S_DISTRIBUTION: k3s
+  ADMIN_EMAIL: admin@{{ maia_cluster_domain }}
+  GUACAMOLE_DATA_SOURCE: postgresql
+  GUACAMOLE_USERNAME: guacadmin
+  GUACAMOLE_PASSWORD: "{{ maia_guacamole_password }}"
+  CREATE_KUBEFLOW_CLUSTER_ROLE: "true"
+  MAIA_VERSION: {{ maia_version }}
+  MAIA_TAG: {{ maia_tag }}
+  MAIA_DASHBOARD_IMAGE_VERSION: {{ maia_dashboard_image_version }}
+  MAIA_DASHBOARD_OIDC_AUTHENTICATION: "true"
+  OPENWEBUI_API_KEY: ""
+  OPENWEBUI_URL: "http://open-webui.open-webui.svc.cluster.local/api/v1"
+  OPENWEBUI_MODEL: "{{ maia_openwebui_model }}"
+  AGENT_PROVIDER: "OPENWEBUI"
+  AGENT_API_TOKEN: "{{ maia_agent_api_token }}"
+  dashboard_db_engine: mongodb
+{% set _charts = {} if maia_branch == 'master' else dict(maia_branch_chart_keys | zip(maia_branch_chart_keys | map('regex_replace', '^.*$', maia_branch))) %}
+{% for k, v in (_charts | combine(maia_env_overrides)).items() %}
+  {{ k }}: "{{ v }}"
+{% endfor %}
+steps:
+{% for s in maia_steps %}
+  - {{ s }}
+{% endfor %}
+cluster_config_extra_env:
+  selfsigned: true
+{% if maia_ca_file.stat.exists | default(false) %}
+  # Same CA as rootCA. Needed because selfsigned-only crashes in maia_admin.create_guacamole_values (rootCA["cert"] on a str);
+  # with it, upstream also creates openwebui/custom-ca-cert and the dashboard/MinIO CA secrets (as on verdi).
+  externalCA:
+    name: "maia-ca"
+    cert: "{{ maia_config_dir }}/maia-ca.crt"
+{% endif %}
+  # Upstream: maia_core builds the MetalLB pool by joining the node's InternalIPs with "-". On a dual-stack node (QEMU slirp adds a
+  # fec0:: SLAAC address) that gives "10.0.2.15-fec0::…", which has no usable IPs, so traefik's LoadBalancer stays <pending>.
+  metallb_ip_pool: "{{ maia_internal_ip }}-{{ maia_internal_ip }}"
+  nfs_server: {{ maia_internal_ip }}
+  nfs_path: "/nfs"
+  openwebui:
+    extraEnvVars:
+    - name: ENABLE_OAUTH_SIGNUP
+      value: "true"
+    - name: OAUTH_CLIENT_ID
+      value: maia
+    - name: OAUTH_CLIENT_SECRET
+      value: "{{ maia_keycloak_client_secret }}"
+    - name: OPENID_PROVIDER_URL
+      value: https://iam.{{ maia_cluster_domain }}/realms/maia/.well-known/openid-configuration
+    - name: OAUTH_PROVIDER_NAME
+      value: MAIA
+    - name: OAUTH_SCOPES
+      value: openid email profile
+    - name: OPENID_REDIRECT_URI
+      value: https://chat.{{ maia_cluster_domain }}/oauth/oidc/callback
+    - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+      value: "true"
+    - name: ENABLE_OAUTH_GROUP_CREATION
+      value: "true"
+    - name: ENABLE_OAUTH_GROUP_MANAGEMENT
+      value: "true"
+    - name: ENABLE_OAUTH_ROLE_MANAGEMENT
+      value: "false"
+    - name: WEBUI_ADMIN_NAME
+      value: "Admin"
+    - name: WEBUI_ADMIN_EMAIL
+      value: "admin@{{ maia_cluster_domain }}"
+    - name: WEBUI_ADMIN_PASSWORD
+      value: "{{ maia_openwebui_admin_password }}"
+    - name: WEBUI_SECRET_KEY
+      value: "{{ maia_webui_secret_key }}"
+    - name: WEBSOCKET_REDIS_LOCK_TIMEOUT
+      value: "300"
+{% if maia_openai_api_base_urls | length > 0 %}
+    - name: ENABLE_OPENAI_API
+      value: "true"
+    - name: OPENAI_API_BASE_URLS
+      value: "{{ maia_openai_api_base_urls }}"
+    - name: OPENAI_API_KEYS
+      value: "{{ maia_openai_api_keys }}"
+    - name: OPENAI_API_CONFIGS
+      value: '{{ maia_openai_api_configs }}'
+    - name: DEFAULT_MODELS
+      value: "{{ maia_default_models }}"
+    - name: TASK_MODEL_EXTERNAL
+      value: "{{ maia_openwebui_model }}"
+{% else %}
+    - name: ENABLE_OPENAI_API
+      value: "false"
+{% endif %}
+    - name: ENABLE_API_KEYS
+      value: "true"
+    # The CA bundle is built in the command below. SSL_CERT_FILE is not set here because httpx loads
+    # that path before serving. The CA mount is optional: upstream creates custom-ca-cert from externalCA in install_maia_admin.
+    command:
+      - bash
+      - -c
+      - |
+        set -eu
+        bundle=/tmp/cacert.pem
+        cat /usr/local/lib/python3.11/site-packages/certifi/cacert.pem > "$bundle"
+        # A subPath into a missing optional ConfigMap shows up as a directory, so test with -f.
+        if [ -f /etc/ssl/certs/maia-ca.crt ] && [ -s /etc/ssl/certs/maia-ca.crt ]; then printf '\n' >> "$bundle"; cat /etc/ssl/certs/maia-ca.crt >> "$bundle"; fi
+        export SSL_CERT_FILE="$bundle"
+        export REQUESTS_CA_BUNDLE="$bundle"
+        export CURL_CA_BUNDLE="$bundle"
+        exec bash /app/backend/start.sh
+    pipelines:
+      persistence:
+        storageClass: local-path
+    volumes:
+      - name: ca-cert-vol
+        configMap:
+          name: custom-ca-cert
+          optional: true
+    volumeMounts:
+      container:
+        - name: ca-cert-vol
+          mountPath: /etc/ssl/certs/maia-ca.crt
+          subPath: ca.crt
+          readOnly: true
+    persistence:
+      storageClass: local-path
+    ingress:
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+      enabled: true
+      host: chat.{{ maia_cluster_domain }}
+      tls: true
+    ollama:
+      enabled: false

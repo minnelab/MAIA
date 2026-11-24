@@ -1,0 +1,24 @@
+---
+# Generic port of verdi-ansible maia.yml: timezone, apt, base tools, then the maia role.
+# Leaves out verdi-only roles: use_proxy, users (authorized-keys), shell_configuration, Vault TLS.
+- name: Deploy MAIA
+  hosts: maia
+  become: true
+  pre_tasks:
+    - name: Set timezone
+      community.general.timezone:
+        name: "{{ maia_timezone | default('Europe/Stockholm') }}"
+    - name: Upgrade packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+        cache_valid_time: 3600
+    - name: Install base tools
+      ansible.builtin.apt:
+        name: [git, curl, jq, unzip, python3-pip, ca-certificates, gnupg, rsync, tmux, vim, sysstat, lsof, psmisc, net-tools]
+        state: present
+    - name: Show the default IPv4 (used for nfs_server, metallb and coredns)
+      ansible.builtin.debug:
+        msg: "{{ ansible_default_ipv4.interface }} {{ ansible_default_ipv4.address }}"
+  roles:
+    - role: maia

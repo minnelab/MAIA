@@ -1,0 +1,3 @@
+# Rendered by 40_render_config.sh. The host is an ssh_config alias (HostName/Port/User/ProxyJump live there).
+[maia]
+{{GUEST}} maia_user={{GUEST_USER}} ansible_ssh_common_args='-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile={{STATE_DIR}}/known_hosts' ansible_python_interpreter=/usr/bin/python3
