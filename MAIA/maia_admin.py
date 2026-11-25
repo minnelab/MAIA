@@ -1215,18 +1215,6 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
 
     maia_dashboard_values["hostAliases"] = host_aliases
 
-    if "AGENT_PROVIDER" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "AGENT_PROVIDER", "value": os.environ["AGENT_PROVIDER"]},
-            ]
-        )
-    if "AGENT_API_TOKEN" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "AGENT_API_TOKEN", "value": os.environ["AGENT_API_TOKEN"]},
-            ]
-        )
     if "CLUSTER_YAML_CONFIGS" in os.environ:
         maia_dashboard_values["clusters"] = []
         cluster_files = os.environ["CLUSTER_YAML_CONFIGS"].split(",")

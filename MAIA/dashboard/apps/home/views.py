@@ -10,10 +10,6 @@ from MAIA.kubernetes_utils import get_namespaces, get_cluster_status, CLUSTER_OF
 from MAIA.keycloak_utils import get_groups_in_keycloak
 import urllib3
 import os
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import requests
-import json
 from loguru import logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -262,76 +258,3 @@ def maia_spotlight(request):
     html_template = loader.get_template("spotlight.html")
     return HttpResponse(html_template.render(context, request))
 
-
-@login_required(login_url="/maia/login/")
-def agent_api_view(request):
-    if not request.user.is_superuser:
-        html_template = loader.get_template("home/page-403.html")
-        return HttpResponse(html_template.render({}, request))
-
-    provider = getattr(settings, "AGENT_PROVIDER", os.environ.get("AGENT_PROVIDER", "anthropic")).lower()
-
-    if provider == "openai":
-        is_ready = bool(getattr(settings, "OPENAI_API_KEY", None))
-        active_model = getattr(settings, "OPENAI_MODEL", "gpt-4o")
-        active_base_url = getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1")
-    elif provider == "openwebui":
-        is_ready = True
-        active_model = getattr(settings, "OPENWEBUI_MODEL", "llama3")
-        active_base_url = getattr(settings, "OPENWEBUI_URL", "http://localhost:11434/v1")
-    else:
-        provider = "anthropic"
-        is_ready = bool(getattr(settings, "ANTHROPIC_API_KEY", None))
-        active_model = getattr(settings, "AGENT_MODEL", "claude-sonnet-4-6")
-        active_base_url = None
-
-    context = {
-        "segment": "agent-api",
-        "hostname": getattr(settings, "HOSTNAME", "localhost"),
-        "agent_provider": provider,
-        "agent_is_ready": is_ready,
-        "agent_model": active_model,
-        "agent_base_url": active_base_url,
-        "agent_token_configured": bool(getattr(settings, "AGENT_API_TOKEN", None)),
-        # legacy keys kept for the env-var table
-        "anthropic_configured": bool(getattr(settings, "ANTHROPIC_API_KEY", None)),
-        "openai_configured": bool(getattr(settings, "OPENAI_API_KEY", None)),
-        "openwebui_key_configured": bool(getattr(settings, "OPENWEBUI_API_KEY", None)),
-        "user": ["admin"],
-        "username": request.user.username + " [ADMIN]",
-    }
-    html_template = loader.get_template("home/agent-api.html")
-    return HttpResponse(html_template.render(context, request))
-
-
-@csrf_exempt
-def chat(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        user_message = data.get("message", "")
-        if not settings.OPENWEBUI_API_KEY or not settings.OPENWEBUI_URL or not settings.OPENWEBUI_MODEL:
-            return JsonResponse({"error": "OPENWEBUI_API_KEY or OPENWEBUI_URL or OPENWEBUI_MODEL is not set"}, status=500)
-        headers = {
-            "Authorization": f"Bearer {settings.OPENWEBUI_API_KEY}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": settings.OPENWEBUI_MODEL,
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_message},
-            ],
-        }
-        # OPENWEBUI_URL is the OpenAI-compatible base URL (as in agent_api), e.g. http://<openwebui-svc>/api/v1.
-        response = requests.post(
-            f"{settings.OPENWEBUI_URL.rstrip('/')}/chat/completions",
-            headers=headers,
-            json=payload,
-        )
-
-        if response.status_code == 200:
-            reply = response.json()["choices"][0]["message"]["content"]
-            return JsonResponse({"reply": reply})
-        return JsonResponse({"error": response.text}, status=500)
-
-    return JsonResponse({"error": "Invalid method"}, status=405)

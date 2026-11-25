@@ -155,7 +155,7 @@ exists only from **1.3.1** (commit 5e3c2b2; published 2026-11-04). MAIA renders 
 
 ### UPSTREAM (security): MAIA_Install logs secrets
 `MAIA_scripts/MAIA_Install.py:134` logs `Setting environment variable <KEY> to <VALUE>` for every config.yaml `env:` key, including
-`GUACAMOLE_PASSWORD` and `AGENT_API_TOKEN`, into `/etc/maia-config/logs/*.log` on the node. In this skill, `run()` pipes all output
+`GUACAMOLE_PASSWORD`, into `/etc/maia-config/logs/*.log` on the node. In this skill, `run()` pipes all output
 through `redact` (every secrets.env value becomes `<redacted:NAME>`) before anything reaches the control node's `logs/`.
 The guest-side logs still hold them (the dir is 0750 maia, alongside env.json). Upstream proposal: mask values of keys matching
 `PASSWORD|SECRET|TOKEN|KEY`.
@@ -298,8 +298,8 @@ Upstream problems found (proposed separately):
   MAIA_Install, so it re-reads config.yaml.
 - **UPSTREAM (22):** `maia_admin` adds OPENWEBUI_* to the dashboard only if `OPENWEBUI_MODEL` is also set. The skill's
   `maia_openwebui_model` is empty (no LLM endpoints), so the dashboard has no OpenWebUI env at all. Set it with an LLM backend.
-- **UPSTREAM (23):** `apps/home/views.chat` POSTs to `OPENWEBUI_URL` itself (405 on the base URL), while `agent_api` treats
-  it as a base URL and appends `/chat/completions`. One variable can't satisfy both.
+- **FIXED (23):** the dashboard chat widget, `apps/home/views.chat` and the `agent_api` app have been removed, so nothing in the
+  dashboard calls `OPENWEBUI_URL` for chat any more.
 
 ### Dashboard 502 for several minutes after configure_maia_dashboard
 The dashboard pod pip-installs MAIA@branch at start: ~80 s in the first run, **~7 min** in the rebuild. 60_verify now waits up to

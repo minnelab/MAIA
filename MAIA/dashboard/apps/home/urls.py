@@ -11,8 +11,6 @@ urlpatterns = [
     # The home page
     path("", views.index_view, name="home"),
     path("spotlight", views.maia_spotlight, name="spotlight"),
-    path("chatbot/chat/", views.chat, name="chat"),
-    path("agent-api/", views.agent_api_view, name="agent_api"),
     # Matches any html file
     re_path(r"^.*\.*", views.pages, name="pages"),
 ]

@@ -267,32 +267,6 @@ a[style*="#5e72e4"] {
   color: var(--maia-primary) !important;
 }
 
-/* ── Chatbot widget (fullscreen footer) ────────────────────── */
-#chatbot-button {
-  background: var(--maia-gradient) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 8px 24px rgba(13, 148, 136, 0.35) !important;
-}
-
-#chatbot-button:hover {
-  background: linear-gradient(135deg, #0f766e, #0369a1) !important;
-}
-
-#chatbot-header,
-#chatbot-send {
-  background: var(--maia-primary-dark) !important;
-}
-
-#chatbot-send:hover {
-  background: var(--maia-primary) !important;
-}
-
-#chatbot-popup {
-  border: 1px solid var(--maia-border);
-  border-radius: 14px !important;
-  box-shadow: var(--maia-shadow) !important;
-}
-
 /* ── Subtle motion ─────────────────────────────────────────── */
 @keyframes maia-fade-up {
   from { opacity: 0; transform: translateY(14px); }

@@ -84,8 +84,6 @@ env:
   # In-cluster service of the maia-admin-openwebui release (namespace openwebui). verdi's "open-webui.open-webui" doesn't exist here.
   OPENWEBUI_URL: "{{ maia_openwebui_url }}"
   OPENWEBUI_MODEL: "{{ maia_openwebui_model }}"
-  AGENT_PROVIDER: "OPENWEBUI"
-  AGENT_API_TOKEN: "{{ maia_agent_api_token }}"
   dashboard_db_engine: mongodb
 {% set _charts = {} if maia_branch == 'master' else dict(maia_branch_chart_keys | zip(maia_branch_chart_keys | map('regex_replace', '^.*$', maia_branch))) %}
 {% for k, v in (_charts | combine(maia_env_overrides)).items() %}

@@ -65,21 +65,6 @@ ARGOCD_SERVER = env("ARGOCD_SERVER", default=None)
 ARGOCD_CLUSTER = env("ARGOCD_CLUSTER", default=None)
 ARGOCD_PASSWORD = env("ARGOCD_PASSWORD", default=None)
 
-# Agent API / MCP Server settings
-# Select the AI provider: anthropic (default) | openai | openwebui
-AGENT_PROVIDER = env("AGENT_PROVIDER", default="anthropic")
-# Shared secret protecting /maia/agent/* endpoints (required in production)
-AGENT_API_TOKEN = env("AGENT_API_TOKEN", default=None)
-
-# Anthropic provider
-ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default=None)
-AGENT_MODEL = env("AGENT_MODEL", default="claude-sonnet-4-6")
-
-# OpenAI provider (also used for Azure OpenAI — set OPENAI_BASE_URL accordingly)
-OPENAI_API_KEY = env("OPENAI_API_KEY", default=None)
-OPENAI_MODEL = env("OPENAI_MODEL", default="gpt-4o")
-OPENAI_BASE_URL = env("OPENAI_BASE_URL", default="https://api.openai.com/v1")
-
 # Cluster API: run kubectl / helm through the dashboard (/maia/cluster-api/)
 # Disabled by default. When enabled, callers authenticate with CLUSTER_API_TOKEN
 # (Authorization: Bearer <token> or X-Cluster-Api-Token) or as a dashboard superuser.
@@ -145,7 +130,6 @@ INSTALLED_APPS = [
     "mozilla_django_oidc",  # Load after auth
     "bootstrap5",
     "apps.gpu_scheduler",
-    "apps.agent_api",
     "apps.cluster_api",
 ]
 

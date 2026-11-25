@@ -33,7 +33,7 @@
 external-ca step), `metallb_ip_pool: <ip>-<ip>`, `ADMIN_PROJECT_CHART_VERSION: 1.3.1`, branch-pinned git chart refs, generated secrets.
 
 ## Secrets (`~/.maia-vm/<name>/secrets.env`, 0600, control node only)
-`MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_AGENT_API_TOKEN MAIA_GUACAMOLE_PASSWORD`,
+`MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_GUACAMOLE_PASSWORD MAIA_HARBOR_ADMIN_PASSWORD`,
 generated once with `openssl rand -hex 24` and turned into `secrets.yml` for `-e @`. The keycloak secret is seeded into
 `/etc/maia-config/env.json`, so MAIA uses it for the Keycloak client and OpenWebUI's OAuth matches.
 MAIA itself generates the other platform passwords (Keycloak admin console user `user`, ArgoCD, MinIO, MySQL/Mongo) into

@@ -74,7 +74,7 @@ _exec_on() {
 }
 
 # redact: replace every generated secret value (secrets.env) with <redacted:NAME> in the stream. Upstream MAIA_Install
-# logs config.yaml env values (GUACAMOLE_PASSWORD, AGENT_API_TOKEN, ...) at INFO level, and job logs are streamed here.
+# logs config.yaml env values (GUACAMOLE_PASSWORD, ...) at INFO level, and job logs are streamed here.
 redact() {
   local sec="$STATE_DIR/secrets.env"
   if [[ -s "$sec" ]]; then
