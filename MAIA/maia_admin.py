@@ -1186,6 +1186,21 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
         if os.environ.get(key):
             maia_dashboard_values["env"].append({"name": key, "value": os.environ[key]})
 
+    # Cluster API (kubectl / helm / argocd through the dashboard, apps/cluster_api): pass each CLUSTER_API_* setting that is
+    # set. Unset means the dashboard default (CLUSTER_API_ENABLED=False). CLUSTER_API_TOKEN is the shared secret for
+    # `Authorization: Bearer`; without it only dashboard superusers can call the API.
+    for key in (
+        "CLUSTER_API_ENABLED",
+        "CLUSTER_API_TOKEN",
+        "CLUSTER_API_ALLOW_SUPERUSERS",
+        "CLUSTER_API_ALLOWED_TOOLS",
+        "CLUSTER_API_DEFAULT_TIMEOUT",
+        "CLUSTER_API_MAX_TIMEOUT",
+        "CLUSTER_API_RATE",
+    ):
+        if os.environ.get(key):
+            maia_dashboard_values["env"].append({"name": key, "value": os.environ[key]})
+
     maia_dashboard_values["create_kubeflow_cluster_role"] = False
     if "CREATE_KUBEFLOW_CLUSTER_ROLE" in os.environ:
         maia_dashboard_values["create_kubeflow_cluster_role"] = os.environ["CREATE_KUBEFLOW_CLUSTER_ROLE"]

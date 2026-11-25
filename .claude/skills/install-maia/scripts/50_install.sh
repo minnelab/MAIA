@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 50_install.sh: render /etc/maia-config with Ansible, then run the MAIA install in the guest one step at a time.
-# Usage: 50_install.sh [--guest maia-vm] [--branch B] [--domain maia.local] [--from-step <step>] [--only-step <step>]
+# Usage: 50_install.sh [--guest maia-vm] [--branch B] [--domain maia.local] [--cluster-api on|off] [--from-step <step>] [--only-step <step>]
 #   Steps: render bootstrap prepare_hosts configure_hosts install_k3s k3s-traefik-cleanup kyverno-proxy-fix external-ca install_maia_core local-path-sync
 #          install_maia_admin keycloak-admin configure_oidc_authentication configure_maia_dashboard
 #   Check the last line: "INSTALL DONE" means success; a "FAILED: [where] <step>" line names the step to fix and resume from.
@@ -53,7 +53,7 @@ cd "$A" && ansible-galaxy collection install -r requirements.yml 2>&1 | tail -3
 EOF
   run ctl ansible-render <<EOF
 cd "$A" && ANSIBLE_CONFIG="$A/ansible.cfg" ansible-playbook -i "$STATE_DIR/inventory.ini" install-maia.yml \
-  -e maia_branch="$MAIA_BRANCH" -e maia_cluster_domain="$CLUSTER_DOMAIN" -e maia_cluster_name="$CLUSTER_NAME" \
+  -e maia_branch="$MAIA_BRANCH" -e maia_cluster_domain="$CLUSTER_DOMAIN" -e maia_cluster_name="$CLUSTER_NAME" -e maia_cluster_api="$CLUSTER_API" \
   -e '{"maia_steps": ["prepare_hosts", "configure_hosts", "install_k3s"]}' \
   -e @"$STATE_DIR/secrets.yml" 2>&1 | grep -vE '^\s*$' | tail -40
 EOF
@@ -138,7 +138,7 @@ install -m 0644 /tmp/maia-ca.crt /etc/maia-config/maia-ca.crt; rm -f /tmp/maia-c
 EOF
   run ctl ansible-render-ca <<EOF
 cd "$A" && ANSIBLE_CONFIG="$A/ansible.cfg" ansible-playbook -i "$STATE_DIR/inventory.ini" install-maia.yml \
-  -e maia_branch="$MAIA_BRANCH" -e maia_cluster_domain="$CLUSTER_DOMAIN" -e maia_cluster_name="$CLUSTER_NAME" \
+  -e maia_branch="$MAIA_BRANCH" -e maia_cluster_domain="$CLUSTER_DOMAIN" -e maia_cluster_name="$CLUSTER_NAME" -e maia_cluster_api="$CLUSTER_API" \
   -e '{"maia_steps": ["prepare_hosts", "configure_hosts", "install_k3s"]}' \
   -e @"$STATE_DIR/secrets.yml" 2>&1 | grep -vE '^\s*$' | tail -4
 EOF

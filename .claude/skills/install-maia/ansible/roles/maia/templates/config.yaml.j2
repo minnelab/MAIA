@@ -85,6 +85,11 @@ env:
   OPENWEBUI_URL: "{{ maia_openwebui_url }}"
   OPENWEBUI_MODEL: "{{ maia_openwebui_model }}"
   dashboard_db_engine: mongodb
+  # Dashboard Cluster API (--cluster-api on|off). maia_admin.create_maia_dashboard_values passes CLUSTER_API_* to the dashboard.
+  CLUSTER_API_ENABLED: "{{ 'True' if maia_cluster_api == 'on' else 'False' }}"
+{% if maia_cluster_api == 'on' %}
+  CLUSTER_API_TOKEN: "{{ maia_cluster_api_token }}"
+{% endif %}
 {% set _charts = {} if maia_branch == 'master' else dict(maia_branch_chart_keys | zip(maia_branch_chart_keys | map('regex_replace', '^.*$', maia_branch))) %}
 {% for k, v in (_charts | combine(maia_env_overrides)).items() %}
   {{ k }}: "{{ v }}"

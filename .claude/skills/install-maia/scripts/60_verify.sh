@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 60_verify.sh: verification steps 1–4 and 6. Ingress is checked through an SSH tunnel from the control node.
-# Usage: 60_verify.sh [--hypervisor <ssh-alias>] [--guest maia-vm] [--domain maia.local] [--local-port 8443]
+# Usage: 60_verify.sh [--hypervisor <ssh-alias>] [--guest maia-vm] [--domain maia.local] [--cluster-api on|off] [--local-port 8443]
 #   remote-hypervisor: tunnel = ssh -L <local>:127.0.0.1:$HTTPS_PORT <hypervisor>. Local: no tunnel needed.
 #   existing-ssh-host: tunnel = ssh -L <local>:127.0.0.1:443 <guest>  (pass --hypervisor "" and --https-port 443)
 source "$(dirname "$0")/lib.sh"
@@ -105,6 +105,23 @@ rm -f \$J \$P
 EOF
 
 echo "== 6. no generated secret values in skill dir or logs"
+# Dashboard Cluster API matches --cluster-api: on = the token from secrets.env authenticates (status 200, enabled) and no token
+# is refused; off = 404 "disabled". The token is read at run time and passed via a file descriptor: never in this text or argv.
+run ctl verify-cluster-api <<EOF || fail=1
+U=https://maia.$CLUSTER_DOMAIN:$LPORT/maia/cluster-api/; R="--resolve maia.$CLUSTER_DOMAIN:$LPORT:127.0.0.1"; B=\$(mktemp)
+if [[ "$CLUSTER_API" == on ]]; then
+  tok=\$(sed -n 's/^MAIA_CLUSTER_API_TOKEN=//p' "$STATE_DIR/secrets.env")
+  [[ -n "\$tok" ]] || { echo "MAIA_CLUSTER_API_TOKEN missing from secrets.env: run 40_render_config.sh"; exit 1; }
+  c=\$(curl -sk \$R --max-time 20 -o \$B -w '%{http_code}' -H @<(printf 'Authorization: Bearer %s\n' "\$tok") \$U); unset tok
+  echo "with token -> \$c \$(jq -c '{enabled, caller, credentials, tools: (.tools // {} | map_values(.available))}' \$B 2>/dev/null)"
+  [[ \$c == 200 ]] && jq -e '.enabled == true and .caller == "cluster-api-token"' \$B >/dev/null || { rm -f \$B; exit 1; }
+  c=\$(curl -sk \$R --max-time 20 -o /dev/null -w '%{http_code}' \$U); echo "without token -> \$c"
+  rm -f \$B; [[ \$c =~ ^(401|403)\$ ]]
+else
+  c=\$(curl -sk \$R --max-time 20 -o \$B -w '%{http_code}' \$U); echo "cluster api (expected disabled) -> \$c \$(head -c 120 \$B)"
+  grep -q disabled \$B; r=\$?; rm -f \$B; [[ \$c == 404 && \$r == 0 ]]
+fi
+EOF
 run ctl verify-6-secrets <<EOF || fail=1
 hits=0
 while IFS='=' read -r k v; do

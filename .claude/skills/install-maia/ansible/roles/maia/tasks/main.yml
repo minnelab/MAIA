@@ -9,6 +9,8 @@
       - maia_webui_secret_key | default('') | length >= 16
       - maia_guacamole_password | default('') | length >= 16
       - maia_harbor_admin_password | default('') | length >= 16
+      - maia_cluster_api in ['on', 'off']
+      - maia_cluster_api == 'off' or maia_cluster_api_token | default('') | length >= 32
     quiet: true
   no_log: true
 

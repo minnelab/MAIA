@@ -61,6 +61,10 @@ maia_openwebui_model: ""
 # Dashboard → OpenWebUI (OpenAI-compatible base URL; /api/v1/models and /api/v1/chat/completions answer there)
 maia_openwebui_url: "http://maia-admin-openwebui-open-webui.openwebui.svc.cluster.local/api/v1"
 
+# Dashboard Cluster API (apps/cluster_api: kubectl/helm/argocd over HTTPS). on | off; 50_install.sh passes --cluster-api.
+# When on, the dashboard gets CLUSTER_API_ENABLED=True and CLUSTER_API_TOKEN = maia_cluster_api_token (secrets.env).
+maia_cluster_api: "off"
+
 # Secrets: supplied by 40_render_config.sh via -e @secrets.yml. No defaults on purpose.
 # maia_keycloak_client_secret, maia_openwebui_admin_password, maia_webui_secret_key,
-# maia_guacamole_password, maia_harbor_admin_password
+# maia_guacamole_password, maia_harbor_admin_password, maia_cluster_api_token

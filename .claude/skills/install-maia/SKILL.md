@@ -18,6 +18,7 @@ The reference run (target `remote-hypervisor`, hypervisor `flem`) is in [RUNBOOK
 | **branch** | `157-add-tool-for-mcp-server-to-execute-helm-commands-from-dashboard` or any pushed branch, e.g. `master` (`--branch`) |
 | **domain** | `maia.local` (`--domain`) |
 | guest alias / name | `maia-vm` / `maia-vm`. Size **8 vCPU** / 16 GB / 150 GB (`VM_CPUS VM_MEM_GB VM_DISK_GB`). 4 vCPU does not fit MAIA's CPU requests |
+| cluster API | `--cluster-api off` (default) or `on`: enables the dashboard's kubectl/helm/argocd API with `MAIA_CLUSTER_API_TOKEN` from secrets.env. Pass the same value to 50_install and 60_verify |
 | disk cache | `--disk-cache writeback` (default) or `unsafe`. **Ask the user** when preflight reports a rotational hypervisor disk: on flem's HDD, DB first-init outlasted liveness probes until `unsafe` |
 More flags: [references/config-reference.md](references/config-reference.md). Prompt template for a fresh install on a new server: [references/new-server-prompt.md](references/new-server-prompt.md).
 
@@ -108,7 +109,7 @@ install set Healthy and Synced, or only documented benign drift; then it waits (
 (3) through `ssh -L <local>:127.0.0.1:<https-port> <hypervisor>`, `curl -k --resolve` for `maia iam registry kubeflow chat login`
 gives 200/30x (kubeflow: oauth2-proxy's 403 "Sign In" page); (4) Keycloak OIDC discovery, dashboard → Keycloak login form, and a
 login as `admin@<d>`/`admin` reaching Keycloak's UPDATE_PASSWORD action (or a dashboard callback once it's changed); (5) is the
-fresh-agent rebuild (below); (6) no generated secret value anywhere in the skill dir or logs. It must print `VERIFY OK` (~10 s
+fresh-agent rebuild (below); (5b) the dashboard Cluster API matches `--cluster-api` (on: the token gets 200 `enabled`, no token is refused; off: 404 disabled); (6) no generated secret value anywhere in the skill dir or logs. It must print `VERIFY OK` (~10 s
 plus the dashboard wait).
 Browser access for the user: Keycloak's hostname is `iam.<d>` **without a port**, so the browser must reach port 443.
 Tunnel from their machine with local port 443 (needs admin rights): `sudo ssh -L 443:127.0.0.1:8443 flem`, add

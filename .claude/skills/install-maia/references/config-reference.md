@@ -12,6 +12,7 @@
 | `VM_CPUS VM_MEM_GB VM_DISK_GB` | 8 16 150 | guest size (4 vCPU is too few for MAIA's requests) |
 | `--disk-cache` / `VM_DISK_CACHE` | `writeback` | `unsafe` on HDD hypervisors, with user approval (see qemu-fallback.md) |
 | `SSH_PUBKEY` | `~/.ssh/id_ed25519.pub` | key injected for guest user `maia` |
+| `--cluster-api on\|off` / `CLUSTER_API` | `off` | 50_install, 60_verify. Dashboard Cluster API (`/maia/cluster-api/`: kubectl/helm/argocd over HTTPS). `on` sets `CLUSTER_API_ENABLED=True` and `CLUSTER_API_TOKEN` (= `MAIA_CLUSTER_API_TOKEN` from secrets.env); `off` sets `CLUSTER_API_ENABLED=False`. Toggle on an installed cluster: `--only-step render`, then `--only-step configure_maia_dashboard` (same flag on both), then `60_verify.sh` with the flag |
 | `--approve-host-changes` | off | required by 05, 21 (unit stage) and 90; give it only after the user has seen the printed plan |
 
 ## Ansible vars (ansible/roles/maia/defaults/main.yml, override with `-e` or group_vars/maia.yml)
@@ -27,15 +28,19 @@
 | `maia_openai_api_base_urls` (+`_keys`, `_configs`, `maia_default_models`, `maia_openwebui_model`) | empty → `ENABLE_OPENAI_API=false` | |
 | `volume_path` | `""` | block device to mount on `/mnt/maia-data`. Empty means the root disk |
 | `maia_timezone` | Europe/Stockholm | |
+| `maia_cluster_api` | `"off"` | set by `--cluster-api`; `on` needs `maia_cluster_api_token` (≥ 32 chars, from secrets.yml) or the render's assert fails |
 
 ## Fixed config.yaml additions (vs verdi), all explained in troubleshooting.md
 `install_k3s.proxy_ip/no_proxy_ips: ""`, `cluster_config_extra_env.selfsigned: true`, `externalCA` (= k3s server CA, after the
 external-ca step), `metallb_ip_pool: <ip>-<ip>`, `ADMIN_PROJECT_CHART_VERSION: 1.3.1`, branch-pinned git chart refs, generated secrets.
 
 ## Secrets (`~/.maia-vm/<name>/secrets.env`, 0600, control node only)
-`MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_GUACAMOLE_PASSWORD MAIA_HARBOR_ADMIN_PASSWORD`,
+`MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_GUACAMOLE_PASSWORD MAIA_HARBOR_ADMIN_PASSWORD MAIA_CLUSTER_API_TOKEN`,
 generated once with `openssl rand -hex 24` and turned into `secrets.yml` for `-e @`. The keycloak secret is seeded into
 `/etc/maia-config/env.json`, so MAIA uses it for the Keycloak client and OpenWebUI's OAuth matches.
+`MAIA_CLUSTER_API_TOKEN` is always generated but only reaches the guest with `--cluster-api on` (config.yaml `env:` → dashboard env).
+Clients use it as `Authorization: Bearer …`, e.g. the maia-cluster MCP server: `MAIA_CLUSTER_API_URL=https://maia.<d>/`,
+`MAIA_CLUSTER_API_TOKEN` read from secrets.env (through the tunnel).
 MAIA itself generates the other platform passwords (Keycloak admin console user `user`, ArgoCD, MinIO, MySQL/Mongo) into
 `/etc/maia-config/env.json` **on the guest** (0600). Read the admin logins from there:
 `ssh maia-vm sudo jq -r 'keys[]' /etc/maia-config/env.json`.

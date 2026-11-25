@@ -29,6 +29,8 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 : "${API_PORT:=16443}"
 : "${CLUSTER_DOMAIN:=maia.local}"
 : "${CLUSTER_NAME:=$VM_NAME}"
+# Dashboard Cluster API (kubectl/helm/argocd over HTTPS, token MAIA_CLUSTER_API_TOKEN from secrets.env): on | off
+: "${CLUSTER_API:=off}"
 : "${SSH_PUBKEY:=$HOME/.ssh/id_ed25519.pub}"
 APPROVED=0
 
@@ -46,11 +48,13 @@ parse_common_args() {
       --http-port) HTTP_PORT="$2"; shift 2 ;;
       --api-port) API_PORT="$2"; shift 2 ;;
       --disk-cache) VM_DISK_CACHE="$2"; shift 2 ;;
+      --cluster-api) CLUSTER_API="$2"; shift 2 ;;
       --approve-host-changes) APPROVED=1; shift ;;
       -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 0 ;;
       *) REST+=("$1"); shift ;;
     esac
   done
+  case "$CLUSTER_API" in on|off) ;; *) echo "--cluster-api must be on or off (got: $CLUSTER_API)"; exit 2 ;; esac
   # Control-node state (secrets, known_hosts, rendered inventory). Never on the hypervisor, never in the repo.
   STATE_DIR="$HOME/.maia-vm/$VM_NAME"
   LOG_DIR="${MAIA_LOG_DIR:-$SKILL_DIR/logs}"

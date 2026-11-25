@@ -9,7 +9,7 @@ SEC="$STATE_DIR/secrets.env"
 # Add any missing key, so a secrets.env from an older run picks up newly introduced secrets; existing values are kept.
 touch "$SEC"
 for k in MAIA_KEYCLOAK_CLIENT_SECRET MAIA_OPENWEBUI_ADMIN_PASSWORD MAIA_WEBUI_SECRET_KEY MAIA_GUACAMOLE_PASSWORD \
-         MAIA_HARBOR_ADMIN_PASSWORD; do
+         MAIA_HARBOR_ADMIN_PASSWORD MAIA_CLUSTER_API_TOKEN; do
   if grep -q "^$k=" "$SEC"; then echo "keeping $k"; else echo "$k=$(openssl rand -hex 24)" >> "$SEC"; echo "generated $k"; fi
 done
 chmod 600 "$SEC"
