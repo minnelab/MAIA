@@ -1,0 +1,22 @@
+{
+    "namespace": "my-project",
+    "email": "admin@example.org",
+    "supervisor": "pi@example.org",
+    "users": ["researcher@example.org"],
+    "description": "Minimal MAIA project: JupyterHub + FileBrowser",
+    "date": "2027-12-31",
+    "cluster": "maia-dsp",
+    "project_tier": "Base",
+    "gpu": "NO",
+    "memory_limit": "4 Gi",
+    "memory_request": "2 Gi",
+    "cpu_limit": "2",
+    "cpu_request": "100m",
+    "auto_deploy": true,
+    "auto_deploy_apps": ["namespace", "jupyterhub", "filebrowser"],
+    "email_to_username_map": {
+        "pi@example.org": "pi@example.org",
+        "researcher@example.org": "researcher@example.org"
+    },
+    "project_configuration": {}
+}

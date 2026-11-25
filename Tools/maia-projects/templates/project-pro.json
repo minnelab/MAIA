@@ -1,0 +1,39 @@
+{
+    "namespace": "scapis-demo",
+    "email": "admin@scapis.se",
+    "supervisor": "admin@scapis.se",
+    "users": ["user@scapis.se"],
+    "description": "SCAPIS Demo project",
+    "date": "2026-12-31",
+    "cluster": "maia-dsp",
+    "project_tier": "Pro",
+    "gpu": "NO",
+    "memory_limit": "4 Gi",
+    "memory_request": "2 Gi",
+    "cpu_limit": "2",
+    "cpu_request": "100m",
+    "auto_deploy": true,
+    "auto_deploy_apps:DISABLED": ["namespace", "kubeflow", "filebrowser", "mysql", "mlflow", "orthanc", "ehrbase"],
+    "email_to_username_map": {
+        "admin@scapis.se": "admin@scapis.se",
+        "user@scapis.se": "user@scapis.se"
+    },
+    "project_configuration": {
+        "env": {
+            "DEPLOY_KUBEFLOW": "True",
+            "DEPLOY_EHRBASE": "True",
+            "DEPLOY_NVFLARE_DASHBOARD:NO": "True",
+            "maia_workspace_pro_image": "maiacloudai/ubuntu-rdp",
+            "maia_workspace_pro_version": "1.0.1",
+            "MYSQL_CPU_REQUEST": "50m",
+            "MLFLOW_CPU_REQUEST": "50m",
+            "MINIO_EXTERNAL_CA": "True",
+            "MINIO_EXTERNAL_CA_SECRET_NAME": "maia-tls",
+            "MINIO_EXTERNAL_CA_NAMESPACE": "traefik",
+            "EHRBASE_DB_PASSWORD:SET-OR-OMIT-TO-GENERATE": "<password>",
+            "EHRBASE_DB_PASSWORD_ADMIN:SET-OR-OMIT-TO-GENERATE": "<password>",
+            "EHRBASE_SECURITY_AUTHPASSWORD:SET-OR-OMIT-TO-GENERATE": "<password>",
+            "EHRBASE_SECURITY_AUTHADMINPASSWORD:SET-OR-OMIT-TO-GENERATE": "<password>"
+        }
+    }
+}
