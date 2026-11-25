@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 50_install.sh: render /etc/maia-config with Ansible, then run the MAIA install in the guest one step at a time.
 # Usage: 50_install.sh [--guest maia-vm] [--branch B] [--domain maia.local] [--from-step <step>] [--only-step <step>]
-#   Steps: render bootstrap prepare_hosts configure_hosts install_k3s kyverno-proxy-fix external-ca install_maia_core local-path-sync
+#   Steps: render bootstrap prepare_hosts configure_hosts install_k3s k3s-traefik-cleanup kyverno-proxy-fix external-ca install_maia_core local-path-sync
 #          install_maia_admin keycloak-admin configure_oidc_authentication configure_maia_dashboard
 #   Check the last line: "INSTALL DONE" means success; a "FAILED: [where] <step>" line names the step to fix and resume from.
 #   "bootstrap" is main.sh (install_MAIA.sh: tooling, then prepare_hosts, configure_hosts, install_k3s).
@@ -14,7 +14,7 @@ parse_common_args "$@"
 FROM=render; ONLY=""
 set -- "${REST[@]+"${REST[@]}"}"
 while [[ $# -gt 0 ]]; do case "$1" in --from-step) FROM="$2"; shift 2 ;; --only-step) ONLY="$2"; shift 2 ;; *) echo "unknown arg $1"; exit 2 ;; esac; done
-STEPS=(render bootstrap prepare_hosts configure_hosts install_k3s kyverno-proxy-fix external-ca install_maia_core local-path-sync install_maia_admin keycloak-admin configure_oidc_authentication configure_maia_dashboard)
+STEPS=(render bootstrap prepare_hosts configure_hosts install_k3s k3s-traefik-cleanup kyverno-proxy-fix external-ca install_maia_core local-path-sync install_maia_admin keycloak-admin configure_oidc_authentication configure_maia_dashboard)
 want() { [[ -n "$ONLY" ]] && { [[ "$1" == "$ONLY" ]]; return; }; local s seen=0; for s in "${STEPS[@]}"; do [[ $s == "$FROM" ]] && seen=1; [[ $s == "$1" ]] && return $((1-seen)); done; return 1; }
 A="$SKILL_DIR/ansible"
 [[ -s "$STATE_DIR/secrets.yml" && -s "$STATE_DIR/inventory.ini" ]] || { echo "run 40_render_config.sh first"; exit 1; }
@@ -64,6 +64,36 @@ want bootstrap && { guest_job bootstrap 'bash /etc/maia-config/main.sh'; RAN_BOO
 for s in prepare_hosts configure_hosts install_k3s; do
   want $s && [[ $RAN_BOOTSTRAP == 0 ]] && guest_job $s "/etc/maia-config/maia-step.sh $s"
 done
+
+# Upstream roles/k3s starts k3s before /etc/rancher/k3s/config.yaml has `disable: [traefik]`, so k3s applies its bundled
+# traefik/traefik-crd HelmCharts, then (after the restart with the final config) deletes them. Their helm-delete jobs mount the
+# chart-content-traefik ConfigMap, which k3s never creates for a disabled chart, so the jobs stay in ContainerCreating and the
+# finalizer wrangler.cattle.io/on-helm-chart-remove never clears (60_verify check 1 fails). MAIA ships its own traefik
+# (maia-core-traefik), so with traefik disabled: drop the finalizers and the leftover helm jobs. Idempotent; a no-op when clean.
+if want k3s-traefik-cleanup; then
+  run guest k3s-traefik-cleanup <<'EOF'
+K="sudo -n k3s kubectl -n kube-system"
+if ! sudo cat /etc/rancher/k3s/config.yaml /etc/rancher/k3s/config.yaml.d/*.yaml 2>/dev/null | python3 -c '
+import sys,yaml
+d=[x for x in yaml.safe_load_all(sys.stdin) if x]
+sys.exit(0 if any("traefik" in (c.get("disable") or []) + (c.get("disable+") or []) for c in d) else 1)'; then
+  echo "traefik is not disabled in the k3s config: leaving its HelmCharts alone"; exit 0; fi
+n=0
+for hc in traefik traefik-crd; do
+  $K get helmchart "$hc" >/dev/null 2>&1 || continue
+  # k3s marks a disabled chart for deletion within seconds of starting; give it up to 60 s
+  for i in $(seq 1 12); do [[ -n "$($K get helmchart "$hc" -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null)" ]] && break; sleep 5; done
+  if [[ -z "$($K get helmchart "$hc" -o jsonpath='{.metadata.deletionTimestamp}' 2>/dev/null)" ]]; then
+    echo "WARN: helmchart $hc exists and is not being deleted although traefik is disabled; leaving it"; continue; fi
+  $K patch helmchart "$hc" --type=merge -p '{"metadata":{"finalizers":null}}'; n=$((n+1))
+done
+for j in helm-install-traefik helm-install-traefik-crd helm-delete-traefik helm-delete-traefik-crd; do
+  $K delete job "$j" --ignore-not-found --wait=false
+done
+echo "stuck traefik HelmCharts released: $n"
+sleep 10; $K get helmchart,jobs,pods 2>/dev/null | grep -E "traefik" | grep -v svclb-maia-core-traefik || echo "no k3s traefik leftovers"
+EOF
+fi
 
 # Upstream roles/argocd applies the Kyverno ClusterPolicy inject-proxy-env-vars whenever Kyverno is freshly installed, with no
 # proxy condition, so with no proxy every new pod gets HTTP(S)_PROXY=":3130" (argocd-server can't reach the API, and

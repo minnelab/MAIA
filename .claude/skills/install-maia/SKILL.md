@@ -85,6 +85,7 @@ Ubuntu 24.04, ≥ 4 CPU / 16 GB.
 | render | ansible-playbook install-maia.yml: /etc/maia-config/{config.yaml,env.json,main.sh,maia-step.sh,…}, k3s config (first render only) + `disable+: [local-storage]`, traefik OIDC plugin, `manage_etc_hosts: false` | 1.3 min (30 s again) |
 | bootstrap | main.sh → install_MAIA.sh (pip MAIA@branch, ansible, kubectl, helm, argocd) → prepare_hosts, configure_hosts, install_k3s | ~10 min |
 | prepare_hosts / configure_hosts / install_k3s | re-run one of them on its own (skipped when bootstrap ran in the same invocation) | 35 s / 35 s / 3–5 min |
+| k3s-traefik-cleanup | k3s starts before upstream's config disables traefik, so its traefik HelmCharts are applied, then stuck deleting (missing `chart-content-traefik`). With traefik disabled: drop their finalizers and the `helm-*-traefik*` jobs | 10–60 s |
 | kyverno-proxy-fix | with no proxy set: delete upstream's Kyverno ClusterPolicy `inject-proxy-env-vars` and recreate pods that got `HTTPS_PROXY=:3130` (upstream applies it unconditionally) | 5 s |
 | external-ca | k3s server CA (cert-manager/kubernetes-ca) → /etc/maia-config/maia-ca.crt, node trust store, re-render → `externalCA` in config.yaml | 30 s |
 | install_maia_core | 8 ArgoCD apps (Kubeflow dominates) | 6–13 min (3 min re-run) |

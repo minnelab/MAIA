@@ -125,9 +125,24 @@ Two causes:
    binding points back at `kube-system`'s service account. Fix in this skill: drop-in `/etc/rancher/k3s/config.yaml.d/50-install-maia.yaml`
    with `disable+: [local-storage]` (append, so the k3s role's `combine` that replaces `disable` doesn't drop it).
    UPSTREAM proposal: have the k3s role disable `local-storage` together with traefik.
-Cleanup if traefik HelmCharts are stuck deleting (finalizer `wrangler.cattle.io/on-helm-chart-remove`, helm-delete pods in
-ContainerCreating for want of `chart-content-traefik`): `kubectl -n kube-system patch helmchart traefik{,-crd} --type=merge -p '{"metadata":{"finalizers":null}}'`
-and delete the `helm-install-*`/`helm-delete-*` jobs.
+See the next entry if the traefik HelmCharts are left stuck deleting.
+
+### k3s traefik HelmCharts stuck deleting after a fresh install (60_verify check 1: `helm-*-traefik*` pods ContainerCreating/Unknown)
+Seen on a clean install (flem, 2026-11-25), not only after a reboot. Symptoms: in `kube-system`, jobs `helm-install-traefik{,-crd}`
+and `helm-delete-traefik{,-crd}` never finish; the delete pods' events say `configmap "chart-content-traefik" not found`; the
+`helmchart traefik{,-crd}` objects have a `deletionTimestamp` and the finalizer `wrangler.cattle.io/on-helm-chart-remove`.
+- Cause (UPSTREAM roles/k3s): k3s is started before `/etc/rancher/k3s/config.yaml` gets `disable: [traefik]`. In the k3s journal
+  the first start (09:55:50) applied both HelmCharts (09:56:11, 09:56:22); the final config.yaml was written at 09:56:29 and k3s
+  restarted. k3s then deletes the now-disabled charts, but never creates `chart-content-traefik` for a disabled chart, so the
+  helm-delete jobs can't mount it and the finalizer never clears. The `fatal:` from the role's `get helmchart … traefik` check
+  around that time is ignored and unrelated.
+- Fix in this skill: the `k3s-traefik-cleanup` step (after install_k3s). When the k3s config (or a drop-in) disables traefik, it
+  waits up to 60 s for each traefik HelmChart to be marked for deletion, removes its finalizers, and deletes the four helm jobs.
+  No-op when clean; leaves a chart alone (WARN) if it isn't being deleted. MAIA's own traefik (`maia-core-traefik`,
+  `svclb-maia-core-traefik-*`) is untouched.
+- By hand: `kubectl -n kube-system patch helmchart traefik traefik-crd --type=merge -p '{"metadata":{"finalizers":null}}'`, then delete the
+  `helm-install-traefik*` / `helm-delete-traefik*` jobs, or `50_install.sh --only-step k3s-traefik-cleanup`.
+- UPSTREAM proposal: have roles/k3s write the full config.yaml (with `disable`) before the first k3s start.
 
 ### Pods in `Unknown` for ~5–10 min after a VM restart
 Normal: containerd re-creates every sandbox, and NFSD has a 90 s grace period. Wait before diagnosing.
