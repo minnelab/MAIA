@@ -20,6 +20,7 @@
       - "minio-api.test.{{ cluster_domain }}"
       - "login.{{ cluster_domain }}"
       - "kubeflow.{{ cluster_domain }}"
+      - "chat.{{ cluster_domain }}"  # maia_admin_layer fetches the OpenWebUI API key from here
     environment_variables_list: |
       {% if proxy_ip is not defined or no_proxy_ips is not defined %}
       []

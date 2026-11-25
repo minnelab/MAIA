@@ -52,7 +52,7 @@ setup(
             "**/*.gitkeep",
         ],
     },
-    scripts=["MAIA_scripts/MAIA_Configure_Installation.sh"],
+    scripts=["MAIA_scripts/MAIA_Configure_Installation.sh","MAIA_scripts/MAIA_fetch_openwebui_api_key.sh"],
     entry_points={
         "console_scripts": [
             "MAIA_deploy_helm_chart = MAIA_scripts.MAIA_deploy_helm_chart:main",

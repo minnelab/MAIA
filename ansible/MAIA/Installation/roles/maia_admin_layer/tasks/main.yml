@@ -281,6 +281,17 @@
   environment:
     KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
   when: auto_sync | bool
+
+# Without this, the old pod is killed while later `argocd app sync` calls (ignore_errors) are connected to it, and those apps
+# silently never sync. On a slow disk the new pod took ~3.5 min to become ready.
+- name: Wait for argocd-server rollout to finish
+  ansible.builtin.command: kubectl rollout status deployment/argocd-server -n argocd --timeout=600s
+  changed_when: false
+  delegate_to: localhost
+  environment:
+    KUBECONFIG: "{{ DEPLOY_KUBECONFIG }}"
+  when: auto_sync | bool
+
 - name: Login to ArgoCD using CLI (with fallback)
   ansible.builtin.shell: |
     export ARGOCD_SERVER_IP=$(kubectl -n {{ argocd_namespace }} get svc argocd-server -o jsonpath='{.spec.clusterIP}')
@@ -406,12 +417,22 @@
   when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications
 
 - name: Generate OpenWebUI API Key
-  # hides the secret on this task's command line; -e maia_show_secrets=true to debug
+  # hides the API key in the result; -e maia_show_secrets=true to debug
   no_log: "{{ not (maia_show_secrets | default(false) | bool) }}"
-  ansible.builtin.shell: |
-    MAIA_fetch_openwebui_api_key --url https://chat.{{ domain }} --email {{ admin_email }} --password {{ openwebui_admin_password }}
+  # Installed by setup.py `scripts=`, so the command keeps its .sh name.
+  ansible.builtin.command: >-
+    MAIA_fetch_openwebui_api_key.sh --url https://chat.{{ domain }} --email {{ admin_email }}
+  environment:
+    # The script reads the password from here, which keeps it off the command line and out of `ps`.
+    OPENWEBUI_PASSWORD: "{{ openwebui_admin_password }}"
   register: openwebui_api_key_result
   changed_when: false
+  # OpenWebUI is often still starting right after its sync (minutes on a slow disk): retry for up to 10 min.
+  retries: 20
+  delay: 30
+  until: openwebui_api_key_result.rc == 0
+  # The next tasks handle rc != 0 / an empty key; a missing key mustn't fail the whole step.
+  failed_when: false
   delegate_to: localhost
   when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications
 
