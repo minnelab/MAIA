@@ -13,8 +13,15 @@ echo "== 1. cluster"
 run guest verify-1-cluster <<'EOF' || fail=1
 K="sudo -n k3s kubectl"
 $K get nodes -o wide
-bad=$($K get pods -A --no-headers | awk '$4!="Running" && $4!="Completed"')
-[[ -z "$bad" ]] && echo "all pods Running/Completed" || { echo "NOT READY:"; echo "$bad"; exit 1; }
+# Right after configure_maia_dashboard a rollout is still in progress (seen: 2 dashboard pods ContainerCreating 50 s after the
+# install ended), so wait up to 10 min for pods to settle before failing. Check 2 then sees the apps Healthy instead of Progressing.
+for i in $(seq 60); do
+  bad=$($K get pods -A --no-headers | awk '$4!="Running" && $4!="Completed"')
+  [[ -z "$bad" ]] && break
+  [[ $i == 1 ]] && { echo "waiting up to 10 min for:"; echo "$bad"; }
+  sleep 10
+done
+[[ -z "$bad" ]] && echo "all pods Running/Completed" || { echo "NOT READY after 10 min:"; echo "$bad"; exit 1; }
 EOF
 
 echo "== 2. argocd apps"

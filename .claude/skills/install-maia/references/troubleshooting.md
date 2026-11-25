@@ -8,6 +8,9 @@
 > `argocd app sync --timeout` (600 s admin/dashboard, 1800 s core), and `create_client(..., skip_exists=True)`.
 > Item 15 (pushed in cf3b159): Harbor admin password from `HARBOR_ADMIN_PASSWORD` instead of the chart default `Harbor12345`.
 > Item 16 (uncommitted): `admin_email` passed to `MAIA_install_core_toolkit` in `roles/maia_core_layer`.
+> Items 17–18 (uncommitted): `failed_when: false` on `Generate OpenWebUI API Key`; `rollout status` wait after the argocd-server restart.
+> Items 19a–d (uncommitted): the API-key task calls `MAIA_fetch_openwebui_api_key.sh`, retries 20×30 s, passes the password
+> via `OPENWEBUI_PASSWORD`; `configure_host.yaml` maps `chat.<domain>`. The skill stub (no `.sh`) is only for branches without 19a.
 > The guest installs from the GitHub branch, so the skill's workarounds stay until those fixes are pushed there. After that,
 > they're harmless no-ops (except `--disk-cache` and the 8 vCPU default, which are about the hardware).
 
@@ -239,6 +242,26 @@ installer` task in `roles/maia_core_layer` doesn't pass `admin_email` in its `en
 - Fix in this skill: config.yaml.j2 adds `admin_email: admin@<domain>` under `env:`. MAIA_Install exports it, and the local
   ansible-playbook inherits it. Then `--only-step render` and `--from-step install_maia_core`.
 - Upstream proposal: add `admin_email: "{{ admin_email | default('admin@maia.io') }}"` to that task's `environment:`.
+
+### UPSTREAM (17): install_maia_admin fails at `Generate OpenWebUI API Key` (output censored by no_log)
+Commit ad95809 added a task that runs `MAIA_fetch_openwebui_api_key`, but no such command exists: it isn't in setup.py,
+pyproject.toml, or any commit. The task has no `ignore_errors`, although the next two tasks already handle `rc != 0` and an
+empty key. Debug with `-e maia_show_secrets=true`, or check on the guest: `command -v MAIA_fetch_openwebui_api_key`.
+- Fix in this skill: the render step installs a stub `~/.local/bin/MAIA_fetch_openwebui_api_key` on the guest, only if the
+  command is missing. It prints an empty key and exits 0, so `OPENWEBUI_API_KEY` stays `""`, as in the earlier verified runs.
+- Upstream proposal: add `ignore_errors: true` (or `failed_when: false`) to the task, and ship the command as a console script.
+- 2026-11-25: the user added `MAIA_scripts/MAIA_fetch_openwebui_api_key.sh` (installed via `setup.py` `scripts=`, so the
+  command name keeps `.sh`). Tested on the guest: sign-in, get/create key, `--recreate`, `--json`; the key works on `/api/v1/models`.
+  Two skill bugs found while testing, both fixed: the guest had no `/etc/hosts` entry for `chat.<domain>` (now mapped with
+  iam/kubeflow), and env.json's `openwebui_admin_password` differed from the skill's `WEBUI_ADMIN_PASSWORD` (now pinned).
+
+### UPSTREAM (18): `argocd app sync maia-admin-openwebui` → `connection reset by peer`, then OpenWebUI never deployed
+`maia_admin_layer` runs `kubectl rollout restart deployment argocd-server` without waiting. On a slow disk the new pod becomes
+ready minutes later, and the old pod gets killed while a later `argocd app sync` (ignore_errors) is connected to it. In the
+2026-11-25 rebuild that dropped the OpenWebUI sync, so OpenWebUI had no resources and the API-key task failed too.
+- Fix in this skill: none needed. Re-run `--from-step install_maia_admin`; by then argocd-server is stable.
+- Upstream proposal: follow the restart with `kubectl -n argocd rollout status deployment/argocd-server --timeout=300s`
+  before the next login.
 
 ### Dashboard 502 for several minutes after configure_maia_dashboard
 The dashboard pod pip-installs MAIA@branch at start: ~80 s in the first run, **~7 min** in the rebuild. 60_verify now waits up to

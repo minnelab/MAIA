@@ -133,3 +133,24 @@ timing understated, noisy "FAILED open or read" in stage A, mis-numbered verify 
 | 60_verify waits ≤10 min for the dashboard | see final verify below |
 | stage A image pre-check quiet (`sha256sum --status`) | syntax only (the image is already present on flem) |
 | SKILL.md: run from repo root; known_hosts for manual ssh; INSTALL DONE / FAILED; step table; verify numbering | — |
+
+## Rebuild 3, 2026-11-24/25: skill only, branch at cf3b159 (fixes 1–15 pushed)
+
+Target `remote-hypervisor` (flem), 8 vCPU / 16 GB / 150 GB, `--disk-cache unsafe` (preflight: rotational ST2000DM001; user go-ahead
+for the unit). Wall clock 23:57 → 00:43 (**46 min**), including three resumes.
+
+| where | step | time | result |
+|---|---|---|---|
+| flem | 00_preflight | 5 s | PREFLIGHT OK (WARN rotational disk, WARN sudo needs a password: no host packages needed) |
+| flem | 21_create_vm_qemu (stage A, then unit after go-ahead) | 28 s + 14 s | SSH after ~10 s, cloud-init done; forwards on 127.0.0.1 only |
+| maia-vm | 30_bootstrap_guest | 98 s + reboot 23 s | OK |
+| ctl | 40_render_config | <1 s | 6 secrets generated, incl. `MAIA_HARBOR_ADMIN_PASSWORD` |
+| maia-vm | render + bootstrap + kyverno-proxy-fix + external-ca | 1 + 6.5 min | OK |
+| maia-vm | install_maia_core | 39 s | ❌ **UPSTREAM (16)** `KeyError: 'admin_email'` → skill: `admin_email` under `env:`, render, resume |
+| maia-vm | install_maia_core | 4.4 min | OK |
+| maia-vm | install_maia_admin | 4.7 min | ❌ **UPSTREAM (18)** argocd-server restart race dropped the OpenWebUI sync; then (17) |
+| maia-vm | install_maia_admin | 1.8 min | ❌ **UPSTREAM (17)** `MAIA_fetch_openwebui_api_key` doesn't exist → skill: guest stub, render, resume |
+| maia-vm | install_maia_admin → configure_maia_dashboard | 5.3 min + 7 s + 36 s + 43 s | INSTALL DONE |
+| ctl→maia-vm | 60_verify | 1.5 min | ❌ check 1/2: dashboard rollout still ContainerCreating 50 s after install → skill: check 1 waits up to 10 min |
+| ctl→maia-vm | 60_verify | 1 min | **VERIFY OK** |
+| maia-vm | Harbor check | — | `admin:Harbor12345` → 401; OIDC task OK; `auth_mode: oidc_auth` (fix 15 works) |
