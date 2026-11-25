@@ -39,6 +39,15 @@ def _loggable(key, value):
     return "***" if any(s in key.upper() for s in _SENSITIVE) else value
 
 
+def _export_config_env(config_dict):
+    """Export config.yaml `env:` values (non-empty, except MAIA_PRIVATE_REGISTRY) to os.environ for the playbooks."""
+    for key, value in (config_dict or {}).get("env", {}).items():
+        if key != "MAIA_PRIVATE_REGISTRY":
+            logger.info(f"Setting environment variable {key} to {_loggable(key, value)}")
+            if value is not None and value != "":
+                os.environ[key] = value
+
+
 def get_arg_parser():
     pars = ArgumentParser(description=DESC, epilog=EPILOG, formatter_class=RawTextHelpFormatter)
 
@@ -138,14 +147,7 @@ def main():
     if Path(config_folder).joinpath("config.yaml").exists():
         config_dict = yaml.safe_load(Path(config_folder).joinpath("config.yaml").read_text())
         os.environ["CONFIG_FOLDER"] = str(config_folder)
-        if "env" in config_dict:
-            for key, value in config_dict["env"].items():
-                if key != "MAIA_PRIVATE_REGISTRY":
-                    logger.info(f"Setting environment variable {key} to {_loggable(key, value)}")
-                    if key == "INGRESS_RESOLVER_EMAIL" and value != "" and value is not None:
-                        os.environ[key] = value
-                    elif value is not None and value != "":
-                        os.environ[key] = value
+        _export_config_env(config_dict)
     else:
         config_dict = {}
 
@@ -489,6 +491,10 @@ def main():
 
     # Step 9: Run configure_maia_dashboard.yaml
     logger.info("\n=== Step 9: Running configure_maia_dashboard.yaml ===")
+    # install_maia_admin writes env.OPENWEBUI_API_KEY into config.yaml after this process started; re-export the env so
+    # that the dashboard gets it in a single run of all steps.
+    if Path(config_folder).joinpath("config.yaml").exists():
+        _export_config_env(yaml.safe_load(Path(config_folder).joinpath("config.yaml").read_text()))
     configure_maia_dashboard_cmd = [
         "ansible-playbook",
         "-i",

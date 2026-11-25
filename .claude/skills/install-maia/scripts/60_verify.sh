@@ -111,8 +111,8 @@ while IFS='=' read -r k v; do
   [[ -n "\$v" ]] || continue
   if grep -rqF -- "\$v" "$SKILL_DIR"; then echo "LEAK: value of \$k found in $SKILL_DIR"; hits=1; fi
 done < "$STATE_DIR/secrets.env"
-# keyword sweep: show matches that carry a long hex/random-looking value
-grep -rnE '(password|secret|token)[^ ]*[:=] *"?[A-Za-z0-9+/_-]{20,}' "$SKILL_DIR" | grep -vE 'openssl rand|\\\$|\{\{' | head && hits=1 || true
+# keyword sweep: show matches that carry a long hex/random-looking value. Skip this check's own logs: they quote what it flagged.
+grep -rnE '(password|secret|token)[^ ]*[:=] *"?[A-Za-z0-9+/_-]{20,}' --exclude='*-verify-6-secrets.log' "$SKILL_DIR" | grep -vE 'openssl rand|\\\$|\{\{' | head && hits=1 || true
 [[ \$hits -eq 0 ]] && echo "no generated secrets found" || exit 1
 EOF
 [[ $fail -eq 0 ]] && echo "VERIFY OK" || { echo "VERIFY FAILED"; exit 1; }

@@ -11,6 +11,9 @@
 > Items 17–18 (uncommitted): `failed_when: false` on `Generate OpenWebUI API Key`; `rollout status` wait after the argocd-server restart.
 > Items 19a–d (uncommitted): the API-key task calls `MAIA_fetch_openwebui_api_key.sh`, retries 20×30 s, passes the password
 > via `OPENWEBUI_PASSWORD`; `configure_host.yaml` maps `chat.<domain>`. The skill stub (no `.sh`) is only for branches without 19a.
+> Items 20–23 (uncommitted): OPENWEBUI_API_KEY written to config.yaml with Python/PyYAML instead of yq; MAIA_Install re-exports
+> config.yaml `env:` before configure_maia_dashboard; `maia_admin` passes each OPENWEBUI_* that's set (model optional);
+> `home/views.chat` POSTs to `$OPENWEBUI_URL/chat/completions`. Tested on the guest (20–22); 23 by probing the endpoint from the pod.
 > The guest installs from the GitHub branch, so the skill's workarounds stay until those fixes are pushed there. After that,
 > they're harmless no-ops (except `--disk-cache` and the 8 vCPU default, which are about the hardware).
 
@@ -262,6 +265,26 @@ ready minutes later, and the old pod gets killed while a later `argocd app sync`
 - Fix in this skill: none needed. Re-run `--from-step install_maia_admin`; by then argocd-server is stable.
 - Upstream proposal: follow the restart with `kubectl -n argocd rollout status deployment/argocd-server --timeout=300s`
   before the next login.
+
+### OpenWebUI API key → dashboard: what was checked (2026-11-25)
+Path: `Generate OpenWebUI API Key` → `Set env.OPENWEBUI_API_KEY in config.yaml` → MAIA_Install exports config.yaml `env:` →
+`configure_maia_dashboard` → `MAIA_install_admin_toolkit` → `maia_admin.create_maia_dashboard_values` → pod env.
+Tested on the guest by writing a real key into config.yaml and running configure_maia_dashboard: the pod's `OPENWEBUI_API_KEY`
+matched config.yaml (by hash), and `$OPENWEBUI_URL/models` from the pod gave 200. Skill fixes made while testing:
+- `OPENWEBUI_URL` was verdi's `http://open-webui.open-webui.svc.cluster.local/api/v1`, which doesn't resolve here. Now
+  `maia_openwebui_url` = `http://maia-admin-openwebui-open-webui.openwebui.svc.cluster.local/api/v1`.
+- Every render reset `OPENWEBUI_API_KEY` to `""`. The render now keeps the value MAIA wrote into config.yaml.
+Upstream problems found (proposed separately):
+- **UPSTREAM (20):** the `Set env.OPENWEBUI_API_KEY` task uses mikefarah syntax (`yq -i … strenv()`), but Ubuntu's `yq` package
+  is the Python/jq wrapper (3.1.0): `-i/--in-place can only be used with -y/-Y`. The key is never written, and the task has
+  no ignore_errors, so install_maia_admin fails there as soon as a real key is fetched.
+- **UPSTREAM (21):** MAIA_Install reads config.yaml `env:` once at start and skips empty values. In a single run of all steps,
+  configure_maia_dashboard still sees the startup value, so the dashboard gets no key. The skill runs each step as its own
+  MAIA_Install, so it re-reads config.yaml.
+- **UPSTREAM (22):** `maia_admin` adds OPENWEBUI_* to the dashboard only if `OPENWEBUI_MODEL` is also set. The skill's
+  `maia_openwebui_model` is empty (no LLM endpoints), so the dashboard has no OpenWebUI env at all. Set it with an LLM backend.
+- **UPSTREAM (23):** `apps/home/views.chat` POSTs to `OPENWEBUI_URL` itself (405 on the base URL), while `agent_api` treats
+  it as a base URL and appends `/chat/completions`. One variable can't satisfy both.
 
 ### Dashboard 502 for several minutes after configure_maia_dashboard
 The dashboard pod pip-installs MAIA@branch at start: ~80 s in the first run, **~7 min** in the rebuild. 60_verify now waits up to

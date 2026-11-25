@@ -58,6 +58,8 @@ maia_openai_api_keys: ""
 maia_openai_api_configs: ""
 maia_default_models: ""
 maia_openwebui_model: ""
+# Dashboard → OpenWebUI (OpenAI-compatible base URL; /api/v1/models and /api/v1/chat/completions answer there)
+maia_openwebui_url: "http://maia-admin-openwebui-open-webui.openwebui.svc.cluster.local/api/v1"
 
 # Secrets: supplied by 40_render_config.sh via -e @secrets.yml. No defaults on purpose.
 # maia_keycloak_client_secret, maia_openwebui_admin_password, maia_webui_secret_key,

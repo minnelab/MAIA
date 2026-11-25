@@ -41,6 +41,20 @@
     path: "{{ maia_config_dir }}/maia-ca.crt"
   register: maia_ca_file
 
+- name: Read existing config.yaml (to keep the OpenWebUI API key MAIA wrote into it)
+  ansible.builtin.slurp:
+    src: "{{ maia_config_dir }}/config.yaml"
+  register: maia_config_content
+  failed_when: false
+  no_log: true
+
+- name: Keep env.OPENWEBUI_API_KEY from the existing config.yaml
+  ansible.builtin.set_fact:
+    maia_existing_openwebui_api_key: >-
+      {{ ((maia_config_content.content | b64decode | from_yaml).env | default({})).OPENWEBUI_API_KEY | default('', true) }}
+  when: maia_config_content.content is defined
+  no_log: true
+
 - name: Write Maia config.yaml (contains secrets)
   ansible.builtin.template:
     src: config.yaml.j2
@@ -72,11 +86,14 @@
     dest: "{{ maia_config_dir }}/env.json"
     content: >-
       {{ ((maia_env_json_content.content | b64decode | from_json) if maia_env_json.stat.exists else {})
-         | combine({'keycloak_client_secret': maia_keycloak_client_secret,
-                    'openwebui_admin_password': maia_openwebui_admin_password}) | to_nice_json }}
+         | combine(maia_pinned_env) | to_nice_json }}
     owner: "{{ maia_user }}"
     group: "{{ maia_user }}"
     mode: "0600"
+  vars:
+    maia_pinned_env:
+      keycloak_client_secret: "{{ maia_keycloak_client_secret }}"
+      openwebui_admin_password: "{{ maia_openwebui_admin_password }}"
   no_log: true
 
 - name: Mount data volume on maia_data_dir

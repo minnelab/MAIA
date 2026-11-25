@@ -79,8 +79,10 @@ env:
   MAIA_TAG: {{ maia_tag }}
   MAIA_DASHBOARD_IMAGE_VERSION: {{ maia_dashboard_image_version }}
   MAIA_DASHBOARD_OIDC_AUTHENTICATION: "true"
-  OPENWEBUI_API_KEY: ""
-  OPENWEBUI_URL: "http://open-webui.open-webui.svc.cluster.local/api/v1"
+  # Written by maia_admin_layer ("Set env.OPENWEBUI_API_KEY in config.yaml"); kept across re-renders.
+  OPENWEBUI_API_KEY: "{{ maia_existing_openwebui_api_key | default('') }}"
+  # In-cluster service of the maia-admin-openwebui release (namespace openwebui). verdi's "open-webui.open-webui" doesn't exist here.
+  OPENWEBUI_URL: "{{ maia_openwebui_url }}"
   OPENWEBUI_MODEL: "{{ maia_openwebui_model }}"
   AGENT_PROVIDER: "OPENWEBUI"
   AGENT_API_TOKEN: "{{ maia_agent_api_token }}"

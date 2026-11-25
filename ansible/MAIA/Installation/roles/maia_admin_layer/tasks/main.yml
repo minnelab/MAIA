@@ -441,9 +441,22 @@
     openwebui_api_key: "{{ openwebui_api_key_result.stdout | trim }}"
   when: auto_sync | bool and 'maia-admin-openwebui' in maia_admin_argocd_applications and openwebui_api_key_result.rc == 0
 
+# Not yq: Ubuntu's yq package is the Python/jq wrapper, which rejects mikefarah's `-i … strenv()` syntax. ansible's own
+# interpreter always has PyYAML. Like `yq -y`, this rewrites config.yaml without comments; key order and file mode are kept.
 - name: Set env.OPENWEBUI_API_KEY in config.yaml
-  ansible.builtin.shell: |
-    yq -i '.env.OPENWEBUI_API_KEY = strenv(OPENWEBUI_API_KEY)' "{{ config_folder }}/config.yaml"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - -c
+      - |
+        import os, sys, yaml
+        path = sys.argv[1]
+        with open(path) as f:
+            cfg = yaml.safe_load(f) or {}
+        cfg.setdefault("env", {})["OPENWEBUI_API_KEY"] = os.environ["OPENWEBUI_API_KEY"]
+        with open(path, "w") as f:
+            yaml.safe_dump(cfg, f, sort_keys=False, default_flow_style=False)
+      - "{{ config_folder }}/config.yaml"
   environment:
     OPENWEBUI_API_KEY: "{{ openwebui_api_key }}"
   delegate_to: localhost

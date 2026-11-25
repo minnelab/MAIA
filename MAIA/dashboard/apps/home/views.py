@@ -322,8 +322,9 @@ def chat(request):
                 {"role": "user", "content": user_message},
             ],
         }
+        # OPENWEBUI_URL is the OpenAI-compatible base URL (as in agent_api), e.g. http://<openwebui-svc>/api/v1.
         response = requests.post(
-            settings.OPENWEBUI_URL,
+            f"{settings.OPENWEBUI_URL.rstrip('/')}/chat/completions",
             headers=headers,
             json=payload,
         )

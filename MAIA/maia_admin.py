@@ -1180,15 +1180,11 @@ def create_maia_dashboard_values(config_folder, project_id, cluster_config_dict,
                     {"name": "SUPPORT_URL", "value": os.environ["SUPPORT_URL"]},
                 ]
             )
-    # MAIA-Chatbot Configuration
-    if "OPENWEBUI_API_KEY" in os.environ and "OPENWEBUI_URL" in os.environ and "OPENWEBUI_MODEL" in os.environ:
-        maia_dashboard_values["env"].extend(
-            [
-                {"name": "OPENWEBUI_API_KEY", "value": os.environ["OPENWEBUI_API_KEY"]},
-                {"name": "OPENWEBUI_URL", "value": os.environ["OPENWEBUI_URL"]},
-                {"name": "OPENWEBUI_MODEL", "value": os.environ["OPENWEBUI_MODEL"]},
-            ]
-        )
+    # MAIA-Chatbot Configuration: pass each OPENWEBUI_* variable that is set. OPENWEBUI_MODEL is optional, since the
+    # dashboard has a default model; requiring it dropped the API key and URL whenever no model was configured.
+    for key in ("OPENWEBUI_API_KEY", "OPENWEBUI_URL", "OPENWEBUI_MODEL"):
+        if os.environ.get(key):
+            maia_dashboard_values["env"].append({"name": key, "value": os.environ[key]})
 
     maia_dashboard_values["create_kubeflow_cluster_role"] = False
     if "CREATE_KUBEFLOW_CLUSTER_ROLE" in os.environ:
