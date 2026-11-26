@@ -90,8 +90,11 @@ env:
 {% if maia_cluster_api == 'on' %}
   CLUSTER_API_TOKEN: "{{ maia_cluster_api_token }}"
 {% endif %}
-{% set _charts = {} if maia_branch == 'master' else dict(maia_branch_chart_keys | zip(maia_branch_chart_keys | map('regex_replace', '^.*$', maia_branch))) %}
-{% for k, v in (_charts | combine(maia_env_overrides)).items() %}
+{# Git-sourced MAIA charts follow charts.ref from overrides.yaml, else the branch (nothing on master). Precedence, lowest
+   first: that pinning, maia_env_overrides (skill defaults), maia_override_env (the deployment's overrides.yaml). #}
+{% set _ref = maia_chart_ref or ('' if maia_branch == 'master' else maia_branch) %}
+{% set _charts = {} if not _ref else dict(maia_branch_chart_keys | zip(maia_branch_chart_keys | map('regex_replace', '^.*$', _ref))) %}
+{% for k, v in (_charts | combine(maia_env_overrides) | combine(maia_override_env)).items() %}
   {{ k }}: "{{ v }}"
 {% endfor %}
 steps:

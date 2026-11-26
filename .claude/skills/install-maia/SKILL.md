@@ -20,7 +20,8 @@ The reference run (target `remote-hypervisor`, hypervisor `flem`) is in [RUNBOOK
 | guest alias / name | `maia-vm` / `maia-vm`. Size **8 vCPU** / 16 GB / 150 GB (`VM_CPUS VM_MEM_GB VM_DISK_GB`). 4 vCPU does not fit MAIA's CPU requests |
 | cluster API | `--cluster-api off` (default) or `on`: enables the dashboard's kubectl/helm/argocd API with `MAIA_CLUSTER_API_TOKEN` from secrets.env. Pass the same value to 50_install and 60_verify |
 | disk cache | `--disk-cache writeback` (default) or `unsafe`. **Ask the user** when preflight reports a rotational hypervisor disk: on flem's HDD, DB first-init outlasted liveness probes until `unsafe` |
-More flags: [references/config-reference.md](references/config-reference.md). Prompt template for a fresh install on a new server: [references/new-server-prompt.md](references/new-server-prompt.md).
+| images / charts | optional `--overrides <file>` (start from `profiles/example.yaml`): image tags, registry, chart refs/versions. Stored as `~/.maia-vm/<name>/overrides.yaml`, validated against the branch's `MAIA/versions.py` |
+The flags above (and ports) are **remembered** per deployment in `~/.maia-vm/<name>/install-flags.env`: pass them once; later calls reuse them, and a flag given again replaces the saved value. More flags: [references/config-reference.md](references/config-reference.md). Prompt template for a fresh install on a new server: [references/new-server-prompt.md](references/new-server-prompt.md).
 
 ## Rules
 - **Approval gates.** Anything that changes the *hypervisor* (packages, smolvm install, user units, firewall, teardown)
@@ -77,7 +78,7 @@ Ubuntu 24.04, ≥ 4 CPU / 16 GB.
 `$S/30_bootstrap_guest.sh --guest maia-vm`: apt upgrade, base packages, timezone, reboot if required. It prints the default route.
 
 ### 4. Render config (~1 s)
-`$S/40_render_config.sh --guest maia-vm`: creates secrets once and renders `~/.maia-vm/<name>/inventory.ini` (user from `ssh -G`).
+`$S/40_render_config.sh --guest maia-vm [--overrides <file>]`: creates secrets once, validates the overrides file, and renders `~/.maia-vm/<name>/inventory.ini` (user from `ssh -G`).
 
 ### 5. Install (~30–40 min: bootstrap 6–10, core 6–13, admin 4, oidc+dashboard 2)
 `$S/50_install.sh --guest maia-vm --branch <b> --domain <d>` runs these steps in order:
@@ -109,7 +110,10 @@ install set Healthy and Synced, or only documented benign drift; then it waits (
 (3) through `ssh -L <local>:127.0.0.1:<https-port> <hypervisor>`, `curl -k --resolve` for `maia iam registry kubeflow chat login`
 gives 200/30x (kubeflow: oauth2-proxy's 403 "Sign In" page); (4) Keycloak OIDC discovery, dashboard → Keycloak login form, and a
 login as `admin@<d>`/`admin` reaching Keycloak's UPDATE_PASSWORD action (or a dashboard callback once it's changed); (5) is the
-fresh-agent rebuild (below); (5b) the dashboard Cluster API matches `--cluster-api` (on: the token gets 200 `enabled`, no token is refused; off: 404 disabled); (6) no generated secret value anywhere in the skill dir or logs. It must print `VERIFY OK` (~10 s
+fresh-agent rebuild (below); (5b) the dashboard Cluster API matches `--cluster-api` (on: the token gets 200 `enabled`, no token is refused; off: 404 disabled); (6) no generated secret value anywhere in the skill dir or logs. (7) records what is deployed (MAIA commit on the node and in the dashboard pod, k3s, every ArgoCD app's
+repo/chart/target/synced revision, Helm releases, every running image with its digest) in `/etc/maia-config/deployed-versions.md`
+and `~/.maia-vm/<name>/deployed/` (`latest.md`, plus one file per distinct state), and prints the diff against the previous
+record. It never fails VERIFY. `60_verify.sh --versions-only` runs only (7), e.g. after a sync or an image change. It must print `VERIFY OK` (~10 s
 plus the dashboard wait).
 Browser access for the user: Keycloak's hostname is `iam.<d>` **without a port**, so the browser must reach port 443.
 Tunnel from their machine with local port 443 (needs admin rights): `sudo ssh -L 443:127.0.0.1:8443 flem`, add

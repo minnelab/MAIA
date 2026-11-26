@@ -42,6 +42,10 @@ maia_branch_chart_keys: [CORE_TOOLKIT_CHART_VERSION, LOCAL_PATH_CHART_VERSION, K
                          MAIA_FILEBROWSER_CHART_VERSION, MAIA_ORTHANC_CHART_VERSION, MAIA_KUBEFLOW_CHART_VERSION,
                          MAIA_NVFLARE_DASHBOARD_CHART_VERSION, MAIA_EHRBASE_CHART_VERSION, KANIKO_CHART_VERSION, MKG_CHART_VERSION,
                          GPU_BOOKING_CHART_VERSION]
+# Per-deployment overrides: scripts/overrides.py compiles ~/.maia-vm/<name>/overrides.yaml into these (-e @overrides.vars.yml).
+# Don't set them here; edit the overrides file.
+maia_chart_ref: ""                    # charts.ref: git ref for every key in maia_branch_chart_keys (default: maia_branch)
+maia_override_env: {}                 # images:/charts:/env: entries, merged last into config.yaml env:
 
 # Components (verdi set)
 maia_core_apps: [maia-core-traefik, maia-core-local-path, maia-core-cert-manager, maia-core-metallb,

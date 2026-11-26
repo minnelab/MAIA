@@ -48,6 +48,7 @@ EOF
 }
 
 if want render; then
+  compile_overrides
   run ctl ansible-galaxy <<EOF
 cd "$A" && ansible-galaxy collection install -r requirements.yml 2>&1 | tail -3
 EOF
@@ -55,7 +56,7 @@ EOF
 cd "$A" && ANSIBLE_CONFIG="$A/ansible.cfg" ansible-playbook -i "$STATE_DIR/inventory.ini" install-maia.yml \
   -e maia_branch="$MAIA_BRANCH" -e maia_cluster_domain="$CLUSTER_DOMAIN" -e maia_cluster_name="$CLUSTER_NAME" -e maia_cluster_api="$CLUSTER_API" \
   -e '{"maia_steps": ["prepare_hosts", "configure_hosts", "install_k3s"]}' \
-  -e @"$STATE_DIR/secrets.yml" 2>&1 | grep -vE '^\s*$' | tail -40
+  -e @"$STATE_DIR/secrets.yml" -e @"$STATE_DIR/overrides.vars.yml" 2>&1 | grep -vE '^\s*$' | tail -40
 EOF
 fi
 
@@ -127,6 +128,7 @@ fi
 # custom-ca-cert from externalCA. So write the CA that signs the ingress certs (the k3s server CA, kept by install_k3s as
 # cert-manager/kubernetes-ca) to /etc/maia-config/maia-ca.crt, trust it on the node, and re-render: the role then adds externalCA.
 if want external-ca; then
+  compile_overrides
   run guest external-ca <<'EOF'
 K="sudo -n k3s kubectl"
 $K -n cert-manager get secret kubernetes-ca -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/maia-ca.crt
@@ -140,7 +142,7 @@ EOF
 cd "$A" && ANSIBLE_CONFIG="$A/ansible.cfg" ansible-playbook -i "$STATE_DIR/inventory.ini" install-maia.yml \
   -e maia_branch="$MAIA_BRANCH" -e maia_cluster_domain="$CLUSTER_DOMAIN" -e maia_cluster_name="$CLUSTER_NAME" -e maia_cluster_api="$CLUSTER_API" \
   -e '{"maia_steps": ["prepare_hosts", "configure_hosts", "install_k3s"]}' \
-  -e @"$STATE_DIR/secrets.yml" 2>&1 | grep -vE '^\s*$' | tail -4
+  -e @"$STATE_DIR/secrets.yml" -e @"$STATE_DIR/overrides.vars.yml" 2>&1 | grep -vE '^\s*$' | tail -4
 EOF
   run guest external-ca-check <<'EOF'
 python3 -c 'import yaml; c=yaml.safe_load(open("/etc/maia-config/config.yaml")); e=c["cluster_config_extra_env"]["externalCA"]; print("externalCA:", e["name"], e["cert"])'

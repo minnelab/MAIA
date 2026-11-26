@@ -1,6 +1,12 @@
 # Configuration reference
 
 ## Script flags (all scripts, parsed in scripts/lib.sh)
+**Remembered per deployment** in `~/.maia-vm/<name>/install-flags.env` (0600, plain `VAR=value`, parsed, never sourced):
+`--branch --domain --cluster-api --hypervisor --guest --ssh-port --https-port --http-port --api-port --disk-cache`. A script run
+without one of them uses the saved value and prints `flags (saved in …): …` for those that differ from the defaults; a flag or
+env var given explicitly wins, is saved, and prints `flags: VAR: old -> new (saved)`. Values are validated before saving.
+`--name` picks the directory, so it is never saved: pass it on every call for a VM not named `maia-vm`. Teardown keeps the file
+(a rebuild reuses the flags); `--purge-secrets` deletes it with secrets.env and overrides.yaml.
 | Flag / env | Default | Meaning |
 |---|---|---|
 | `--hypervisor <alias>` / `HYPERVISOR` | empty = local | SSH alias of the VM host. Empty means the VM runs on the control node |
@@ -13,6 +19,7 @@
 | `--disk-cache` / `VM_DISK_CACHE` | `writeback` | `unsafe` on HDD hypervisors, with user approval (see qemu-fallback.md) |
 | `SSH_PUBKEY` | `~/.ssh/id_ed25519.pub` | key injected for guest user `maia` |
 | `--cluster-api on\|off` / `CLUSTER_API` | `off` | 50_install, 60_verify. Dashboard Cluster API (`/maia/cluster-api/`: kubectl/helm/argocd over HTTPS). `on` sets `CLUSTER_API_ENABLED=True` and `CLUSTER_API_TOKEN` (= `MAIA_CLUSTER_API_TOKEN` from secrets.env); `off` sets `CLUSTER_API_ENABLED=False`. Toggle on an installed cluster: `--only-step render`, then `--only-step configure_maia_dashboard` (same flag on both), then `60_verify.sh` with the flag |
+| `--overrides <file>` | none | 40, 50. Per-deployment images/charts file (below), copied to `~/.maia-vm/<name>/overrides.yaml` |
 | `--approve-host-changes` | off | required by 05, 21 (unit stage) and 90; give it only after the user has seen the printed plan |
 
 ## Ansible vars (ansible/roles/maia/defaults/main.yml, override with `-e` or group_vars/maia.yml)
@@ -29,6 +36,28 @@
 | `volume_path` | `""` | block device to mount on `/mnt/maia-data`. Empty means the root disk |
 | `maia_timezone` | Europe/Stockholm | |
 | `maia_cluster_api` | `"off"` | set by `--cluster-api`; `on` needs `maia_cluster_api_token` (≥ 32 chars, from secrets.yml) or the render's assert fails |
+
+## Overrides file (`~/.maia-vm/<name>/overrides.yaml`)
+Per-deployment images and charts, kept on the control node next to secrets.env (it holds no secrets). Start from
+[profiles/example.yaml](../profiles/example.yaml); keep shared profiles in `profiles/`. `scripts/overrides.py` checks every key
+against `MAIA/versions.py` of `origin/<branch>` and writes `overrides.vars.yml`, which every render passes with `-e @`.
+| Section | Becomes (config.yaml `env:`) |
+|---|---|
+| `images.registry` | `MAIA_REGISTRY` (dashboard, gpu-booking and project images read it) |
+| `images.<name>: <tag>` | `<NAME>_IMAGE_VERSION`; `maia-dashboard` sets `maia_dashboard_image_version` |
+| `charts.ref` | every key in `maia_branch_chart_keys` + `MAIA_CHART_GIT_REF` (default: the branch; nothing on master) |
+| `charts.<NAME>: <v>` or `{version, type}` | `<NAME>_CHART_VERSION` / `<NAME>_CHART_TYPE` |
+| `env.<KEY>` | passed through (unknown keys allowed with a note; secret-looking keys rejected) |
+Precedence, lowest first: branch pinning, `maia_env_overrides` (skill defaults), the overrides file. Keys the template sets
+itself (`CLUSTER_DOMAIN`, `MAIA_TAG`, `CLUSTER_API_*`, …) are rejected: use their flag or var.
+Rejected until MAIA changes land (plan step 2): `charts.git_repo/helm_repo` (`MAIA_PRIVATE_REGISTRY` is one URL for git charts,
+Helm charts and images, and MAIA_Install doesn't export it), `images.<name>.repository`, and `values:`.
+Apply a change to a running cluster: edit the file → `50_install.sh --only-step render` (flags come from install-flags.env)
+→ re-run the step that owns the app (e.g.
+`--only-step configure_maia_dashboard` for the dashboard image) or sync that ArgoCD app. Never sync `maia-admin-keycloak`.
+Use unique image tags (`<version>-<git sha>`). A reused tag (e.g. `2.6.0-preview`) is only traceable through the digest that
+`60_verify.sh` check 7 records in `~/.maia-vm/<name>/deployed/`; run `60_verify.sh --versions-only` after applying a change to see
+exactly what it changed.
 
 ## Fixed config.yaml additions (vs verdi), all explained in troubleshooting.md
 `install_k3s.proxy_ip/no_proxy_ips: ""`, `cluster_config_extra_env.selfsigned: true`, `externalCA` (= k3s server CA, after the

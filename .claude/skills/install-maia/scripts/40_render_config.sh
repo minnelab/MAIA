@@ -2,6 +2,8 @@
 # 40_render_config.sh: generate secrets once (openssl rand) in $STATE_DIR/secrets.env (0600, control node only),
 # derive secrets.yml for `ansible-playbook -e @…`, and render the inventory from inventory.ini.j2.
 # Re-running keeps existing secrets. Never prints them.
+# --overrides FILE: per-deployment image/chart overrides (profiles/example.yaml), copied to $STATE_DIR/overrides.yaml and
+# validated here so a bad key fails before the install; 50_install.sh re-compiles it on every render.
 source "$(dirname "$0")/lib.sh"
 parse_common_args "$@"
 umask 077
@@ -18,4 +20,5 @@ GUEST_USER="$(ssh -G "$GUEST" | awk '/^user /{print $2}')"
 sed -e "s|{{GUEST}}|$GUEST|" -e "s|{{GUEST_USER}}|$GUEST_USER|" -e "s|{{STATE_DIR}}|$STATE_DIR|" \
   "$SKILL_DIR/ansible/inventory.ini.j2" > "$STATE_DIR/inventory.ini"
 echo "inventory: $STATE_DIR/inventory.ini (guest user from ssh -G: $GUEST_USER)"
+compile_overrides
 ls -l "$STATE_DIR" | sed 1d | awk '{print $1, $NF}'

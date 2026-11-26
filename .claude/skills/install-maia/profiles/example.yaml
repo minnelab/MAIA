@@ -1,0 +1,25 @@
+# install-maia overrides profile (example). Use with:
+#   40_render_config.sh --guest maia-vm --overrides .claude/skills/install-maia/profiles/<name>.yaml
+# It is copied to ~/.maia-vm/<name>/overrides.yaml; later renders (50_install.sh) read that copy, so edit it there, or pass
+# --overrides again. Every key is checked against MAIA/versions.py of the --branch. Remove what you don't need.
+# No secrets here: they live in ~/.maia-vm/<name>/secrets.env.
+
+images:
+  # Registry prefix for MAIA-built images that honour MAIA_REGISTRY (dashboard, gpu-booking, project images).
+  # e.g. the cluster's own Harbor: registry.maia.local/maia
+  # registry: ghcr.io/minnelab
+  # Tags: <image-name>: <tag>. Use a unique tag per build (<version>-<git sha>), never a moving one.
+  # maia-dashboard: 2.6.0-dev.a5c81ff
+  # maia-kube: "1.1"
+
+charts:
+  # Git ref for every git-sourced MAIA chart (core-toolkit, kubeflow, dashboard, admin-toolkit, guacamole, ...).
+  # Default: --branch. Set it to test chart changes on a branch other than the code branch.
+  # ref: my-chart-branch
+  # One chart: <NAME>: <version>, or {version: ..., type: git_repo|helm_repo}. NAME as in versions.py without _CHART_VERSION.
+  # TRAEFIK: 33.2.1
+  # MAIA_DASHBOARD: {type: helm_repo, version: 2.6.0}
+
+env:
+  # Any other config.yaml env: key, passed through as is (keys not in versions.py are allowed, with a note).
+  # ADMIN_PROJECT_CHART_VERSION: "1.3.1"

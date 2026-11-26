@@ -7,7 +7,7 @@ parse_common_args "$@"
 PURGE=0; for a in "${REST[@]+"${REST[@]}"}"; do [[ $a == --purge-secrets ]] && PURGE=1; done
 [[ "$VM_NAME" =~ ^[a-z0-9][a-z0-9-]+$ ]] || { echo "bad VM name"; exit 2; }
 echo "Will run on $(hv_label): systemctl --user disable --now $VM_NAME.service; rm ~/.config/systemd/user/$VM_NAME.service; rm -rf ~/.maia-vm/$VM_NAME"
-echo "Will remove on ctl: $STATE_DIR/{known_hosts,inventory.ini,secrets.yml,tunnel.sock}$([[ $PURGE == 1 ]] && echo ', secrets.env')"
+echo "Will remove on ctl: $STATE_DIR/{known_hosts,inventory.ini,secrets.yml,tunnel.sock}$([[ $PURGE == 1 ]] && echo ', secrets.env, install-flags.env, overrides.yaml')"
 require_approval
 run hv teardown-vm <<EOF
 systemctl --user disable --now $VM_NAME.service 2>&1 || true
@@ -18,5 +18,5 @@ rmdir ~/.maia-vm 2>/dev/null || true
 ls -la ~/.maia-vm 2>/dev/null || echo "~/.maia-vm removed"
 EOF
 rm -f "$STATE_DIR/known_hosts" "$STATE_DIR/inventory.ini" "$STATE_DIR/secrets.yml" "$STATE_DIR/tunnel.sock" "$STATE_DIR/backend" "$STATE_DIR/smolvm_feasibility"
-[[ $PURGE == 1 ]] && rm -f "$STATE_DIR/secrets.env"
+[[ $PURGE == 1 ]] && rm -f "$STATE_DIR/secrets.env" "$STATE_DIR/install-flags.env" "$STATE_DIR/overrides.yaml" "$STATE_DIR/overrides.vars.yml"
 echo "teardown done"

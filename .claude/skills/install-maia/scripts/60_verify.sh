@@ -3,11 +3,38 @@
 # Usage: 60_verify.sh [--hypervisor <ssh-alias>] [--guest maia-vm] [--domain maia.local] [--cluster-api on|off] [--local-port 8443]
 #   remote-hypervisor: tunnel = ssh -L <local>:127.0.0.1:$HTTPS_PORT <hypervisor>. Local: no tunnel needed.
 #   existing-ssh-host: tunnel = ssh -L <local>:127.0.0.1:443 <guest>  (pass --hypervisor "" and --https-port 443)
+#   Check 7 records what the cluster runs (MAIA commit, k3s, ArgoCD sources/revisions, Helm releases, image digests) in
+#   /etc/maia-config/deployed-versions.md and ~/.maia-vm/<name>/deployed/ (latest.md + one file per change), and prints the
+#   diff against the previous record. It never fails VERIFY. --versions-only runs just check 7.
 source "$(dirname "$0")/lib.sh"
 parse_common_args "$@"
-LPORT=8443; set -- "${REST[@]+"${REST[@]}"}"
-while [[ $# -gt 0 ]]; do case "$1" in --local-port) LPORT="$2"; shift 2 ;; *) echo "unknown arg $1"; exit 2 ;; esac; done
+LPORT=8443; VERSIONS_ONLY=0; set -- "${REST[@]+"${REST[@]}"}"
+while [[ $# -gt 0 ]]; do case "$1" in --local-port) LPORT="$2"; shift 2 ;; --versions-only) VERSIONS_ONLY=1; shift ;;
+  *) echo "unknown arg $1"; exit 2 ;; esac; done
 fail=0
+
+# 7. Record of what is deployed. Informational: a failure here is reported but doesn't fail VERIFY.
+record_versions() {
+  echo "== 7. deployed versions"
+  { echo "python3 - > /etc/maia-config/deployed-versions.md.tmp <<'PY'"; cat "$SKILL_DIR/scripts/deployed_versions.py"; echo "PY"
+    echo "mv /etc/maia-config/deployed-versions.md.tmp /etc/maia-config/deployed-versions.md"
+    echo "sed -n '/^## MAIA/,/^## k3s/p' /etc/maia-config/deployed-versions.md | grep '^| [nd]'"
+    echo "echo \"argocd sources: \$(sed -n '/^## ArgoCD/,/^## Helm/p' /etc/maia-config/deployed-versions.md | grep -c '^| maia\\|^| ml'), images: \$(grep -c 'sha256:' /etc/maia-config/deployed-versions.md)\""
+  } | run guest verify-7-versions || { echo "WARN: could not collect deployed versions"; return 0; }
+  run ctl verify-7-record <<EOF || echo "WARN: could not save the deployed-versions record"
+D="$STATE_DIR/deployed"; mkdir -p "\$D"; new="\$D/\$(date +%Y%m%d-%H%M%S).md"
+# -n: this script reaches bash on stdin; without it ssh would swallow the rest of the script
+ssh -n ${GUEST_SSH_OPTS[*]} $GUEST cat /etc/maia-config/deployed-versions.md > "\$new"
+prev=\$(ls "\$D"/2*.md 2>/dev/null | grep -vxF "\$new" | tail -n 1 || true)
+cp "\$new" "\$D/latest.md"
+# Line 1 is the timestamp; compare the rest. Keep one file per distinct state.
+if [[ -z "\$prev" ]]; then echo "first record: \$new"
+elif cmp -s <(tail -n +2 "\$prev") <(tail -n +2 "\$new"); then rm -f "\$new"; echo "unchanged since \$(basename "\$prev") (latest.md refreshed)"
+else echo "changed since \$(basename "\$prev") (- before, + now):"; { diff <(tail -n +2 "\$prev") <(tail -n +2 "\$new") || true; } | sed -n 's/^</-/p; s/^>/+/p' | cut -c1-220 | head -n 80 || true
+  echo "record: \$new"; fi
+EOF
+}
+if [[ $VERSIONS_ONLY == 1 ]]; then record_versions; exit 0; fi
 
 echo "== 1. cluster"
 run guest verify-1-cluster <<'EOF' || fail=1
@@ -84,6 +111,7 @@ for h in maia iam registry kubeflow chat login; do
 done
 rm -f \$T; exit \$f
 EOF
+rm -f "$STATE_DIR/.verify-login-rejected"
 run ctl verify-4-oidc <<EOF || fail=1
 R="--resolve iam.$CLUSTER_DOMAIN:$LPORT:127.0.0.1 --resolve maia.$CLUSTER_DOMAIN:$LPORT:127.0.0.1"; J=\$(mktemp); P=\$(mktemp)
 curl -sk \$R --max-time 20 https://iam.$CLUSTER_DOMAIN:$LPORT/realms/maia/.well-known/openid-configuration | jq -r '"issuer: " + .issuer'
@@ -100,9 +128,39 @@ act=\$(grep -o 'id="kc-form-login"[^>]*action="[^"]*"' \$P | sed 's/.*action="//
 res=\$(curl -sk \$R --max-time 30 -b \$J -c \$J -o \$P -w '%{http_code} %{redirect_url}' --data-urlencode "username=admin@$CLUSTER_DOMAIN" --data-urlencode "password=admin" --data credentialId= "\$act")
 if grep -q 'kc-passwd-update-form' \$P || [[ "\$res" == *"required-action?execution=UPDATE_PASSWORD"* ]]; then echo "first-access login admin@$CLUSTER_DOMAIN OK: Keycloak asks for a new password (UPDATE_PASSWORD)"
 elif [[ "\$res" == *"/maia/oidc/callback/"* ]]; then echo "login admin@$CLUSTER_DOMAIN OK: redirected to dashboard callback"
-else echo "first-access login failed (\$(grep -oE 'Invalid username or password' \$P | head -1)). The temporary password may already be changed. Check with the user"; rm -f \$J \$P; exit 1; fi
+elif grep -q 'Invalid username or password' \$P; then
+  # Expected once someone has logged in and replaced the temporary password; the guest-side check below tells the cases apart.
+  echo "first-access login rejected (Invalid username or password): checking the account in Keycloak"; touch "$STATE_DIR/.verify-login-rejected"
+else echo "first-access login failed: unexpected response (\$res)"; rm -f \$J \$P; exit 1; fi
 rm -f \$J \$P
 EOF
+# A rejected temporary password is a WARN only if the account exists, is enabled and has no pending UPDATE_PASSWORD, i.e. a
+# permanent password was set. Missing/disabled account, or UPDATE_PASSWORD still pending (temporary password should work), fail.
+if [[ -f "$STATE_DIR/.verify-login-rejected" ]]; then
+  rm -f "$STATE_DIR/.verify-login-rejected"
+  run guest verify-4-admin-account <<'EOF' || fail=1
+D=$(python3 -c 'import yaml; print(yaml.safe_load(open("/etc/maia-config/config.yaml"))["env"]["CLUSTER_DOMAIN"])')
+E=$(python3 -c 'import yaml; print(yaml.safe_load(open("/etc/maia-config/config.yaml"))["env"]["ADMIN_EMAIL"])')
+AP=$(jq -r .keycloak_admin_password /etc/maia-config/env.json)
+T=$(curl -sk --max-time 20 "https://iam.$D/realms/master/protocol/openid-connect/token" -d grant_type=password -d client_id=admin-cli \
+    -d username=user --data-urlencode "password=$AP" | jq -r '.access_token // empty'); unset AP
+[[ -n "$T" ]] || { echo "cannot get a Keycloak admin token (console user 'user'): can't tell why the login was rejected"; exit 1; }
+U=$(curl -sk --max-time 20 -H "Authorization: Bearer $T" "https://iam.$D/admin/realms/maia/users?email=$E&exact=true")
+n=$(jq 'length' <<<"$U")
+[[ "$n" == 1 ]] || { unset T; echo "first-access admin $E NOT found in realm maia (users matching: $n): re-run 50_install.sh --only-step keycloak-admin"; exit 1; }
+id=$(jq -r '.[0].id' <<<"$U"); en=$(jq -r '.[0].enabled' <<<"$U"); ra=$(jq -r '.[0].requiredActions | join(",")' <<<"$U")
+pw=$(curl -sk --max-time 20 -H "Authorization: Bearer $T" "https://iam.$D/admin/realms/maia/users/$id/credentials" \
+     | jq -r '[.[] | select(.type=="password")][0].createdDate // empty'); unset T
+set_at=$([[ -n "$pw" ]] && date -d "@$((pw/1000))" -Is || echo unknown)
+echo "account $E: enabled=$en requiredActions=[${ra}] password set: $set_at"
+[[ "$en" == true ]] || { echo "account is disabled"; exit 1; }
+if [[ ",$ra," == *",UPDATE_PASSWORD,"* ]]; then echo "UPDATE_PASSWORD is still pending, so the temporary password should work, yet it was rejected"; exit 1; fi
+echo "WARN: the temporary password was already replaced (expected after the first login). The login form and OIDC flow are OK;"
+echo "      the full login can't be tested without the new password."
+EOF
+fi
+
+record_versions
 
 echo "== 6. no generated secret values in skill dir or logs"
 # Dashboard Cluster API matches --cluster-api: on = the token from secrets.env authenticates (status 200, enabled) and no token
